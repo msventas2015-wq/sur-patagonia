@@ -4,408 +4,1266 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sur Patagonia — Inmobiliaria</title>
-  <meta name="description" content="Sur Patagonia. Propiedades exclusivas en la Patagonia argentina. Casas, terrenos y proyectos de inversión." />
-  <link rel="stylesheet" href="css/estilos.css" />
+  <meta name="description" content="Propiedades exclusivas en la Patagonia argentina." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Montserrat:wght@200;300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <style>
+    /* ── RESET & BASE ── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #080808;
+      --surface: #111111;
+      --surface2: #181818;
+      --text: #f0ede8;
+      --muted: #777;
+      --stroke: #222;
+      --gold: #c9a84c;
+      --gold-light: #e8c97a;
+    }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 300;
+      overflow-x: hidden;
+      cursor: default;
+    }
+    img { display: block; max-width: 100%; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── LOADING SCREEN ── */
+    #loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      padding: 2.5rem;
+      pointer-events: all;
+    }
+    #loading-label {
+      font-size: 0.65rem; font-weight: 500;
+      letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--muted);
+      opacity: 0; transform: translateY(-12px);
+      transition: all 0.6s ease;
+    }
+    #loading-label.visible { opacity: 1; transform: translateY(0); }
+    #loading-center {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    #loading-word {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-weight: 300;
+      font-size: clamp(3rem, 8vw, 7rem);
+      color: rgba(240,237,232,0.7);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    #loading-bottom {
+      display: flex; justify-content: flex-end; align-items: flex-end;
+      gap: 2rem;
+    }
+    #loading-counter {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(5rem, 12vw, 10rem);
+      font-weight: 300; line-height: 1;
+      color: var(--text);
+      tabular-nums: true;
+    }
+    #loading-progress-wrap {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px; background: rgba(255,255,255,0.06);
+    }
+    #loading-progress {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 100%);
+      width: 0%;
+      transition: width 0.05s linear;
+      box-shadow: 0 0 10px rgba(201,168,76,0.4);
+    }
+
+    /* ── NAVBAR ── */
+    #nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; justify-content: center;
+      padding: 1.5rem 1rem;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #nav.visible { opacity: 1; pointer-events: all; }
+    .nav-pill {
+      display: inline-flex; align-items: center; gap: 0.2rem;
+      background: rgba(17,17,17,0.7);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 100px;
+      padding: 0.4rem 0.5rem;
+      transition: box-shadow 0.3s ease;
+    }
+    .nav-pill.scrolled {
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      border-color: rgba(201,168,76,0.15);
+    }
+    .nav-logo-pill {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--bg);
+      border: 1.5px solid transparent;
+      background-clip: padding-box;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-size: 0.85rem;
+      color: var(--gold);
+      position: relative;
+      transition: transform 0.3s ease;
+      overflow: hidden;
+    }
+    .nav-logo-pill::before {
+      content: '';
+      position: absolute; inset: -1.5px; border-radius: 50%; z-index: -1;
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    }
+    .nav-logo-pill:hover { transform: scale(1.1); }
+    .nav-divider { width: 1px; height: 20px; background: var(--stroke); margin: 0 0.3rem; }
+    .nav-link {
+      font-size: 0.72rem; font-weight: 400;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      padding: 0.4rem 0.9rem;
+      border-radius: 100px;
+      transition: all 0.2s ease;
+    }
+    .nav-link:hover, .nav-link.active {
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+    }
+    .nav-cta {
+      font-size: 0.72rem; font-weight: 500;
+      color: var(--text);
+      padding: 0.4rem 1rem;
+      border-radius: 100px;
+      border: 1px solid var(--stroke);
+      transition: all 0.25s ease;
+    }
+    .nav-cta:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* ── HERO ── */
+    #hero {
+      position: relative; height: 100vh; min-height: 600px;
+      display: flex; align-items: center; overflow: hidden;
+    }
+    #hero-video-wrap {
+      position: absolute; inset: 0; overflow: hidden;
+    }
+    #hero-video {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      min-width: 100%; min-height: 100%;
+      width: auto; height: auto;
+      object-fit: cover;
+      opacity: 0.55;
+    }
+    .hero-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(8,8,8,0.3) 0%,
+        rgba(8,8,8,0.1) 40%,
+        rgba(8,8,8,0.6) 75%,
+        rgba(8,8,8,1) 100%
+      );
+    }
+    /* Animated gradient fallback if no video */
+    .hero-gradient-bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(30,40,80,0.6) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(60,30,20,0.4) 0%, transparent 50%),
+        radial-gradient(ellipse at 60% 80%, rgba(20,50,40,0.5) 0%, transparent 55%),
+        linear-gradient(135deg, #080808 0%, #0d1020 40%, #100808 70%, #080808 100%);
+      animation: bgShift 12s ease infinite alternate;
+    }
+    @keyframes bgShift {
+      0% { filter: brightness(1) hue-rotate(0deg); }
+      100% { filter: brightness(1.15) hue-rotate(5deg); }
+    }
+    .hero-content {
+      position: relative; z-index: 2;
+      padding: 0 2rem;
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .hero-eyebrow {
+      font-size: 0.65rem; font-weight: 500;
+      letter-spacing: 0.35em; text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 2rem;
+      display: flex; align-items: center; gap: 1.2rem;
+      opacity: 0;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: block; width: 40px; height: 1px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+    }
+    .hero-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3.5rem, 8vw, 8rem);
+      font-weight: 300; line-height: 0.95;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin-bottom: 2rem;
+      opacity: 0;
+      max-width: 900px;
+    }
+    .hero-title em {
+      font-style: italic;
+      color: transparent;
+      -webkit-text-stroke: 1px rgba(240,237,232,0.5);
+    }
+    .hero-subtitle {
+      font-size: 0.85rem; font-weight: 300;
+      color: var(--muted); line-height: 1.8;
+      max-width: 420px;
+      margin-bottom: 3rem;
+      opacity: 0;
+    }
+    .hero-btns {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      opacity: 0;
+    }
+    .btn-hero-primary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--text); color: var(--bg);
+      padding: 0.85rem 2.2rem;
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      border-radius: 100px;
+      transition: all 0.3s ease;
+      border: 1px solid transparent;
+    }
+    .btn-hero-primary:hover {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--gold);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(201,168,76,0.2);
+    }
+    .btn-hero-secondary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: transparent; color: var(--text);
+      padding: 0.85rem 2.2rem;
+      font-size: 0.72rem; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      border-radius: 100px;
+      border: 1px solid rgba(255,255,255,0.15);
+      transition: all 0.3s ease;
+    }
+    .btn-hero-secondary:hover {
+      border-color: rgba(255,255,255,0.4);
+      transform: translateY(-2px);
+    }
+    .hero-scroll {
+      position: absolute; bottom: 2.5rem; left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0.6rem;
+      color: var(--muted);
+      font-size: 0.6rem; letter-spacing: 0.25em; text-transform: uppercase;
+    }
+    .scroll-line {
+      width: 1px; height: 50px;
+      background: var(--stroke);
+      position: relative; overflow: hidden;
+    }
+    .scroll-line::after {
+      content: '';
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: linear-gradient(to bottom, var(--gold), transparent);
+      animation: scrollAnim 1.8s ease-in-out infinite;
+    }
+    @keyframes scrollAnim {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(200%); }
+    }
+
+    /* ── BUSCADOR ── */
+    #buscador-section {
+      padding: 0 2rem;
+      margin-top: -4rem;
+      position: relative; z-index: 5;
+      max-width: 1280px; margin-left: auto; margin-right: auto;
+      margin-top: -5rem;
+    }
+    .buscador-card {
+      background: rgba(17,17,17,0.9);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--stroke);
+      padding: 2rem 2.5rem;
+      transition: border-color 0.3s ease;
+    }
+    .buscador-card:hover { border-color: rgba(201,168,76,0.2); }
+    .buscador-tabs {
+      display: flex; gap: 0;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--stroke);
+    }
+    .b-tab {
+      padding: 0.6rem 1.5rem;
+      font-size: 0.68rem; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: pointer; background: none; border: none;
+      color: var(--muted);
+      border-bottom: 1px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.2s ease;
+    }
+    .b-tab.active, .b-tab:hover { color: var(--gold); border-bottom-color: var(--gold); }
+    .buscador-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 1rem; align-items: end;
+    }
+    .b-field label {
+      display: block;
+      font-size: 0.6rem; font-weight: 600;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.5rem;
+    }
+    .b-field input, .b-field select {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--stroke);
+      color: var(--text);
+      padding: 0.7rem 1rem;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.82rem; font-weight: 300;
+      outline: none;
+      transition: border-color 0.2s ease;
+      appearance: none;
+    }
+    .b-field select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c9a84c'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem; cursor: pointer;
+    }
+    .b-field input:focus, .b-field select:focus { border-color: var(--gold); }
+    .btn-buscar {
+      background: var(--gold); color: var(--bg);
+      padding: 0.7rem 2rem;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      border: none; cursor: pointer;
+      transition: all 0.25s ease; white-space: nowrap;
+    }
+    .btn-buscar:hover { background: var(--gold-light); transform: translateY(-1px); }
+
+    /* ── SECCIONES GENERALES ── */
+    .section { padding: 7rem 2rem; }
+    .section-inner { max-width: 1280px; margin: 0 auto; }
+    .section-header { margin-bottom: 4rem; }
+    .eyebrow {
+      display: flex; align-items: center; gap: 1rem;
+      font-size: 0.65rem; font-weight: 500;
+      letter-spacing: 0.25em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 1.2rem;
+    }
+    .eyebrow::before {
+      content: ''; display: block;
+      width: 30px; height: 1px;
+      background: var(--gold);
+    }
+    .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.5rem, 5vw, 4.5rem);
+      font-weight: 300; line-height: 1;
+      letter-spacing: -0.01em;
+    }
+    .section-title em { font-style: italic; color: transparent; -webkit-text-stroke: 1px rgba(240,237,232,0.4); }
+
+    /* ── CARDS PROPIEDADES ── */
+    .prop-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5px;
+    }
+    .prop-card {
+      position: relative; overflow: hidden;
+      background: var(--surface);
+      cursor: pointer;
+      aspect-ratio: 4/5;
+    }
+    .prop-card:first-child { grid-row: span 2; aspect-ratio: auto; }
+    .prop-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    .prop-img-placeholder {
+      width: 100%; height: 100%; min-height: 280px;
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--stroke); font-size: 3rem;
+    }
+    .prop-card:hover .prop-img { transform: scale(1.06); }
+    .prop-card-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(8,8,8,0.92) 0%, transparent 55%);
+      opacity: 0.7;
+      transition: opacity 0.4s ease;
+    }
+    .prop-card:hover .prop-card-overlay { opacity: 1; }
+    .prop-card-info {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 1.5rem;
+    }
+    .prop-badge {
+      display: inline-block;
+      font-size: 0.58rem; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      padding: 0.25rem 0.7rem;
+      background: var(--gold); color: var(--bg);
+      margin-bottom: 0.7rem;
+    }
+    .prop-badge.alquiler { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+    .prop-card-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem; font-weight: 300;
+      line-height: 1.2; margin-bottom: 0.4rem;
+    }
+    .prop-card-loc {
+      font-size: 0.7rem; color: rgba(240,237,232,0.5);
+      margin-bottom: 0.8rem;
+    }
+    .prop-card-price {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-weight: 300;
+      color: var(--gold-light);
+    }
+    .prop-card-specs {
+      display: flex; gap: 1rem; margin-top: 0.6rem;
+      font-size: 0.65rem; color: rgba(240,237,232,0.45);
+      letter-spacing: 0.05em;
+    }
+    .prop-view-all {
+      text-align: center; margin-top: 4rem;
+    }
+    .btn-outline-gold {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      font-size: 0.68rem; font-weight: 600;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--gold); padding: 0.9rem 2.5rem;
+      border: 1px solid rgba(201,168,76,0.4);
+      transition: all 0.3s ease;
+    }
+    .btn-outline-gold:hover {
+      border-color: var(--gold);
+      background: rgba(201,168,76,0.06);
+      transform: translateY(-2px);
+    }
+
+    /* ── STATS ── */
+    #stats { background: var(--surface); border-top: 1px solid var(--stroke); border-bottom: 1px solid var(--stroke); }
+    .stats-row {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+    }
+    .stat-box {
+      padding: 4rem 3rem;
+      border-right: 1px solid var(--stroke);
+      text-align: center;
+    }
+    .stat-box:last-child { border-right: none; }
+    .stat-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3rem, 5vw, 5rem);
+      font-weight: 300; color: var(--gold);
+      line-height: 1;
+    }
+    .stat-lbl {
+      font-size: 0.65rem; font-weight: 500;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--muted); margin-top: 0.6rem;
+    }
+
+    /* ── PROYECTOS ── */
+    .proy-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1px; background: var(--stroke);
+    }
+    .proy-card {
+      position: relative; overflow: hidden;
+      aspect-ratio: 3/4;
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .proy-card-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94);
+      filter: brightness(0.6) saturate(0.8);
+    }
+    .proy-card:hover .proy-card-img { transform: scale(1.05); filter: brightness(0.7) saturate(1); }
+    .proy-card-content {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      justify-content: flex-end;
+      padding: 2rem;
+      background: linear-gradient(to top, rgba(8,8,8,0.85) 0%, transparent 60%);
+    }
+    .proy-type {
+      font-size: 0.6rem; font-weight: 600;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 0.5rem;
+    }
+    .proy-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem; font-weight: 300;
+      line-height: 1.1;
+    }
+    .proy-desc {
+      font-size: 0.78rem; color: var(--muted);
+      margin-top: 0.6rem; line-height: 1.7;
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.4s ease, opacity 0.4s ease;
+      opacity: 0;
+    }
+    .proy-card:hover .proy-desc { max-height: 80px; opacity: 1; }
+    .proy-placeholder {
+      width: 100%; height: 100%;
+      background: linear-gradient(135deg, var(--surface) 0%, #0d1020 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 4rem;
+    }
+
+    /* ── AUDIOVISUAL BANNER ── */
+    #av-banner {
+      padding: 8rem 2rem;
+      position: relative; overflow: hidden;
+      background: var(--bg);
+    }
+    .av-banner-inner {
+      max-width: 1280px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 6rem; align-items: center;
+    }
+    #av-banner::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(ellipse at 80% 50%, rgba(201,168,76,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .av-big-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.5rem, 5vw, 4.5rem);
+      font-weight: 300; line-height: 1.1;
+    }
+    .av-big-text em { font-style: italic; color: var(--gold); }
+    .av-body {
+      font-size: 0.85rem; color: var(--muted);
+      line-height: 1.9; margin: 1.5rem 0 2.5rem;
+    }
+    .av-services {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0; border: 1px solid var(--stroke);
+    }
+    .av-service {
+      padding: 1.2rem 1.5rem;
+      border-right: 1px solid var(--stroke);
+      border-bottom: 1px solid var(--stroke);
+      font-size: 0.72rem; font-weight: 400;
+      color: var(--muted); letter-spacing: 0.05em;
+      display: flex; align-items: center; gap: 0.6rem;
+      transition: color 0.2s, background 0.2s;
+    }
+    .av-service:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+    .av-service:nth-child(2n) { border-right: none; }
+    .av-service::before { content: '—'; color: var(--gold); font-size: 0.6rem; }
+
+    /* ── CONTACTO ── */
+    #contacto { background: var(--surface); border-top: 1px solid var(--stroke); }
+    .contacto-grid {
+      display: grid; grid-template-columns: 1fr 1.5fr;
+      gap: 6rem; align-items: start;
+    }
+    .contacto-info p {
+      font-size: 0.82rem; color: var(--muted);
+      line-height: 1.9; margin-bottom: 2rem;
+    }
+    .contacto-dato {
+      display: flex; align-items: center; gap: 1rem;
+      font-size: 0.78rem; color: var(--muted);
+      margin-bottom: 0.8rem;
+    }
+    .contacto-dato span { color: var(--gold); font-size: 0.9rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .form-row.full { grid-template-columns: 1fr; }
+    .f-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .f-group label {
+      font-size: 0.6rem; font-weight: 600;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .f-group input, .f-group textarea {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--stroke);
+      color: var(--text); padding: 0.8rem 1rem;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.82rem; font-weight: 300;
+      outline: none; transition: border-color 0.2s;
+      resize: vertical;
+    }
+    .f-group input:focus, .f-group textarea:focus { border-color: var(--gold); }
+    .btn-submit {
+      width: 100%; margin-top: 0.5rem;
+      background: var(--gold); color: var(--bg);
+      padding: 0.95rem;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      border: none; cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-submit:hover { background: var(--gold-light); }
+    .alerta { padding: 0.8rem 1rem; margin-bottom: 1rem; font-size: 0.8rem; }
+    .alerta-ok { background: rgba(39,174,96,0.08); border-left: 3px solid #27ae60; color: #27ae60; }
+    .alerta-err { background: rgba(192,57,43,0.08); border-left: 3px solid #c0392b; color: #c0392b; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg);
+      border-top: 1px solid var(--stroke);
+      padding: 3rem 0 2rem;
+      overflow: hidden;
+    }
+    .marquee-wrap {
+      border-top: 1px solid var(--stroke);
+      border-bottom: 1px solid var(--stroke);
+      padding: 1.2rem 0;
+      overflow: hidden; margin-bottom: 3rem;
+    }
+    .marquee-track {
+      display: flex; width: max-content; gap: 0;
+      white-space: nowrap;
+    }
+    .marquee-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-weight: 300;
+      font-size: 1.4rem; color: rgba(240,237,232,0.2);
+      padding: 0 3rem;
+      letter-spacing: 0.05em;
+    }
+    .marquee-text span { color: var(--gold); }
+    .footer-main {
+      max-width: 1280px; margin: 0 auto; padding: 0 2rem;
+      display: grid; grid-template-columns: 2fr 1fr 1fr;
+      gap: 4rem; margin-bottom: 3rem;
+    }
+    .footer-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem; font-weight: 300;
+      letter-spacing: 0.08em; margin-bottom: 1rem;
+    }
+    .footer-logo span { color: var(--gold); }
+    .footer-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.9; }
+    .footer-col h5 {
+      font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 1.2rem;
+    }
+    .footer-links { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+    .footer-links a { font-size: 0.8rem; color: var(--muted); transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-bottom {
+      max-width: 1280px; margin: 0 auto; padding: 1.5rem 2rem 0;
+      border-top: 1px solid var(--stroke);
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.7rem; color: var(--muted);
+    }
+
+    /* ── REVEAL ANIMATIONS ── */
+    .reveal { opacity: 0; transform: translateY(40px); }
+    .reveal-left { opacity: 0; transform: translateX(-40px); }
+    .reveal-right { opacity: 0; transform: translateX(40px); }
+    .reveal-scale { opacity: 0; transform: scale(0.94); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 1024px) {
+      .prop-grid { grid-template-columns: 1fr 1fr; }
+      .prop-card:first-child { grid-row: span 1; aspect-ratio: 4/5; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .stat-box:nth-child(2) { border-right: none; }
+      .stat-box:nth-child(3) { border-top: 1px solid var(--stroke); }
+      .av-banner-inner { grid-template-columns: 1fr; gap: 3rem; }
+      .contacto-grid { grid-template-columns: 1fr; gap: 3rem; }
+      .footer-main { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 768px) {
+      .prop-grid { grid-template-columns: 1fr; }
+      .proy-grid { grid-template-columns: 1fr; }
+      .buscador-form { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .footer-main { grid-template-columns: 1fr; gap: 2rem; }
+      .av-services { grid-template-columns: 1fr; }
+      .av-service { border-right: none; }
+      .nav-pill .nav-divider, .nav-pill .nav-link:not(.active) { display: none; }
+    }
+  </style>
 </head>
 <body>
 
-  <!-- ===== NAV ===== -->
-  <nav class="nav" id="nav">
-    <div class="contenedor">
-      <div class="nav-inner">
-        <a href="index.html" class="nav-logo">SUR <span>PATAGONIA</span></a>
-        <ul class="nav-links" id="navLinks">
-          <li><a href="index.html" class="activo">Inicio</a></li>
-          <li><a href="propiedades.html">Propiedades</a></li>
-          <li><a href="proyectos.html">Proyectos</a></li>
-          <li><a href="#contacto">Contacto</a></li>
-        </ul>
-        <button class="nav-menu-btn" id="menuBtn" aria-label="Menú">
-          <span></span><span></span><span></span>
-        </button>
+<!-- ════════════════════════════════════════
+     LOADING SCREEN
+════════════════════════════════════════ -->
+<div id="loading">
+  <div id="loading-label">Sur Patagonia</div>
+  <div id="loading-center">
+    <div id="loading-word">Descubrí</div>
+  </div>
+  <div id="loading-bottom">
+    <div id="loading-counter">000</div>
+  </div>
+  <div id="loading-progress-wrap">
+    <div id="loading-progress"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     NAVBAR
+════════════════════════════════════════ -->
+<nav id="nav">
+  <div class="nav-pill" id="navPill">
+    <a href="index.html" class="nav-logo-pill">SP</a>
+    <div class="nav-divider"></div>
+    <a href="index.html" class="nav-link active">Inicio</a>
+    <a href="propiedades.html" class="nav-link">Propiedades</a>
+    <a href="proyectos.html" class="nav-link">Proyectos</a>
+    <div class="nav-divider"></div>
+    <a href="#contacto" class="nav-cta">Contacto ↗</a>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════
+     HERO
+════════════════════════════════════════ -->
+<section id="hero">
+  <div id="hero-video-wrap">
+    <!-- REEMPLAZÁ esta URL con tu propio video de Patagonia -->
+    <!-- Podés subir un video .mp4 a Supabase Storage y pegar la URL aquí -->
+    <div class="hero-gradient-bg"></div>
+    <!-- <video id="hero-video" autoplay muted loop playsinline>
+      <source src="TU_VIDEO_URL_AQUI.mp4" type="video/mp4" />
+    </video> -->
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow" id="heroEyebrow">Patagonia Argentina</p>
+    <h1 class="hero-title" id="heroTitle">
+      Encontrá tu lugar<br>en la <em>Patagonia</em>
+    </h1>
+    <p class="hero-subtitle" id="heroSubtitle">
+      Propiedades únicas en uno de los paisajes más extraordinarios del mundo.
+    </p>
+    <div class="hero-btns" id="heroBtns">
+      <a href="propiedades.html" class="btn-hero-primary">Ver propiedades →</a>
+      <a href="proyectos.html" class="btn-hero-secondary">Ver proyectos</a>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    Scroll
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     BUSCADOR
+════════════════════════════════════════ -->
+<div style="padding: 0 2rem; position: relative; z-index: 5; max-width: 1280px; margin: -5rem auto 0;">
+  <div class="buscador-card reveal">
+    <div class="buscador-tabs">
+      <button class="b-tab active" data-op="venta">Comprar</button>
+      <button class="b-tab" data-op="alquiler">Alquilar</button>
+      <button class="b-tab" data-op="alquiler_temporario">Temporario</button>
+    </div>
+    <form class="buscador-form" id="formBuscador">
+      <div class="b-field">
+        <label>Ubicación</label>
+        <input type="text" id="busUbicacion" placeholder="Ciudad, barrio..." />
+      </div>
+      <div class="b-field">
+        <label>Tipo de propiedad</label>
+        <select id="busTipo">
+          <option value="">Todos</option>
+          <option value="casa">Casa</option>
+          <option value="departamento">Departamento</option>
+          <option value="terreno">Terreno</option>
+          <option value="lote">Lote</option>
+          <option value="local">Local comercial</option>
+        </select>
+      </div>
+      <div class="b-field">
+        <label>Precio máximo (USD)</label>
+        <input type="number" id="busPrecio" placeholder="Sin límite" />
+      </div>
+      <button type="submit" class="btn-buscar">Buscar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     PROPIEDADES DESTACADAS
+════════════════════════════════════════ -->
+<section class="section" style="background:var(--bg); padding-top:8rem;">
+  <div class="section-inner">
+    <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">
+      <div class="reveal">
+        <div class="eyebrow">Selección premium</div>
+        <h2 class="section-title">Propiedades <em>destacadas</em></h2>
+      </div>
+      <a href="propiedades.html" class="btn-outline-gold reveal" style="margin-bottom:0.5rem;">Ver todas →</a>
+    </div>
+    <div class="prop-grid" id="propiedadesDestacadas">
+      <div style="grid-column:1/-1; padding:4rem; text-align:center; color:var(--muted);">
+        <div style="width:30px;height:30px;border:1.5px solid var(--stroke);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1rem;"></div>
+        Cargando propiedades...
       </div>
     </div>
-  </nav>
+  </div>
+</section>
 
-  <!-- ===== HERO ===== -->
-  <section class="hero">
-    <div class="hero-bg hero-bg-default" id="heroBg"></div>
-    <div class="contenedor" style="width:100%">
-      <div class="hero-content">
-        <p class="hero-eyebrow">Patagonia Argentina</p>
-        <h1 class="hero-titulo">
-          Encontrá tu lugar<br>en la <em>Patagonia</em>
-        </h1>
-        <p class="hero-subtitulo">
-          Propiedades únicas en uno de los paisajes más extraordinarios del mundo. Casas, terrenos y proyectos de inversión en el sur argentino.
+<!-- ════════════════════════════════════════
+     STATS
+════════════════════════════════════════ -->
+<section id="stats">
+  <div style="max-width:1280px; margin:0 auto;">
+    <div class="stats-row">
+      <div class="stat-box reveal">
+        <div class="stat-num" data-target-prop="true" id="statProp">—</div>
+        <div class="stat-lbl">Propiedades activas</div>
+      </div>
+      <div class="stat-box reveal">
+        <div class="stat-num" data-target-proy="true" id="statProy">—</div>
+        <div class="stat-lbl">Proyectos en cartera</div>
+      </div>
+      <div class="stat-box reveal">
+        <div class="stat-num" id="stat3">10+</div>
+        <div class="stat-lbl">Años de experiencia</div>
+      </div>
+      <div class="stat-box reveal">
+        <div class="stat-num">∞</div>
+        <div class="stat-lbl">Pasión por la Patagonia</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     PROYECTOS
+════════════════════════════════════════ -->
+<section class="section" style="background:var(--surface); padding:7rem 0;">
+  <div class="section-inner" style="padding:0 2rem; margin-bottom:3rem;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">
+      <div class="reveal">
+        <div class="eyebrow">Desarrollos & inversiones</div>
+        <h2 class="section-title">Proyectos <em>especiales</em></h2>
+      </div>
+      <a href="proyectos.html" class="btn-outline-gold reveal">Ver proyectos →</a>
+    </div>
+  </div>
+  <div class="proy-grid" id="proyectosGrid" style="max-width:1280px; margin:0 auto; padding:0 2rem;">
+    <div style="grid-column:1/-1; padding:4rem; text-align:center; color:var(--muted);">
+      Cargando proyectos...
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     AUDIOVISUAL BANNER
+════════════════════════════════════════ -->
+<section id="av-banner">
+  <div class="av-banner-inner">
+    <div class="reveal-left">
+      <div class="eyebrow">Producción audiovisual</div>
+      <h2 class="av-big-text">
+        Hacemos que tu proyecto<br>
+        se vea <em>increíble</em>
+      </h2>
+      <p class="av-body">
+        Somos productores audiovisuales especializados en bienes raíces. Videos cinematográficos, drone y contenido digital para desarrolladores inmobiliarios en la Patagonia.
+      </p>
+      <a href="proyectos.html#audiovisual" class="btn-hero-primary" style="display:inline-flex;">Conocer servicios →</a>
+    </div>
+    <div class="reveal-right">
+      <div class="av-services">
+        <div class="av-service">Video cinematográfico</div>
+        <div class="av-service">Tomas con drone</div>
+        <div class="av-service">Fotografía profesional</div>
+        <div class="av-service">Post-producción</div>
+        <div class="av-service">Contenido para redes</div>
+        <div class="av-service">Tours virtuales 360°</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     CONTACTO
+════════════════════════════════════════ -->
+<section class="section" id="contacto">
+  <div class="section-inner">
+    <div class="contacto-grid">
+      <div class="reveal-left">
+        <div class="eyebrow">Escribinos</div>
+        <h2 class="section-title" style="margin-bottom:2rem;">Estamos<br><em>para ayudarte</em></h2>
+        <p class="contacto-info" style="color:var(--muted); font-size:0.85rem; line-height:1.9; margin-bottom:2rem;">
+          Ya sea que estés buscando tu próxima propiedad o querés desarrollar un proyecto en la Patagonia, nuestro equipo está listo.
         </p>
-        <div class="hero-acciones">
-          <a href="propiedades.html" class="btn btn-dorado">Ver propiedades</a>
-          <a href="proyectos.html" class="btn btn-outline-blanco">Ver proyectos</a>
-        </div>
+        <div class="contacto-dato"><span>📍</span> Patagonia, Argentina</div>
+        <div class="contacto-dato"><span>📧</span> info@surpatagonia.com.ar</div>
+        <div class="contacto-dato"><span>📱</span> +54 9 ...</div>
       </div>
-    </div>
-    <div class="hero-scroll">Scroll</div>
-  </section>
-
-  <!-- ===== BUSCADOR ===== -->
-  <section style="padding: 3rem 0; background: var(--negro);">
-    <div class="contenedor">
-      <div class="buscador-wrapper">
-        <div class="buscador-tabs">
-          <button class="buscador-tab activo" data-op="venta">Comprar</button>
-          <button class="buscador-tab" data-op="alquiler">Alquilar</button>
-          <button class="buscador-tab" data-op="alquiler_temporario">Temporario</button>
-        </div>
-        <form class="buscador-form" id="formBuscador">
-          <div class="campo-form">
-            <label>Ubicación</label>
-            <input type="text" id="busUbicacion" placeholder="Ciudad, barrio..." />
+      <div class="reveal-right">
+        <div id="alertaContacto"></div>
+        <form id="formContacto">
+          <div class="form-row">
+            <div class="f-group">
+              <label>Nombre</label>
+              <input type="text" id="cNombre" placeholder="Tu nombre" required />
+            </div>
+            <div class="f-group">
+              <label>Teléfono</label>
+              <input type="tel" id="cTelefono" placeholder="+54 9..." />
+            </div>
           </div>
-          <div class="campo-form">
-            <label>Tipo</label>
-            <select id="busTipo">
-              <option value="">Todos</option>
-              <option value="casa">Casa</option>
-              <option value="departamento">Departamento</option>
-              <option value="terreno">Terreno</option>
-              <option value="lote">Lote</option>
-              <option value="local">Local comercial</option>
-            </select>
+          <div class="form-row full">
+            <div class="f-group">
+              <label>Email</label>
+              <input type="email" id="cEmail" placeholder="tu@email.com" required />
+            </div>
           </div>
-          <div class="campo-form">
-            <label>Precio máximo</label>
-            <input type="number" id="busPrecio" placeholder="USD" />
+          <div class="form-row full">
+            <div class="f-group">
+              <label>Mensaje</label>
+              <textarea id="cMensaje" rows="4" placeholder="¿En qué podemos ayudarte?"></textarea>
+            </div>
           </div>
-          <button type="submit" class="btn btn-dorado">Buscar</button>
+          <button type="submit" class="btn-submit">Enviar mensaje</button>
         </form>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ===== PROPIEDADES DESTACADAS ===== -->
-  <section class="seccion seccion-oscura">
-    <div class="contenedor">
-      <div class="titulo-seccion">
-        <p>Selección premium</p>
-        <h2>Propiedades Destacadas</h2>
-        <div class="linea-dorada"></div>
-      </div>
-      <div class="grid-propiedades" id="propiedadesDestacadas">
-        <div class="estado-cargando">
-          <div class="spinner"></div>
-          <p>Cargando propiedades...</p>
-        </div>
-      </div>
-      <div style="text-align:center; margin-top:3rem;">
-        <a href="propiedades.html" class="btn btn-outline">Ver todas las propiedades</a>
-      </div>
+<!-- ════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════ -->
+<footer>
+  <div class="marquee-wrap">
+    <div class="marquee-track" id="marquee">
+      <span class="marquee-text">Sur Patagonia <span>•</span></span>
+      <span class="marquee-text">Propiedades exclusivas <span>•</span></span>
+      <span class="marquee-text">Producción audiovisual <span>•</span></span>
+      <span class="marquee-text">Patagonia Argentina <span>•</span></span>
+      <span class="marquee-text">Sur Patagonia <span>•</span></span>
+      <span class="marquee-text">Propiedades exclusivas <span>•</span></span>
+      <span class="marquee-text">Producción audiovisual <span>•</span></span>
+      <span class="marquee-text">Patagonia Argentina <span>•</span></span>
     </div>
-  </section>
-
-  <!-- ===== ESTADÍSTICAS ===== -->
-  <section class="seccion" style="background: var(--negro);">
-    <div class="contenedor">
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-numero" id="statPropiedades">—</div>
-          <div class="stat-label">Propiedades activas</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-numero" id="statProyectos">—</div>
-          <div class="stat-label">Proyectos en cartera</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-numero">10+</div>
-          <div class="stat-label">Años de experiencia</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-numero">100%</div>
-          <div class="stat-label">Clientes satisfechos</div>
-        </div>
-      </div>
+  </div>
+  <div class="footer-main">
+    <div>
+      <div class="footer-logo">SUR <span>PATAGONIA</span></div>
+      <p class="footer-desc">Inmobiliaria especializada en propiedades y proyectos en la Patagonia argentina. Producción audiovisual para desarrolladores.</p>
     </div>
-  </section>
-
-  <!-- ===== PROYECTOS ===== -->
-  <section class="seccion seccion-oscura">
-    <div class="contenedor">
-      <div class="titulo-seccion">
-        <p>Desarrollos & inversiones</p>
-        <h2>Proyectos Especiales</h2>
-        <div class="linea-dorada"></div>
-        <p style="margin-top:0.5rem; max-width:600px; margin-left:auto; margin-right:auto;">
-          Loteos, emprendimientos y proyectos de inversión. Producción audiovisual profesional para desarrolladores inmobiliarios.
-        </p>
-      </div>
-      <div class="proyectos-grid" id="proyectosHome">
-        <div class="estado-cargando">
-          <div class="spinner"></div>
-          <p>Cargando proyectos...</p>
-        </div>
-      </div>
-      <div style="text-align:center; margin-top:3rem;">
-        <a href="proyectos.html" class="btn btn-outline">Ver todos los proyectos</a>
-      </div>
+    <div class="footer-col">
+      <h5>Propiedades</h5>
+      <ul class="footer-links">
+        <li><a href="propiedades.html?op=venta">En venta</a></li>
+        <li><a href="propiedades.html?op=alquiler">En alquiler</a></li>
+        <li><a href="propiedades.html?tipo=terreno">Terrenos</a></li>
+        <li><a href="propiedades.html?tipo=lote">Lotes</a></li>
+      </ul>
     </div>
-  </section>
-
-  <!-- ===== AUDIOVISUAL BANNER ===== -->
-  <section class="seccion" style="background: linear-gradient(135deg, var(--negro) 0%, #0a0a1a 100%); text-align:center;">
-    <div class="contenedor" style="max-width:800px;">
-      <p style="color:var(--dorado); font-size:0.7rem; letter-spacing:0.25em; text-transform:uppercase; margin-bottom:1rem;">Producción audiovisual</p>
-      <h2 style="color:var(--blanco); margin-bottom:1.5rem;">¿Sos desarrollador inmobiliario?</h2>
-      <div class="linea-dorada"></div>
-      <p style="color:var(--gris-claro); margin: 1.5rem auto; max-width:600px;">
-        Potenciá tus proyectos con producción audiovisual de primer nivel. Videos cinematográficos, drones y contenido digital para loteos y emprendimientos en la Patagonia.
-      </p>
-      <a href="proyectos.html#audiovisual" class="btn btn-dorado">Conocé nuestros servicios</a>
+    <div class="footer-col">
+      <h5>Empresa</h5>
+      <ul class="footer-links">
+        <li><a href="proyectos.html">Proyectos</a></li>
+        <li><a href="#contacto">Contacto</a></li>
+        <li><a href="admin/login.html">Admin</a></li>
+      </ul>
     </div>
-  </section>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 Sur Patagonia. Todos los derechos reservados.</span>
+    <span style="color:var(--gold);">Patagonia, Argentina</span>
+  </div>
+</footer>
 
-  <!-- ===== CONTACTO ===== -->
-  <section class="seccion seccion-oscura" id="contacto">
-    <div class="contenedor">
-      <div class="titulo-seccion">
-        <p>Escribinos</p>
-        <h2>Contacto</h2>
-        <div class="linea-dorada"></div>
-      </div>
-      <div class="contacto-grid">
-        <div>
-          <h3 style="margin-bottom:1rem; font-weight:300;">Estamos para ayudarte</h3>
-          <p style="color:var(--gris-claro); margin-bottom:2rem; font-size:0.9rem;">
-            Ya sea que estés buscando tu próxima propiedad o querés desarrollar un proyecto en la Patagonia, nuestro equipo está listo para acompañarte.
-          </p>
-          <div style="display:flex; flex-direction:column; gap:1rem;">
-            <div style="display:flex; gap:1rem; align-items:center; color:var(--gris-claro); font-size:0.85rem;">
-              <span style="color:var(--dorado);">📍</span> Patagonia, Argentina
-            </div>
-            <div style="display:flex; gap:1rem; align-items:center; color:var(--gris-claro); font-size:0.85rem;">
-              <span style="color:var(--dorado);">📧</span> info@surpatagonia.com.ar
-            </div>
-            <div style="display:flex; gap:1rem; align-items:center; color:var(--gris-claro); font-size:0.85rem;">
-              <span style="color:var(--dorado);">📱</span> +54 9 ...
-            </div>
-          </div>
-        </div>
-        <div>
-          <div id="alertaContacto"></div>
-          <form id="formContacto">
-            <div class="form-grid">
-              <div class="form-grupo">
-                <label>Nombre</label>
-                <input type="text" id="cNombre" placeholder="Tu nombre" required />
-              </div>
-              <div class="form-grupo">
-                <label>Teléfono</label>
-                <input type="tel" id="cTelefono" placeholder="+54 9..." />
-              </div>
-              <div class="form-grupo form-full">
-                <label>Email</label>
-                <input type="email" id="cEmail" placeholder="tu@email.com" required />
-              </div>
-              <div class="form-grupo form-full">
-                <label>Mensaje</label>
-                <textarea id="cMensaje" placeholder="¿En qué podemos ayudarte?"></textarea>
-              </div>
-            </div>
-            <button type="submit" class="btn btn-dorado" style="margin-top:1rem; width:100%;">Enviar mensaje</button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </section>
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 
-  <!-- ===== FOOTER ===== -->
-  <footer class="footer">
-    <div class="contenedor">
-      <div class="footer-grid">
-        <div>
-          <div class="footer-logo">SUR <span>PATAGONIA</span></div>
-          <p class="footer-desc">Inmobiliaria especializada en propiedades y proyectos en la Patagonia argentina. Producción audiovisual para desarrolladores.</p>
-        </div>
-        <div>
-          <p class="footer-titulo">Propiedades</p>
-          <ul class="footer-links">
-            <li><a href="propiedades.html?op=venta">En venta</a></li>
-            <li><a href="propiedades.html?op=alquiler">En alquiler</a></li>
-            <li><a href="propiedades.html?tipo=terreno">Terrenos</a></li>
-            <li><a href="propiedades.html?tipo=lote">Lotes</a></li>
-          </ul>
-        </div>
-        <div>
-          <p class="footer-titulo">Empresa</p>
-          <ul class="footer-links">
-            <li><a href="proyectos.html">Proyectos</a></li>
-            <li><a href="#contacto">Contacto</a></li>
-            <li><a href="admin/login.html">Administrar</a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <span>© 2025 Sur Patagonia. Todos los derechos reservados.</span>
-        <span>Diseño & desarrollo audiovisual propio</span>
-      </div>
-    </div>
-  </footer>
+<script type="module">
+import { supabase } from './js/config.js'
 
-  <script type="module">
-    import { supabase } from './js/config.js'
+gsap.registerPlugin(ScrollTrigger)
 
-    // Nav scroll
-    const nav = document.getElementById('nav')
-    window.addEventListener('scroll', () => {
-      nav.classList.toggle('scrolled', window.scrollY > 50)
-    })
+/* ── LOADING SCREEN ── */
+const words = ['Descubrí', 'Explorá', 'Invertí', 'Viví']
+let wordIdx = 0, count = 0
+const wordEl = document.getElementById('loading-word')
+const counterEl = document.getElementById('loading-counter')
+const progressEl = document.getElementById('loading-progress')
+const loadingEl = document.getElementById('loading')
+const labelEl = document.getElementById('loading-label')
 
-    // Menú mobile
-    const menuBtn = document.getElementById('menuBtn')
-    const navLinks = document.getElementById('navLinks')
-    menuBtn.addEventListener('click', () => {
-      navLinks.classList.toggle('abierto')
-    })
+setTimeout(() => labelEl.classList.add('visible'), 200)
 
-    // Buscador - tabs
-    document.querySelectorAll('.buscador-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.buscador-tab').forEach(t => t.classList.remove('activo'))
-        tab.classList.add('activo')
+const wordInterval = setInterval(() => {
+  wordIdx = (wordIdx + 1) % words.length
+  wordEl.style.opacity = '0'; wordEl.style.transform = 'translateY(16px)'
+  setTimeout(() => {
+    wordEl.textContent = words[wordIdx]
+    wordEl.style.opacity = ''; wordEl.style.transform = ''
+  }, 200)
+}, 700)
+
+const duration = 2600
+const start = performance.now()
+
+function tick(now) {
+  const elapsed = now - start
+  count = Math.min(Math.round((elapsed / duration) * 100), 100)
+  counterEl.textContent = String(count).padStart(3, '0')
+  progressEl.style.width = count + '%'
+  if (count < 100) {
+    requestAnimationFrame(tick)
+  } else {
+    clearInterval(wordInterval)
+    setTimeout(() => {
+      gsap.to(loadingEl, {
+        opacity: 0, duration: 0.7, ease: 'power2.inOut',
+        onComplete: () => {
+          loadingEl.style.display = 'none'
+          document.getElementById('nav').classList.add('visible')
+          initHeroAnim()
+          initScrollAnimations()
+        }
       })
+    }, 300)
+  }
+}
+requestAnimationFrame(tick)
+
+/* ── HERO GSAP ENTRANCE ── */
+function initHeroAnim() {
+  gsap.timeline({ defaults: { ease: 'power3.out' } })
+    .to('#heroEyebrow', { opacity: 1, y: 0, duration: 1, delay: 0.1 })
+    .to('#heroTitle', { opacity: 1, y: 0, duration: 1.2 }, '-=0.7')
+    .to('#heroSubtitle', { opacity: 1, y: 0, duration: 1 }, '-=0.8')
+    .to('#heroBtns', { opacity: 1, y: 0, duration: 0.8 }, '-=0.6')
+}
+
+/* ── NAV SCROLL ── */
+window.addEventListener('scroll', () => {
+  document.getElementById('navPill').classList.toggle('scrolled', window.scrollY > 60)
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'))
+  const section = window.scrollY < 200 ? 'index' : ''
+})
+
+/* ── SCROLL ANIMATIONS ── */
+function initScrollAnimations() {
+  // Reveal elements
+  gsap.utils.toArray('.reveal').forEach((el, i) => {
+    gsap.to(el, {
+      opacity: 1, y: 0, duration: 0.9,
+      ease: 'power3.out',
+      scrollTrigger: {
+        trigger: el, start: 'top 88%', once: true
+      },
+      delay: i % 3 * 0.1
     })
-
-    // Buscador - submit
-    document.getElementById('formBuscador').addEventListener('submit', (e) => {
-      e.preventDefault()
-      const op = document.querySelector('.buscador-tab.activo').dataset.op
-      const ubicacion = document.getElementById('busUbicacion').value
-      const tipo = document.getElementById('busTipo').value
-      const precio = document.getElementById('busPrecio').value
-      const params = new URLSearchParams()
-      if (op) params.set('op', op)
-      if (ubicacion) params.set('ubicacion', ubicacion)
-      if (tipo) params.set('tipo', tipo)
-      if (precio) params.set('precioMax', precio)
-      window.location.href = `propiedades.html?${params.toString()}`
+  })
+  gsap.utils.toArray('.reveal-left').forEach(el => {
+    gsap.to(el, {
+      opacity: 1, x: 0, duration: 1, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 85%', once: true }
     })
-
-    // Cargar propiedades destacadas
-    async function cargarDestacadas() {
-      const contenedor = document.getElementById('propiedadesDestacadas')
-      const { data, error } = await supabase
-        .from('propiedades')
-        .select('*')
-        .eq('destacada', true)
-        .eq('activa', true)
-        .limit(6)
-
-      if (error || !data || data.length === 0) {
-        contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--gris-claro)">No hay propiedades destacadas aún.</p></div>`
-        return
-      }
-      contenedor.innerHTML = data.map(renderCard).join('')
-    }
-
-    // Cargar proyectos home
-    async function cargarProyectosHome() {
-      const contenedor = document.getElementById('proyectosHome')
-      const { data, error } = await supabase
-        .from('proyectos')
-        .select('*')
-        .eq('activo', true)
-        .limit(3)
-
-      if (error || !data || data.length === 0) {
-        contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--gris-claro)">No hay proyectos aún.</p></div>`
-        return
-      }
-      contenedor.innerHTML = data.map(renderCardProyecto).join('')
-    }
-
-    // Estadísticas
-    async function cargarStats() {
-      const { count: cp } = await supabase.from('propiedades').select('*', { count: 'exact', head: true }).eq('activa', true)
-      const { count: cpr } = await supabase.from('proyectos').select('*', { count: 'exact', head: true }).eq('activo', true)
-      document.getElementById('statPropiedades').textContent = cp ?? '—'
-      document.getElementById('statProyectos').textContent = cpr ?? '—'
-    }
-
-    function renderCard(p) {
-      const img = p.imagenes && p.imagenes.length > 0
-        ? `<img src="${p.imagenes[0]}" alt="${p.titulo}" loading="lazy" />`
-        : `<div class="card-imagen-placeholder">🏠</div>`
-      const precio = p.precio
-        ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
-        : 'Consultar'
-      return `
-        <div class="card-propiedad" onclick="window.location='propiedad.html?id=${p.id}'">
-          <div class="card-imagen">
-            ${img}
-            <div class="card-badge badge-${p.operacion}">${p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'}</div>
-            ${p.destacada ? '<div class="badge-destacada">★ Destacada</div>' : ''}
-          </div>
-          <div class="card-cuerpo">
-            <p class="card-tipo">${p.tipo || ''}</p>
-            <h3 class="card-titulo">${p.titulo}</h3>
-            <p class="card-ubicacion">📍 ${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}</p>
-            <div class="card-precio">${precio} <span>${p.operacion === 'venta' ? '' : '/ mes'}</span></div>
-            <div class="card-detalles">
-              ${p.dormitorios ? `<div class="card-detalle"><strong>${p.dormitorios}</strong>Dorm.</div>` : ''}
-              ${p.banos ? `<div class="card-detalle"><strong>${p.banos}</strong>Baños</div>` : ''}
-              ${p.superficie_cubierta ? `<div class="card-detalle"><strong>${p.superficie_cubierta}</strong>m² cub.</div>` : ''}
-              ${p.superficie_total ? `<div class="card-detalle"><strong>${p.superficie_total}</strong>m² tot.</div>` : ''}
-            </div>
-          </div>
-        </div>`
-    }
-
-    function renderCardProyecto(p) {
-      const img = p.imagen_portada
-        ? `<img src="${p.imagen_portada}" alt="${p.titulo}" loading="lazy" />`
-        : `<div style="width:100%;height:100%;background:linear-gradient(135deg,var(--negro-3),var(--gris-oscuro));display:flex;align-items:center;justify-content:center;font-size:3rem;">🎬</div>`
-      return `
-        <div class="card-proyecto" onclick="window.location='proyectos.html#proyecto-${p.id}'">
-          <div class="card-proyecto-imagen">
-            ${img}
-            <div class="card-proyecto-overlay">
-              <h3 style="color:var(--blanco);font-size:1.4rem;">${p.titulo}</h3>
-            </div>
-            ${p.video_url ? `<div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>` : ''}
-          </div>
-          <div class="card-proyecto-info">
-            <p style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--dorado);margin-bottom:0.5rem;">${p.tipo || 'Proyecto'} · ${p.ciudad || p.ubicacion || ''}</p>
-            <p style="font-size:0.85rem;color:var(--gris-claro);">${(p.descripcion || '').substring(0, 120)}${p.descripcion && p.descripcion.length > 120 ? '...' : ''}</p>
-          </div>
-        </div>`
-    }
-
-    // Formulario contacto
-    document.getElementById('formContacto').addEventListener('submit', async (e) => {
-      e.preventDefault()
-      const alerta = document.getElementById('alertaContacto')
-      const btn = e.target.querySelector('button[type=submit]')
-      btn.textContent = 'Enviando...'
-      btn.disabled = true
-      const { error } = await supabase.from('contactos').insert({
-        nombre: document.getElementById('cNombre').value,
-        email: document.getElementById('cEmail').value,
-        telefono: document.getElementById('cTelefono').value,
-        mensaje: document.getElementById('cMensaje').value
-      })
-      if (error) {
-        alerta.innerHTML = `<div class="alerta alerta-error">Error al enviar. Por favor intentá de nuevo.</div>`
-      } else {
-        alerta.innerHTML = `<div class="alerta alerta-exito">¡Mensaje enviado! Te contactaremos pronto.</div>`
-        e.target.reset()
-      }
-      btn.textContent = 'Enviar mensaje'
-      btn.disabled = false
+  })
+  gsap.utils.toArray('.reveal-right').forEach(el => {
+    gsap.to(el, {
+      opacity: 1, x: 0, duration: 1, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 85%', once: true }
     })
+  })
 
-    // Inicializar
-    cargarDestacadas()
-    cargarProyectosHome()
-    cargarStats()
-  </script>
+  // Parallax hero
+  gsap.to('#hero-video-wrap', {
+    yPercent: 25,
+    ease: 'none',
+    scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true }
+  })
+
+  // Marquee
+  gsap.to('#marquee', {
+    xPercent: -50,
+    duration: 30,
+    ease: 'none',
+    repeat: -1
+  })
+
+  // Stat numbers
+  cargarStats()
+  cargarPropiedades()
+  cargarProyectos()
+}
+
+/* ── BUSCADOR ── */
+document.querySelectorAll('.b-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.b-tab').forEach(t => t.classList.remove('active'))
+    tab.classList.add('active')
+  })
+})
+document.getElementById('formBuscador').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const op = document.querySelector('.b-tab.active')?.dataset.op || 'venta'
+  const params = new URLSearchParams()
+  if (op) params.set('op', op)
+  const ub = document.getElementById('busUbicacion').value
+  const ti = document.getElementById('busTipo').value
+  const pr = document.getElementById('busPrecio').value
+  if (ub) params.set('ubicacion', ub)
+  if (ti) params.set('tipo', ti)
+  if (pr) params.set('precioMax', pr)
+  window.location.href = `propiedades.html?${params}`
+})
+
+/* ── SUPABASE DATA ── */
+async function cargarStats() {
+  const [{ count: cp }, { count: cpr }] = await Promise.all([
+    supabase.from('propiedades').select('*', { count: 'exact', head: true }).eq('activa', true),
+    supabase.from('proyectos').select('*', { count: 'exact', head: true }).eq('activo', true)
+  ])
+  animCount('statProp', cp || 0)
+  animCount('statProy', cpr || 0)
+}
+
+function animCount(id, target) {
+  const el = document.getElementById(id)
+  if (!el || target === 0) { if(el) el.textContent = '0'; return }
+  gsap.to({ val: 0 }, {
+    val: target, duration: 1.5, ease: 'power2.out',
+    scrollTrigger: { trigger: '#stats', start: 'top 80%', once: true },
+    onUpdate: function() { el.textContent = Math.round(this.targets()[0].val) }
+  })
+}
+
+async function cargarPropiedades() {
+  const { data } = await supabase
+    .from('propiedades').select('*')
+    .eq('destacada', true).eq('activa', true).limit(4)
+
+  const grid = document.getElementById('propiedadesDestacadas')
+  if (!data || data.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1; padding:4rem; text-align:center; color:var(--muted);">
+      Las propiedades aparecerán aquí una vez que las cargues desde el panel de administración.
+    </div>`
+    return
+  }
+  grid.innerHTML = data.map((p, i) => {
+    const img = p.imagenes?.[0]
+      ? `<img class="prop-img" src="${p.imagenes[0]}" alt="${p.titulo}" loading="lazy" />`
+      : `<div class="prop-img-placeholder">🏔️</div>`
+    const precio = p.precio ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}` : 'Consultar'
+    const specs = [
+      p.dormitorios ? p.dormitorios + ' dorm.' : null,
+      p.banos ? p.banos + ' baños' : null,
+      p.superficie_cubierta ? p.superficie_cubierta + 'm²' : null
+    ].filter(Boolean).join('  ·  ')
+    return `
+      <div class="prop-card reveal" style="transition-delay:${i*0.1}s" onclick="location.href='propiedad.html?id=${p.id}'">
+        ${img}
+        <div class="prop-card-overlay"></div>
+        <div class="prop-card-info">
+          <div class="prop-badge ${p.operacion}">${p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'}</div>
+          <div class="prop-card-title">${p.titulo}</div>
+          <div class="prop-card-loc">📍 ${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}</div>
+          <div class="prop-card-price">${precio}</div>
+          ${specs ? `<div class="prop-card-specs">${specs}</div>` : ''}
+        </div>
+      </div>`
+  }).join('')
+
+  // Re-trigger GSAP for new elements
+  gsap.utils.toArray('.prop-card.reveal').forEach((el, i) => {
+    gsap.to(el, {
+      opacity: 1, y: 0, duration: 0.8, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 90%', once: true },
+      delay: i * 0.1
+    })
+  })
+}
+
+async function cargarProyectos() {
+  const { data } = await supabase
+    .from('proyectos').select('*').eq('activo', true).limit(3)
+
+  const grid = document.getElementById('proyectosGrid')
+  if (!data || data.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1; padding:4rem; text-align:center; color:var(--muted);">
+      Los proyectos aparecerán aquí una vez que los cargues.
+    </div>`
+    return
+  }
+  grid.innerHTML = data.map(p => {
+    const img = p.imagen_portada
+      ? `<img class="proy-card-img" src="${p.imagen_portada}" alt="${p.titulo}" loading="lazy" />`
+      : `<div class="proy-placeholder">🏔️</div>`
+    return `
+      <div class="proy-card reveal" onclick="location.href='proyectos.html#proyecto-${p.id}'">
+        ${img}
+        <div class="proy-card-content">
+          <div class="proy-type">${p.tipo || 'Proyecto'} · ${p.ciudad || ''}</div>
+          <div class="proy-title">${p.titulo}</div>
+          <div class="proy-desc">${(p.descripcion || '').substring(0, 120)}</div>
+        </div>
+      </div>`
+  }).join('')
+}
+
+/* ── CONTACTO ── */
+document.getElementById('formContacto').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const btn = e.target.querySelector('.btn-submit')
+  btn.textContent = 'Enviando...'
+  btn.disabled = true
+  const { error } = await supabase.from('contactos').insert({
+    nombre: document.getElementById('cNombre').value,
+    email: document.getElementById('cEmail').value,
+    telefono: document.getElementById('cTelefono').value,
+    mensaje: document.getElementById('cMensaje').value
+  })
+  const al = document.getElementById('alertaContacto')
+  al.innerHTML = error
+    ? `<div class="alerta alerta-err">Error al enviar. Intentá de nuevo.</div>`
+    : `<div class="alerta alerta-ok">✓ Mensaje enviado. Te contactamos pronto.</div>`
+  if (!error) e.target.reset()
+  btn.textContent = 'Enviar mensaje'
+  btn.disabled = false
+})
+</script>
 </body>
 </html>
