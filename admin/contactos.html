@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consultas — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="nueva-propiedad.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nueva propiedad
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="contactos.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+      <a href="../index.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-header">
+      <div>
+        <h2 style="font-weight:300;">Consultas recibidas</h2>
+        <p style="font-size:0.78rem; color:var(--gris-claro);">Mensajes de clientes interesados</p>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="admin-tabla">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Mensaje</th>
+            <th>Propiedad</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tablaContactos">
+          <tr><td colspan="8" style="text-align:center;padding:3rem;color:var(--gris-claro);">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { supabase } from '../js/config.js'
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) window.location.href = 'login.html'
+
+  document.getElementById('btnLogout').addEventListener('click', async (e) => {
+    e.preventDefault()
+    await supabase.auth.signOut()
+    window.location.href = 'login.html'
+  })
+
+  async function cargar() {
+    const { data } = await supabase
+      .from('contactos')
+      .select('*, propiedades(titulo)')
+      .order('created_at', { ascending: false })
+
+    const tbody = document.getElementById('tablaContactos')
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:3rem;color:var(--gris-claro);">Sin consultas aún.</td></tr>'
+      return
+    }
+
+    tbody.innerHTML = data.map(c => `
+      <tr style="${!c.leido ? 'background:rgba(201,168,76,0.04);' : ''}">
+        <td style="color:var(--blanco); font-weight:${!c.leido ? '500' : '300'}">${c.nombre}</td>
+        <td><a href="mailto:${c.email}" style="color:var(--dorado);">${c.email}</a></td>
+        <td>${c.telefono || '—'}</td>
+        <td style="max-width:300px; white-space:pre-wrap; word-break:break-word; font-size:0.8rem;">${c.mensaje || '—'}</td>
+        <td style="font-size:0.8rem;">${c.propiedades?.titulo || '—'}</td>
+        <td style="white-space:nowrap;">${new Date(c.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}</td>
+        <td><span class="badge-activo ${c.leido ? 'si' : 'no'}">${c.leido ? 'Leído' : 'Nuevo'}</span></td>
+        <td>
+          ${!c.leido ? `<button class="btn-accion btn-editar" data-id="${c.id}">Marcar leído</button>` : ''}
+        </td>
+      </tr>`).join('')
+
+    tbody.querySelectorAll('.btn-editar').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await supabase.from('contactos').update({ leido: true }).eq('id', btn.dataset.id)
+        cargar()
+      })
+    })
+  }
+
+  cargar()
+</script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Propiedad — Sur Patagonia</title>
+  <link rel="stylesheet" href="css/estilos.css" />
+  <style>
+    .detalle-layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 3rem;
+      align-items: start;
+    }
+    .detalle-sidebar {
+      position: sticky;
+      top: 6rem;
+    }
+    .ficha-contacto {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 2rem;
+    }
+    .ficha-precio {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.2rem;
+      color: var(--dorado);
+      margin-bottom: 1.5rem;
+    }
+    .ficha-precio small {
+      font-size: 1rem;
+      color: var(--gris-claro);
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 300;
+    }
+    .modal-galeria {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-galeria.abierto { display: flex; }
+    .modal-galeria img {
+      max-width: 90vw;
+      max-height: 85vh;
+      object-fit: contain;
+    }
+    .modal-cerrar {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      background: none;
+      border: none;
+      color: var(--blanco);
+      font-size: 2rem;
+      cursor: pointer;
+    }
+    .modal-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: var(--blanco);
+      font-size: 2rem;
+      cursor: pointer;
+      padding: 1rem;
+      transition: all 0.2s;
+    }
+    .modal-nav:hover { background: rgba(201,168,76,0.3); }
+    .modal-prev { left: 1rem; }
+    .modal-next { right: 1rem; }
+    @media (max-width: 768px) {
+      .detalle-layout { grid-template-columns: 1fr; }
+      .detalle-sidebar { position: static; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav scrolled">
+    <div class="contenedor">
+      <div class="nav-inner">
+        <a href="index.html" class="nav-logo">SUR <span>PATAGONIA</span></a>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="index.html">Inicio</a></li>
+          <li><a href="propiedades.html" class="activo">Propiedades</a></li>
+          <li><a href="proyectos.html">Proyectos</a></li>
+          <li><a href="index.html#contacto">Contacto</a></li>
+        </ul>
+        <button class="nav-menu-btn" id="menuBtn" aria-label="Menú">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- CARGANDO -->
+  <div id="estadoCargando" style="padding:10rem 0; text-align:center;">
+    <div class="spinner" style="margin:0 auto 1rem;"></div>
+    <p style="color:var(--gris-claro);">Cargando propiedad...</p>
+  </div>
+
+  <!-- CONTENIDO PROPIEDAD -->
+  <div id="contenidoPropiedad" style="display:none;">
+
+    <!-- GALERÍA -->
+    <div style="padding-top:5rem; background:var(--negro);">
+      <div class="contenedor">
+        <div class="galeria-principal" id="galeriaPrincipal">
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--negro-3);color:var(--gris);font-size:3rem;">🏠</div>
+        </div>
+        <div class="galeria-miniaturas" id="galeriaMiniaturas"></div>
+      </div>
+    </div>
+
+    <!-- DETALLE -->
+    <section class="seccion">
+      <div class="contenedor">
+        <p class="breadcrumb" style="margin-bottom:2rem;">
+          <a href="index.html" style="color:var(--dorado)">Inicio</a> /
+          <a href="propiedades.html" style="color:var(--dorado)">Propiedades</a> /
+          <span id="breadcrumbTitulo">—</span>
+        </p>
+        <div class="detalle-layout">
+          <!-- COLUMNA PRINCIPAL -->
+          <div>
+            <div style="display:flex; gap:0.8rem; margin-bottom:1rem;">
+              <span class="card-badge" id="detalleBadgeOp" style="position:static; display:inline-block;"></span>
+              <span style="font-size:0.7rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--dorado);align-self:center;" id="detalleTipo"></span>
+            </div>
+            <h1 id="detalleTitulo" style="margin-bottom:0.5rem;"></h1>
+            <p id="detalleUbicacion" style="color:var(--gris-claro);margin-bottom:2rem;font-size:0.9rem;">📍 —</p>
+
+            <div class="detalle-specs" id="detalleSpecs"></div>
+
+            <h3 style="font-weight:300; margin-bottom:1rem;">Descripción</h3>
+            <div id="detalleDescripcion" style="color:var(--gris-claro); font-size:0.9rem; line-height:1.9; margin-bottom:2rem; white-space:pre-wrap;"></div>
+          </div>
+
+          <!-- SIDEBAR -->
+          <div class="detalle-sidebar">
+            <div class="ficha-contacto">
+              <div class="ficha-precio" id="fichaPrecio"></div>
+              <div id="alertaFicha"></div>
+              <form id="formFicha">
+                <div class="form-grupo" style="margin-bottom:1rem;">
+                  <label>Tu nombre</label>
+                  <input type="text" id="fNombre" placeholder="Nombre completo" required />
+                </div>
+                <div class="form-grupo" style="margin-bottom:1rem;">
+                  <label>Email</label>
+                  <input type="email" id="fEmail" placeholder="tu@email.com" required />
+                </div>
+                <div class="form-grupo" style="margin-bottom:1rem;">
+                  <label>Teléfono</label>
+                  <input type="tel" id="fTelefono" placeholder="+54 9..." />
+                </div>
+                <div class="form-grupo" style="margin-bottom:1.5rem;">
+                  <label>Mensaje</label>
+                  <textarea id="fMensaje" rows="3" placeholder="Quisiera más información sobre esta propiedad..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-dorado" style="width:100%;">Consultar</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- PROPIEDAD NO ENCONTRADA -->
+  <div id="noEncontrado" style="display:none; padding:10rem 0; text-align:center;">
+    <h2 style="color:var(--gris-claro);">Propiedad no encontrada</h2>
+    <a href="propiedades.html" class="btn btn-dorado" style="margin-top:2rem;">Ver todas las propiedades</a>
+  </div>
+
+  <!-- MODAL GALERÍA -->
+  <div class="modal-galeria" id="modalGaleria">
+    <button class="modal-cerrar" id="modalCerrar">✕</button>
+    <button class="modal-nav modal-prev" id="modalPrev">‹</button>
+    <img id="modalImg" src="" alt="" />
+    <button class="modal-nav modal-next" id="modalNext">›</button>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="contenedor">
+      <div class="footer-bottom" style="border-top:none;">
+        <span>© 2025 Sur Patagonia.</span>
+        <a href="propiedades.html" style="color:var(--dorado);">← Volver a propiedades</a>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase } from './js/config.js'
+
+    document.getElementById('menuBtn').addEventListener('click', () => {
+      document.getElementById('navLinks').classList.toggle('abierto')
+    })
+
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('id')
+
+    if (!id) {
+      document.getElementById('estadoCargando').style.display = 'none'
+      document.getElementById('noEncontrado').style.display = 'block'
+    } else {
+      cargarPropiedad(id)
+    }
+
+    async function cargarPropiedad(id) {
+      const { data, error } = await supabase
+        .from('propiedades')
+        .select('*')
+        .eq('id', id)
+        .eq('activa', true)
+        .single()
+
+      document.getElementById('estadoCargando').style.display = 'none'
+
+      if (error || !data) {
+        document.getElementById('noEncontrado').style.display = 'block'
+        return
+      }
+
+      renderPropiedad(data)
+      document.getElementById('contenidoPropiedad').style.display = 'block'
+      document.title = `${data.titulo} — Sur Patagonia`
+    }
+
+    let imagenesActuales = []
+    let idxActual = 0
+
+    function renderPropiedad(p) {
+      imagenesActuales = p.imagenes || []
+
+      // Galería principal
+      const galPrincipal = document.getElementById('galeriaPrincipal')
+      if (imagenesActuales.length > 0) {
+        galPrincipal.innerHTML = `<img id="imgPrincipal" src="${imagenesActuales[0]}" alt="${p.titulo}" style="cursor:zoom-in;" />`
+        document.getElementById('imgPrincipal').addEventListener('click', () => abrirModal(0))
+      }
+
+      // Miniaturas
+      const galMin = document.getElementById('galeriaMiniaturas')
+      galMin.innerHTML = imagenesActuales.map((url, i) => `
+        <div class="galeria-miniatura${i === 0 ? ' activa' : ''}" data-idx="${i}">
+          <img src="${url}" alt="${p.titulo}" loading="lazy" />
+        </div>`).join('')
+      galMin.querySelectorAll('.galeria-miniatura').forEach(m => {
+        m.addEventListener('click', () => {
+          const idx = parseInt(m.dataset.idx)
+          document.getElementById('imgPrincipal').src = imagenesActuales[idx]
+          galMin.querySelectorAll('.galeria-miniatura').forEach(x => x.classList.remove('activa'))
+          m.classList.add('activa')
+        })
+      })
+
+      // Badge operación
+      const badgeOp = document.getElementById('detalleBadgeOp')
+      badgeOp.textContent = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
+      badgeOp.className = `card-badge badge-${p.operacion}`
+
+      document.getElementById('detalleTipo').textContent = p.tipo || ''
+      document.getElementById('detalleTitulo').textContent = p.titulo
+      document.getElementById('breadcrumbTitulo').textContent = p.titulo
+      document.getElementById('detalleUbicacion').textContent = `📍 ${[p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')}`
+      document.getElementById('detalleDescripcion').textContent = p.descripcion || 'Sin descripción.'
+
+      // Precio
+      const precio = p.precio
+        ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
+        : 'Consultar precio'
+      document.getElementById('fichaPrecio').innerHTML =
+        `${precio}<br><small>${p.operacion !== 'venta' ? '/ mes' : ''}</small>`
+
+      // Specs
+      const specs = []
+      if (p.dormitorios) specs.push({ val: p.dormitorios, label: 'Dormitorios' })
+      if (p.banos) specs.push({ val: p.banos, label: 'Baños' })
+      if (p.superficie_cubierta) specs.push({ val: p.superficie_cubierta + ' m²', label: 'Sup. cubierta' })
+      if (p.superficie_total) specs.push({ val: p.superficie_total + ' m²', label: 'Sup. total' })
+      document.getElementById('detalleSpecs').innerHTML = specs.map(s => `
+        <div class="detalle-spec">
+          <span class="detalle-spec-valor">${s.val}</span>
+          <span class="detalle-spec-label">${s.label}</span>
+        </div>`).join('')
+
+      // Mensaje predeterminado
+      document.getElementById('fMensaje').value = `Hola, quisiera más información sobre la propiedad "${p.titulo}".`
+
+      // Formulario contacto
+      document.getElementById('formFicha').addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const btn = e.target.querySelector('button')
+        btn.textContent = 'Enviando...'
+        btn.disabled = true
+        const { error } = await supabase.from('contactos').insert({
+          nombre: document.getElementById('fNombre').value,
+          email: document.getElementById('fEmail').value,
+          telefono: document.getElementById('fTelefono').value,
+          mensaje: document.getElementById('fMensaje').value,
+          propiedad_id: p.id
+        })
+        const alerta = document.getElementById('alertaFicha')
+        if (error) {
+          alerta.innerHTML = `<div class="alerta alerta-error">Error. Intentá de nuevo.</div>`
+        } else {
+          alerta.innerHTML = `<div class="alerta alerta-exito">¡Consulta enviada! Te contactamos pronto.</div>`
+          e.target.reset()
+        }
+        btn.textContent = 'Consultar'
+        btn.disabled = false
+      })
+    }
+
+    // Modal galería
+    function abrirModal(idx) {
+      idxActual = idx
+      document.getElementById('modalImg').src = imagenesActuales[idx]
+      document.getElementById('modalGaleria').classList.add('abierto')
+    }
+
+    document.getElementById('modalCerrar').addEventListener('click', () => {
+      document.getElementById('modalGaleria').classList.remove('abierto')
+    })
+
+    document.getElementById('modalPrev').addEventListener('click', () => {
+      idxActual = (idxActual - 1 + imagenesActuales.length) % imagenesActuales.length
+      document.getElementById('modalImg').src = imagenesActuales[idxActual]
+    })
+
+    document.getElementById('modalNext').addEventListener('click', () => {
+      idxActual = (idxActual + 1) % imagenesActuales.length
+      document.getElementById('modalImg').src = imagenesActuales[idxActual]
+    })
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') document.getElementById('modalGaleria').classList.remove('abierto')
+      if (e.key === 'ArrowLeft') document.getElementById('modalPrev').click()
+      if (e.key === 'ArrowRight') document.getElementById('modalNext').click()
+    })
+  </script>
+</body>
+</html>
