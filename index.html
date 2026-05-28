@@ -614,6 +614,7 @@
     #story { height: 450vh; }
     #story-inner {
       position: sticky; top: 0; height: 100vh; overflow: hidden;
+      background: var(--bg);
     }
     .story-slide {
       position: absolute; inset: 0;
@@ -855,6 +856,12 @@
     <div class="story-slide" style="background-image:url('assets/DJI_0959.jpg')"></div>
     <div class="story-slide" style="background-image:url('assets/Corredordelosandes1098.jpg')"></div>
     <div class="story-slide" style="background-image:url('assets/DJI_0394.jpg')"></div>
+    <!-- Plano overlay — aparece sobre el slide 3 -->
+    <div id="story-plan" style="position:absolute;inset:0;z-index:1;opacity:0;pointer-events:none;
+      display:flex;align-items:center;justify-content:center;">
+      <img src="assets/BUENA VISTA SUP.png" alt="" style="width:68%;max-width:720px;
+        filter:invert(1) brightness(3.5) saturate(0.1);mix-blend-mode:screen;opacity:0.8;" />
+    </div>
     <div id="story-grad"></div>
 
     <div id="story-text">
@@ -870,7 +877,7 @@
       </div>
       <div class="story-item">
         <p class="story-pre">Sur Patagonia · Propiedades</p>
-        <span class="story-word">A tu lugar.</span>
+        <span class="story-word">Tu lugar.</span>
         <p class="story-body">Cada propiedad tiene su propia historia. La montaña, el lago, el bosque — elegís vos.</p>
       </div>
       <div class="story-item">
@@ -947,14 +954,13 @@
 
   <!-- Álamos I — card destacada horizontal -->
   <div class="planos-grid" style="position:relative; z-index:1;">
-    <div class="plano-card grande reveal" onclick="window.location='proyecto-mini.html?slug=alamos-1'">
-      <!-- Plano difuminado como fondo -->
-      <div style="position:absolute;inset:0;z-index:0;transform:scale(1.04);
-        background:url('assets/ALAMOS 1 SUP.png') center/contain no-repeat #0a0e14;
-        filter:blur(6px) brightness(0.15) saturate(0.1);"></div>
-      <!-- Foto aérea del proyecto encima -->
-      <img class="plano-img" src="assets/DJI_0272-Pano(1).jpg" alt="Álamos I" loading="lazy"
-        style="position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:cover;opacity:0.72;" />
+    <div class="plano-card grande" onclick="window.location='proyecto-mini.html?slug=alamos-1'">
+      <!-- Foto aérea como fondo principal -->
+      <img class="plano-img" src="assets/DJI_0959.jpg" alt="Álamos I" loading="lazy" />
+      <!-- Plano superpuesto difuminado -->
+      <div style="position:absolute;inset:0;z-index:1;pointer-events:none;
+        background:url('assets/ALAMOS 1 SUP.png') center/contain no-repeat;
+        filter:blur(3px) brightness(0.12) saturate(0);"></div>
       <div class="plano-overlay" style="z-index:2;"></div>
       <div class="plano-corner"></div>
       <div class="plano-corner-br"></div>
@@ -1184,12 +1190,16 @@ function initScroll() {
       }
     }
   })
-  // Crossfade slides
+  // Crossfade slides + plan overlay en slide 3
   storyTl
-    .to(storySlides[0], { opacity: 0, duration: 0.3 }, 0.12)
-    .fromTo(storySlides[1], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.12)
-    .to(storySlides[1], { opacity: 0, duration: 0.3 }, 0.4)
-    .fromTo(storySlides[2], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.4)
+    .to(storySlides[0], { opacity: 0, duration: 0.3 }, 0.18)
+    .fromTo(storySlides[1], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.18)
+    .to(storySlides[1], { opacity: 0, duration: 0.3 }, 0.42)
+    .fromTo(storySlides[2], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.42)
+    // Plan overlay aparece mientras está el slide 3
+    .fromTo('#story-plan', { opacity: 0 }, { opacity: 1, duration: 0.22 }, 0.52)
+    // Plan fade out, slide 4 entra
+    .to('#story-plan', { opacity: 0, duration: 0.2 }, 0.64)
     .to(storySlides[2], { opacity: 0, duration: 0.3 }, 0.68)
     .fromTo(storySlides[3], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.68)
 
@@ -1197,10 +1207,10 @@ function initScroll() {
   gsap.to('#stats-bg', { yPercent: 15, ease: 'none',
     scrollTrigger: { trigger: '#stats', start: 'top bottom', end: 'bottom top', scrub: true } })
   ScrollTrigger.create({
-    trigger: '#stats', start: 'top 75%', once: true,
+    trigger: '#stats', start: 'top 85%', once: true,
     onEnter: () => {
       gsap.to('#stats-line', { width: '100%', duration: 1.2, ease: 'power2.inOut' })
-      gsap.to('.stat-box', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', stagger: 0.12, delay: 0.3 })
+      gsap.to('.stat-box', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', stagger: 0.12, delay: 0.2 })
     }
   })
 
@@ -1210,8 +1220,8 @@ function initScroll() {
   ScrollTrigger.create({
     trigger: '#sec-proyectos-desarrollos', start: 'top 72%', once: true,
     onEnter: () => {
-      gsap.to('#decoPlanLeft',  { x: 0, opacity: 0.14, duration: 2.2, ease: 'power3.out', delay: 0.1 })
-      gsap.to('#decoPlanRight', { x: 0, opacity: 0.14, duration: 2.2, ease: 'power3.out', delay: 0.3 })
+      gsap.to('#decoPlanLeft',  { x: 0, opacity: 0.28, duration: 2.2, ease: 'power3.out', delay: 0.1 })
+      gsap.to('#decoPlanRight', { x: 0, opacity: 0.28, duration: 2.2, ease: 'power3.out', delay: 0.3 })
     }
   })
 
@@ -1275,9 +1285,9 @@ function animNum(id, target) {
   const el = document.getElementById(id)
   if (!el) return
   if (target === 0) { el.textContent = '0'; return }
-  gsap.to({ v: 0 }, { v: target, duration: 1.5, ease: 'power2.out',
-    scrollTrigger: { trigger: '#stats', start: 'top 80%', once: true },
-    onUpdate: function() { el.textContent = Math.round(this.targets()[0].v) } })
+  const obj = { v: 0 }
+  gsap.to(obj, { v: target, duration: 2, ease: 'power2.out', delay: 0.5,
+    onUpdate: () => { el.textContent = Math.round(obj.v) } })
 }
 
 // PROPIEDADES
