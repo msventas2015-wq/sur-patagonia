@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="pageTitle">Proyecto — Sur Patagonia</title>
+  <meta name="description" id="pageDesc" content="Desarrollo inmobiliario en la Patagonia argentina." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Montserrat:wght@200;300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #080808;
+      --surface: #111111;
+      --surface2: #181818;
+      --text: #f0ede8;
+      --muted: #777;
+      --stroke: #222;
+      --gold: #c9a84c;
+      --gold-light: #e8c97a;
+    }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Montserrat', sans-serif; font-weight: 300; overflow-x: hidden; }
+    img { display: block; max-width: 100%; }
+    a { text-decoration: none; color: inherit; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* NAV */
+    #nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.5rem 3rem;
+      background: rgba(8,8,8,0.9);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.04);
+      transition: padding 0.4s ease;
+    }
+    .nav-logo img { height: 34px; display: block; }
+    .nav-back {
+      font-size: 0.65rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted); display: flex; align-items: center; gap: 0.6rem;
+      transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--text); }
+    .nav-back::before { content: '←'; font-size: 0.9rem; }
+    .nav-links { display: flex; align-items: center; gap: 0.2rem; }
+    .nav-link { font-size: 0.65rem; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(240,237,232,0.5); padding: 0.5rem 1rem; transition: color 0.2s; }
+    .nav-link:hover { color: var(--text); }
+    .nav-cta { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bg); background: var(--gold); padding: 0.55rem 1.4rem; margin-left: 0.5rem; transition: background 0.2s; }
+    .nav-cta:hover { background: var(--gold-light); }
+
+    /* HERO PROYECTO */
+    #hero {
+      height: 100vh; min-height: 600px;
+      position: relative; display: flex; align-items: flex-end;
+      overflow: hidden;
+    }
+    #hero-bg {
+      position: absolute; inset: 0;
+      background: var(--surface);
+    }
+    #hero-bg img {
+      width: 100%; height: 100%; object-fit: cover;
+      filter: brightness(0.65) saturate(0.8);
+    }
+    #hero-bg-placeholder {
+      width: 100%; height: 100%;
+      background: linear-gradient(135deg, #0d1520 0%, #0a0e18 50%, #080808 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hero-overlay {
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(to bottom, rgba(8,8,8,0.5) 0%, rgba(8,8,8,0) 30%),
+        linear-gradient(to bottom, rgba(8,8,8,0) 40%, rgba(8,8,8,0.7) 70%, rgba(8,8,8,0.98) 100%);
+    }
+    .hero-content {
+      position: relative; z-index: 2;
+      padding: 0 3rem 5rem; max-width: 1280px; margin: 0 auto; width: 100%;
+    }
+    .hero-brand {
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.35em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 1.2rem; opacity: 0;
+    }
+    .hero-proyecto-nombre {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3.5rem, 8vw, 8rem);
+      font-weight: 300; line-height: 0.9;
+      letter-spacing: -0.02em; opacity: 0;
+    }
+    .hero-tipo {
+      font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: rgba(240,237,232,0.5); margin-top: 1rem; opacity: 0;
+    }
+    .hero-location {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.72rem; color: var(--muted); margin-top: 0.5rem; opacity: 0;
+    }
+    .hero-ctas { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 2.5rem; opacity: 0; }
+    .btn-gold {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      background: var(--gold); color: var(--bg);
+      padding: 0.85rem 2.2rem;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
+      border: none; cursor: pointer; transition: all 0.25s;
+    }
+    .btn-gold:hover { background: var(--gold-light); transform: translateY(-2px); }
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      background: transparent; color: var(--text);
+      padding: 0.85rem 2.2rem;
+      font-size: 0.7rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: all 0.25s;
+    }
+    .btn-outline:hover { border-color: rgba(255,255,255,0.5); transform: translateY(-2px); }
+
+    /* QUICK STATS BAR */
+    .stats-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--stroke);
+    }
+    .stats-bar-inner {
+      max-width: 1280px; margin: 0 auto; padding: 0 3rem;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+    }
+    .sb-item {
+      padding: 1.8rem 2rem; border-right: 1px solid var(--stroke);
+      text-align: center;
+    }
+    .sb-item:last-child { border-right: none; }
+    .sb-val {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.2rem; font-weight: 300; color: var(--gold);
+      line-height: 1;
+    }
+    .sb-lbl { font-size: 0.62rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 0.4rem; }
+
+    /* SECCIONES */
+    .section { padding: 7rem 3rem; }
+    .section-inner { max-width: 1280px; margin: 0 auto; }
+    .eyebrow {
+      display: flex; align-items: center; gap: 1rem;
+      font-size: 0.62rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 1rem;
+    }
+    .eyebrow::before { content: ''; display: block; width: 28px; height: 1px; background: var(--gold); }
+    .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 300; line-height: 1.05; letter-spacing: -0.01em;
+    }
+    .section-title em { font-style: italic; color: var(--gold); }
+
+    /* DESCRIPCIÓN */
+    .desc-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 6rem; align-items: start; }
+    .desc-body { font-size: 0.9rem; color: rgba(240,237,232,0.65); line-height: 2; margin-top: 1.5rem; }
+    .desc-features { display: flex; flex-direction: column; gap: 0; margin-top: 2.5rem; }
+    .feat-item {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem 0; border-bottom: 1px solid var(--stroke);
+      font-size: 0.8rem; color: var(--muted);
+      transition: color 0.2s;
+    }
+    .feat-item:hover { color: var(--text); }
+    .feat-item::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+    .desc-sidebar { position: sticky; top: 6rem; }
+    .contact-card {
+      background: var(--surface2); border: 1px solid var(--stroke);
+      padding: 2rem;
+    }
+    .contact-card h4 { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 300; margin-bottom: 0.5rem; }
+    .contact-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.7; margin-bottom: 1.5rem; }
+    .f-group { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.8rem; }
+    .f-group label { font-size: 0.58rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+    .f-group input, .f-group select, .f-group textarea {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--stroke); color: var(--text);
+      padding: 0.7rem 0.9rem; font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: 300;
+      outline: none; transition: border-color 0.2s; resize: none; width: 100%;
+      appearance: none;
+    }
+    .f-group input:focus, .f-group select:focus, .f-group textarea:focus { border-color: var(--gold); }
+    .btn-submit-full {
+      width: 100%; background: var(--gold); color: var(--bg);
+      padding: 0.9rem; font-family: 'Montserrat', sans-serif;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+      border: none; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem;
+    }
+    .btn-submit-full:hover { background: var(--gold-light); }
+    .alerta { padding: 0.7rem 0.9rem; font-size: 0.78rem; margin-bottom: 0.8rem; }
+    .alerta-ok { background: rgba(39,174,96,0.08); border-left: 3px solid #27ae60; color: #27ae60; }
+    .alerta-err { background: rgba(192,57,43,0.08); border-left: 3px solid #c0392b; color: #c0392b; }
+
+    /* PLANO */
+    #sec-plano { background: var(--surface); }
+    .plano-wrap {
+      position: relative; background: var(--surface2);
+      border: 1px solid var(--stroke); overflow: hidden;
+      cursor: zoom-in;
+    }
+    .plano-wrap img { width: 100%; display: block; transition: transform 0.4s ease; }
+    .plano-wrap:hover img { transform: scale(1.02); }
+    .plano-legend {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.5rem; margin-top: 1.5rem;
+    }
+    .leyenda-item {
+      display: flex; align-items: center; gap: 0.7rem;
+      font-size: 0.75rem; color: var(--muted); padding: 0.5rem 0.8rem;
+      border: 1px solid var(--stroke); transition: border-color 0.2s, color 0.2s;
+    }
+    .leyenda-item:hover { border-color: var(--gold); color: var(--text); }
+    .leyenda-color { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+    /* GALERÍA */
+    .galeria-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+    .galeria-grid .g-item {
+      aspect-ratio: 4/3; overflow: hidden; cursor: pointer;
+    }
+    .galeria-grid .g-item:first-child {
+      grid-column: span 2; aspect-ratio: 16/9;
+    }
+    .galeria-grid .g-item img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94), filter 0.4s;
+      filter: brightness(0.75) saturate(0.8);
+    }
+    .galeria-grid .g-item:hover img { transform: scale(1.06); filter: brightness(1) saturate(1); }
+
+    /* LIGHTBOX */
+    #lightbox {
+      display: none; position: fixed; inset: 0; z-index: 9000;
+      background: rgba(8,8,8,0.96); align-items: center; justify-content: center;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img { max-width: 90vw; max-height: 90vh; object-fit: contain; }
+    #lightbox-close {
+      position: absolute; top: 2rem; right: 2rem;
+      font-size: 2rem; color: var(--text); cursor: pointer; background: none; border: none;
+      opacity: 0.6; transition: opacity 0.2s;
+    }
+    #lightbox-close:hover { opacity: 1; }
+
+    /* PRECIOS */
+    #sec-precios { background: var(--bg); }
+    .precio-tabla { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+    .precio-tabla th {
+      background: var(--surface); padding: 1rem 1.5rem;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--gold); text-align: left; border-bottom: 1px solid var(--stroke);
+    }
+    .precio-tabla td {
+      padding: 1.1rem 1.5rem; font-size: 0.82rem; color: var(--muted);
+      border-bottom: 1px solid var(--stroke); transition: background 0.2s;
+    }
+    .precio-tabla tr:hover td { background: rgba(255,255,255,0.015); color: var(--text); }
+    .precio-tabla .td-precio { color: var(--gold-light); font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight: 300; }
+    .badge-disponible { display: inline-block; padding: 0.2rem 0.6rem; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    .badge-disponible.libre { background: rgba(39,174,96,0.12); color: #4ecca3; border: 1px solid rgba(78,204,163,0.3); }
+    .badge-disponible.reservado { background: rgba(201,168,76,0.1); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+    .badge-disponible.vendido { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--stroke); }
+
+    /* VIDEO */
+    #sec-video { background: var(--surface); }
+    .video-wrap {
+      position: relative; padding-top: 56.25%;
+      border: 1px solid var(--stroke); overflow: hidden;
+    }
+    .video-wrap iframe {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      border: none;
+    }
+
+    /* MAPA */
+    #sec-mapa { background: var(--bg); }
+    .mapa-wrap {
+      border: 1px solid var(--stroke); overflow: hidden;
+      height: 400px;
+    }
+    .mapa-wrap iframe { width: 100%; height: 100%; border: none; filter: grayscale(0.8) invert(0.85) hue-rotate(180deg); }
+
+    /* DOCUMENTOS */
+    .docs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1px; background: var(--stroke); margin-top: 2rem; }
+    .doc-item {
+      background: var(--surface); padding: 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+      cursor: pointer; transition: background 0.2s;
+      text-decoration: none; color: inherit;
+    }
+    .doc-item:hover { background: var(--surface2); }
+    .doc-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .doc-name { font-size: 0.78rem; color: var(--text); margin-bottom: 0.2rem; }
+    .doc-type { font-size: 0.62rem; color: var(--gold); letter-spacing: 0.08em; }
+
+    /* WHATSAPP FLOAT */
+    #wa-float {
+      position: fixed; bottom: 2rem; right: 2rem; z-index: 200;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: #25d366; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px rgba(37,211,102,0.35);
+      transition: transform 0.3s, box-shadow 0.3s;
+      text-decoration: none;
+    }
+    #wa-float:hover { transform: scale(1.1); box-shadow: 0 6px 30px rgba(37,211,102,0.5); }
+    #wa-float svg { width: 28px; height: 28px; fill: white; }
+
+    /* FOOTER MINI */
+    .footer-mini {
+      background: var(--bg); border-top: 1px solid var(--stroke);
+      padding: 2rem 3rem;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .footer-mini-logo img { height: 32px; }
+    .footer-mini-text { font-size: 0.7rem; color: var(--muted); }
+    .footer-mini a { color: var(--gold); }
+
+    /* REVEAL */
+    .reveal { opacity: 0; transform: translateY(30px); }
+    .reveal-left { opacity: 0; transform: translateX(-30px); }
+    .reveal-right { opacity: 0; transform: translateX(30px); }
+
+    /* LOADING ESTADO */
+    .loading-state { padding: 4rem; text-align: center; color: var(--muted); }
+    .spinner { width: 28px; height: 28px; border: 1.5px solid var(--stroke); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+
+    /* RESPONSIVE */
+    @media (max-width: 1024px) {
+      .desc-grid { grid-template-columns: 1fr; }
+      .desc-sidebar { position: static; }
+      .stats-bar-inner { grid-template-columns: 1fr 1fr; }
+      .sb-item:nth-child(2) { border-right: none; }
+      .sb-item:nth-child(3), .sb-item:nth-child(4) { border-top: 1px solid var(--stroke); }
+    }
+    @media (max-width: 768px) {
+      .section { padding: 5rem 1.5rem; }
+      #nav { padding: 1.2rem 1.5rem; }
+      .hero-content { padding: 0 1.5rem 4rem; }
+      .galeria-grid { grid-template-columns: 1fr 1fr; }
+      .galeria-grid .g-item:first-child { grid-column: span 2; }
+      .stats-bar-inner { grid-template-columns: 1fr 1fr; padding: 0 1.5rem; }
+      .footer-mini { padding: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- WHATSAPP FLOTANTE -->
+<a id="wa-float" href="#" target="_blank" rel="noopener" aria-label="WhatsApp">
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+  </svg>
+</a>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="index.html" class="nav-logo"><img src="logo-h.png" alt="Sur Patagonia" /></a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Inicio</a>
+    <a href="propiedades.html" class="nav-link">Propiedades</a>
+    <a href="proyectos.html" class="nav-link">Proyectos</a>
+  </div>
+  <a href="#contactar" class="nav-cta">Consultar</a>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div id="hero-bg">
+    <div id="hero-bg-placeholder">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <p class="hero-brand" id="heroBrand">Sur Patagonia · Desarrollos</p>
+    <h1 class="hero-proyecto-nombre" id="heroNombre">Cargando...</h1>
+    <p class="hero-tipo" id="heroTipo"></p>
+    <p class="hero-location" id="heroLocation"></p>
+    <div class="hero-ctas" id="heroCtas">
+      <a href="#contactar" class="btn-gold">Consultar precio →</a>
+      <a href="#sec-plano" class="btn-outline">Ver plano</a>
+    </div>
+  </div>
+</section>
+
+<!-- STATS BAR -->
+<div class="stats-bar" id="statsBar" style="display:none;">
+  <div class="stats-bar-inner">
+    <div class="sb-item"><div class="sb-val" id="sbLotes">—</div><div class="sb-lbl">Lotes totales</div></div>
+    <div class="sb-item"><div class="sb-val" id="sbDisp">—</div><div class="sb-lbl">Disponibles</div></div>
+    <div class="sb-item"><div class="sb-val" id="sbSup">—</div><div class="sb-lbl">m² mínimo</div></div>
+    <div class="sb-item"><div class="sb-val" id="sbPrecio">—</div><div class="sb-lbl">Desde (USD)</div></div>
+  </div>
+</div>
+
+<!-- DESCRIPCIÓN -->
+<section class="section" id="sec-desc">
+  <div class="section-inner">
+    <div class="desc-grid">
+      <div class="reveal-left">
+        <div class="eyebrow">Sobre el proyecto</div>
+        <h2 class="section-title" id="descTitulo">El desarrollo</h2>
+        <p class="desc-body" id="descCuerpo">Cargando descripción...</p>
+        <div class="desc-features" id="descFeatures"></div>
+      </div>
+      <div class="desc-sidebar reveal-right" id="contactar">
+        <div class="contact-card">
+          <h4>¿Te interesa?</h4>
+          <p>Completá tus datos y te contactamos con toda la información del proyecto.</p>
+          <div id="alertaForm"></div>
+          <form id="formProyecto">
+            <div class="f-group"><label>Nombre</label><input type="text" id="fNombre" placeholder="Tu nombre" required /></div>
+            <div class="f-group"><label>Teléfono / WhatsApp</label><input type="tel" id="fTelefono" placeholder="+54 9..." /></div>
+            <div class="f-group"><label>Email</label><input type="email" id="fEmail" placeholder="tu@email.com" required /></div>
+            <div class="f-group"><label>Mensaje</label><textarea id="fMensaje" rows="3" placeholder="¿Cuántos lotes te interesan? ¿Alguna pregunta?"></textarea></div>
+            <button type="submit" class="btn-submit-full">Enviar consulta</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PLANO -->
+<section class="section" id="sec-plano" style="background:var(--surface);">
+  <div class="section-inner">
+    <div class="eyebrow reveal">Mapa del desarrollo</div>
+    <h2 class="section-title reveal" style="margin-bottom:2rem;">Plano <em>general</em></h2>
+    <div class="plano-wrap reveal" id="planoWrap">
+      <div class="loading-state"><div class="spinner"></div><p>Cargando plano...</p></div>
+    </div>
+    <div class="plano-legend" id="planoLeyenda"></div>
+  </div>
+</section>
+
+<!-- GALERÍA -->
+<section class="section" id="sec-galeria" style="background:var(--bg);">
+  <div class="section-inner">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem; margin-bottom:2rem;">
+      <div class="reveal"><div class="eyebrow">Imágenes</div><h2 class="section-title">Galería <em>fotográfica</em></h2></div>
+    </div>
+    <div class="galeria-grid" id="galeriaGrid">
+      <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRECIOS -->
+<section class="section" id="sec-precios" style="background:var(--surface);">
+  <div class="section-inner">
+    <div class="eyebrow reveal">Disponibilidad</div>
+    <h2 class="section-title reveal">Lotes <em>disponibles</em></h2>
+    <div id="preciosWrap">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- VIDEO -->
+<section class="section" id="sec-video" style="background:var(--bg); display:none;">
+  <div class="section-inner">
+    <div class="eyebrow reveal">Recorrido virtual</div>
+    <h2 class="section-title reveal" style="margin-bottom:2rem;">Video del <em>proyecto</em></h2>
+    <div class="video-wrap reveal" id="videoWrap"></div>
+  </div>
+</section>
+
+<!-- MAPA -->
+<section class="section" id="sec-mapa" style="background:var(--surface); display:none;">
+  <div class="section-inner">
+    <div class="eyebrow reveal">Ubicación</div>
+    <h2 class="section-title reveal" style="margin-bottom:2rem;">Dónde <em>encontrarnos</em></h2>
+    <div class="mapa-wrap reveal" id="mapaWrap"></div>
+  </div>
+</section>
+
+<!-- DOCUMENTOS -->
+<section class="section" id="sec-docs" style="background:var(--bg); display:none;">
+  <div class="section-inner">
+    <div class="eyebrow reveal">Documentación</div>
+    <h2 class="section-title reveal" style="margin-bottom:0.5rem;">Archivos del <em>proyecto</em></h2>
+    <p style="color:var(--muted); font-size:0.8rem; margin-top:0.5rem; margin-bottom:0;" class="reveal">Descargá la información técnica y legal del desarrollo.</p>
+    <div class="docs-grid" id="docsGrid"></div>
+  </div>
+</section>
+
+<!-- FOOTER MINI -->
+<footer class="footer-mini">
+  <div class="footer-mini-logo"><img src="logo-h.png" alt="Sur Patagonia" /></div>
+  <p class="footer-mini-text">© 2025 Sur Patagonia · <a href="proyectos.html">Ver todos los proyectos</a> · <a href="index.html">Inicio</a></p>
+</footer>
+
+<!-- LIGHTBOX -->
+<div id="lightbox">
+  <button id="lightbox-close">×</button>
+  <img src="" alt="Foto proyecto" id="lightbox-img" />
+</div>
+
+<script type="module">
+import { supabase } from './js/config.js'
+gsap.registerPlugin(ScrollTrigger)
+
+// Leer ID del proyecto desde URL: ?id=xxx o ?slug=xxx
+const params = new URLSearchParams(window.location.search)
+const proyectoId = params.get('id')
+const proyectoSlug = params.get('slug')
+
+if (!proyectoId && !proyectoSlug) {
+  document.getElementById('heroNombre').textContent = 'Proyecto no encontrado'
+} else {
+  cargarProyecto()
+}
+
+async function cargarProyecto() {
+  let query = supabase.from('proyectos').select('*')
+  if (proyectoId) query = query.eq('id', proyectoId)
+  else query = query.eq('slug', proyectoSlug)
+  const { data, error } = await query.single()
+
+  if (error || !data) {
+    document.getElementById('heroNombre').textContent = 'Proyecto no encontrado'
+    return
+  }
+
+  const p = data
+
+  // SEO
+  document.title = `${p.titulo} — Sur Patagonia`
+  document.getElementById('pageTitle').textContent = `${p.titulo} — Sur Patagonia`
+  if (p.descripcion) document.getElementById('pageDesc').setAttribute('content', p.descripcion.substring(0, 160))
+
+  // WhatsApp
+  const waText = encodeURIComponent(`Hola! Me interesa el proyecto ${p.titulo}. ¿Pueden enviarme más información?`)
+  document.getElementById('wa-float').href = `https://wa.me/${(p.whatsapp || '5492').replace(/\D/g,'')}?text=${waText}`
+
+  // Hero
+  document.getElementById('heroNombre').textContent = p.titulo
+  document.getElementById('heroBrand').textContent = `Sur Patagonia · ${p.tipo || 'Desarrollo'}`
+  if (p.tipo) document.getElementById('heroTipo').textContent = p.tipo
+  if (p.ciudad || p.ubicacion) {
+    document.getElementById('heroLocation').innerHTML = `<span>📍</span>${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}`
+  }
+
+  // Hero background
+  const heroBg = document.getElementById('hero-bg')
+  if (p.imagen_portada) {
+    heroBg.innerHTML = `<img src="${p.imagen_portada}" alt="${p.titulo}" />`
+  } else if (p.imagenes && p.imagenes.length > 0) {
+    heroBg.innerHTML = `<img src="${p.imagenes[0]}" alt="${p.titulo}" />`
+  }
+
+  // Animate hero in
+  gsap.timeline({ defaults: { ease: 'power3.out' } })
+    .to('.hero-brand', { opacity: 1, y: 0, duration: 0.8 }, 0.3)
+    .to('.hero-proyecto-nombre', { opacity: 1, y: 0, duration: 1.1 }, 0.6)
+    .to('.hero-tipo', { opacity: 1, y: 0, duration: 0.7 }, 1)
+    .to('.hero-location', { opacity: 1, y: 0, duration: 0.7 }, 1.1)
+    .to('.hero-ctas', { opacity: 1, y: 0, duration: 0.7 }, 1.3)
+
+  // Stats bar
+  if (p.lotes_total || p.lotes_disponibles || p.superficie_minima || p.precio_desde) {
+    document.getElementById('statsBar').style.display = 'block'
+    if (p.lotes_total) document.getElementById('sbLotes').textContent = p.lotes_total
+    if (p.lotes_disponibles) document.getElementById('sbDisp').textContent = p.lotes_disponibles
+    if (p.superficie_minima) document.getElementById('sbSup').textContent = p.superficie_minima
+    if (p.precio_desde) document.getElementById('sbPrecio').textContent = Number(p.precio_desde).toLocaleString('es-AR')
+  }
+
+  // Descripción
+  document.getElementById('descTitulo').textContent = p.titulo
+  if (p.descripcion) document.getElementById('descCuerpo').textContent = p.descripcion
+
+  // Features / características
+  if (p.caracteristicas && p.caracteristicas.length > 0) {
+    document.getElementById('descFeatures').innerHTML = p.caracteristicas.map(c =>
+      `<div class="feat-item">${c}</div>`
+    ).join('')
+  }
+
+  // Plano
+  if (p.imagen_plano) {
+    document.getElementById('planoWrap').innerHTML = `<img src="${p.imagen_plano}" alt="Plano ${p.titulo}" />`
+  } else {
+    document.getElementById('planoWrap').innerHTML = `<div style="padding:4rem;text-align:center;color:var(--muted);font-size:0.8rem;">Plano disponible próximamente</div>`
+  }
+  if (p.leyenda_plano && p.leyenda_plano.length > 0) {
+    document.getElementById('planoLeyenda').innerHTML = p.leyenda_plano.map(l =>
+      `<div class="leyenda-item"><div class="leyenda-color" style="background:${l.color||'#c9a84c'}"></div>${l.label}</div>`
+    ).join('')
+  }
+
+  // Galería
+  const galFotos = p.imagenes || []
+  const galeriaGrid = document.getElementById('galeriaGrid')
+  if (galFotos.length === 0) {
+    galeriaGrid.innerHTML = `<div style="grid-column:1/-1;padding:3rem;text-align:center;color:var(--muted)">Las fotos del proyecto aparecerán aquí.</div>`
+  } else {
+    galeriaGrid.innerHTML = galFotos.slice(0, 7).map((src, i) =>
+      `<div class="g-item"><img src="${src}" alt="Foto ${i+1}" loading="lazy" data-src="${src}" /></div>`
+    ).join('')
+    galeriaGrid.querySelectorAll('.g-item img').forEach(img => {
+      img.addEventListener('click', () => abrirLightbox(img.dataset.src))
+    })
+  }
+
+  // Lotes / precios
+  const preciosWrap = document.getElementById('preciosWrap')
+  if (p.lotes && p.lotes.length > 0) {
+    preciosWrap.innerHTML = `
+      <table class="precio-tabla">
+        <thead><tr>
+          <th>Lote</th><th>Superficie</th><th>Precio</th><th>Estado</th>
+        </tr></thead>
+        <tbody>${p.lotes.map(l => `
+          <tr>
+            <td><strong>${l.nombre || l.id || '—'}</strong></td>
+            <td>${l.superficie ? l.superficie + ' m²' : '—'}</td>
+            <td class="td-precio">${l.precio ? 'USD ' + Number(l.precio).toLocaleString('es-AR') : 'Consultar'}</td>
+            <td><span class="badge-disponible ${l.estado || 'libre'}">${l.estado === 'vendido' ? 'Vendido' : l.estado === 'reservado' ? 'Reservado' : 'Disponible'}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`
+  } else {
+    preciosWrap.innerHTML = `<div style="padding:3rem;text-align:center;color:var(--muted);font-size:0.8rem">Consultá disponibilidad y precios directamente.</div>`
+  }
+
+  // Video
+  if (p.video_url) {
+    const videoId = extractYoutubeId(p.video_url)
+    if (videoId) {
+      document.getElementById('sec-video').style.display = 'block'
+      document.getElementById('videoWrap').innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+    }
+  }
+
+  // Mapa
+  if (p.mapa_embed) {
+    document.getElementById('sec-mapa').style.display = 'block'
+    document.getElementById('mapaWrap').innerHTML = `<iframe src="${p.mapa_embed}" allowfullscreen loading="lazy"></iframe>`
+  } else if (p.coordenadas) {
+    document.getElementById('sec-mapa').style.display = 'block'
+    document.getElementById('mapaWrap').innerHTML = `<iframe src="https://maps.google.com/maps?q=${p.coordenadas}&z=13&output=embed" allowfullscreen loading="lazy"></iframe>`
+  }
+
+  // Documentos / PDFs
+  if (p.documentos && p.documentos.length > 0) {
+    document.getElementById('sec-docs').style.display = 'block'
+    document.getElementById('docsGrid').innerHTML = p.documentos.map(d =>
+      `<a class="doc-item" href="${d.url}" target="_blank" rel="noopener">
+        <span class="doc-icon">📄</span>
+        <div><div class="doc-name">${d.nombre}</div><div class="doc-type">PDF · Descargar</div></div>
+      </a>`
+    ).join('')
+  }
+
+  // Reveal scroll animations
+  initReveal()
+}
+
+function initReveal() {
+  gsap.utils.toArray('.reveal').forEach(el => {
+    gsap.to(el, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 88%', once: true } })
+  })
+  gsap.utils.toArray('.reveal-left').forEach(el => {
+    gsap.to(el, { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 85%', once: true } })
+  })
+  gsap.utils.toArray('.reveal-right').forEach(el => {
+    gsap.to(el, { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 85%', once: true } })
+  })
+}
+
+// FORMULARIO
+document.getElementById('formProyecto').addEventListener('submit', async e => {
+  e.preventDefault()
+  const btn = e.target.querySelector('button[type="submit"]')
+  btn.textContent = 'Enviando...'; btn.disabled = true
+  const { error } = await supabase.from('contactos').insert({
+    nombre: document.getElementById('fNombre').value,
+    email: document.getElementById('fEmail').value,
+    telefono: document.getElementById('fTelefono').value,
+    mensaje: `[Proyecto: ${document.getElementById('heroNombre').textContent}] ${document.getElementById('fMensaje').value}`
+  })
+  const al = document.getElementById('alertaForm')
+  al.innerHTML = error
+    ? `<div class="alerta alerta-err">Error al enviar. Intentá de nuevo.</div>`
+    : `<div class="alerta alerta-ok">✓ Recibimos tu consulta. Te contactamos pronto.</div>`
+  if (!error) e.target.reset()
+  btn.textContent = 'Enviar consulta'; btn.disabled = false
+})
+
+// LIGHTBOX
+function abrirLightbox(src) {
+  document.getElementById('lightbox-img').src = src
+  document.getElementById('lightbox').classList.add('open')
+  document.body.style.overflow = 'hidden'
+}
+document.getElementById('lightbox-close').addEventListener('click', () => {
+  document.getElementById('lightbox').classList.remove('open')
+  document.body.style.overflow = ''
+})
+document.getElementById('lightbox').addEventListener('click', e => {
+  if (e.target === document.getElementById('lightbox')) {
+    document.getElementById('lightbox').classList.remove('open')
+    document.body.style.overflow = ''
+  }
+})
+
+// UTILS
+function extractYoutubeId(url) {
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([^?&\s]{11})/)
+  return match ? match[1] : null
+}
+</script>
+</body>
+</html>

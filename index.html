@@ -82,16 +82,16 @@
     #nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 2rem 3rem;
+      padding: 2.2rem 3rem;
       opacity: 0; pointer-events: none;
-      transition: opacity 0.5s ease, padding 0.4s ease, background 0.4s ease, border-color 0.4s ease;
-      border-bottom: 1px solid transparent;
+      transition: opacity 0.5s ease, padding 0.4s ease, background 0.5s ease, box-shadow 0.5s ease;
     }
     #nav.visible { opacity: 1; pointer-events: all; }
     #nav.scrolled {
-      background: rgba(8,8,8,0.92);
+      background: rgba(8,8,8,0.88);
       backdrop-filter: blur(24px);
-      border-bottom-color: rgba(255,255,255,0.05);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.04);
       padding: 1.2rem 3rem;
     }
     .nav-logo { display: flex; align-items: center; }
@@ -135,13 +135,9 @@
     }
     .hero-overlay {
       position: absolute; inset: 0;
-      background: linear-gradient(
-        to bottom,
-        rgba(8,8,8,0.25) 0%,
-        rgba(8,8,8,0.15) 35%,
-        rgba(8,8,8,0.55) 70%,
-        rgba(8,8,8,1) 100%
-      );
+      background:
+        linear-gradient(to bottom, rgba(8,8,8,0.6) 0%, rgba(8,8,8,0) 20%),
+        linear-gradient(to bottom, rgba(8,8,8,0) 40%, rgba(8,8,8,0.6) 70%, rgba(8,8,8,1) 100%);
     }
     .hero-content {
       position: relative; z-index: 2;
@@ -165,7 +161,7 @@
     .hero-title em {
       display: block;
       font-style: italic;
-      color: rgba(240,237,232,0.22);
+      color: rgba(240,237,232,0.48);
       font-size: 0.75em;
     }
     .hero-subtitle {
@@ -353,7 +349,7 @@
       background: linear-gradient(to right, rgba(8,8,8,0.97) 0%, rgba(8,8,8,0.75) 50%, rgba(8,8,8,0.6) 100%);
       pointer-events: none;
     }
-    .av-inner { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; align-items: center; }
+    .av-inner { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; align-items: center; position: relative; z-index: 1; }
     .av-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 300; line-height: 1.1; }
     .av-title em { font-style: italic; color: var(--gold); }
     .av-body { font-size: 0.85rem; color: var(--muted); line-height: 1.9; margin: 1.5rem 0 2.5rem; }
@@ -413,6 +409,69 @@
     .footer-links a:hover { color: var(--text); }
     .footer-bottom { max-width: 1280px; margin: 0 auto; padding: 1.5rem 2rem 0; border-top: 1px solid var(--stroke); display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: var(--muted); }
 
+    /* SECTION NUMBERS — faint editorial numerals behind eyebrow */
+    .sec-num {
+      position: absolute; top: 0; right: 0;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(7rem, 14vw, 14rem);
+      font-weight: 300; line-height: 1;
+      color: rgba(255,255,255,0.035);
+      pointer-events: none; user-select: none;
+      letter-spacing: -0.04em;
+    }
+    .sec-header { position: relative; overflow: visible; }
+
+    /* SIDE SCROLL INDICATOR */
+    #side-nav {
+      position: fixed; right: 2rem; top: 50%;
+      transform: translateY(-50%);
+      z-index: 50; display: flex; flex-direction: column; gap: 0.8rem;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+    #side-nav.visible { opacity: 1; pointer-events: all; }
+    .side-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      cursor: pointer; transition: all 0.3s;
+      position: relative;
+    }
+    .side-dot::before {
+      content: attr(data-label);
+      position: absolute; right: 16px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.5); white-space: nowrap;
+      opacity: 0; transition: opacity 0.2s;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .side-dot:hover::before { opacity: 1; }
+    .side-dot.active { background: var(--gold); transform: scale(1.6); }
+    .side-dot:hover { background: rgba(255,255,255,0.6); }
+
+    /* MOBILE NAV */
+    .nav-burger {
+      display: none; flex-direction: column; gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 4px;
+    }
+    .nav-burger span {
+      display: block; width: 22px; height: 1px;
+      background: var(--text); transition: all 0.3s;
+    }
+    .nav-burger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    .nav-burger.open span:nth-child(2) { opacity: 0; }
+    .nav-burger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+    @media (max-width: 768px) {
+      .nav-links { display: none; position: fixed; inset: 0; background: rgba(8,8,8,0.97); backdrop-filter: blur(20px); flex-direction: column; align-items: center; justify-content: center; gap: 2rem; z-index: 99; }
+      .nav-links.open { display: flex; }
+      .nav-link { font-size: 1.1rem; letter-spacing: 0.18em; }
+      .nav-sep { display: none; }
+      .nav-cta { margin-top: 1rem; padding: 0.9rem 3rem; font-size: 0.75rem; }
+      .nav-burger { display: flex; }
+      #side-nav { display: none; }
+      .sec-num { display: none; }
+    }
+
     /* REVEAL */
     .reveal { opacity: 0; transform: translateY(40px); }
     .reveal-left { opacity: 0; transform: translateX(-40px); }
@@ -457,18 +516,31 @@
   <div id="loading-wipe"></div>
 </div>
 
+<!-- SIDE NAV DOTS -->
+<nav id="side-nav" aria-hidden="true">
+  <div class="side-dot active" data-target="#hero" data-label="Inicio"></div>
+  <div class="side-dot" data-target="#sec-propiedades" data-label="Propiedades"></div>
+  <div class="side-dot" data-target="#stats" data-label="Nosotros"></div>
+  <div class="side-dot" data-target="#sec-proyectos" data-label="Proyectos"></div>
+  <div class="side-dot" data-target="#av-banner" data-label="Audiovisual"></div>
+  <div class="side-dot" data-target="#contacto" data-label="Contacto"></div>
+</nav>
+
 <!-- NAV -->
 <nav id="nav">
   <a href="index.html" class="nav-logo">
     <img src="logo-h.png" alt="Sur Patagonia" />
   </a>
-  <div class="nav-links">
+  <div class="nav-links" id="navLinks">
     <a href="index.html" class="nav-link active">Inicio</a>
     <a href="propiedades.html" class="nav-link">Propiedades</a>
     <a href="proyectos.html" class="nav-link">Proyectos</a>
     <div class="nav-sep"></div>
     <a href="#contacto" class="nav-cta">Contacto</a>
   </div>
+  <button class="nav-burger" id="navBurger" aria-label="Menú">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
 
 <!-- HERO -->
@@ -524,10 +596,10 @@
 </div>
 
 <!-- PROPIEDADES -->
-<section class="section" style="background:var(--bg); padding-top:8rem;">
+<section class="section" id="sec-propiedades" style="background:var(--bg); padding-top:8rem;">
   <div class="section-inner">
     <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem; margin-bottom:4rem;">
-      <div class="reveal"><div class="eyebrow">Selección premium</div><h2 class="section-title">Propiedades <em>destacadas</em></h2></div>
+      <div class="reveal sec-header"><div class="eyebrow">Selección premium</div><h2 class="section-title">Propiedades <em>destacadas</em></h2><span class="sec-num">01</span></div>
       <a href="propiedades.html" class="btn-outline-gold reveal">Ver todas →</a>
     </div>
     <div class="prop-grid" id="propGrid">
@@ -550,10 +622,10 @@
 </section>
 
 <!-- PROYECTOS -->
-<section class="section" style="background:var(--surface); padding:7rem 0;">
+<section class="section" id="sec-proyectos" style="background:var(--surface); padding:7rem 0;">
   <div style="padding:0 2rem; max-width:1280px; margin:0 auto 3rem;">
     <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">
-      <div class="reveal"><div class="eyebrow">Desarrollos & inversiones</div><h2 class="section-title">Proyectos <em>especiales</em></h2></div>
+      <div class="reveal sec-header"><div class="eyebrow">Desarrollos &amp; inversiones</div><h2 class="section-title">Proyectos <em>especiales</em></h2><span class="sec-num">03</span></div>
       <a href="proyectos.html" class="btn-outline-gold reveal">Ver proyectos →</a>
     </div>
   </div>
@@ -685,6 +757,7 @@ function tick(now) {
       onComplete: () => {
         loadingEl.style.display = 'none'
         document.getElementById('nav').classList.add('visible')
+        document.getElementById('side-nav').classList.add('visible')
         initHero(); initScroll()
       }
     })
@@ -725,6 +798,46 @@ function initScroll() {
 window.addEventListener('scroll', () => {
   document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 60)
 })
+
+// MOBILE BURGER
+const burger = document.getElementById('navBurger')
+const navLinks = document.getElementById('navLinks')
+if (burger) {
+  burger.addEventListener('click', () => {
+    burger.classList.toggle('open')
+    navLinks.classList.toggle('open')
+  })
+  navLinks.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      burger.classList.remove('open')
+      navLinks.classList.remove('open')
+    })
+  })
+}
+
+// SIDE NAV DOTS
+const sideNav = document.getElementById('side-nav')
+const dots = document.querySelectorAll('.side-dot')
+const dotSections = ['#hero','#sec-propiedades','#stats','#sec-proyectos','#av-banner','#contacto']
+dots.forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    const el = document.querySelector(dotSections[i])
+    if (el) el.scrollIntoView({ behavior: 'smooth' })
+  })
+})
+function updateDots() {
+  const mid = window.innerHeight * 0.45
+  let active = 0
+  dotSections.forEach((sel, i) => {
+    const el = document.querySelector(sel)
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      if (rect.top <= mid) active = i
+    }
+  })
+  dots.forEach((d, i) => d.classList.toggle('active', i === active))
+}
+window.addEventListener('scroll', updateDots, { passive: true })
 
 // BUSCADOR
 document.querySelectorAll('.b-tab').forEach(t => t.addEventListener('click', () => {
