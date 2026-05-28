@@ -613,9 +613,134 @@
       .nav-divider, .nav-link:not(.active) { display: none; }
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── CURSOR ─────────────────────────────────── */
+    body { cursor: none; }
+    #cursor {
+      position: fixed; z-index: 9990; pointer-events: none;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--gold);
+      transform: translate(-50%, -50%);
+      transition: width 0.35s ease, height 0.35s ease,
+                  background 0.35s ease, border 0.35s ease;
+      will-change: transform;
+    }
+    #cursor.big {
+      width: 44px; height: 44px;
+      background: transparent;
+      border: 1px solid rgba(201,168,76,0.6);
+    }
+    #cursor.hidden { opacity: 0; }
+    a, button, [onclick], .prop-card, .proy-card, .plano-card,
+    .b-tab, .btn-buscar, .btn-primary, .btn-secondary,
+    .btn-outline-gold, .pag-btn, select, input { cursor: none; }
+
+    /* ─── SCROLL STORY ────────────────────────────── */
+    #story { height: 450vh; }
+    #story-inner {
+      position: sticky; top: 0; height: 100vh; overflow: hidden;
+    }
+    .story-slide {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      opacity: 0;
+      filter: brightness(0.45) saturate(0.65);
+      will-change: opacity;
+    }
+    .story-slide:first-child { opacity: 1; }
+    #story-grad {
+      position: absolute; inset: 0; z-index: 1;
+      background:
+        linear-gradient(to bottom, rgba(8,8,8,0.45) 0%, transparent 25%),
+        linear-gradient(to top, rgba(8,8,8,0.75) 0%, transparent 45%);
+    }
+    /* Text bottom-left */
+    #story-text {
+      position: absolute; bottom: 4.5rem; left: 3.5rem; z-index: 2;
+    }
+    .story-item {
+      position: absolute; bottom: 0; left: 0;
+      opacity: 0; transform: translateY(16px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+      pointer-events: none;
+    }
+    .story-item.active { opacity: 1; transform: translateY(0); }
+    .story-pre {
+      font-size: 0.6rem; font-weight: 500; letter-spacing: 0.3em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem;
+    }
+    .story-word {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3.2rem, 6.5vw, 6rem);
+      font-weight: 300; font-style: italic;
+      color: var(--text); line-height: 0.95; display: block;
+    }
+    .story-body {
+      font-size: 0.78rem; color: rgba(240,237,232,0.5);
+      margin-top: 1rem; max-width: 360px; line-height: 1.8;
+    }
+    /* Fixed right tagline */
+    #story-right {
+      position: absolute; right: 3.5rem; top: 50%;
+      transform: translateY(-50%);
+      z-index: 2; text-align: right;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.1rem, 2.2vw, 1.8rem);
+      font-weight: 300; line-height: 1.4;
+      color: rgba(240,237,232,0.28);
+    }
+    /* Progress bar */
+    #story-progress {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 1px; background: rgba(255,255,255,0.06); z-index: 3;
+    }
+    #story-bar {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      transition: width 0.1s linear;
+    }
+    /* Slide counter */
+    #story-counter {
+      position: absolute; bottom: 4.5rem; right: 3.5rem; z-index: 2;
+      font-size: 0.6rem; letter-spacing: 0.25em; color: var(--muted);
+    }
+    #story-counter span { color: var(--gold); }
+    @media (max-width: 768px) {
+      #story-right { display: none; }
+      #story-text { left: 1.5rem; bottom: 3rem; }
+    }
+
+    /* ─── CLIP-PATH REVEALS ───────────────────────── */
+    .reveal-clip {
+      clip-path: inset(0 0 100% 0);
+      opacity: 1 !important; /* override the old opacity:0 */
+    }
+    /* Eyebrow line animation */
+    .eyebrow-wrap { overflow: hidden; }
+    .eyebrow-line {
+      display: inline-block; width: 0; height: 1px;
+      background: var(--gold); vertical-align: middle;
+      margin-right: 1rem; transition: none;
+    }
+    .eyebrow-label { opacity: 0; display: inline-block; }
+
+    /* Section entry — thin gold top line */
+    .section-entry {
+      position: relative;
+    }
+    .section-entry::before {
+      content: ''; position: absolute; top: 0; left: 2rem; right: 2rem;
+      height: 1px; background: linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform 0.8s ease;
+    }
+    .section-entry.entered::before { transform: scaleX(1); }
   </style>
 </head>
 <body>
+
+<!-- CURSOR -->
+<div id="cursor"></div>
 
 <!-- LOADING -->
 <div id="loading">
@@ -709,8 +834,50 @@
   </div>
 </div>
 
+<!-- SCROLL STORY -->
+<section id="story">
+  <div id="story-inner">
+    <div class="story-slide" style="background-image:url('assets/DJI_0272-Pano(1).jpg')"></div>
+    <div class="story-slide" style="background-image:url('assets/DJI_0959.jpg')"></div>
+    <div class="story-slide" style="background-image:url('assets/Corredordelosandes1098.jpg')"></div>
+    <div class="story-slide" style="background-image:url('assets/DJI_0394.jpg')"></div>
+    <div id="story-grad"></div>
+
+    <div id="story-text">
+      <div class="story-item active">
+        <p class="story-pre">Sur Patagonia</p>
+        <span class="story-word">De la naturaleza...</span>
+        <p class="story-body">Miles de hectáreas vírgenes en la Patagonia argentina, esperando ser parte de tu historia.</p>
+      </div>
+      <div class="story-item">
+        <p class="story-pre">Sur Patagonia · Proyectos</p>
+        <span class="story-word">Al proyecto.</span>
+        <p class="story-body">Desarrollamos loteos y emprendimientos con visión a largo plazo en los paisajes más extraordinarios.</p>
+      </div>
+      <div class="story-item">
+        <p class="story-pre">Sur Patagonia · Propiedades</p>
+        <span class="story-word">A tu lugar.</span>
+        <p class="story-body">Cada propiedad tiene su propia historia. La montaña, el lago, el bosque — elegís vos.</p>
+      </div>
+      <div class="story-item">
+        <p class="story-pre">Sur Patagonia · Audiovisual</p>
+        <span class="story-word">Con visión.</span>
+        <p class="story-body">Producción cinematográfica y drone para mostrar la Patagonia como nunca la viste.</p>
+      </div>
+    </div>
+
+    <div id="story-right">
+      Propiedades &amp; desarrollos<br>
+      <em style="color:var(--gold); font-style:italic;">en la Patagonia.</em>
+    </div>
+
+    <div id="story-counter"><span id="storyNum">01</span> / 04</div>
+    <div id="story-progress"><div id="story-bar"></div></div>
+  </div>
+</section>
+
 <!-- PROPIEDADES -->
-<section class="section" id="sec-propiedades" style="background:var(--bg); padding-top:8rem;">
+<section class="section section-entry" id="sec-propiedades" style="background:var(--bg); padding-top:8rem;">
   <div class="section-inner">
     <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem; margin-bottom:4rem;">
       <div class="reveal"><div class="eyebrow">Selección premium</div><h2 class="section-title">Propiedades <em>destacadas</em></h2></div>
@@ -739,7 +906,7 @@
 </section>
 
 <!-- PROYECTOS -->
-<section class="section" id="sec-proyectos" style="background:var(--surface); padding:7rem 0;">
+<section class="section section-entry" id="sec-proyectos" style="background:var(--surface); padding:7rem 0;">
   <div style="padding:0 2rem; max-width:1280px; margin:0 auto 3rem;">
     <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">
       <div class="reveal"><div class="eyebrow">Desarrollos &amp; inversiones</div><h2 class="section-title">Proyectos <em>especiales</em></h2></div>
@@ -973,10 +1140,23 @@ function initHero() {
     .to('#heroBtns', { opacity: 1, y: 0, duration: 0.8 }, '-=0.6')
 }
 
+// CURSOR
+const cur = document.getElementById('cursor')
+document.addEventListener('mousemove', e => {
+  gsap.to(cur, { x: e.clientX, y: e.clientY, duration: 0.08, ease: 'none' })
+})
+document.addEventListener('mouseleave', () => cur.classList.add('hidden'))
+document.addEventListener('mouseenter', () => cur.classList.remove('hidden'))
+document.querySelectorAll('a, button, [onclick], .prop-card, .proy-card, .plano-card, .b-tab, select').forEach(el => {
+  el.addEventListener('mouseenter', () => cur.classList.add('big'))
+  el.addEventListener('mouseleave', () => cur.classList.remove('big'))
+})
+
 // SCROLL
 function initScroll() {
+  // Standard reveals
   gsap.utils.toArray('.reveal').forEach((el, i) => {
-    gsap.to(el, { opacity: 1, y: 0, duration: 0.9, ease: 'power3.out', delay: i % 3 * 0.08,
+    gsap.to(el, { opacity: 1, y: 0, duration: 0.9, ease: 'power3.out', delay: i % 3 * 0.07,
       scrollTrigger: { trigger: el, start: 'top 88%', once: true } })
   })
   gsap.utils.toArray('.reveal-left').forEach(el => {
@@ -987,33 +1167,67 @@ function initScroll() {
     gsap.to(el, { opacity: 1, x: 0, duration: 1, ease: 'power3.out',
       scrollTrigger: { trigger: el, start: 'top 85%', once: true } })
   })
+
+  // Clip-path wipe reveals for titles
+  gsap.utils.toArray('.section-title').forEach(el => {
+    gsap.fromTo(el,
+      { clipPath: 'inset(0 0 100% 0)' },
+      { clipPath: 'inset(0 0 0% 0)', duration: 1, ease: 'power3.out',
+        scrollTrigger: { trigger: el, start: 'top 90%', once: true } })
+  })
+
+  // Section entry lines
+  gsap.utils.toArray('.section-entry').forEach(el => {
+    ScrollTrigger.create({
+      trigger: el, start: 'top 85%', once: true,
+      onEnter: () => el.classList.add('entered')
+    })
+  })
+
+  // Hero parallax
   gsap.to('#hero-video-wrap', { yPercent: 20, ease: 'none',
     scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true } })
 
-  // STATS: parallax bg + gold line + stagger boxes
-  gsap.to('#stats-bg', {
-    yPercent: 15, ease: 'none',
-    scrollTrigger: { trigger: '#stats', start: 'top bottom', end: 'bottom top', scrub: true }
-  })
-  ScrollTrigger.create({
-    trigger: '#stats',
-    start: 'top 75%',
-    once: true,
-    onEnter: () => {
-      gsap.to('#stats-line', { width: '100%', duration: 1.2, ease: 'power2.inOut' })
-      gsap.to('.stat-box', {
-        opacity: 1, y: 0, duration: 0.7, ease: 'power3.out',
-        stagger: 0.12, delay: 0.3
-      })
+  // STORY SCROLL
+  const storySlides = gsap.utils.toArray('.story-slide')
+  const storyItems = gsap.utils.toArray('.story-item')
+  const storyNums = ['01','02','03','04']
+  const storyTl = gsap.timeline({
+    scrollTrigger: {
+      trigger: '#story', start: 'top top', end: 'bottom top',
+      pin: '#story-inner', scrub: 0.6,
+      onUpdate: self => {
+        document.getElementById('story-bar').style.width = (self.progress * 100) + '%'
+        const idx = Math.min(Math.floor(self.progress * 4.2), 3)
+        storyItems.forEach((it, i) => it.classList.toggle('active', i === idx))
+        document.getElementById('storyNum').textContent = storyNums[idx]
+      }
     }
   })
-  gsap.to('#marquee1', { xPercent: -50, duration: 38, ease: 'none', repeat: -1 })
-  gsap.to('#marquee2', { xPercent: 0, duration: 28, ease: 'none', repeat: -1,
-    onRepeat() {},
-    onStart() { gsap.set('#marquee2', { xPercent: 0 }) }
+  // Crossfade slides
+  storyTl
+    .to(storySlides[0], { opacity: 0, duration: 0.3 }, 0.12)
+    .fromTo(storySlides[1], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.12)
+    .to(storySlides[1], { opacity: 0, duration: 0.3 }, 0.4)
+    .fromTo(storySlides[2], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.4)
+    .to(storySlides[2], { opacity: 0, duration: 0.3 }, 0.68)
+    .fromTo(storySlides[3], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.68)
+
+  // STATS: parallax + gold line + stagger
+  gsap.to('#stats-bg', { yPercent: 15, ease: 'none',
+    scrollTrigger: { trigger: '#stats', start: 'top bottom', end: 'bottom top', scrub: true } })
+  ScrollTrigger.create({
+    trigger: '#stats', start: 'top 75%', once: true,
+    onEnter: () => {
+      gsap.to('#stats-line', { width: '100%', duration: 1.2, ease: 'power2.inOut' })
+      gsap.to('.stat-box', { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', stagger: 0.12, delay: 0.3 })
+    }
   })
-  // Fila 2 va en dirección opuesta
+
+  // Marquees
+  gsap.to('#marquee1', { xPercent: -50, duration: 38, ease: 'none', repeat: -1 })
   gsap.fromTo('#marquee2', { xPercent: -50 }, { xPercent: 0, duration: 28, ease: 'none', repeat: -1 })
+
   cargarStats(); cargarPropiedades(); cargarProyectos()
 }
 
