@@ -312,14 +312,30 @@
 
     /* STATS */
     #stats {
-      background:
-        linear-gradient(to bottom, rgba(8,8,8,0.92) 0%, rgba(8,8,8,0.88) 100%),
-        url('assets/IMG_1517 (1).JPG') center/cover no-repeat;
+      position: relative; overflow: hidden;
       border-top: 1px solid rgba(255,255,255,0.05);
       border-bottom: 1px solid rgba(255,255,255,0.05);
     }
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); max-width: 1280px; margin: 0 auto; }
-    .stat-box { padding: 4rem 3rem; border-right: 1px solid var(--stroke); text-align: center; }
+    #stats-bg {
+      position: absolute; inset: 0;
+      background: url('assets/IMG_1517 (1).JPG') center/cover no-repeat;
+      transform: scale(1.08);
+      will-change: transform;
+    }
+    #stats-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, rgba(8,8,8,0.92) 0%, rgba(8,8,8,0.85) 100%);
+    }
+    #stats-line {
+      position: absolute; top: 0; left: 0;
+      width: 0%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); max-width: 1280px; margin: 0 auto; position: relative; z-index: 1; }
+    .stat-box {
+      padding: 4.5rem 3rem; border-right: 1px solid var(--stroke); text-align: center;
+      opacity: 0; transform: translateY(20px);
+    }
     .stat-box:last-child { border-right: none; }
     .stat-num { font-family: 'Cormorant Garamond', serif; font-size: clamp(3rem, 5vw, 5rem); font-weight: 300; color: var(--gold); line-height: 1; }
     .stat-lbl { font-size: 0.65rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 0.6rem; }
@@ -338,6 +354,82 @@
     .proy-desc { font-size: 0.78rem; color: var(--muted); margin-top: 0.6rem; line-height: 1.7; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.4s, opacity 0.4s; }
     .proy-card:hover .proy-desc { max-height: 80px; opacity: 1; }
     .proy-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, #111 0%, #0d1020 100%); display: flex; align-items: center; justify-content: center; font-size: 4rem; }
+
+    /* PLANOS / DESARROLLOS */
+    .planos-section { background: var(--bg); padding: 7rem 0; }
+    .planos-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+      background: var(--stroke);
+      max-width: 1280px; margin: 3rem auto 0; padding: 0 2rem;
+    }
+    .plano-card {
+      position: relative; overflow: hidden;
+      background: #0a0e14; cursor: pointer;
+      aspect-ratio: 4/3;
+    }
+    .plano-card.grande { grid-column: span 2; aspect-ratio: 16/7; }
+    .plano-img {
+      width: 100%; height: 100%; object-fit: contain;
+      object-position: center;
+      transition: transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94), filter 0.5s;
+      filter: brightness(0.6) saturate(0.5) sepia(0.2);
+      padding: 1.5rem;
+    }
+    .plano-card:hover .plano-img {
+      transform: scale(1.04);
+      filter: brightness(0.85) saturate(0.8) sepia(0.1);
+    }
+    .plano-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(8,8,8,0.85) 0%, rgba(8,8,8,0.1) 50%);
+      transition: background 0.4s;
+    }
+    .plano-card:hover .plano-overlay {
+      background: linear-gradient(to top, rgba(8,8,8,0.92) 0%, rgba(8,8,8,0.2) 60%);
+    }
+    .plano-info {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 1.8rem 2rem; display: flex; justify-content: space-between; align-items: flex-end;
+    }
+    .plano-tag {
+      font-size: 0.58rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 0.5rem;
+    }
+    .plano-nombre {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.8rem; font-weight: 300; line-height: 1;
+    }
+    .plano-sub {
+      font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem;
+    }
+    .plano-cta {
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--gold); border: 1px solid rgba(201,168,76,0.3);
+      padding: 0.6rem 1.2rem; white-space: nowrap;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 0.3s, transform 0.3s, border-color 0.2s;
+    }
+    .plano-card:hover .plano-cta { opacity: 1; transform: translateY(0); }
+    .plano-cta:hover { border-color: var(--gold); }
+    /* Gold corner accent */
+    .plano-corner {
+      position: absolute; top: 0; left: 0;
+      width: 40px; height: 40px;
+      border-top: 1px solid rgba(201,168,76,0.4);
+      border-left: 1px solid rgba(201,168,76,0.4);
+    }
+    .plano-corner-br {
+      position: absolute; bottom: 0; right: 0;
+      width: 40px; height: 40px;
+      border-bottom: 1px solid rgba(201,168,76,0.4);
+      border-right: 1px solid rgba(201,168,76,0.4);
+    }
+    @media (max-width: 768px) {
+      .planos-grid { grid-template-columns: 1fr; padding: 0; }
+      .plano-card.grande { grid-column: span 1; aspect-ratio: 4/3; }
+    }
 
     /* AUDIOVISUAL */
     #av-banner {
@@ -395,10 +487,43 @@
 
     /* FOOTER */
     footer { background: var(--bg); border-top: 1px solid var(--stroke); padding: 3rem 0 2rem; overflow: hidden; }
-    .marquee-wrap { border-top: 1px solid var(--stroke); border-bottom: 1px solid var(--stroke); padding: 1.2rem 0; overflow: hidden; margin-bottom: 3rem; }
-    .marquee-track { display: flex; width: max-content; white-space: nowrap; }
-    .marquee-text { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; font-size: 1.4rem; color: rgba(240,237,232,0.18); padding: 0 3rem; }
-    .marquee-text span { color: var(--gold); }
+    .marquee-wrap {
+      overflow: hidden; margin-bottom: 3rem;
+      padding: 0; display: flex; flex-direction: column; gap: 0;
+    }
+    .marquee-row {
+      border-top: 1px solid var(--stroke);
+      padding: 0.9rem 0; overflow: hidden;
+    }
+    .marquee-row:last-child { border-bottom: 1px solid var(--stroke); }
+    .marquee-track { display: flex; width: max-content; white-space: nowrap; align-items: center; }
+    /* Row 1 — large italic Cormorant */
+    .marquee-row:first-child .marquee-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic; font-weight: 300;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      color: rgba(240,237,232,0.1);
+      padding: 0 2.5rem; line-height: 1;
+    }
+    .marquee-row:first-child .marquee-text em {
+      font-style: normal; color: rgba(201,168,76,0.3);
+    }
+    /* Row 2 — small caps Montserrat */
+    .marquee-row:last-child .marquee-text {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 500; font-size: 0.62rem;
+      letter-spacing: 0.35em; text-transform: uppercase;
+      color: rgba(240,237,232,0.14);
+      padding: 0 3rem;
+    }
+    .marquee-row:last-child .marquee-text em {
+      font-style: normal; color: rgba(201,168,76,0.35);
+    }
+    .marquee-sep {
+      display: inline-block; width: 4px; height: 4px;
+      border-radius: 50%; background: var(--gold);
+      opacity: 0.25; margin: 0 1.5rem; vertical-align: middle;
+    }
     .footer-inner { max-width: 1280px; margin: 0 auto; padding: 0 2rem; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 4rem; margin-bottom: 3rem; }
     .footer-logo { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 300; letter-spacing: 0.08em; margin-bottom: 1rem; }
     .footer-logo span { color: var(--gold); }
@@ -409,17 +534,6 @@
     .footer-links a:hover { color: var(--text); }
     .footer-bottom { max-width: 1280px; margin: 0 auto; padding: 1.5rem 2rem 0; border-top: 1px solid var(--stroke); display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: var(--muted); }
 
-    /* SECTION NUMBERS — faint editorial numerals behind eyebrow */
-    .sec-num {
-      position: absolute; top: 0; right: 0;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(7rem, 14vw, 14rem);
-      font-weight: 300; line-height: 1;
-      color: rgba(255,255,255,0.035);
-      pointer-events: none; user-select: none;
-      letter-spacing: -0.04em;
-    }
-    .sec-header { position: relative; overflow: visible; }
 
     /* SIDE SCROLL INDICATOR */
     #side-nav {
@@ -558,7 +672,7 @@
   <div class="hero-overlay"></div>
   <div class="hero-content">
     <p class="hero-eyebrow" id="heroEyebrow">Sur Patagonia · Argentina</p>
-    <h1 class="hero-title" id="heroTitle">Patagonia<em>Propiedades &amp; Desarrollos</em></h1>
+    <h1 class="hero-title" id="heroTitle">Propiedades<em>&amp; Desarrollos</em></h1>
     <p class="hero-subtitle" id="heroSubtitle">Propiedades · Desarrollos · Producción audiovisual</p>
     <div class="hero-btns" id="heroBtns">
       <a href="propiedades.html" class="btn-primary">Ver propiedades →</a>
@@ -599,7 +713,7 @@
 <section class="section" id="sec-propiedades" style="background:var(--bg); padding-top:8rem;">
   <div class="section-inner">
     <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem; margin-bottom:4rem;">
-      <div class="reveal sec-header"><div class="eyebrow">Selección premium</div><h2 class="section-title">Propiedades <em>destacadas</em></h2><span class="sec-num">01</span></div>
+      <div class="reveal"><div class="eyebrow">Selección premium</div><h2 class="section-title">Propiedades <em>destacadas</em></h2></div>
       <a href="propiedades.html" class="btn-outline-gold reveal">Ver todas →</a>
     </div>
     <div class="prop-grid" id="propGrid">
@@ -613,11 +727,14 @@
 
 <!-- STATS -->
 <section id="stats">
+  <div id="stats-bg"></div>
+  <div id="stats-overlay"></div>
+  <div id="stats-line"></div>
   <div class="stats-row">
-    <div class="stat-box reveal"><div class="stat-num" id="statProp">—</div><div class="stat-lbl">Propiedades activas</div></div>
-    <div class="stat-box reveal"><div class="stat-num" id="statProy">—</div><div class="stat-lbl">Proyectos en cartera</div></div>
-    <div class="stat-box reveal"><div class="stat-num">10+</div><div class="stat-lbl">Años de experiencia</div></div>
-    <div class="stat-box reveal"><div class="stat-num">∞</div><div class="stat-lbl">Pasión por la Patagonia</div></div>
+    <div class="stat-box"><div class="stat-num" id="statProp">—</div><div class="stat-lbl">Propiedades activas</div></div>
+    <div class="stat-box"><div class="stat-num" id="statProy">—</div><div class="stat-lbl">Proyectos en cartera</div></div>
+    <div class="stat-box"><div class="stat-num">10+</div><div class="stat-lbl">Años de experiencia</div></div>
+    <div class="stat-box"><div class="stat-num">∞</div><div class="stat-lbl">Pasión por la Patagonia</div></div>
   </div>
 </section>
 
@@ -625,12 +742,76 @@
 <section class="section" id="sec-proyectos" style="background:var(--surface); padding:7rem 0;">
   <div style="padding:0 2rem; max-width:1280px; margin:0 auto 3rem;">
     <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">
-      <div class="reveal sec-header"><div class="eyebrow">Desarrollos &amp; inversiones</div><h2 class="section-title">Proyectos <em>especiales</em></h2><span class="sec-num">03</span></div>
+      <div class="reveal"><div class="eyebrow">Desarrollos &amp; inversiones</div><h2 class="section-title">Proyectos <em>especiales</em></h2></div>
       <a href="proyectos.html" class="btn-outline-gold reveal">Ver proyectos →</a>
     </div>
   </div>
   <div class="proy-grid" id="proyGrid" style="max-width:1280px; margin:0 auto; padding:0 2rem;">
     <div style="grid-column:1/-1; padding:4rem; text-align:center; color:var(--muted);">Cargando proyectos...</div>
+  </div>
+</section>
+
+<!-- PLANOS / DESARROLLOS -->
+<section class="planos-section">
+  <div style="padding:0 2rem; max-width:1280px; margin:0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem;">
+      <div class="reveal">
+        <div class="eyebrow">Loteos &amp; parcelamientos</div>
+        <h2 class="section-title">Nuestros <em>desarrollos</em></h2>
+      </div>
+      <a href="proyectos.html" class="btn-outline-gold reveal">Ver todos →</a>
+    </div>
+  </div>
+  <div class="planos-grid">
+
+    <!-- Álamos 1 — grande -->
+    <div class="plano-card grande reveal" onclick="window.location='proyecto-mini.html?slug=alamos-1'">
+      <img class="plano-img" src="assets/ALAMOS 1 SUP.png" alt="Álamos 1 — Plano de loteo" loading="lazy" />
+      <div class="plano-overlay"></div>
+      <div class="plano-corner"></div>
+      <div class="plano-corner-br"></div>
+      <div class="plano-info">
+        <div>
+          <div class="plano-tag">Loteo · En venta</div>
+          <div class="plano-nombre">Álamos I</div>
+          <div class="plano-sub">Esquel, Chubut · Lotes desde 500 m²</div>
+        </div>
+        <a class="plano-cta">Ver desarrollo →</a>
+      </div>
+    </div>
+
+    <!-- Buena Vista -->
+    <div class="plano-card reveal" onclick="window.location='proyecto-mini.html?slug=buena-vista'">
+      <img class="plano-img" src="assets/BUENA VISTA SUP.png" alt="Buena Vista — Plano de loteo" loading="lazy" />
+      <div class="plano-overlay"></div>
+      <div class="plano-corner"></div>
+      <div class="plano-corner-br"></div>
+      <div class="plano-info">
+        <div>
+          <div class="plano-tag">Loteo · En venta</div>
+          <div class="plano-nombre">Buena Vista</div>
+          <div class="plano-sub">Patagonia · Vista panorámica</div>
+        </div>
+        <a class="plano-cta">Ver desarrollo →</a>
+      </div>
+    </div>
+
+    <!-- Álamos 2 Disponibilidad -->
+    <div class="plano-card reveal" onclick="window.location='proyecto-mini.html?slug=alamos-2'">
+      <img class="plano-img" src="assets/DISPONIBILIDAD ALAMOS 2 JULIO.png" alt="Álamos 2 — Disponibilidad" loading="lazy" />
+      <div class="plano-overlay"></div>
+      <div class="plano-corner"></div>
+      <div class="plano-corner-br"></div>
+      <div class="plano-info">
+        <div>
+          <div class="plano-tag">Loteo · Disponibilidad actualizada</div>
+          <div class="plano-nombre">Álamos II</div>
+          <div class="plano-sub">Nuevos lotes disponibles</div>
+        </div>
+        <a class="plano-cta">Ver disponibilidad →</a>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -687,15 +868,33 @@
 <!-- FOOTER -->
 <footer>
   <div class="marquee-wrap">
-    <div class="marquee-track" id="marquee">
-      <span class="marquee-text">Sur Patagonia <span>•</span></span>
-      <span class="marquee-text">Propiedades exclusivas <span>•</span></span>
-      <span class="marquee-text">Producción audiovisual <span>•</span></span>
-      <span class="marquee-text">Patagonia Argentina <span>•</span></span>
-      <span class="marquee-text">Sur Patagonia <span>•</span></span>
-      <span class="marquee-text">Propiedades exclusivas <span>•</span></span>
-      <span class="marquee-text">Producción audiovisual <span>•</span></span>
-      <span class="marquee-text">Patagonia Argentina <span>•</span></span>
+    <!-- Fila 1: Grande, italic, izquierda → derecha -->
+    <div class="marquee-row">
+      <div class="marquee-track" id="marquee1">
+        <span class="marquee-text">Sur Patagonia<em> Propiedades</em></span><span class="marquee-sep"></span>
+        <span class="marquee-text">Tierra &amp; <em>Naturaleza</em></span><span class="marquee-sep"></span>
+        <span class="marquee-text">Producción <em>Audiovisual</em></span><span class="marquee-sep"></span>
+        <span class="marquee-text">Patagonia <em>Argentina</em></span><span class="marquee-sep"></span>
+        <span class="marquee-text">Sur Patagonia<em> Propiedades</em></span><span class="marquee-sep"></span>
+        <span class="marquee-text">Tierra &amp; <em>Naturaleza</em></span><span class="marquee-sep"></span>
+        <span class="marquee-text">Producción <em>Audiovisual</em></span><span class="marquee-sep"></span>
+        <span class="marquee-text">Patagonia <em>Argentina</em></span><span class="marquee-sep"></span>
+      </div>
+    </div>
+    <!-- Fila 2: Pequeña, caps, derecha → izquierda -->
+    <div class="marquee-row">
+      <div class="marquee-track" id="marquee2">
+        <span class="marquee-text">Propiedades en venta<em> ·</em></span>
+        <span class="marquee-text">Lotes &amp; terrenos<em> ·</em></span>
+        <span class="marquee-text">Desarrollos exclusivos<em> ·</em></span>
+        <span class="marquee-text">Drone &amp; video cinematográfico<em> ·</em></span>
+        <span class="marquee-text">Esquel · Bariloche · Patagonia<em> ·</em></span>
+        <span class="marquee-text">Propiedades en venta<em> ·</em></span>
+        <span class="marquee-text">Lotes &amp; terrenos<em> ·</em></span>
+        <span class="marquee-text">Desarrollos exclusivos<em> ·</em></span>
+        <span class="marquee-text">Drone &amp; video cinematográfico<em> ·</em></span>
+        <span class="marquee-text">Esquel · Bariloche · Patagonia<em> ·</em></span>
+      </div>
     </div>
   </div>
   <div class="footer-inner">
@@ -790,7 +989,31 @@ function initScroll() {
   })
   gsap.to('#hero-video-wrap', { yPercent: 20, ease: 'none',
     scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true } })
-  gsap.to('#marquee', { xPercent: -50, duration: 30, ease: 'none', repeat: -1 })
+
+  // STATS: parallax bg + gold line + stagger boxes
+  gsap.to('#stats-bg', {
+    yPercent: 15, ease: 'none',
+    scrollTrigger: { trigger: '#stats', start: 'top bottom', end: 'bottom top', scrub: true }
+  })
+  ScrollTrigger.create({
+    trigger: '#stats',
+    start: 'top 75%',
+    once: true,
+    onEnter: () => {
+      gsap.to('#stats-line', { width: '100%', duration: 1.2, ease: 'power2.inOut' })
+      gsap.to('.stat-box', {
+        opacity: 1, y: 0, duration: 0.7, ease: 'power3.out',
+        stagger: 0.12, delay: 0.3
+      })
+    }
+  })
+  gsap.to('#marquee1', { xPercent: -50, duration: 38, ease: 'none', repeat: -1 })
+  gsap.to('#marquee2', { xPercent: 0, duration: 28, ease: 'none', repeat: -1,
+    onRepeat() {},
+    onStart() { gsap.set('#marquee2', { xPercent: 0 }) }
+  })
+  // Fila 2 va en dirección opuesta
+  gsap.fromTo('#marquee2', { xPercent: -50 }, { xPercent: 0, duration: 28, ease: 'none', repeat: -1 })
   cargarStats(); cargarPropiedades(); cargarProyectos()
 }
 
