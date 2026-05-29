@@ -4,8 +4,106 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Proyectos — Sur Patagonia Admin</title>
-  <link rel="stylesheet" href="/css/estilos.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
+    /* ── RESET & VARIABLES ───────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --negro:      #090909;
+      --negro-2:    #111111;
+      --negro-3:    #1a1a1a;
+      --gris-oscuro:#2a2a2a;
+      --gris:       #555555;
+      --gris-claro: #aaaaaa;
+      --texto:      #f0ede8;
+      --dorado:     #c9a84c;
+      --dorado-2:   #e8c97a;
+      --rojo:       #c0392b;
+    }
+    html { font-size: 16px; }
+    body {
+      background: var(--negro);
+      color: var(--texto);
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+    a { text-decoration: none; color: inherit; }
+    img { display: block; max-width: 100%; }
+
+    /* ── LAYOUT ADMIN ────────────────────────────────────────────────── */
+    .sidebar {
+      width: 240px;
+      background: var(--negro-2);
+      border-right: 1px solid var(--gris-oscuro);
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 50;
+    }
+    .sidebar-logo {
+      padding: 1.8rem 2rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      letter-spacing: 0.12em;
+      border-bottom: 1px solid var(--gris-oscuro);
+      color: var(--texto);
+    }
+    .sidebar-logo span { color: var(--dorado); }
+
+    .sidebar-nav { padding: 1.2rem 0; flex: 1; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 2rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      transition: color 0.2s, background 0.2s;
+      cursor: pointer;
+    }
+    .nav-item:hover, .nav-item.activo {
+      color: var(--dorado);
+      background: rgba(201,168,76,0.07);
+    }
+    .nav-item svg {
+      width: 16px; height: 16px; flex-shrink: 0;
+      stroke: currentColor; fill: none; stroke-width: 1.5;
+    }
+
+    .sidebar-bottom {
+      border-top: 1px solid var(--gris-oscuro);
+      padding: 0.8rem 0;
+    }
+
+    .main-content {
+      margin-left: 240px;
+      padding: 2.5rem;
+      min-height: 100vh;
+    }
+
+    .page-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      font-weight: 300;
+      color: var(--texto);
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+    .page-subtitle {
+      font-size: 0.75rem;
+      color: var(--gris-claro);
+      letter-spacing: 0.08em;
+    }
+
+    /* ── HEADER & BOTÓN NUEVO ────────────────────────────────────────── */
     .proyectos-header {
       display: flex;
       align-items: flex-start;
@@ -33,7 +131,31 @@
     }
     .btn-nuevo:hover { opacity: 0.85; }
 
-    /* Grid de cards */
+    /* ── FILTROS ─────────────────────────────────────────────────────── */
+    .filtros {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 1.8rem;
+      flex-wrap: wrap;
+    }
+    .filtro-btn {
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.4rem 1rem;
+      border: 1px solid var(--gris-oscuro);
+      background: none;
+      color: var(--gris-claro);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .filtro-btn.activo, .filtro-btn:hover {
+      border-color: var(--dorado);
+      color: var(--dorado);
+    }
+
+    /* ── GRID DE CARDS ───────────────────────────────────────────────── */
     .proyectos-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -53,17 +175,16 @@
       width: 100%;
       aspect-ratio: 16/9;
       object-fit: cover;
-      background: var(--negro);
       display: block;
     }
     .card-thumb-placeholder {
       width: 100%;
       aspect-ratio: 16/9;
-      background: var(--negro);
+      background: var(--negro-3);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--gris-claro);
+      color: var(--gris);
       font-size: 0.65rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -78,23 +199,11 @@
       color: var(--texto);
       line-height: 1.1;
     }
-    .card-slug {
-      font-size: 0.65rem;
-      color: var(--gris-claro);
-      letter-spacing: 0.08em;
-    }
+    .card-slug { font-size: 0.65rem; color: var(--gris-claro); letter-spacing: 0.08em; }
     .card-slug span { color: var(--dorado); }
 
-    .card-meta {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-top: 0.2rem;
-    }
-    .card-meta-item {
-      font-size: 0.68rem;
-      color: var(--gris-claro);
-    }
+    .card-meta { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.2rem; }
+    .card-meta-item { font-size: 0.68rem; color: var(--gris-claro); }
     .card-meta-item strong { color: var(--texto); }
 
     .badge-estado {
@@ -103,10 +212,11 @@
       font-size: 0.6rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
+      font-family: 'Montserrat', sans-serif;
     }
-    .badge-activo    { background: rgba(76,201,130,0.12); color: #4cc982; border: 1px solid rgba(76,201,130,0.25); }
-    .badge-borrador  { background: rgba(136,136,128,0.12); color: var(--gris-claro); border: 1px solid var(--gris-oscuro); }
-    .badge-pausado   { background: rgba(201,168,76,0.12); color: var(--dorado); border: 1px solid rgba(201,168,76,0.25); }
+    .badge-activo  { background: rgba(76,201,130,0.12); color: #4cc982; border: 1px solid rgba(76,201,130,0.25); }
+    .badge-borrador{ background: rgba(136,136,128,0.12); color: var(--gris-claro); border: 1px solid var(--gris-oscuro); }
+    .badge-pausado { background: rgba(201,168,76,0.12); color: var(--dorado); border: 1px solid rgba(201,168,76,0.25); }
 
     .card-actions {
       display: flex;
@@ -126,12 +236,13 @@
       cursor: pointer;
       text-decoration: none;
       transition: border-color 0.2s, color 0.2s;
+      font-family: 'Montserrat', sans-serif;
     }
     .btn-accion:hover { border-color: var(--dorado); color: var(--dorado); }
-    .btn-accion.danger:hover { border-color: #c94c4c; color: #c94c4c; }
+    .btn-accion.danger:hover { border-color: var(--rojo); color: var(--rojo); }
     .btn-accion.primary { border-color: var(--dorado); color: var(--dorado); }
 
-    /* Estado vacío */
+    /* ── ESTADO VACÍO ────────────────────────────────────────────────── */
     .empty-state {
       grid-column: 1/-1;
       text-align: center;
@@ -147,30 +258,7 @@
     }
     .empty-state p { font-size: 0.82rem; margin-bottom: 2rem; }
 
-    /* Filtros */
-    .filtros {
-      display: flex;
-      gap: 0.4rem;
-      margin-bottom: 1.8rem;
-      flex-wrap: wrap;
-    }
-    .filtro-btn {
-      font-size: 0.62rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 0.4rem 1rem;
-      border: 1px solid var(--gris-oscuro);
-      background: none;
-      color: var(--gris-claro);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .filtro-btn.activo, .filtro-btn:hover {
-      border-color: var(--dorado);
-      color: var(--dorado);
-    }
-
-    /* Modal confirmar borrado */
+    /* ── MODAL BORRAR ────────────────────────────────────────────────── */
     .modal-overlay {
       display: none;
       position: fixed; inset: 0;
@@ -204,19 +292,20 @@
       letter-spacing: 0.12em;
       text-transform: uppercase;
       cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
     }
     .btn-delete {
       padding: 0.7rem 1.4rem;
       border: none;
-      background: #c94c4c;
+      background: var(--rojo);
       color: #fff;
       font-size: 0.68rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
     }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet" />
 </head>
 <body>
 
@@ -225,33 +314,33 @@
   <div class="sidebar-logo">Sur <span>Patagonia</span></div>
   <nav class="sidebar-nav">
     <a href="dashboard.html" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       Dashboard
     </a>
     <a href="propiedades.html" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
       Propiedades
     </a>
-    <a href="nueva-propiedad.html" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
-      Nueva propiedad
-    </a>
     <a href="proyectos.html" class="nav-item activo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
       Proyectos
     </a>
+    <a href="nuevo-proyecto.html" class="nav-item">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+      Nuevo proyecto
+    </a>
     <a href="contactos.html" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
       Consultas
     </a>
   </nav>
   <div class="sidebar-bottom">
     <a href="../index.html" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
       Ver sitio
     </a>
     <a href="login.html" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
       Salir
     </a>
   </div>
@@ -302,7 +391,7 @@ let todosLosProyectos = []
 let filtroActual = 'todos'
 let idABorrar = null
 
-// ── Cargar proyectos ──────────────────────────────────────────────────
+// ── Cargar proyectos ──────────────────────────────────────────────
 async function cargar() {
   const { data, error } = await supabase
     .from('proyectos')
@@ -322,7 +411,7 @@ async function cargar() {
   renderGrid(data)
 }
 
-// ── Render ────────────────────────────────────────────────────────────
+// ── Render ────────────────────────────────────────────────────────
 function renderGrid(proyectos) {
   const grid = document.getElementById('proyectosGrid')
 
@@ -338,7 +427,7 @@ function renderGrid(proyectos) {
 
   grid.innerHTML = proyectos.map(p => {
     const badgeClass = p.estado === 'activo' ? 'badge-activo' : p.estado === 'pausado' ? 'badge-pausado' : 'badge-borrador'
-    const badgeText = p.estado === 'activo' ? 'Activo' : p.estado === 'pausado' ? 'Pausado' : 'Borrador'
+    const badgeText  = p.estado === 'activo' ? 'Activo' : p.estado === 'pausado' ? 'Pausado' : 'Borrador'
     const thumb = p.foto_portada
       ? `<img class="card-thumb" src="${p.foto_portada}" alt="${p.nombre}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="card-thumb-placeholder" style="display:none">Sin imagen</div>`
       : `<div class="card-thumb-placeholder">Sin imagen</div>`
@@ -354,9 +443,9 @@ function renderGrid(proyectos) {
         <div class="card-slug">surpatagonia.com.ar/<span>${p.slug}</span></div>
         <div class="card-meta">
           ${p.hectareas_total ? `<div class="card-meta-item"><strong>${p.hectareas_total}</strong> ha</div>` : ''}
-          ${p.cantidad_lotes ? `<div class="card-meta-item"><strong>${p.cantidad_lotes}</strong> lotes</div>` : ''}
-          ${p.precio_desde ? `<div class="card-meta-item">desde <strong>USD ${Number(p.precio_desde).toLocaleString()}</strong></div>` : ''}
-          ${p.categoria ? `<div class="card-meta-item">${p.categoria.replace(/_/g,' ')}</div>` : ''}
+          ${p.cantidad_lotes  ? `<div class="card-meta-item"><strong>${p.cantidad_lotes}</strong> lotes</div>` : ''}
+          ${p.precio_desde    ? `<div class="card-meta-item">desde <strong>USD ${Number(p.precio_desde).toLocaleString()}</strong></div>` : ''}
+          ${p.categoria       ? `<div class="card-meta-item">${p.categoria.replace(/_/g,' ')}</div>` : ''}
         </div>
       </div>
       <div class="card-actions">
@@ -371,7 +460,7 @@ function renderGrid(proyectos) {
   }).join('')
 }
 
-// ── Filtros ───────────────────────────────────────────────────────────
+// ── Filtros ───────────────────────────────────────────────────────
 document.querySelectorAll('.filtro-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('activo'))
@@ -384,7 +473,7 @@ document.querySelectorAll('.filtro-btn').forEach(btn => {
   })
 })
 
-// ── Publicar / Pausar ─────────────────────────────────────────────────
+// ── Publicar / Pausar ─────────────────────────────────────────────
 window.publicar = async (id) => {
   await supabase.from('proyectos').update({ estado: 'activo' }).eq('id', id)
   cargar()
@@ -394,7 +483,7 @@ window.pausar = async (id) => {
   cargar()
 }
 
-// ── Borrar ────────────────────────────────────────────────────────────
+// ── Borrar ────────────────────────────────────────────────────────
 window.confirmarBorrar = (id, nombre) => {
   idABorrar = id
   document.getElementById('modalTexto').textContent = `¿Seguro que querés eliminar "${nombre}"? Esta acción no se puede deshacer.`
