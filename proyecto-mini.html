@@ -197,10 +197,13 @@
     /* ══ PRESENTACIÓN ══════════════════════════════════════════════════ */
     #presentacion {
       padding: 8rem 5vw 7rem;
-      display: grid; grid-template-columns: 1fr 1fr; gap: 6rem;
-      align-items: start; max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: 55% 45%; gap: 5rem;
+      align-items: start; max-width: 1260px; margin: 0 auto;
     }
-    .pres-left { }
+    .pres-left {
+      position: relative; padding-left: 2rem;
+      border-left: 1px solid rgba(201,168,76,0.22);
+    }
     .pres-eyebrow {
       font-size: 0.58rem; letter-spacing: 0.45em; text-transform: uppercase;
       color: var(--gold); margin-bottom: 1.8rem;
@@ -215,31 +218,29 @@
       width: 40px; height: 1px; background: var(--gold); margin: 2.2rem 0;
     }
     .pres-desc {
-      font-size: 0.85rem; line-height: 2.05;
-      color: var(--muted); max-width: 520px;
+      font-size: 0.88rem; line-height: 2.05;
+      color: var(--muted);
     }
-    .pres-right { padding-top: 1rem; }
-    .pres-stats {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    .pres-right { padding-top: 0; }
+
+    /* Ilustración SVG lote */
+    .pres-lote-wrap {
       border: 1px solid var(--line);
+      overflow: hidden; background: #050505;
+      margin-bottom: 0;
     }
-    .pres-stat {
-      padding: 2.2rem 1.8rem; background: var(--surface);
-      border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    .pres-lote-caption {
+      padding: 0.8rem 1.2rem;
+      display: flex; justify-content: space-between; align-items: center;
+      border-top: 1px solid var(--line);
+      font-size: 0.58rem; letter-spacing: 0.28em; text-transform: uppercase;
+      color: var(--muted);
     }
-    .pres-stat:nth-child(even) { border-right: none; }
-    .pres-stat:nth-last-child(-n+2) { border-bottom: none; }
-    .pres-stat-num {
-      font-family: var(--font-serif);
-      font-size: 2.4rem; font-weight: 300; color: var(--gold); line-height: 1;
-    }
-    .pres-stat-lbl {
-      font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase;
-      color: var(--muted); margin-top: 0.6rem;
-    }
+    .pres-lote-caption span { color: var(--gold); }
+
     @media (max-width: 900px) {
       #presentacion { grid-template-columns: 1fr; gap: 3.5rem; padding: 5rem 5vw; }
-      .pres-stats { grid-template-columns: 1fr 1fr; }
+      .pres-left { padding-left: 1.2rem; }
     }
 
     /* ══ PLANO ══════════════════════════════════════════════════════════ */
@@ -676,9 +677,10 @@
     <h2 class="pres-titulo" id="presTitulo">&nbsp;</h2>
     <div class="pres-linea"></div>
     <p class="pres-desc" id="presDesc"></p>
+    <div id="presStats"></div>
   </div>
   <div class="pres-right">
-    <div id="presStats"></div>
+    <div class="pres-lote-wrap" id="presLote"></div>
   </div>
 </section>
 
@@ -870,6 +872,89 @@ const FUENTES_CUERPO = {
   inter:      "'Inter', sans-serif",
 }
 
+// ── SVG ilustración plano de lote ─────────────────────────────────────
+function buildLoteSVG(p) {
+  const gold = '#c9a84c'
+  const sup   = p.sup_min_m2 ? Math.round(Number(p.sup_min_m2)) : null
+  const supMax = p.sup_max_m2 ? Math.round(Number(p.sup_max_m2)) : null
+  const supTxt = sup
+    ? (supMax && Number(supMax) > Number(sup)
+        ? `${Number(sup).toLocaleString()} – ${Number(supMax).toLocaleString()} m²`
+        : `desde ${Number(sup).toLocaleString()} m²`)
+    : null
+
+  // Polígono irregular de 6 vértices — simula lote de terreno en montaña
+  const V = [[54,226],[295,243],[317,88],[243,41],[96,37],[37,143]]
+  const pts = V.map(v => v.join(',')).join(' ')
+
+  // Marcadores de vértice (cruces de agrimensura)
+  const markers = V.map(([x,y]) => `
+    <line x1="${x-7}" y1="${y}" x2="${x+7}" y2="${y}" stroke="${gold}" stroke-width="0.7" opacity="0.55"/>
+    <line x1="${x}" y1="${y-7}" x2="${x}" y2="${y+7}" stroke="${gold}" stroke-width="0.7" opacity="0.55"/>
+    <circle cx="${x}" cy="${y}" r="1.8" fill="${gold}" opacity="0.4"/>`
+  ).join('')
+
+  // Líneas de cota decorativas (lado inferior y lado derecho)
+  const [ax,ay] = V[0], [bx,by] = V[1]
+  const [cx2,cy2] = V[1], [dx,dy] = V[2]
+  const bmy = Math.max(ay, by) + 13
+  const rmx = Math.max(cx2, dx) + 14
+
+  const dimLines = `
+    <line x1="${ax}" y1="${bmy}" x2="${bx}" y2="${bmy}" stroke="${gold}" stroke-width="0.5" opacity="0.25"/>
+    <line x1="${ax}" y1="${bmy-6}" x2="${ax}" y2="${bmy+6}" stroke="${gold}" stroke-width="0.5" opacity="0.25"/>
+    <line x1="${bx}" y1="${bmy-6}" x2="${bx}" y2="${bmy+6}" stroke="${gold}" stroke-width="0.5" opacity="0.25"/>
+    <line x1="${rmx}" y1="${cy2}" x2="${rmx}" y2="${dy}" stroke="${gold}" stroke-width="0.5" opacity="0.25"/>
+    <line x1="${rmx-6}" y1="${cy2}" x2="${rmx+6}" y2="${cy2}" stroke="${gold}" stroke-width="0.5" opacity="0.25"/>
+    <line x1="${rmx-6}" y1="${dy}" x2="${rmx+6}" y2="${dy}" stroke="${gold}" stroke-width="0.5" opacity="0.25"/>`
+
+  // Flecha de norte
+  const north = `<g transform="translate(338,66)">
+    <circle r="14" fill="none" stroke="${gold}" stroke-width="0.5" opacity="0.28"/>
+    <line x1="0" y1="11" x2="0" y2="-11" stroke="${gold}" stroke-width="0.9" opacity="0.6"/>
+    <polygon points="0,-13 -3.5,-4 3.5,-4" fill="${gold}" opacity="0.75"/>
+    <text y="22" text-anchor="middle" font-family="'Courier New',monospace" font-size="7"
+      fill="${gold}" opacity="0.5" letter-spacing="1">N</text>
+  </g>`
+
+  // Texto central
+  const cx3 = 178, cy3 = 148
+  const centerTxt = `
+    <text x="${cx3}" y="${cy3-12}" text-anchor="middle"
+      font-family="'Courier New',monospace" font-size="6.5" fill="${gold}" opacity="0.4" letter-spacing="3.5">LOTE TIPO</text>
+    <line x1="${cx3-26}" y1="${cy3-5}" x2="${cx3+26}" y2="${cy3-5}"
+      stroke="${gold}" stroke-width="0.4" opacity="0.18"/>
+    ${supTxt ? `<text x="${cx3}" y="${cy3+14}" text-anchor="middle"
+      font-family="'Courier New',monospace" font-size="12.5"
+      fill="rgba(240,237,232,0.7)" letter-spacing="0.5">Superficie ${supTxt}</text>` : ''}`
+
+  return `<svg viewBox="0 0 380 290" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+    <defs>
+      <pattern id="lot-grid" width="22" height="22" patternUnits="userSpaceOnUse">
+        <path d="M22 0L0 0 0 22" fill="none" stroke="${gold}" stroke-width="0.3" opacity="0.13"/>
+      </pattern>
+    </defs>
+    <rect width="380" height="290" fill="#040404"/>
+    <rect width="380" height="290" fill="url(#lot-grid)"/>
+    <rect x="7" y="7" width="366" height="276" fill="none" stroke="${gold}" stroke-width="0.6" opacity="0.16"/>
+    <rect x="11" y="11" width="358" height="268" fill="none" stroke="${gold}" stroke-width="0.3" opacity="0.09"/>
+    <text x="18" y="27" font-family="'Courier New',monospace" font-size="6.5"
+      fill="${gold}" opacity="0.3" letter-spacing="3">PLANO DE REFERENCIA</text>
+    <line x1="18" y1="31" x2="188" y2="31" stroke="${gold}" stroke-width="0.4" opacity="0.14"/>
+    <polygon points="${pts}" fill="rgba(201,168,76,0.05)" stroke="${gold}" stroke-width="1.6" stroke-linejoin="round"/>
+    <polygon points="${pts}" fill="none" stroke="${gold}" stroke-width="0.5"
+      stroke-dasharray="5 20" opacity="0.16"/>
+    ${markers}
+    ${dimLines}
+    ${north}
+    ${centerTxt}
+    <text x="18" y="281" font-family="'Courier New',monospace" font-size="6"
+      fill="rgba(255,255,255,0.14)" letter-spacing="2">IMAGEN ILUSTRATIVA · ESCALA APROXIMADA</text>
+    <text x="362" y="281" text-anchor="end" font-family="'Courier New',monospace" font-size="6"
+      fill="${gold}" opacity="0.2" letter-spacing="1">SUR PATAGONIA</text>
+  </svg>`
+}
+
 function applyTema(tema) {
   let t = { paleta: 'clasico', titulo: 'cormorant', cuerpo: 'montserrat' }
   if (tema) {
@@ -957,19 +1042,23 @@ function renderPres(p) {
   const loc = [p.ciudad, p.provincia?.replace(/_/g,' ')].filter(Boolean).join(', ')
   if (loc) $('presEyebrow').textContent = loc
 
+  // Stats en columna izquierda
   const disp = allLotes.filter(l => l.estado === 'disponible').length
   const stats = []
   if (p.hectareas_total) stats.push({ n: parseFloat(p.hectareas_total), u: 'ha',  l: 'Superficie total' })
   if (p.cantidad_lotes)  stats.push({ n: parseInt(p.cantidad_lotes),    u: '',    l: 'Lotes en total' })
-  if (disp)              stats.push({ n: disp,                           u: '',    l: 'Disponibles hoy' })
+  if (disp > 0)          stats.push({ n: disp,                           u: '',    l: 'Disponibles hoy' })
   if (p.precio_desde)    stats.push({ n: Math.round(Number(p.precio_desde)/1000), u: 'k', l: 'USD desde' })
 
-  $('presStats').innerHTML = `<div class="pres-stats-row">${stats.map(s =>
+  $('presStats').innerHTML = stats.length ? `<div class="pres-stats-row">${stats.map(s =>
     `<div class="pres-stat-ed">
       <div class="pres-stat-num-ed" data-counter="${s.n}">0<span class="pres-stat-unit">${s.u}</span></div>
       <div class="pres-stat-lbl-ed">${s.l}</div>
     </div>`
-  ).join('')}</div>`
+  ).join('')}</div>` : ''
+
+  // SVG plano ilustrativo en columna derecha
+  $('presLote').innerHTML = buildLoteSVG(p)
 }
 
 // ── Plano ─────────────────────────────────────────────────────────────
