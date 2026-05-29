@@ -6,82 +6,29 @@
   <title>Proyecto — Sur Patagonia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500&family=Raleway:wght@300;400;500&family=Josefin+Sans:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <style>
     /* ══ RESET & BASE ═══════════════════════════════════════════════════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      /* Paleta por defecto: Clásico */
       --bg:         #080808;
+      --surface:    #111111;
       --gold:       #c9a84c;
       --gold2:      #e2c87a;
       --text:       #f0ede8;
       --muted:      #888880;
       --line:       rgba(255,255,255,0.08);
-      --surface:    #111111;
+      /* Tipografías por defecto */
       --font-serif: 'Cormorant Garamond', serif;
+      --font-sans:  'Montserrat', sans-serif;
     }
-
-    /* ══ TEMAS ══════════════════════════════════════════════════════════ */
-    /* 1 · Clásico: dorado atemporal (default, no body class needed)      */
-    /* 2 · Bosque */
-    body.tema-bosque {
-      --gold:       #7a9e6b;
-      --gold2:      #9ec48e;
-      --bg:         #050a05;
-      --surface:    #0b120b;
-      --muted:      #7a8878;
-      --font-serif: 'Playfair Display', serif;
-    }
-    /* 3 · Lago */
-    body.tema-lago {
-      --gold:       #4a8fa8;
-      --gold2:      #72b4cc;
-      --bg:         #04080e;
-      --surface:    #0a1018;
-      --muted:      #6a7e8a;
-      --font-serif: 'DM Serif Display', serif;
-    }
-    /* 4 · Andes */
-    body.tema-andes {
-      --gold:       #b87340;
-      --gold2:      #d4955e;
-      --bg:         #0d0805;
-      --surface:    #180e08;
-      --muted:      #8a7060;
-      --font-serif: 'Libre Baskerville', serif;
-    }
-    /* 5 · Nieve */
-    body.tema-nieve {
-      --gold:       #a8bfc8;
-      --gold2:      #c8dce6;
-      --bg:         #06080a;
-      --surface:    #0e1214;
-      --muted:      #7a8a92;
-      --font-serif: 'Cinzel', serif;
-    }
-    /* 6 · Vino */
-    body.tema-vino {
-      --gold:       #9a4a6a;
-      --gold2:      #c07090;
-      --bg:         #0a0508;
-      --surface:    #140a10;
-      --muted:      #7a6070;
-      --font-serif: 'Cormorant Garamond', serif;
-    }
-    /* 7 · Tierra */
-    body.tema-tierra {
-      --gold:       #c87850;
-      --gold2:      #e09870;
-      --bg:         #0d0906;
-      --surface:    #181008;
-      --muted:      #8a7060;
-      --font-serif: 'Lora', serif;
-    }
+    /* Las paletas y fuentes se aplican vía JS inline style en :root — no necesitamos clases CSS */
     html { scroll-behavior: smooth; }
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Montserrat', sans-serif;
+      font-family: var(--font-sans);
       font-weight: 300;
       overflow-x: hidden;
     }
@@ -776,10 +723,42 @@ function ytId(url) {
   return m ? m[1] : null
 }
 
-// ── Aplicar tema ─────────────────────────────────────────────────────
+// ── Aplicar diseño visual (paleta + fuentes) ─────────────────────────
+const PALETAS = {
+  clasico:  { '--gold':'#c9a84c', '--gold2':'#e2c87a', '--bg':'#080808', '--surface':'#111111', '--text':'#f0ede8', '--muted':'#888880', '--line':'rgba(255,255,255,0.08)' },
+  bosque:   { '--gold':'#7a9e6b', '--gold2':'#9ec48e', '--bg':'#050a05', '--surface':'#0b120b', '--text':'#e8ede8', '--muted':'#7a8878', '--line':'rgba(255,255,255,0.07)' },
+  lago:     { '--gold':'#4a8fa8', '--gold2':'#72b4cc', '--bg':'#04080e', '--surface':'#0a1018', '--text':'#e8ecf0', '--muted':'#6a7e8a', '--line':'rgba(255,255,255,0.07)' },
+  andes:    { '--gold':'#b87340', '--gold2':'#d4955e', '--bg':'#0d0805', '--surface':'#180e08', '--text':'#f0ece8', '--muted':'#8a7060', '--line':'rgba(255,255,255,0.07)' },
+  nieve:    { '--gold':'#a8bfc8', '--gold2':'#c8dce6', '--bg':'#06080a', '--surface':'#0e1214', '--text':'#e8ecf0', '--muted':'#7a8a92', '--line':'rgba(255,255,255,0.07)' },
+  vino:     { '--gold':'#9a4a6a', '--gold2':'#c07090', '--bg':'#0a0508', '--surface':'#140a10', '--text':'#f0e8ec', '--muted':'#7a6070', '--line':'rgba(255,255,255,0.07)' },
+  tierra:   { '--gold':'#c87850', '--gold2':'#e09870', '--bg':'#0d0906', '--surface':'#181008', '--text':'#f0ede8', '--muted':'#8a7060', '--line':'rgba(255,255,255,0.07)' },
+  arena:    { '--gold':'#8a6030', '--gold2':'#c09050', '--bg':'#f5f0e8', '--surface':'#e8e0d0', '--text':'#1a1714', '--muted':'#7a7268', '--line':'rgba(0,0,0,0.1)' },
+}
+const FUENTES_TITULO = {
+  cormorant:   "'Cormorant Garamond', serif",
+  playfair:    "'Playfair Display', serif",
+  'dm-serif':  "'DM Serif Display', serif",
+  baskerville: "'Libre Baskerville', serif",
+  cinzel:      "'Cinzel', serif",
+  lora:        "'Lora', serif",
+}
+const FUENTES_CUERPO = {
+  montserrat: "'Montserrat', sans-serif",
+  raleway:    "'Raleway', sans-serif",
+  josefin:    "'Josefin Sans', sans-serif",
+  inter:      "'Inter', sans-serif",
+}
+
 function applyTema(tema) {
-  if (!tema || tema === 'clasico') return
-  document.body.classList.add(`tema-${tema}`)
+  let t = { paleta: 'clasico', titulo: 'cormorant', cuerpo: 'montserrat' }
+  if (tema) {
+    try { t = JSON.parse(tema) } catch(e) { t.paleta = tema } // fallback formato antiguo
+  }
+  const root = document.documentElement
+  const pal = PALETAS[t.paleta] || PALETAS.clasico
+  for (const [k, v] of Object.entries(pal)) root.style.setProperty(k, v)
+  root.style.setProperty('--font-serif', FUENTES_TITULO[t.titulo] || FUENTES_TITULO.cormorant)
+  root.style.setProperty('--font-sans',  FUENTES_CUERPO[t.cuerpo]  || FUENTES_CUERPO.montserrat)
 }
 
 // ── Init ─────────────────────────────────────────────────────────────
