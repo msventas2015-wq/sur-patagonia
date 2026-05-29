@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500&family=Raleway:wght@300;400;500&family=Josefin+Sans:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     /* ══ RESET & BASE ═══════════════════════════════════════════════════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -531,6 +532,18 @@
     .footer-back { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); transition: color 0.3s; }
     .footer-back:hover { color: var(--gold); }
 
+    /* ══ BROCHURE BTN ══════════════════════════════════════════════════ */
+    .btn-brochure {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      padding: 1.05rem 2.2rem; border: 1px solid rgba(201,168,76,0.4);
+      color: var(--gold); font-size: 0.65rem; letter-spacing: 0.22em;
+      text-transform: uppercase; cursor: pointer; background: transparent;
+      font-family: var(--font-sans); transition: background 0.3s, border-color 0.3s;
+    }
+    .btn-brochure:hover { background: rgba(201,168,76,0.08); border-color: var(--gold); }
+    .btn-brochure svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+    .btn-brochure.loading { opacity: 0.5; pointer-events: none; }
+
     /* ══ REVEAL ════════════════════════════════════════════════════════ */
     /* ══ KEN BURNS ══════════════════════════════════════════════════════ */
     @keyframes kenBurns { from { transform: scale(1); } to { transform: scale(1.08); } }
@@ -819,6 +832,10 @@
         <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
         Enviar email
       </a>
+      <button class="btn-brochure" id="btnBrochure" onclick="generarBrochure()">
+        <svg viewBox="0 0 24 24"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg>
+        Descargar Brochure
+      </button>
     </div>
     <div class="cta-form">
       <p>O escribinos directamente</p>
@@ -1030,6 +1047,10 @@ async function init() {
   const { data: lotes } = await supabase
     .from('lotes').select('*').eq('proyecto_id', p.id).order('numero')
   allLotes = lotes || []
+
+  // Guardar datos globalmente para el brochure PDF
+  window._proyectoData = p
+  window._lotesData = allLotes
 
   renderHero(p)
   renderAtmosfera(p)
@@ -1373,6 +1394,245 @@ function initAnimations() {
 }
 
 init()
+
+// ══ BROCHURE PDF ═════════════════════════════════════════════════════════
+window.generarBrochure = async function() {
+  const btn = document.getElementById('btnBrochure')
+  btn.classList.add('loading')
+  btn.textContent = 'Generando...'
+
+  try {
+    const { jsPDF } = window.jspdf
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const W = 210, H = 297
+
+    // ── Helpers de color ─────────────────────────────────────────────
+    const NEGRO   = [8, 8, 8]
+    const SURFACE = [17, 17, 17]
+    const GOLD    = [201, 168, 76]
+    const BLANCO  = [240, 237, 232]
+    const MUTED   = [136, 136, 128]
+    const LINE    = [255, 255, 255, 0.08]
+
+    function setFill(rgb)   { doc.setFillColor(rgb[0], rgb[1], rgb[2]) }
+    function setDraw(rgb)   { doc.setDrawColor(rgb[0], rgb[1], rgb[2]) }
+    function setTxt(rgb)    { doc.setTextColor(rgb[0], rgb[1], rgb[2]) }
+
+    // ── 1. Fondo negro total ─────────────────────────────────────────
+    setFill(NEGRO); doc.rect(0, 0, W, H, 'F')
+
+    // ── 2. Imagen de portada (foto_portada) ──────────────────────────
+    const fotoUrl = window._proyectoData?.foto_portada
+    let imgH = 90
+    if (fotoUrl) {
+      try {
+        const imgData = await fetchImageAsBase64(fotoUrl)
+        doc.addImage(imgData, 'JPEG', 0, 0, W, imgH)
+        // overlay oscuro sobre la foto
+        doc.setGState(new doc.GState({ opacity: 0.72 }))
+        setFill(NEGRO); doc.rect(0, 0, W, imgH, 'F')
+        doc.setGState(new doc.GState({ opacity: 1 }))
+      } catch(e) { imgH = 60 }
+    }
+
+    // ── 3. Línea dorada superior ─────────────────────────────────────
+    setDraw(GOLD); doc.setLineWidth(0.6)
+    doc.line(0, 0, W, 0)
+
+    // ── 4. Sur Patagonia brand (top-left sobre la foto) ──────────────
+    setTxt(GOLD)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.5)
+    doc.setCharSpace(2.5)
+    doc.text('SUR PATAGONIA', 12, 12)
+    doc.setCharSpace(1.2)
+    doc.setFontSize(5)
+    setTxt(MUTED)
+    doc.text('DESARROLLO INMOBILIARIO', 12, 17)
+
+    // ── 5. Nombre del proyecto ────────────────────────────────────────
+    const p = window._proyectoData || {}
+    const nombre = (p.nombre || 'Proyecto').toUpperCase()
+    setTxt(BLANCO)
+    doc.setFont('times', 'italic')
+    doc.setFontSize(32)
+    doc.setCharSpace(0)
+    doc.text(nombre, 12, imgH - 22)
+
+    // Localidad
+    const loc = [p.ciudad, p.provincia?.replace(/_/g,' ')].filter(Boolean).join(', ')
+    if (loc) {
+      setTxt(GOLD)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(6)
+      doc.setCharSpace(2)
+      doc.text(loc.toUpperCase(), 12, imgH - 13)
+    }
+
+    // ── 6. Línea dorada separadora ────────────────────────────────────
+    let y = imgH + 10
+    setDraw(GOLD); doc.setLineWidth(0.3)
+    doc.line(12, y, W - 12, y)
+    y += 10
+
+    // ── 7. Descripción ────────────────────────────────────────────────
+    if (p.descripcion) {
+      setTxt(MUTED)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7.5)
+      doc.setCharSpace(0)
+      const lines = doc.splitTextToSize(p.descripcion, W - 24)
+      const maxLines = Math.min(lines.length, 5)
+      doc.text(lines.slice(0, maxLines), 12, y)
+      y += maxLines * 4.5 + 8
+    }
+
+    // ── 8. Stats ──────────────────────────────────────────────────────
+    setFill(SURFACE); doc.rect(0, y - 4, W, 38, 'F')
+    const disp = window._lotesData?.filter(l => l.estado === 'disponible').length || 0
+    const statsData = []
+    if (p.hectareas_total) statsData.push({ v: p.hectareas_total + ' ha',                          l: 'Superficie total' })
+    if (p.cantidad_lotes)  statsData.push({ v: p.cantidad_lotes + ' lotes',                        l: 'Lotes en total'  })
+    if (disp > 0)          statsData.push({ v: disp + ' disponibles',                              l: 'Disponibles hoy' })
+    if (p.precio_desde)    statsData.push({ v: 'USD ' + Number(p.precio_desde).toLocaleString(),   l: 'Precio desde'    })
+    if (p.superficie_min && p.superficie_max) statsData.push({ v: p.superficie_min + '–' + p.superficie_max + ' m²', l: 'Superficies' })
+
+    const colW = (W - 24) / Math.max(statsData.length, 1)
+    statsData.forEach((s, i) => {
+      const x = 12 + i * colW
+      setTxt(GOLD)
+      doc.setFont('times', 'bold')
+      doc.setFontSize(15)
+      doc.text(s.v, x, y + 12)
+      setTxt(MUTED)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(5.5)
+      doc.setCharSpace(1.5)
+      doc.text(s.l.toUpperCase(), x, y + 19)
+      doc.setCharSpace(0)
+    })
+    y += 46
+
+    // ── 9. Servicios ──────────────────────────────────────────────────
+    const svcsKeys = Object.keys(p).filter(k => p[k] === true && SERVICIOS_LABELS[k])
+    if (svcsKeys.length > 0) {
+      setTxt(MUTED)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(5.5)
+      doc.setCharSpace(1.8)
+      doc.text('SERVICIOS E INFRAESTRUCTURA', 12, y)
+      doc.setCharSpace(0)
+      y += 6
+      setDraw([50, 50, 50]); doc.setLineWidth(0.15)
+      const svcsLabels = svcsKeys.map(k => SERVICIOS_LABELS[k]).join('   ·   ')
+      setTxt([160, 160, 155])
+      doc.setFontSize(6.5)
+      const svcLines = doc.splitTextToSize(svcsLabels, W - 24)
+      doc.text(svcLines.slice(0, 2), 12, y)
+      y += svcLines.slice(0, 2).length * 4 + 10
+    }
+
+    // ── 10. Línea separadora antes de contacto ────────────────────────
+    setDraw(GOLD); doc.setLineWidth(0.3)
+    doc.line(12, y, W - 12, y)
+    y += 12
+
+    // ── 11. Sección contacto ──────────────────────────────────────────
+    setTxt(GOLD)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6)
+    doc.setCharSpace(2.5)
+    doc.text('CONTACTO', 12, y)
+    doc.setCharSpace(0)
+    y += 8
+
+    // Teléfono
+    setTxt(BLANCO)
+    doc.setFont('times', 'normal')
+    doc.setFontSize(18)
+    const wspNum = SUR_WSP.replace('549', '+54 9 ').replace(/(\d{4})(\d{4})$/, '$1 $2')
+    doc.text(wspNum, 12, y + 6)
+
+    // Email
+    setTxt(MUTED)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.text(SUR_EMAIL, 12, y + 14)
+    y += 22
+
+    // ── 12. QR Codes ──────────────────────────────────────────────────
+    const qrSize = 36
+    const qrY = H - qrSize - 22
+
+    // QR WhatsApp
+    const wspMsg = encodeURIComponent(`Hola, me interesa ${p.nombre}. ¿Podemos hablar?`)
+    const wspLink = `https://wa.me/${SUR_WSP}?text=${wspMsg}`
+    try {
+      const qrWsp = await fetchQR(wspLink)
+      // fondo blanco para el QR
+      setFill([255,255,255]); doc.rect(12, qrY - 2, qrSize + 4, qrSize + 4, 'F')
+      doc.addImage(qrWsp, 'PNG', 14, qrY, qrSize, qrSize)
+      setTxt(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); doc.setCharSpace(1.2)
+      doc.text('WHATSAPP', 12 + (qrSize + 4)/2, qrY + qrSize + 8, { align: 'center' })
+    } catch(e) {}
+
+    // QR Mini-web
+    const miniwebUrl = `https://sur-patagonia.msventas2015.workers.dev/${p.slug || ''}`
+    try {
+      const qrWeb = await fetchQR(miniwebUrl)
+      const qrX2 = 12 + qrSize + 12
+      setFill([255,255,255]); doc.rect(qrX2 - 2, qrY - 2, qrSize + 4, qrSize + 4, 'F')
+      doc.addImage(qrWeb, 'PNG', qrX2, qrY, qrSize, qrSize)
+      setTxt(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); doc.setCharSpace(1.2)
+      doc.text('VER PROYECTO', qrX2 + (qrSize + 4)/2, qrY + qrSize + 8, { align: 'center' })
+      doc.setCharSpace(0)
+    } catch(e) {}
+
+    // ── 13. Footer ────────────────────────────────────────────────────
+    setFill(SURFACE); doc.rect(0, H - 14, W, 14, 'F')
+    setDraw(GOLD); doc.setLineWidth(0.4)
+    doc.line(0, H - 14, W, H - 14)
+    setTxt(MUTED)
+    doc.setFont('helvetica','normal'); doc.setFontSize(5); doc.setCharSpace(2)
+    doc.text('SUR PATAGONIA · TIERRA, NATURALEZA Y VISIÓN', W/2, H - 6, { align: 'center' })
+    doc.setCharSpace(0)
+
+    // ── Guardar ───────────────────────────────────────────────────────
+    const filename = (p.nombre || 'proyecto').toLowerCase().replace(/\s+/g, '-') + '-brochure.pdf'
+    doc.save(filename)
+
+  } catch(err) {
+    console.error('Brochure error:', err)
+    alert('Error al generar el PDF. Intentá de nuevo.')
+  } finally {
+    btn.classList.remove('loading')
+    btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg> Descargar Brochure'
+  }
+}
+
+// Mapa de labels para servicios
+const SERVICIOS_LABELS = {
+  agua_corriente:'Agua corriente', luz_electrica:'Luz eléctrica', gas_natural:'Gas natural',
+  cloaca:'Red cloacal', wifi:'Wi-Fi', porteria:'Portería 24hs', sum:'SUM',
+  parrillas:'Parrillas', senderos:'Senderos', muelle:'Acceso al agua',
+  playa:'Playa privada', cancha:'Cancha', piscina:'Piscina'
+}
+
+async function fetchImageAsBase64(url) {
+  const res = await fetch(url)
+  const blob = await res.blob()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function fetchQR(data) {
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}&color=000000&bgcolor=ffffff&margin=4`
+  return fetchImageAsBase64(url)
+}
 </script>
 </body>
 </html>
