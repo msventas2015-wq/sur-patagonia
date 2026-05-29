@@ -155,6 +155,26 @@
     .import-bar input[type="file"] { display: none; }
     .import-hint { font-size: 0.7rem; color: var(--gris-claro); margin-left: auto; }
 
+    /* ── Botón examinar / upload ──────────────────────── */
+    .btn-upload {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.55rem 1.2rem;
+      border: 1px solid var(--gris-oscuro);
+      background: var(--negro-3, #1a1a1a);
+      color: var(--texto);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      font-family: 'Montserrat', sans-serif;
+      white-space: nowrap;
+    }
+    .btn-upload:hover { border-color: var(--dorado); color: var(--dorado); }
+    .btn-upload.cargando { opacity: 0.6; pointer-events: none; }
+
     /* ── Foto upload preview ──────────────────────────── */
     .foto-grid {
       display: grid;
@@ -594,48 +614,76 @@
     <!-- ══ PANEL 5: MEDIA ════════════════════════════════════════════════ -->
     <div class="form-panel" id="panel-media">
 
+      <!-- Foto de portada -->
       <div class="form-bloque">
         <h4 class="form-bloque-titulo">Foto de portada (hero)</h4>
-        <div class="form-grid">
-          <div class="form-grupo form-full">
-            <label>URL de foto de portada *</label>
-            <input type="url" id="foto_portada" placeholder="https://..." oninput="previewPortada(this.value)" />
-          </div>
-          <div class="form-grupo form-full">
-            <div id="portadaPreview" style="display:none;max-width:400px;">
-              <img id="portadaImg" src="" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--gris-oscuro);" />
-            </div>
-          </div>
+        <input type="hidden" id="foto_portada" />
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <label class="btn-upload" for="portadaFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Examinar imagen
+          </label>
+          <input type="file" id="portadaFile" accept="image/*" style="display:none" onchange="subirPortada(this)" />
+          <span id="portadaStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin imagen cargada</span>
+        </div>
+        <div id="portadaPreview" style="display:none;margin-top:1rem;max-width:420px;">
+          <img id="portadaImg" src="" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--gris-oscuro);" />
         </div>
       </div>
 
+      <!-- Galería -->
       <div class="form-bloque">
         <h4 class="form-bloque-titulo">Galería de fotos</h4>
-        <p style="font-size:0.78rem;color:var(--gris-claro);margin-bottom:1rem;">
-          Pegá las URLs de las fotos del proyecto. Las URLs deben ser públicamente accesibles (Supabase Storage, Cloudinary, etc.)
-        </p>
-        <div id="galeriaFotos" class="foto-grid"></div>
-        <div style="display:flex;gap:0.8rem;align-items:center;margin-top:0.5rem;">
-          <input type="url" id="nuevaFotoUrl" placeholder="URL de foto..." style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();addFoto();}" />
-          <button class="btn-secundario" onclick="addFoto()">+ Agregar</button>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+          <label class="btn-upload" for="galeriaFiles">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Agregar fotos
+          </label>
+          <input type="file" id="galeriaFiles" accept="image/*" multiple style="display:none" onchange="subirGaleria(this)" />
+          <span id="galeriaStatus" style="font-size:0.75rem;color:var(--gris-claro);"></span>
         </div>
+        <div id="galeriaFotos" class="foto-grid"></div>
       </div>
 
+      <!-- Video y plano -->
       <div class="form-bloque">
         <h4 class="form-bloque-titulo">Video y plano</h4>
         <div class="form-grid">
+
           <div class="form-grupo form-full">
             <label>URL de video (YouTube o Vimeo)</label>
             <input type="url" id="video_url" placeholder="https://youtube.com/watch?v=..." />
           </div>
+
           <div class="form-grupo form-full">
-            <label>URL del masterplan (imagen PNG/JPG)</label>
-            <input type="url" id="masterplan_url" placeholder="https://..." />
+            <label>Plano / Masterplan (imagen)</label>
+            <input type="hidden" id="masterplan_url" />
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+              <label class="btn-upload" for="masterplanFile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Examinar imagen
+              </label>
+              <input type="file" id="masterplanFile" accept="image/*" style="display:none" onchange="subirMasterplan(this)" />
+              <span id="masterplanStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin archivo</span>
+            </div>
+            <div id="masterplanPreview" style="display:none;margin-top:0.8rem;max-width:420px;">
+              <img id="masterplanImg" src="" alt="" style="width:100%;height:auto;border:1px solid var(--gris-oscuro);" />
+            </div>
           </div>
+
           <div class="form-grupo form-full">
-            <label>URL del PDF brochure</label>
-            <input type="url" id="brochure_url" placeholder="https://..." />
+            <label>Brochure PDF</label>
+            <input type="hidden" id="brochure_url" />
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+              <label class="btn-upload" for="brochureFile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Examinar PDF
+              </label>
+              <input type="file" id="brochureFile" accept=".pdf" style="display:none" onchange="subirBrochure(this)" />
+              <span id="brochureStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin archivo</span>
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -950,25 +998,65 @@ CREATE POLICY "lotes_publicos" ON lotes
       this.options[this.selectedIndex].text.split('(')[0].trim()
   })
 
-  // ── Portada preview ────────────────────────────────────
-  window.previewPortada = function(url) {
-    if (url) {
+  // ── Upload a Supabase Storage ──────────────────────────
+  async function uploadFile(file, carpeta) {
+    const ext  = file.name.split('.').pop().toLowerCase()
+    const path = `${carpeta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
+    if (error) throw new Error(error.message)
+    const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
+    return data.publicUrl
+  }
+
+  // ── Foto de portada ────────────────────────────────────
+  window.subirPortada = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('portadaStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'portadas')
+      document.getElementById('foto_portada').value = url
       document.getElementById('portadaPreview').style.display = 'block'
       document.getElementById('portadaImg').src = url
-    } else {
-      document.getElementById('portadaPreview').style.display = 'none'
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
     }
+    btn.classList.remove('cargando')
+    input.value = ''
   }
 
   // ── Galería ────────────────────────────────────────────
   const fotosArr = []
-  window.addFoto = function() {
-    const url = document.getElementById('nuevaFotoUrl').value.trim()
-    if (!url) return
-    fotosArr.push(url)
+
+  window.subirGaleria = async function(input) {
+    const files = Array.from(input.files)
+    if (!files.length) return
+    const status = document.getElementById('galeriaStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    status.textContent = `Subiendo ${files.length} foto${files.length > 1 ? 's' : ''}...`
+    status.style.color = 'var(--gris-claro)'
+    let ok = 0
+    for (const file of files) {
+      try {
+        const url = await uploadFile(file, 'galeria')
+        fotosArr.push(url)
+        ok++
+      } catch(e) { /* skip */ }
+    }
     renderGaleria()
-    document.getElementById('nuevaFotoUrl').value = ''
+    status.textContent = `✓ ${ok} foto${ok !== 1 ? 's' : ''} cargada${ok !== 1 ? 's' : ''}`
+    status.style.color = '#4cc982'
+    btn.classList.remove('cargando')
+    input.value = ''
   }
+
   window.removeFoto = function(i) {
     fotosArr.splice(i, 1)
     renderGaleria()
@@ -981,6 +1069,50 @@ CREATE POLICY "lotes_publicos" ON lotes
         <button class="remove-foto" onclick="removeFoto(${i})">✕</button>
       </div>
     `).join('')
+  }
+
+  // ── Masterplan ─────────────────────────────────────────
+  window.subirMasterplan = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('masterplanStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'masterplans')
+      document.getElementById('masterplan_url').value = url
+      document.getElementById('masterplanPreview').style.display = 'block'
+      document.getElementById('masterplanImg').src = url
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
+    }
+    btn.classList.remove('cargando')
+    input.value = ''
+  }
+
+  // ── Brochure PDF ───────────────────────────────────────
+  window.subirBrochure = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('brochureStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'brochures')
+      document.getElementById('brochure_url').value = url
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
+    }
+    btn.classList.remove('cargando')
+    input.value = ''
   }
 
   // ── Lotes ──────────────────────────────────────────────
@@ -1186,8 +1318,27 @@ CREATE POLICY "lotes_publicos" ON lotes
     set('monto_reserva', p.monto_reserva); set('comision_pct', p.comision_pct)
     set('condiciones_venta', p.condiciones_venta)
     set('financiacion_banco', p.financiacion_banco); set('ajuste_precios', p.ajuste_precios)
-    set('foto_portada', p.foto_portada); previewPortada(p.foto_portada)
-    set('video_url', p.video_url); set('masterplan_url', p.masterplan_url); set('brochure_url', p.brochure_url)
+    // Fotos ya guardadas
+    if (p.foto_portada) {
+      document.getElementById('foto_portada').value = p.foto_portada
+      document.getElementById('portadaPreview').style.display = 'block'
+      document.getElementById('portadaImg').src = p.foto_portada
+      document.getElementById('portadaStatus').textContent = '✓ Imagen cargada'
+      document.getElementById('portadaStatus').style.color = '#4cc982'
+    }
+    set('video_url', p.video_url)
+    if (p.masterplan_url) {
+      document.getElementById('masterplan_url').value = p.masterplan_url
+      document.getElementById('masterplanPreview').style.display = 'block'
+      document.getElementById('masterplanImg').src = p.masterplan_url
+      document.getElementById('masterplanStatus').textContent = '✓ Plano cargado'
+      document.getElementById('masterplanStatus').style.color = '#4cc982'
+    }
+    if (p.brochure_url) {
+      document.getElementById('brochure_url').value = p.brochure_url
+      document.getElementById('brochureStatus').textContent = '✓ PDF cargado'
+      document.getElementById('brochureStatus').style.color = '#4cc982'
+    }
     set('dev_empresa', p.dev_empresa); set('dev_cuit', p.dev_cuit)
     set('dev_contacto_nombre', p.dev_contacto_nombre); set('dev_contacto_cargo', p.dev_contacto_cargo)
     set('dev_whatsapp', p.dev_whatsapp); set('dev_email', p.dev_email); set('dev_domicilio', p.dev_domicilio)
