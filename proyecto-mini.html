@@ -1396,7 +1396,7 @@ function initAnimations() {
 
 init()
 
-// ══ BROCHURE PDF — PALETA CLARA ══════════════════════════════════════════
+// ══ BROCHURE PDF ═════════════════════════════════════════════════════════
 window.generarBrochure = async function() {
   const btn = document.getElementById('btnBrochure')
   btn.classList.add('loading')
@@ -1410,82 +1410,67 @@ window.generarBrochure = async function() {
     const lotes = window._lotesData || []
 
     // ── Paleta clara ─────────────────────────────────────────────────
-    const BG      = [245, 240, 232]   // crema cálido
-    const SURFACE = [235, 229, 218]   // crema más oscuro
-    const DARK    = [28,  25,  20]    // carbón casi negro
-    const GOLD    = [180, 145, 55]    // dorado (un poco más oscuro sobre claro)
-    const MUTED   = [130, 122, 108]   // gris cálido
+    const BG      = [245, 240, 232]
+    const SURFACE = [235, 229, 218]
+    const DARK    = [28,  25,  20]
+    const MUTED   = [130, 122, 108]
     const WHITE   = [255, 255, 255]
+    const GOLD_C  = [201, 168, 76]
+    const SITE    = 'https://sur-patagonia.msventas2015.workers.dev'
 
-    const f = c => doc.setFillColor(c[0],c[1],c[2])
-    const d = c => doc.setDrawColor(c[0],c[1],c[2])
-    const t = c => doc.setTextColor(c[0],c[1],c[2])
+    const f  = c => doc.setFillColor(c[0],c[1],c[2])
+    const d  = c => doc.setDrawColor(c[0],c[1],c[2])
+    const t  = c => doc.setTextColor(c[0],c[1],c[2])
     const sp = n => doc.setCharSpace(n)
+    const gs = o => { try { doc.setGState(new doc.GState({ opacity: o })) } catch(e){} }
 
-    // ── Fondo general ────────────────────────────────────────────────
+    // ── Fondo general crema ───────────────────────────────────────────
     f(BG); doc.rect(0, 0, W, H, 'F')
 
-    // ══ HEADER ═══════════════════════════════════════════════════════
+    // ══ HEADER — crema, sin barra oscura ═════════════════════════════
     const hH = 26
-    f(DARK); doc.rect(0, 0, W, hH, 'F')
+    f(SURFACE); doc.rect(0, 0, W, hH, 'F')
 
-    // Picos SVG — 3 picos estilo marca Sur Patagonia
-    // Puntos normalizados [0..1] x [0..1] luego escalados a mm
-    const px = 12, py = 5, pw = 26, ph = 13
-    const pkPts = [
-      [0, 1], [0.18, 0.32], [0.30, 0.58], [0.50, 0.03],
-      [0.65, 0.46], [0.78, 0.24], [1.0, 1.0]
-    ]
-    // Primero punto como origen, resto como líneas relativas
-    const sx = px + pkPts[0][0]*pw, sy = py + pkPts[0][1]*ph
-    const lns = []
-    for (let i = 1; i < pkPts.length; i++) {
-      const ax = px + pkPts[i-1][0]*pw, ay = py + pkPts[i-1][1]*ph
-      const bx = px + pkPts[i][0]*pw,   by = py + pkPts[i][1]*ph
-      lns.push([bx-ax, by-ay])
-    }
-    f(GOLD); d(GOLD)
-    doc.lines(lns, sx, sy, [1,1], 'FD', true)
+    // logo picos.png real del sitio, al 68% de opacidad
+    try {
+      const picosData = await fetchImageAsBase64(SITE + '/picos.png')
+      gs(0.68)
+      doc.addImage(picosData, 'PNG', 11, 3, 18, 18)
+      gs(1)
+    } catch(e) {}
 
     // Texto marca
-    t([201,168,76])
+    t(GOLD_C)
     doc.setFont('helvetica','bold'); doc.setFontSize(11); sp(3.5)
-    doc.text('SUR PATAGONIA', px+pw+6, py+6)
+    doc.text('SUR PATAGONIA', 33, 11)
     sp(0)
     t(MUTED)
-    doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(2)
-    doc.text('DESARROLLO INMOBILIARIO', px+pw+6, py+11)
+    doc.setFont('helvetica','normal'); doc.setFontSize(4.8); sp(1.8)
+    doc.text('DESARROLLO INMOBILIARIO', 33, 16.5)
     sp(0)
-    t([150,140,120])
-    doc.setFontSize(5); sp(1)
-    doc.text('BROCHURE DE PROYECTO', px+pw+6, py+16)
+    t([150,142,128])
+    doc.setFontSize(4.5); sp(1.2)
+    doc.text('BROCHURE DE PROYECTO', 33, 21)
     sp(0)
 
     // Línea dorada inferior del header
-    d([201,168,76]); doc.setLineWidth(0.5)
+    d(GOLD_C); doc.setLineWidth(0.4)
     doc.line(0, hH, W, hH)
 
     // ══ FOTO HERO ════════════════════════════════════════════════════
     let y = hH
     const heroH = 72
     const fotoUrl = p.foto_portada
-    let heroOk = false
     if (fotoUrl) {
       try {
         const imgD = await fetchImageAsBase64(fotoUrl)
         doc.addImage(imgD, 'JPEG', 0, y, W, heroH)
-        heroOk = true
-        // overlay oscuro degradado al pie para texto legible
-        try {
-          doc.setGState(new doc.GState({ opacity: 0.52 }))
-          f([15,10,5]); doc.rect(0, y, W, heroH, 'F')
-          doc.setGState(new doc.GState({ opacity: 1 }))
-        } catch(e) {
-          f([15,10,5]); doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }))
-        }
-      } catch(e) {}
-    }
-    if (!heroOk) { f([40,35,28]); doc.rect(0, y, W, heroH, 'F') }
+      } catch(e) { f([35,30,22]); doc.rect(0, y, W, heroH, 'F') }
+    } else { f([35,30,22]); doc.rect(0, y, W, heroH, 'F') }
+    // overlay oscuro via canvas 1x1
+    const ov = document.createElement('canvas'); ov.width=1; ov.height=1
+    const oc2 = ov.getContext('2d'); oc2.fillStyle='rgba(8,5,2,0.50)'; oc2.fillRect(0,0,1,1)
+    doc.addImage(ov.toDataURL(), 'PNG', 0, y, W, heroH)
 
     // Nombre del proyecto sobre la foto
     const nombre = p.nombre || 'Proyecto'
@@ -1512,7 +1497,7 @@ window.generarBrochure = async function() {
     } else { y += 8 }
 
     // Línea dorada
-    d([201,168,76]); doc.setLineWidth(0.35)
+    d(GOLD_C); doc.setLineWidth(0.35)
     doc.line(14, y, W-14, y)
     y += 2
 
@@ -1521,7 +1506,7 @@ window.generarBrochure = async function() {
     y += 8
 
     // Título sección izquierda
-    t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+    t(GOLD_C); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
     doc.text('DATOS DEL DESARROLLO', 14, y)
     sp(0)
 
@@ -1553,11 +1538,16 @@ window.generarBrochure = async function() {
 
     // Columna derecha — servicios
     const svcsKeys = Object.keys(p).filter(k => p[k] === true && SERVICIOS_LABELS[k])
-    svcsKeys.slice(0,7).forEach((k, i) => {
-      const sy2 = y + i * 6.2
-      t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(7); sp(0)
-      doc.text('· ' + SERVICIOS_LABELS[k], W/2+8, sy2)
-    })
+    if (svcsKeys.length > 0) {
+      svcsKeys.slice(0,7).forEach((k, i) => {
+        const sy2 = y + i * 6.2
+        t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); sp(0)
+        doc.text('· ' + SERVICIOS_LABELS[k], W/2+8, sy2)
+      })
+    } else {
+      t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(6.5); sp(0)
+      doc.text('Consultá servicios disponibles', W/2+8, y + 4)
+    }
 
     y += 47
 
@@ -1577,11 +1567,11 @@ window.generarBrochure = async function() {
     }
 
     // ══ DISPONIBILIDAD DE LOTES ══════════════════════════════════════
-    d([201,168,76]); doc.setLineWidth(0.35)
+    d(GOLD_C); doc.setLineWidth(0.35)
     doc.line(14, y, W-14, y)
     y += 8
 
-    t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+    t(GOLD_C); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
     doc.text('DISPONIBILIDAD DE LOTES', 14, y)
     sp(0)
     y += 7
@@ -1602,7 +1592,7 @@ window.generarBrochure = async function() {
       const ry = y + i*6
       if (i%2===0) { f(SURFACE); doc.rect(14, ry, W-28, 6, 'F') }
       t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(6.5)
-      doc.text(String(l.numero||i+1), 18, ry+4)
+      doc.text(String(l.numero != null ? l.numero : i+1), 18, ry+4)
       doc.text(l.superficie ? l.superficie+' m²' : '—', 42, ry+4)
       doc.text(l.precio ? 'USD '+Number(l.precio).toLocaleString() : '—', 90, ry+4)
       const ec = colores[l.estado]||[120,120,120]
@@ -1613,11 +1603,11 @@ window.generarBrochure = async function() {
     y += maxL*6 + 8
 
     // ══ CONTACTO + QR ════════════════════════════════════════════════
-    d([201,168,76]); doc.setLineWidth(0.35)
+    d(GOLD_C); doc.setLineWidth(0.35)
     doc.line(14, y, W-14, y)
     y += 8
 
-    t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+    t(GOLD_C); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
     doc.text('CONTACTO', 14, y)
     sp(0)
     y += 7
@@ -1652,36 +1642,27 @@ window.generarBrochure = async function() {
 
     y += qrSz + 14
 
-    // ══ IMAGEN PATAGONIA — pie de página ════════════════════════════
-    const pieH = 30
-    const pieY = H - pieH - 14
-    if (pieY > y) {
-      // Usamos segunda foto de galería (diferente a la portada) o la portada de nuevo
-      const galFotos = window._galeria || []
-      const ambUrl = galFotos.find(u => u !== fotoUrl) || fotoUrl
-      if (ambUrl) {
+    // ══ GALERÍA — tira de fotos chicas cubriendo el ancho ════════════
+    const galFotos = (window._galeria || []).filter(u => u)
+    const galH = 32
+    const galY = H - galH - 12
+    if (galFotos.length > 0 && galY > y + 5) {
+      d(GOLD_C); doc.setLineWidth(0.3); doc.line(0, galY, W, galY)
+      const nFotos = Math.min(galFotos.length, 6)
+      const fw = W / nFotos
+      for (let i = 0; i < nFotos; i++) {
         try {
-          const ambImg = await fetchImageAsBase64(ambUrl)
-          doc.addImage(ambImg, 'JPEG', 0, pieY, W, pieH)
-          // overlay crema suave 20%
-          try {
-            doc.setGState(new doc.GState({ opacity: 0.20 }))
-            f(BG); doc.rect(0, pieY, W, pieH, 'F')
-            doc.setGState(new doc.GState({ opacity: 1 }))
-          } catch(e) {}
-          // Frase Patagonia sobre la imagen
-          t(WHITE); doc.setFont('times','italic'); doc.setFontSize(9); sp(0.3)
-          doc.text('Vivir en la Patagonia es elegir lo extraordinario.', W/2, pieY+pieH/2+4, { align:'center' })
-          sp(0)
+          const gi = await fetchImageAsBase64(galFotos[i])
+          doc.addImage(gi, 'JPEG', i * fw, galY, fw, galH)
         } catch(e) {}
       }
     }
 
     // ══ FOOTER ═══════════════════════════════════════════════════════
-    f(DARK); doc.rect(0, H-14, W, 14, 'F')
-    d([201,168,76]); doc.setLineWidth(0.5); doc.line(0, H-14, W, H-14)
-    t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(2.5)
-    doc.text('SUR PATAGONIA  ·  TIERRA, NATURALEZA Y VISIÓN', W/2, H-6, { align:'center' })
+    f(DARK); doc.rect(0, H-12, W, 12, 'F')
+    d(GOLD_C); doc.setLineWidth(0.4); doc.line(0, H-12, W, H-12)
+    t(GOLD_C); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(2.5)
+    doc.text('SUR PATAGONIA  ·  TIERRA, NATURALEZA Y VISIÓN', W/2, H-5, { align:'center' })
     sp(0)
 
     // Guardar
@@ -1705,6 +1686,7 @@ const SERVICIOS_LABELS = {
   playa:'Playa privada', cancha:'Cancha', piscina:'Piscina'
 }
 
+// Carga imagen como base64 (raw)
 async function fetchImageAsBase64(url) {
   const res = await fetch(url)
   const blob = await res.blob()
@@ -1716,8 +1698,54 @@ async function fetchImageAsBase64(url) {
   })
 }
 
+// Carga y recorta imagen como "cover" en canvas — evita deformación
+async function loadImageCover(url, targetWmm, targetHmm, dpi = 150) {
+  const twPx = Math.round(targetWmm * dpi / 25.4)
+  const thPx = Math.round(targetHmm * dpi / 25.4)
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = twPx; canvas.height = thPx
+      const ctx = canvas.getContext('2d')
+      const scale = Math.max(twPx / img.width, thPx / img.height)
+      const sw = twPx / scale, sh = thPx / scale
+      const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, twPx, thPx)
+      resolve(canvas.toDataURL('image/jpeg', 0.92))
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
+// Dibuja los picos Sur Patagonia en canvas y retorna base64
+function drawPicosSVG(fillColor = '#b49137', w = 300, h = 130) {
+  const canvas = document.createElement('canvas')
+  canvas.width = w; canvas.height = h
+  const ctx = canvas.getContext('2d')
+  // Puntos: 3 picos, el central el más alto, izquierdo más bajo, derecho intermedio
+  const pts = [
+    [0,   h],        // base izq
+    [0.18*w, 0.30*h], // pico izquierdo
+    [0.30*w, 0.58*h], // valle izq-centro
+    [0.50*w, 0.02*h], // pico central (más alto)
+    [0.65*w, 0.46*h], // valle centro-der
+    [0.78*w, 0.22*h], // pico derecho
+    [w,   h]         // base der
+  ]
+  ctx.beginPath()
+  ctx.moveTo(pts[0][0], pts[0][1])
+  pts.slice(1).forEach(([x,y]) => ctx.lineTo(x,y))
+  ctx.closePath()
+  ctx.fillStyle = fillColor
+  ctx.fill()
+  return canvas.toDataURL('image/png')
+}
+
 async function fetchQR(data) {
-  const url = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data)}&color=1c1914&bgcolor=ffffff&margin=4`
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}&color=1c1914&bgcolor=ffffff&margin=6`
   return fetchImageAsBase64(url)
 }
 </script>
