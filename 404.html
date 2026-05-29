@@ -1051,6 +1051,7 @@ async function init() {
   // Guardar datos globalmente para el brochure PDF
   window._proyectoData = p
   window._lotesData = allLotes
+  window._galeria = p.fotos || []
 
   renderHero(p)
   renderAtmosfera(p)
@@ -1395,7 +1396,7 @@ function initAnimations() {
 
 init()
 
-// ══ BROCHURE PDF ═════════════════════════════════════════════════════════
+// ══ BROCHURE PDF — PALETA CLARA ══════════════════════════════════════════
 window.generarBrochure = async function() {
   const btn = document.getElementById('btnBrochure')
   btn.classList.add('loading')
@@ -1405,201 +1406,287 @@ window.generarBrochure = async function() {
     const { jsPDF } = window.jspdf
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const W = 210, H = 297
+    const p = window._proyectoData || {}
+    const lotes = window._lotesData || []
 
-    // ── Helpers de color ─────────────────────────────────────────────
-    const NEGRO   = [8, 8, 8]
-    const SURFACE = [17, 17, 17]
-    const GOLD    = [201, 168, 76]
-    const BLANCO  = [240, 237, 232]
-    const MUTED   = [136, 136, 128]
-    const LINE    = [255, 255, 255, 0.08]
+    // ── Paleta clara ─────────────────────────────────────────────────
+    const BG      = [245, 240, 232]   // crema cálido
+    const SURFACE = [235, 229, 218]   // crema más oscuro
+    const DARK    = [28,  25,  20]    // carbón casi negro
+    const GOLD    = [180, 145, 55]    // dorado (un poco más oscuro sobre claro)
+    const MUTED   = [130, 122, 108]   // gris cálido
+    const WHITE   = [255, 255, 255]
 
-    function setFill(rgb)   { doc.setFillColor(rgb[0], rgb[1], rgb[2]) }
-    function setDraw(rgb)   { doc.setDrawColor(rgb[0], rgb[1], rgb[2]) }
-    function setTxt(rgb)    { doc.setTextColor(rgb[0], rgb[1], rgb[2]) }
+    const f = c => doc.setFillColor(c[0],c[1],c[2])
+    const d = c => doc.setDrawColor(c[0],c[1],c[2])
+    const t = c => doc.setTextColor(c[0],c[1],c[2])
+    const sp = n => doc.setCharSpace(n)
 
-    // ── 1. Fondo negro total ─────────────────────────────────────────
-    setFill(NEGRO); doc.rect(0, 0, W, H, 'F')
+    // ── Fondo general ────────────────────────────────────────────────
+    f(BG); doc.rect(0, 0, W, H, 'F')
 
-    // ── 2. Imagen de portada (foto_portada) ──────────────────────────
-    const fotoUrl = window._proyectoData?.foto_portada
-    let imgH = 90
+    // ══ HEADER ═══════════════════════════════════════════════════════
+    const hH = 26
+    f(DARK); doc.rect(0, 0, W, hH, 'F')
+
+    // Picos SVG — 3 picos estilo marca Sur Patagonia
+    // Puntos normalizados [0..1] x [0..1] luego escalados a mm
+    const px = 12, py = 5, pw = 26, ph = 13
+    const pkPts = [
+      [0, 1], [0.18, 0.32], [0.30, 0.58], [0.50, 0.03],
+      [0.65, 0.46], [0.78, 0.24], [1.0, 1.0]
+    ]
+    // Primero punto como origen, resto como líneas relativas
+    const sx = px + pkPts[0][0]*pw, sy = py + pkPts[0][1]*ph
+    const lns = []
+    for (let i = 1; i < pkPts.length; i++) {
+      const ax = px + pkPts[i-1][0]*pw, ay = py + pkPts[i-1][1]*ph
+      const bx = px + pkPts[i][0]*pw,   by = py + pkPts[i][1]*ph
+      lns.push([bx-ax, by-ay])
+    }
+    f(GOLD); d(GOLD)
+    doc.lines(lns, sx, sy, [1,1], 'FD', true)
+
+    // Texto marca
+    t([201,168,76])
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); sp(3.5)
+    doc.text('SUR PATAGONIA', px+pw+6, py+6)
+    sp(0)
+    t(MUTED)
+    doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(2)
+    doc.text('DESARROLLO INMOBILIARIO', px+pw+6, py+11)
+    sp(0)
+    t([150,140,120])
+    doc.setFontSize(5); sp(1)
+    doc.text('BROCHURE DE PROYECTO', px+pw+6, py+16)
+    sp(0)
+
+    // Línea dorada inferior del header
+    d([201,168,76]); doc.setLineWidth(0.5)
+    doc.line(0, hH, W, hH)
+
+    // ══ FOTO HERO ════════════════════════════════════════════════════
+    let y = hH
+    const heroH = 72
+    const fotoUrl = p.foto_portada
+    let heroOk = false
     if (fotoUrl) {
       try {
-        const imgData = await fetchImageAsBase64(fotoUrl)
-        doc.addImage(imgData, 'JPEG', 0, 0, W, imgH)
-        // overlay oscuro sobre la foto
-        doc.setGState(new doc.GState({ opacity: 0.72 }))
-        setFill(NEGRO); doc.rect(0, 0, W, imgH, 'F')
-        doc.setGState(new doc.GState({ opacity: 1 }))
-      } catch(e) { imgH = 60 }
+        const imgD = await fetchImageAsBase64(fotoUrl)
+        doc.addImage(imgD, 'JPEG', 0, y, W, heroH)
+        heroOk = true
+        // overlay oscuro degradado al pie para texto legible
+        try {
+          doc.setGState(new doc.GState({ opacity: 0.52 }))
+          f([15,10,5]); doc.rect(0, y, W, heroH, 'F')
+          doc.setGState(new doc.GState({ opacity: 1 }))
+        } catch(e) {
+          f([15,10,5]); doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }))
+        }
+      } catch(e) {}
     }
+    if (!heroOk) { f([40,35,28]); doc.rect(0, y, W, heroH, 'F') }
 
-    // ── 3. Línea dorada superior ─────────────────────────────────────
-    setDraw(GOLD); doc.setLineWidth(0.6)
-    doc.line(0, 0, W, 0)
-
-    // ── 4. Sur Patagonia brand (top-left sobre la foto) ──────────────
-    setTxt(GOLD)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6.5)
-    doc.setCharSpace(2.5)
-    doc.text('SUR PATAGONIA', 12, 12)
-    doc.setCharSpace(1.2)
-    doc.setFontSize(5)
-    setTxt(MUTED)
-    doc.text('DESARROLLO INMOBILIARIO', 12, 17)
-
-    // ── 5. Nombre del proyecto ────────────────────────────────────────
-    const p = window._proyectoData || {}
-    const nombre = (p.nombre || 'Proyecto').toUpperCase()
-    setTxt(BLANCO)
-    doc.setFont('times', 'italic')
-    doc.setFontSize(32)
-    doc.setCharSpace(0)
-    doc.text(nombre, 12, imgH - 22)
+    // Nombre del proyecto sobre la foto
+    const nombre = p.nombre || 'Proyecto'
+    t(WHITE)
+    doc.setFont('times','italic'); doc.setFontSize(34); sp(0)
+    doc.text(nombre, 14, y + heroH - 20)
 
     // Localidad
     const loc = [p.ciudad, p.provincia?.replace(/_/g,' ')].filter(Boolean).join(', ')
     if (loc) {
-      setTxt(GOLD)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(6)
-      doc.setCharSpace(2)
-      doc.text(loc.toUpperCase(), 12, imgH - 13)
+      t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(6.5); sp(2.5)
+      doc.text(loc.toUpperCase(), 14, y + heroH - 10)
+      sp(0)
     }
 
-    // ── 6. Línea dorada separadora ────────────────────────────────────
-    let y = imgH + 10
-    setDraw(GOLD); doc.setLineWidth(0.3)
-    doc.line(12, y, W - 12, y)
-    y += 10
+    y += heroH + 2
 
-    // ── 7. Descripción ────────────────────────────────────────────────
+    // ══ DESCRIPCIÓN ══════════════════════════════════════════════════
     if (p.descripcion) {
-      setTxt(MUTED)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7.5)
-      doc.setCharSpace(0)
-      const lines = doc.splitTextToSize(p.descripcion, W - 24)
-      const maxLines = Math.min(lines.length, 5)
-      doc.text(lines.slice(0, maxLines), 12, y)
-      y += maxLines * 4.5 + 8
-    }
+      t(MUTED); doc.setFont('times','italic'); doc.setFontSize(8.5); sp(0)
+      const dLines = doc.splitTextToSize(p.descripcion, W - 28)
+      doc.text(dLines.slice(0,3), 14, y + 7)
+      y += dLines.slice(0,3).length * 5 + 10
+    } else { y += 8 }
 
-    // ── 8. Stats ──────────────────────────────────────────────────────
-    setFill(SURFACE); doc.rect(0, y - 4, W, 38, 'F')
-    const disp = window._lotesData?.filter(l => l.estado === 'disponible').length || 0
-    const statsData = []
-    if (p.hectareas_total) statsData.push({ v: p.hectareas_total + ' ha',                          l: 'Superficie total' })
-    if (p.cantidad_lotes)  statsData.push({ v: p.cantidad_lotes + ' lotes',                        l: 'Lotes en total'  })
-    if (disp > 0)          statsData.push({ v: disp + ' disponibles',                              l: 'Disponibles hoy' })
-    if (p.precio_desde)    statsData.push({ v: 'USD ' + Number(p.precio_desde).toLocaleString(),   l: 'Precio desde'    })
-    if (p.superficie_min && p.superficie_max) statsData.push({ v: p.superficie_min + '–' + p.superficie_max + ' m²', l: 'Superficies' })
+    // Línea dorada
+    d([201,168,76]); doc.setLineWidth(0.35)
+    doc.line(14, y, W-14, y)
+    y += 2
 
-    const colW = (W - 24) / Math.max(statsData.length, 1)
-    statsData.forEach((s, i) => {
-      const x = 12 + i * colW
-      setTxt(GOLD)
-      doc.setFont('times', 'bold')
-      doc.setFontSize(15)
-      doc.text(s.v, x, y + 12)
-      setTxt(MUTED)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(5.5)
-      doc.setCharSpace(1.5)
-      doc.text(s.l.toUpperCase(), x, y + 19)
-      doc.setCharSpace(0)
-    })
-    y += 46
-
-    // ── 9. Servicios ──────────────────────────────────────────────────
-    const svcsKeys = Object.keys(p).filter(k => p[k] === true && SERVICIOS_LABELS[k])
-    if (svcsKeys.length > 0) {
-      setTxt(MUTED)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(5.5)
-      doc.setCharSpace(1.8)
-      doc.text('SERVICIOS E INFRAESTRUCTURA', 12, y)
-      doc.setCharSpace(0)
-      y += 6
-      setDraw([50, 50, 50]); doc.setLineWidth(0.15)
-      const svcsLabels = svcsKeys.map(k => SERVICIOS_LABELS[k]).join('   ·   ')
-      setTxt([160, 160, 155])
-      doc.setFontSize(6.5)
-      const svcLines = doc.splitTextToSize(svcsLabels, W - 24)
-      doc.text(svcLines.slice(0, 2), 12, y)
-      y += svcLines.slice(0, 2).length * 4 + 10
-    }
-
-    // ── 10. Línea separadora antes de contacto ────────────────────────
-    setDraw(GOLD); doc.setLineWidth(0.3)
-    doc.line(12, y, W - 12, y)
-    y += 12
-
-    // ── 11. Sección contacto ──────────────────────────────────────────
-    setTxt(GOLD)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6)
-    doc.setCharSpace(2.5)
-    doc.text('CONTACTO', 12, y)
-    doc.setCharSpace(0)
+    // ══ INFO DEL DESARROLLO ══════════════════════════════════════════
+    f(SURFACE); doc.rect(0, y, W, 55, 'F')
     y += 8
 
-    // Teléfono
-    setTxt(BLANCO)
-    doc.setFont('times', 'normal')
-    doc.setFontSize(18)
-    const wspNum = SUR_WSP.replace('549', '+54 9 ').replace(/(\d{4})(\d{4})$/, '$1 $2')
-    doc.text(wspNum, 12, y + 6)
+    // Título sección izquierda
+    t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+    doc.text('DATOS DEL DESARROLLO', 14, y)
+    sp(0)
 
-    // Email
-    setTxt(MUTED)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7)
-    doc.text(SUR_EMAIL, 12, y + 14)
-    y += 22
+    // Título sección derecha
+    t([201,168,76]); doc.setFontSize(5.5); sp(2.2)
+    doc.text('SERVICIOS', W/2+8, y)
+    sp(0)
+    y += 8
 
-    // ── 12. QR Codes ──────────────────────────────────────────────────
-    const qrSize = 36
-    const qrY = H - qrSize - 22
+    // Columna izquierda — datos clave
+    const dataItems = []
+    if (p.tipo_propiedad)  dataItems.push(['Tipo de propiedad',  p.tipo_propiedad])
+    if (p.hectareas_total) dataItems.push(['Superficie total',   p.hectareas_total + ' hectáreas'])
+    if (p.cantidad_lotes)  dataItems.push(['Lotes totales',      p.cantidad_lotes + ' lotes'])
+    const disp = lotes.filter(l => l.estado === 'disponible').length
+    if (disp > 0)          dataItems.push(['Disponibles hoy',   disp + ' lotes'])
+    if (p.precio_desde)    dataItems.push(['Precio desde',       'USD ' + Number(p.precio_desde).toLocaleString()])
+    if (p.superficie_min && p.superficie_max)
+                           dataItems.push(['Superficies',        p.superficie_min + ' – ' + p.superficie_max + ' m²'])
 
-    // QR WhatsApp
-    const wspMsg = encodeURIComponent(`Hola, me interesa ${p.nombre}. ¿Podemos hablar?`)
-    const wspLink = `https://wa.me/${SUR_WSP}?text=${wspMsg}`
-    try {
-      const qrWsp = await fetchQR(wspLink)
-      // fondo blanco para el QR
-      setFill([255,255,255]); doc.rect(12, qrY - 2, qrSize + 4, qrSize + 4, 'F')
-      doc.addImage(qrWsp, 'PNG', 14, qrY, qrSize, qrSize)
-      setTxt(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); doc.setCharSpace(1.2)
-      doc.text('WHATSAPP', 12 + (qrSize + 4)/2, qrY + qrSize + 8, { align: 'center' })
-    } catch(e) {}
+    dataItems.forEach((item, i) => {
+      const iy = y + i * 7.2
+      t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5.2); sp(1.2)
+      doc.text(item[0].toUpperCase(), 14, iy)
+      sp(0)
+      t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
+      doc.text(item[1], 14, iy + 4.5)
+    })
 
-    // QR Mini-web
-    const miniwebUrl = `https://sur-patagonia.msventas2015.workers.dev/${p.slug || ''}`
-    try {
-      const qrWeb = await fetchQR(miniwebUrl)
-      const qrX2 = 12 + qrSize + 12
-      setFill([255,255,255]); doc.rect(qrX2 - 2, qrY - 2, qrSize + 4, qrSize + 4, 'F')
-      doc.addImage(qrWeb, 'PNG', qrX2, qrY, qrSize, qrSize)
-      setTxt(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); doc.setCharSpace(1.2)
-      doc.text('VER PROYECTO', qrX2 + (qrSize + 4)/2, qrY + qrSize + 8, { align: 'center' })
-      doc.setCharSpace(0)
-    } catch(e) {}
+    // Columna derecha — servicios
+    const svcsKeys = Object.keys(p).filter(k => p[k] === true && SERVICIOS_LABELS[k])
+    svcsKeys.slice(0,7).forEach((k, i) => {
+      const sy2 = y + i * 6.2
+      t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(7); sp(0)
+      doc.text('· ' + SERVICIOS_LABELS[k], W/2+8, sy2)
+    })
 
-    // ── 13. Footer ────────────────────────────────────────────────────
-    setFill(SURFACE); doc.rect(0, H - 14, W, 14, 'F')
-    setDraw(GOLD); doc.setLineWidth(0.4)
-    doc.line(0, H - 14, W, H - 14)
-    setTxt(MUTED)
-    doc.setFont('helvetica','normal'); doc.setFontSize(5); doc.setCharSpace(2)
-    doc.text('SUR PATAGONIA · TIERRA, NATURALEZA Y VISIÓN', W/2, H - 6, { align: 'center' })
-    doc.setCharSpace(0)
+    y += 47
 
-    // ── Guardar ───────────────────────────────────────────────────────
-    const filename = (p.nombre || 'proyecto').toLowerCase().replace(/\s+/g, '-') + '-brochure.pdf'
-    doc.save(filename)
+    // Financiación — banda separada
+    if (p.financiacion) {
+      d([201,168,76]); doc.setLineWidth(0.25)
+      doc.line(14, y, W-14, y)
+      y += 5
+      t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2)
+      doc.text('FINANCIACIÓN', 14, y)
+      sp(0)
+      y += 5
+      t(DARK); doc.setFont('times','normal'); doc.setFontSize(8.5)
+      const finLines = doc.splitTextToSize(p.financiacion, W - 28)
+      doc.text(finLines.slice(0,2), 14, y)
+      y += finLines.slice(0,2).length * 5 + 5
+    }
+
+    // ══ DISPONIBILIDAD DE LOTES ══════════════════════════════════════
+    d([201,168,76]); doc.setLineWidth(0.35)
+    doc.line(14, y, W-14, y)
+    y += 8
+
+    t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+    doc.text('DISPONIBILIDAD DE LOTES', 14, y)
+    sp(0)
+    y += 7
+
+    // Encabezado tabla
+    f(DARK); doc.rect(14, y, W-28, 6.5, 'F')
+    t(WHITE); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(1)
+    doc.text('N°',   18, y+4.5)
+    doc.text('SUPERFICIE', 42, y+4.5)
+    doc.text('PRECIO USD',  90, y+4.5)
+    doc.text('ESTADO',     150, y+4.5)
+    sp(0)
+    y += 6.5
+
+    const colores = { disponible:[50,130,70], reservado:[190,130,20], vendido:[170,50,50] }
+    const maxL = Math.min(lotes.length, 14)
+    lotes.slice(0,maxL).forEach((l,i) => {
+      const ry = y + i*6
+      if (i%2===0) { f(SURFACE); doc.rect(14, ry, W-28, 6, 'F') }
+      t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(6.5)
+      doc.text(String(l.numero||i+1), 18, ry+4)
+      doc.text(l.superficie ? l.superficie+' m²' : '—', 42, ry+4)
+      doc.text(l.precio ? 'USD '+Number(l.precio).toLocaleString() : '—', 90, ry+4)
+      const ec = colores[l.estado]||[120,120,120]
+      doc.setTextColor(ec[0],ec[1],ec[2])
+      doc.setFont('helvetica','bold'); doc.setFontSize(5.5)
+      doc.text((l.estado||'').toUpperCase(), 150, ry+4)
+    })
+    y += maxL*6 + 8
+
+    // ══ CONTACTO + QR ════════════════════════════════════════════════
+    d([201,168,76]); doc.setLineWidth(0.35)
+    doc.line(14, y, W-14, y)
+    y += 8
+
+    t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+    doc.text('CONTACTO', 14, y)
+    sp(0)
+    y += 7
+
+    const wspNum = SUR_WSP.replace(/^549/,'+54 9 ').replace(/(\d{4})(\d{4})$/,'$1 $2')
+    t(DARK); doc.setFont('times','normal'); doc.setFontSize(16)
+    doc.text(wspNum, 14, y+6)
+    t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(7)
+    doc.text(SUR_EMAIL, 14, y+13)
+
+    // QR codes — pequeños, esquina derecha
+    const qrSz = 20
+    const qrY2 = y
+    const wspMsg2 = encodeURIComponent(`Hola, me interesa ${p.nombre}. ¿Podemos hablar?`)
+    const wspLink2 = `https://wa.me/${SUR_WSP}?text=${wspMsg2}`
+    const webUrl2  = `https://sur-patagonia.msventas2015.workers.dev/${p.slug||''}`
+
+    for (const [link, label, qx] of [
+      [wspLink2, 'WHATSAPP',    W-14-qrSz*2-10],
+      [webUrl2,  'VER PROYECTO', W-14-qrSz]
+    ]) {
+      try {
+        const qrImg = await fetchQR(link)
+        f(WHITE); doc.rect(qx-2, qrY2-2, qrSz+4, qrSz+4, 'F')
+        d([210,205,198]); doc.setLineWidth(0.2); doc.rect(qx-2, qrY2-2, qrSz+4, qrSz+4, 'S')
+        doc.addImage(qrImg, 'PNG', qx, qrY2, qrSz, qrSz)
+        t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.8); sp(1)
+        doc.text(label, qx+(qrSz/2), qrY2+qrSz+5.5, { align:'center' })
+        sp(0)
+      } catch(e) {}
+    }
+
+    y += qrSz + 14
+
+    // ══ IMAGEN PATAGONIA — pie de página ════════════════════════════
+    const pieH = 30
+    const pieY = H - pieH - 14
+    if (pieY > y) {
+      // Usamos segunda foto de galería (diferente a la portada) o la portada de nuevo
+      const galFotos = window._galeria || []
+      const ambUrl = galFotos.find(u => u !== fotoUrl) || fotoUrl
+      if (ambUrl) {
+        try {
+          const ambImg = await fetchImageAsBase64(ambUrl)
+          doc.addImage(ambImg, 'JPEG', 0, pieY, W, pieH)
+          // overlay crema suave 20%
+          try {
+            doc.setGState(new doc.GState({ opacity: 0.20 }))
+            f(BG); doc.rect(0, pieY, W, pieH, 'F')
+            doc.setGState(new doc.GState({ opacity: 1 }))
+          } catch(e) {}
+          // Frase Patagonia sobre la imagen
+          t(WHITE); doc.setFont('times','italic'); doc.setFontSize(9); sp(0.3)
+          doc.text('Vivir en la Patagonia es elegir lo extraordinario.', W/2, pieY+pieH/2+4, { align:'center' })
+          sp(0)
+        } catch(e) {}
+      }
+    }
+
+    // ══ FOOTER ═══════════════════════════════════════════════════════
+    f(DARK); doc.rect(0, H-14, W, 14, 'F')
+    d([201,168,76]); doc.setLineWidth(0.5); doc.line(0, H-14, W, H-14)
+    t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(2.5)
+    doc.text('SUR PATAGONIA  ·  TIERRA, NATURALEZA Y VISIÓN', W/2, H-6, { align:'center' })
+    sp(0)
+
+    // Guardar
+    const fname = (p.nombre||'proyecto').toLowerCase().replace(/\s+/g,'-')+'-brochure.pdf'
+    doc.save(fname)
 
   } catch(err) {
     console.error('Brochure error:', err)
@@ -1610,7 +1697,7 @@ window.generarBrochure = async function() {
   }
 }
 
-// Mapa de labels para servicios
+// Labels servicios
 const SERVICIOS_LABELS = {
   agua_corriente:'Agua corriente', luz_electrica:'Luz eléctrica', gas_natural:'Gas natural',
   cloaca:'Red cloacal', wifi:'Wi-Fi', porteria:'Portería 24hs', sum:'SUM',
@@ -1630,7 +1717,7 @@ async function fetchImageAsBase64(url) {
 }
 
 async function fetchQR(data) {
-  const url = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}&color=000000&bgcolor=ffffff&margin=4`
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data)}&color=1c1914&bgcolor=ffffff&margin=4`
   return fetchImageAsBase64(url)
 }
 </script>
