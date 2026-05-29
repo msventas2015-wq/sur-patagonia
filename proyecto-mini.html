@@ -37,6 +37,32 @@
     a { color: inherit; text-decoration: none; }
     img { display: block; max-width: 100%; }
 
+    /* ══ FONDO TEXTURA ══════════════════════════════════════════════════ */
+    #bgTextura {
+      position: fixed; inset: 0; z-index: 0;
+      overflow: hidden; pointer-events: none;
+    }
+    #bgTextura::before {
+      content: '';
+      position: absolute;
+      /* Agrandar para cubrir toda la pantalla al rotar 90° */
+      top: -30%; left: -30%;
+      width: 160%; height: 160%;
+      background-image: url('https://sur-patagonia.msventas2015.workers.dev/16.jpg');
+      background-size: cover;
+      background-position: center;
+      transform: rotate(90deg);
+      opacity: 0.07;
+      filter: grayscale(100%) contrast(1.15) brightness(0.55);
+    }
+    /* Todo el contenido sobre la textura */
+    #loading, #lightbox, #nav,
+    #hero, #atmosfera, #presentacion, #plano,
+    #disponibilidad, #galeria, #info,
+    #ubicacion, #contacto, footer {
+      position: relative; z-index: 1;
+    }
+
     /* ══ LOADING ════════════════════════════════════════════════════════ */
     #loading {
       position: fixed; inset: 0; background: var(--bg);
@@ -552,21 +578,22 @@
       border-top: 1px solid var(--line); margin-top: 3rem;
     }
     .pres-stat-ed {
-      flex: 1; min-width: 110px;
-      padding: 2rem 2.5rem 2rem 0;
+      flex: 1; min-width: 100px;
+      padding: 2rem 1rem 1.8rem 1.4rem;
       border-right: 1px solid var(--line);
     }
+    .pres-stat-ed:first-child { padding-left: 0; }
     .pres-stat-ed:last-child { border-right: none; }
     .pres-stat-num-ed {
       font-family: var(--font-serif);
-      font-size: clamp(2.6rem, 4.5vw, 4rem);
+      font-size: clamp(2.4rem, 4vw, 3.6rem);
       font-weight: 300; color: var(--gold); line-height: 1;
       letter-spacing: -0.02em;
     }
-    .pres-stat-unit { font-size: 1rem; color: var(--muted); font-weight: 300; }
+    .pres-stat-unit { font-size: 0.95rem; color: var(--muted); font-weight: 300; }
     .pres-stat-lbl-ed {
       font-size: 0.57rem; letter-spacing: 0.22em; text-transform: uppercase;
-      color: var(--muted); margin-top: 0.7rem;
+      color: var(--muted); margin-top: 1rem;
     }
 
     /* ══ INFO SPLIT ══════════════════════════════════════════════════════ */
@@ -612,6 +639,9 @@
   </style>
 </head>
 <body>
+
+<!-- FONDO TEXTURA — foto oscura sutil como trama de fondo -->
+<div id="bgTextura"></div>
 
 <!-- LOADING -->
 <div id="loading">
@@ -883,8 +913,9 @@ function buildLoteSVG(p) {
         : `desde ${Number(sup).toLocaleString()} m²`)
     : null
 
-  // Polígono irregular de 6 vértices — simula lote de terreno en montaña
-  const V = [[54,226],[295,243],[317,88],[243,41],[96,37],[37,143]]
+  // Polígono de 5 vértices — más rectangular, techo recto, leve irregularidad
+  // Top: línea recta (misma Y=46). Lados ligeramente inclinados. Sin "techo de casa".
+  const V = [[52,234],[308,247],[320,46],[60,46],[36,140]]
   const pts = V.map(v => v.join(',')).join(' ')
 
   // Marcadores de vértice (cruces de agrimensura)
@@ -921,7 +952,7 @@ function buildLoteSVG(p) {
   const cx3 = 178, cy3 = 148
   const centerTxt = `
     <text x="${cx3}" y="${cy3-12}" text-anchor="middle"
-      font-family="'Courier New',monospace" font-size="6.5" fill="${gold}" opacity="0.4" letter-spacing="3.5">LOTE TIPO</text>
+      font-family="'Courier New',monospace" font-size="6.5" fill="${gold}" opacity="0.4" letter-spacing="3.5">LOTE ILUSTRATIVO</text>
     <line x1="${cx3-26}" y1="${cy3-5}" x2="${cx3+26}" y2="${cy3-5}"
       stroke="${gold}" stroke-width="0.4" opacity="0.18"/>
     ${supTxt ? `<text x="${cx3}" y="${cy3+14}" text-anchor="middle"
@@ -949,7 +980,7 @@ function buildLoteSVG(p) {
     ${north}
     ${centerTxt}
     <text x="18" y="281" font-family="'Courier New',monospace" font-size="6"
-      fill="rgba(255,255,255,0.14)" letter-spacing="2">IMAGEN ILUSTRATIVA · ESCALA APROXIMADA</text>
+      fill="rgba(255,255,255,0.14)" letter-spacing="1.5">IMAGEN ILUSTRATIVA · NO REFLEJA MEDIDAS REALES DEL LOTE</text>
     <text x="362" y="281" text-anchor="end" font-family="'Courier New',monospace" font-size="6"
       fill="${gold}" opacity="0.2" letter-spacing="1">SUR PATAGONIA</text>
   </svg>`
