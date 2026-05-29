@@ -803,6 +803,30 @@
               <div class="paleta-info"><strong>Arena</strong><em>Ocre · Claro</em></div>
             </div>
 
+            <div class="paleta-card" data-paleta="grafito">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#c9a84c;"></div>
+                <div class="paleta-fondo" style="background:#1c1c1c;">
+                  <div class="paleta-dot" style="background:#2a2a2a;"></div>
+                  <div class="paleta-dot" style="background:#f0ede8;"></div>
+                  <div class="paleta-dot" style="background:#888880;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Grafito</strong><em>Dorado · Gris oscuro</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="plata">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#a8bfc8;"></div>
+                <div class="paleta-fondo" style="background:#2e3238;">
+                  <div class="paleta-dot" style="background:#3a3f46;"></div>
+                  <div class="paleta-dot" style="background:#edf0f2;"></div>
+                  <div class="paleta-dot" style="background:#8a9298;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Plata</strong><em>Frío · Gris azulado</em></div>
+            </div>
+
           </div>
         </div>
 
@@ -915,6 +939,39 @@
           <span id="galeriaStatus" style="font-size:0.75rem;color:var(--gris-claro);"></span>
         </div>
         <div id="galeriaFotos" class="foto-grid"></div>
+      </div>
+
+      <!-- Fondo de página -->
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Fondo de página (textura sutil)</h4>
+        <p style="font-size:0.75rem;color:var(--gris-claro);margin-bottom:1.2rem;">
+          Foto oscura que se aplica como trama de fondo en toda la miniweb. Recomendado: paisaje, bosque, terreno. Máx. opacidad 30% para garantizar legibilidad.
+        </p>
+        <input type="hidden" id="foto_fondo" />
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+          <label class="btn-upload" for="fondoFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Subir foto de fondo
+          </label>
+          <input type="file" id="fondoFile" accept="image/*" style="display:none" onchange="subirFondo(this)" />
+          <span id="fondoStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin imagen cargada</span>
+        </div>
+        <div id="fondoPreview" style="display:none;margin-bottom:1.2rem;max-width:420px;">
+          <img id="fondoImg" src="" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--gris-oscuro);filter:brightness(0.5) grayscale(0.5);" />
+        </div>
+        <!-- Slider de opacidad -->
+        <div style="max-width:360px;">
+          <label style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--gris-claro);display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+            <span>Opacidad del fondo</span>
+            <span id="fondoOpacidadVal" style="color:var(--dorado);">7%</span>
+          </label>
+          <input type="range" id="opacidad_fondo" min="1" max="30" value="7"
+            style="width:100%;accent-color:var(--dorado);cursor:pointer;"
+            oninput="document.getElementById('fondoOpacidadVal').textContent=this.value+'%'" />
+          <div style="display:flex;justify-content:space-between;font-size:0.62rem;color:var(--gris-claro);margin-top:0.25rem;">
+            <span>1% · Muy sutil</span><span>30% · Máximo</span>
+          </div>
+        </div>
       </div>
 
       <!-- Video y plano -->
@@ -1329,6 +1386,29 @@ CREATE POLICY "lotes_publicos" ON lotes
     input.value = ''
   }
 
+  // ── Fondo de página ───────────────────────────────────
+  window.subirFondo = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('fondoStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'fondos')
+      document.getElementById('foto_fondo').value = url
+      document.getElementById('fondoPreview').style.display = 'block'
+      document.getElementById('fondoImg').src = url
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
+    }
+    btn.classList.remove('cargando')
+    input.value = ''
+  }
+
   // ── Galería ────────────────────────────────────────────
   const fotosArr = []
 
@@ -1536,6 +1616,8 @@ CREATE POLICY "lotes_publicos" ON lotes
           cuerpo:  document.getElementById('fuente-cuerpo-val').value  || 'montserrat',
         }),
         foto_portada: v('foto_portada'), fotos: fotosArr,
+        foto_fondo: v('foto_fondo'),
+        opacidad_fondo: parseInt(document.getElementById('opacidad_fondo').value) || 7,
         video_url: v('video_url'), masterplan_url: v('masterplan_url'), brochure_url: v('brochure_url'),
         dev_empresa: v('dev_empresa'), dev_cuit: v('dev_cuit'),
         dev_contacto_nombre: v('dev_contacto_nombre'), dev_contacto_cargo: v('dev_contacto_cargo'),
@@ -1642,6 +1724,18 @@ CREATE POLICY "lotes_publicos" ON lotes
       document.getElementById('portadaImg').src = p.foto_portada
       document.getElementById('portadaStatus').textContent = '✓ Imagen cargada'
       document.getElementById('portadaStatus').style.color = '#4cc982'
+    }
+    // Fondo de página
+    if (p.foto_fondo) {
+      document.getElementById('foto_fondo').value = p.foto_fondo
+      document.getElementById('fondoPreview').style.display = 'block'
+      document.getElementById('fondoImg').src = p.foto_fondo
+      document.getElementById('fondoStatus').textContent = '✓ Imagen cargada'
+      document.getElementById('fondoStatus').style.color = '#4cc982'
+    }
+    if (p.opacidad_fondo) {
+      document.getElementById('opacidad_fondo').value = p.opacidad_fondo
+      document.getElementById('fondoOpacidadVal').textContent = p.opacidad_fondo + '%'
     }
     set('video_url', p.video_url)
     if (p.masterplan_url) {
