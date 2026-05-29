@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proyectos — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <style>
+    .proyectos-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+      flex-wrap: wrap;
+    }
+    .btn-nuevo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.6rem;
+      background: var(--dorado);
+      color: var(--negro);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .btn-nuevo:hover { opacity: 0.85; }
+
+    /* Grid de cards */
+    .proyectos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .proyecto-card {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      transition: border-color 0.2s;
+      display: flex;
+      flex-direction: column;
+    }
+    .proyecto-card:hover { border-color: var(--dorado); }
+
+    .card-thumb {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      background: var(--negro);
+      display: block;
+    }
+    .card-thumb-placeholder {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: var(--negro);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gris-claro);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .card-body { padding: 1.3rem 1.5rem; flex: 1; display: flex; flex-direction: column; gap: 0.6rem; }
+
+    .card-nombre {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem;
+      font-weight: 400;
+      color: var(--texto);
+      line-height: 1.1;
+    }
+    .card-slug {
+      font-size: 0.65rem;
+      color: var(--gris-claro);
+      letter-spacing: 0.08em;
+    }
+    .card-slug span { color: var(--dorado); }
+
+    .card-meta {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 0.2rem;
+    }
+    .card-meta-item {
+      font-size: 0.68rem;
+      color: var(--gris-claro);
+    }
+    .card-meta-item strong { color: var(--texto); }
+
+    .badge-estado {
+      display: inline-block;
+      padding: 0.18rem 0.65rem;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .badge-activo    { background: rgba(76,201,130,0.12); color: #4cc982; border: 1px solid rgba(76,201,130,0.25); }
+    .badge-borrador  { background: rgba(136,136,128,0.12); color: var(--gris-claro); border: 1px solid var(--gris-oscuro); }
+    .badge-pausado   { background: rgba(201,168,76,0.12); color: var(--dorado); border: 1px solid rgba(201,168,76,0.25); }
+
+    .card-actions {
+      display: flex;
+      gap: 0.6rem;
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--gris-oscuro);
+      flex-wrap: wrap;
+    }
+    .btn-accion {
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.45rem 1rem;
+      border: 1px solid var(--gris-oscuro);
+      background: none;
+      color: var(--gris-claro);
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-accion:hover { border-color: var(--dorado); color: var(--dorado); }
+    .btn-accion.danger:hover { border-color: #c94c4c; color: #c94c4c; }
+    .btn-accion.primary { border-color: var(--dorado); color: var(--dorado); }
+
+    /* Estado vacío */
+    .empty-state {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 5rem 2rem;
+      color: var(--gris-claro);
+    }
+    .empty-state h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem;
+      font-weight: 300;
+      color: var(--texto);
+      margin-bottom: 0.8rem;
+    }
+    .empty-state p { font-size: 0.82rem; margin-bottom: 2rem; }
+
+    /* Filtros */
+    .filtros {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 1.8rem;
+      flex-wrap: wrap;
+    }
+    .filtro-btn {
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.4rem 1rem;
+      border: 1px solid var(--gris-oscuro);
+      background: none;
+      color: var(--gris-claro);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filtro-btn.activo, .filtro-btn:hover {
+      border-color: var(--dorado);
+      color: var(--dorado);
+    }
+
+    /* Modal confirmar borrado */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 2.5rem;
+      max-width: 400px;
+      width: 90%;
+    }
+    .modal-box h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem;
+      color: var(--texto);
+      margin-bottom: 0.8rem;
+    }
+    .modal-box p { font-size: 0.82rem; color: var(--gris-claro); margin-bottom: 2rem; }
+    .modal-btns { display: flex; gap: 0.8rem; }
+    .btn-cancel {
+      padding: 0.7rem 1.4rem;
+      border: 1px solid var(--gris-oscuro);
+      background: none;
+      color: var(--gris-claro);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .btn-delete {
+      padding: 0.7rem 1.4rem;
+      border: none;
+      background: #c94c4c;
+      color: #fff;
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">Sur <span>Patagonia</span></div>
+  <nav class="sidebar-nav">
+    <a href="dashboard.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a href="propiedades.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      Propiedades
+    </a>
+    <a href="nueva-propiedad.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+      Nueva propiedad
+    </a>
+    <a href="proyectos.html" class="nav-item activo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
+      Proyectos
+    </a>
+    <a href="contactos.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Consultas
+    </a>
+  </nav>
+  <div class="sidebar-bottom">
+    <a href="../index.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      Ver sitio
+    </a>
+    <a href="login.html" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Salir
+    </a>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main-content">
+  <div class="proyectos-header">
+    <div>
+      <h1 class="page-title">Proyectos</h1>
+      <p class="page-subtitle">Administrá los desarrollos inmobiliarios y sus miniwebs</p>
+    </div>
+    <a href="nuevo-proyecto.html" class="btn-nuevo">+ Nuevo proyecto</a>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros">
+    <button class="filtro-btn activo" data-f="todos">Todos</button>
+    <button class="filtro-btn" data-f="activo">Activos</button>
+    <button class="filtro-btn" data-f="borrador">Borradores</button>
+    <button class="filtro-btn" data-f="pausado">Pausados</button>
+  </div>
+
+  <!-- Grid -->
+  <div class="proyectos-grid" id="proyectosGrid">
+    <div class="empty-state">
+      <p style="color:var(--gris-claro);font-size:0.8rem;">Cargando proyectos...</p>
+    </div>
+  </div>
+</main>
+
+<!-- Modal confirmar borrado -->
+<div class="modal-overlay" id="modalBorrar">
+  <div class="modal-box">
+    <h3>Eliminar proyecto</h3>
+    <p id="modalTexto">¿Seguro que querés eliminar este proyecto? Esta acción no se puede deshacer.</p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-delete" id="btnConfirmarBorrar">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { supabase } from '../js/config.js'
+
+let todosLosProyectos = []
+let filtroActual = 'todos'
+let idABorrar = null
+
+// ── Cargar proyectos ──────────────────────────────────────────────────
+async function cargar() {
+  const { data, error } = await supabase
+    .from('proyectos')
+    .select('id, nombre, slug, estado, categoria, foto_portada, hectareas_total, cantidad_lotes, precio_desde, created_at')
+    .order('created_at', { ascending: false })
+
+  if (error || !data) {
+    document.getElementById('proyectosGrid').innerHTML = `
+      <div class="empty-state">
+        <h3>Error al cargar</h3>
+        <p>No se pudieron cargar los proyectos. Verificá la conexión con Supabase.</p>
+      </div>`
+    return
+  }
+
+  todosLosProyectos = data
+  renderGrid(data)
+}
+
+// ── Render ────────────────────────────────────────────────────────────
+function renderGrid(proyectos) {
+  const grid = document.getElementById('proyectosGrid')
+
+  if (!proyectos.length) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <h3>Sin proyectos aún</h3>
+        <p>Todavía no cargaste ningún proyecto. Empezá creando el primero.</p>
+        <a href="nuevo-proyecto.html" class="btn-nuevo">+ Nuevo proyecto</a>
+      </div>`
+    return
+  }
+
+  grid.innerHTML = proyectos.map(p => {
+    const badgeClass = p.estado === 'activo' ? 'badge-activo' : p.estado === 'pausado' ? 'badge-pausado' : 'badge-borrador'
+    const badgeText = p.estado === 'activo' ? 'Activo' : p.estado === 'pausado' ? 'Pausado' : 'Borrador'
+    const thumb = p.foto_portada
+      ? `<img class="card-thumb" src="${p.foto_portada}" alt="${p.nombre}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="card-thumb-placeholder" style="display:none">Sin imagen</div>`
+      : `<div class="card-thumb-placeholder">Sin imagen</div>`
+
+    return `
+    <div class="proyecto-card" data-estado="${p.estado}">
+      ${thumb}
+      <div class="card-body">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
+          <div class="card-nombre">${p.nombre}</div>
+          <span class="badge-estado ${badgeClass}">${badgeText}</span>
+        </div>
+        <div class="card-slug">surpatagonia.com.ar/<span>${p.slug}</span></div>
+        <div class="card-meta">
+          ${p.hectareas_total ? `<div class="card-meta-item"><strong>${p.hectareas_total}</strong> ha</div>` : ''}
+          ${p.cantidad_lotes ? `<div class="card-meta-item"><strong>${p.cantidad_lotes}</strong> lotes</div>` : ''}
+          ${p.precio_desde ? `<div class="card-meta-item">desde <strong>USD ${Number(p.precio_desde).toLocaleString()}</strong></div>` : ''}
+          ${p.categoria ? `<div class="card-meta-item">${p.categoria.replace(/_/g,' ')}</div>` : ''}
+        </div>
+      </div>
+      <div class="card-actions">
+        <a href="nuevo-proyecto.html?id=${p.id}" class="btn-accion primary">Editar</a>
+        <a href="../${p.slug}" target="_blank" class="btn-accion">Ver miniweb</a>
+        ${p.estado !== 'activo'
+          ? `<button class="btn-accion" onclick="publicar('${p.id}')">Publicar</button>`
+          : `<button class="btn-accion" onclick="pausar('${p.id}')">Pausar</button>`}
+        <button class="btn-accion danger" onclick="confirmarBorrar('${p.id}', '${p.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+      </div>
+    </div>`
+  }).join('')
+}
+
+// ── Filtros ───────────────────────────────────────────────────────────
+document.querySelectorAll('.filtro-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('activo'))
+    btn.classList.add('activo')
+    filtroActual = btn.dataset.f
+    const filtrados = filtroActual === 'todos'
+      ? todosLosProyectos
+      : todosLosProyectos.filter(p => p.estado === filtroActual)
+    renderGrid(filtrados)
+  })
+})
+
+// ── Publicar / Pausar ─────────────────────────────────────────────────
+window.publicar = async (id) => {
+  await supabase.from('proyectos').update({ estado: 'activo' }).eq('id', id)
+  cargar()
+}
+window.pausar = async (id) => {
+  await supabase.from('proyectos').update({ estado: 'pausado' }).eq('id', id)
+  cargar()
+}
+
+// ── Borrar ────────────────────────────────────────────────────────────
+window.confirmarBorrar = (id, nombre) => {
+  idABorrar = id
+  document.getElementById('modalTexto').textContent = `¿Seguro que querés eliminar "${nombre}"? Esta acción no se puede deshacer.`
+  document.getElementById('modalBorrar').classList.add('open')
+}
+window.cerrarModal = () => {
+  document.getElementById('modalBorrar').classList.remove('open')
+  idABorrar = null
+}
+document.getElementById('btnConfirmarBorrar').addEventListener('click', async () => {
+  if (!idABorrar) return
+  await supabase.from('proyectos').delete().eq('id', idABorrar)
+  cerrarModal()
+  cargar()
+})
+
+cargar()
+</script>
+</body>
+</html>
