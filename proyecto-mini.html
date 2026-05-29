@@ -75,11 +75,21 @@
       border-bottom: 1px solid var(--line);
     }
     .nav-brand {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 0.82rem; font-weight: 400;
-      letter-spacing: 0.38em; text-transform: uppercase;
+      display: flex; flex-direction: column; gap: 0.05rem; line-height: 1.15;
+      text-decoration: none;
     }
-    .nav-brand span { color: var(--gold); }
+    .nav-brand-nombre {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(0.85rem, 1.6vw, 1.1rem);
+      font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text); transition: color 0.3s;
+    }
+    .nav-brand:hover .nav-brand-nombre { color: var(--gold); }
+    .nav-brand-by {
+      font-size: 0.48rem; letter-spacing: 0.38em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .nav-brand-by span { color: rgba(201,168,76,0.7); }
     .nav-links { display: flex; align-items: center; gap: 2.5rem; }
     .nav-link {
       font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase;
@@ -253,15 +263,14 @@
 
     /* Imagen del plano — full width, click para ampliar */
     .plano-img-wrap {
-      position: relative; overflow: hidden; cursor: zoom-in;
-      max-height: 85vh;
-    }
-    .plano-img-wrap img {
-      width: 100%; height: 100%; object-fit: contain;
-      display: block; transition: transform 0.5s ease;
+      position: relative; cursor: zoom-in;
       background: #0d0d0d;
     }
-    .plano-img-wrap:hover img { transform: scale(1.015); }
+    .plano-img-wrap img {
+      width: 100%; height: auto; display: block;
+      transition: transform 0.5s ease;
+    }
+    .plano-img-wrap:hover img { transform: scale(1.01); }
     /* Nombre del proyecto sobre el plano — watermark sutil */
     .plano-watermark {
       position: absolute; bottom: 2.5rem; left: 3rem;
@@ -516,7 +525,10 @@
 
 <!-- NAV -->
 <nav id="nav">
-  <a href="/index.html" class="nav-brand">Sur <span>Patagonia</span></a>
+  <a href="/index.html" class="nav-brand">
+    <div class="nav-brand-nombre" id="navBrandNombre">—</div>
+    <div class="nav-brand-by">by Sur <span>Patagonia</span></div>
+  </a>
   <div class="nav-links">
     <a href="#presentacion" class="nav-link">Proyecto</a>
     <a href="#plano" class="nav-link">Plano</a>
@@ -542,19 +554,6 @@
   </div>
 </section>
 
-<!-- ══ PRESENTACIÓN ════════════════════════════════════════════════════ -->
-<section id="presentacion">
-  <div class="pres-left reveal">
-    <p class="pres-eyebrow" id="presEyebrow">El desarrollo</p>
-    <h2 class="pres-titulo" id="presTitulo">&nbsp;</h2>
-    <div class="pres-linea"></div>
-    <p class="pres-desc" id="presDesc"></p>
-  </div>
-  <div class="pres-right reveal reveal-slow">
-    <div class="pres-stats" id="presStats"></div>
-  </div>
-</section>
-
 <!-- ══ PLANO ══════════════════════════════════════════════════════════ -->
 <section id="plano">
   <div class="plano-header reveal">
@@ -574,6 +573,19 @@
   </div>
   <div class="plano-hint" id="planoHint" style="display:none;">
     <span>↗ Hacé clic</span> en el plano para verlo en pantalla completa
+  </div>
+</section>
+
+<!-- ══ PRESENTACIÓN ════════════════════════════════════════════════════ -->
+<section id="presentacion">
+  <div class="pres-left reveal">
+    <p class="pres-eyebrow" id="presEyebrow">El desarrollo</p>
+    <h2 class="pres-titulo" id="presTitulo">&nbsp;</h2>
+    <div class="pres-linea"></div>
+    <p class="pres-desc" id="presDesc"></p>
+  </div>
+  <div class="pres-right reveal reveal-slow">
+    <div class="pres-stats" id="presStats"></div>
   </div>
 </section>
 
@@ -716,8 +728,11 @@ async function init() {
   const { data: p } = await supabase
     .from('proyectos').select('*').eq('slug', slug).single()
 
-  // Actualizar loading con nombre real
-  if (p?.nombre) $('loadingNombre').textContent = p.nombre
+  // Actualizar loading y nav con nombre real
+  if (p?.nombre) {
+    $('loadingNombre').textContent = p.nombre
+    $('navBrandNombre').textContent = p.nombre
+  }
 
   if (!p) { $('loading').classList.add('fade'); return }
 
@@ -876,20 +891,19 @@ function renderGaleria(p) {
 }
 
 // ── Contacto ──────────────────────────────────────────────────────────
+// Siempre va a Sur Patagonia — cambiá estos datos si cambia el contacto
+const SUR_WSP   = '5492944000000'   // ← reemplazá con tu número real (código país + número, sin +)
+const SUR_EMAIL = 'info@surpatagonia.com.ar' // ← reemplazá con tu email real
+
 function renderContacto(p) {
-  const wsp = (p.contacto_whatsapp || '').replace(/\D/g, '')
   const nombre = p.nombre || 'el proyecto'
-  if (wsp) {
-    const msg = encodeURIComponent(`Hola, me interesa ${nombre}. ¿Podemos hablar?`)
-    const url = `https://wa.me/${wsp}?text=${msg}`
-    $('btnWsp').href = url
-    $('btnWsp').style.display = 'inline-flex'
-    $('navWsp').href = url
-  }
-  if (p.contacto_email) {
-    $('btnMail').href = `mailto:${p.contacto_email}?subject=${encodeURIComponent('Consulta: ' + nombre)}`
-    $('btnMail').style.display = 'inline-flex'
-  }
+  const msg = encodeURIComponent(`Hola, me interesa ${nombre}. ¿Podemos hablar?`)
+  const wspUrl = `https://wa.me/${SUR_WSP}?text=${msg}`
+  $('btnWsp').href = wspUrl
+  $('btnWsp').style.display = 'inline-flex'
+  $('navWsp').href = wspUrl
+  $('btnMail').href = `mailto:${SUR_EMAIL}?subject=${encodeURIComponent('Consulta: ' + nombre)}`
+  $('btnMail').style.display = 'inline-flex'
 
   $('formContacto').addEventListener('submit', async e => {
     e.preventDefault()
