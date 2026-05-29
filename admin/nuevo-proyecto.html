@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nuevo proyecto — Sur Patagonia Admin</title>
   <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Playfair+Display:ital,wght@0,400;1,400&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Cinzel:wght@400&family=Lora:ital,wght@0,400;1,400&family=Montserrat:wght@300;400;500&family=Raleway:wght@300;400&family=Josefin+Sans:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <style>
     /* ── Tabs de sección ──────────────────────────────── */
     .form-tabs {
@@ -155,39 +158,82 @@
     .import-bar input[type="file"] { display: none; }
     .import-hint { font-size: 0.7rem; color: var(--gris-claro); margin-left: auto; }
 
-    /* ── Selector de temas ────────────────────────────── */
-    .temas-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 0.8rem;
+    /* ── Diseño visual: Paletas y Fuentes ─────────────── */
+    .diseno-seccion { margin-bottom: 2rem; }
+    .diseno-seccion:last-child { margin-bottom: 0; }
+    .diseno-subtitulo {
+      font-size: 0.65rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--dorado);
+      margin-bottom: 0.3rem; font-weight: 500;
     }
-    .tema-card {
+    .diseno-desc { font-size: 0.7rem; color: var(--gris-claro); margin-bottom: 1rem; }
+
+    /* Paletas */
+    .paletas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 0.7rem;
+    }
+    .paleta-card {
+      border: 1px solid var(--gris-oscuro);
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      overflow: hidden;
+    }
+    .paleta-card:hover { border-color: rgba(201,168,76,0.5); }
+    .paleta-card.activo { border-color: var(--dorado); box-shadow: 0 0 0 1px var(--dorado); }
+    .paleta-preview {
+      height: 56px; position: relative;
+      display: flex; flex-direction: column;
+    }
+    .paleta-banda {
+      height: 14px;
+    }
+    .paleta-fondo {
+      flex: 1;
+      display: flex; align-items: flex-end;
+      padding: 0 0.5rem 0.4rem;
+      gap: 3px;
+    }
+    .paleta-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .paleta-info { padding: 0.4rem 0.6rem 0.5rem; }
+    .paleta-info strong {
+      display: block; font-size: 0.68rem;
+      color: var(--texto); letter-spacing: 0.04em;
+    }
+    .paleta-info em {
+      font-size: 0.6rem; color: var(--gris-claro); font-style: normal;
+    }
+
+    /* Fuentes */
+    .fuentes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+      gap: 0.7rem;
+    }
+    .fuente-card {
       border: 1px solid var(--gris-oscuro);
       background: var(--negro);
       cursor: pointer;
-      transition: border-color 0.2s;
-      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      padding: 0.9rem 0.7rem 0.6rem;
+      text-align: center;
     }
-    .tema-card:hover { border-color: var(--dorado); }
-    .tema-card.activo { border-color: var(--dorado); box-shadow: 0 0 0 1px var(--dorado); }
-    .tema-preview {
-      height: 70px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-bottom: 2px solid;
-      font-size: 2rem;
-      font-style: italic;
+    .fuente-card:hover { border-color: rgba(201,168,76,0.5); }
+    .fuente-card.activo { border-color: var(--dorado); box-shadow: 0 0 0 1px var(--dorado); }
+    .fuente-ag {
+      font-size: 2.2rem; line-height: 1; color: var(--texto);
+      margin-bottom: 0.45rem; display: block;
     }
-    .tema-info { padding: 0.6rem 0.8rem; }
-    .tema-info strong {
-      display: block;
-      font-size: 0.72rem;
-      color: var(--texto);
-      letter-spacing: 0.05em;
-      margin-bottom: 0.15rem;
+    .fuente-nombre {
+      display: block; font-size: 0.65rem; color: var(--texto);
+      letter-spacing: 0.04em; margin-bottom: 0.1rem;
     }
-    .tema-info span { font-size: 0.62rem; color: var(--gris-claro); }
+    .fuente-desc { display: block; font-size: 0.58rem; color: var(--gris-claro); }
 
     /* ── Botón examinar / upload ──────────────────────── */
     .btn-upload {
@@ -648,75 +694,196 @@
     <!-- ══ PANEL 5: MEDIA ════════════════════════════════════════════════ -->
     <div class="form-panel" id="panel-media">
 
-      <!-- Tema visual -->
+      <!-- Diseño visual -->
       <div class="form-bloque">
-        <h4 class="form-bloque-titulo">Tema visual de la miniweb</h4>
-        <input type="hidden" id="tema" value="clasico" />
-        <div class="temas-grid">
-          <label class="tema-card activo" data-tema="clasico">
-            <div class="tema-preview" style="background:#080808;border-color:#c9a84c;">
-              <span style="color:#c9a84c;font-family:'Georgia',serif;">Ag</span>
+        <h4 class="form-bloque-titulo">Diseño visual de la miniweb</h4>
+        <input type="hidden" id="paleta-val" value="clasico" />
+        <input type="hidden" id="fuente-titulo-val" value="cormorant" />
+        <input type="hidden" id="fuente-cuerpo-val" value="montserrat" />
+
+        <!-- ── Paleta de colores ───────────────────── -->
+        <div class="diseno-seccion">
+          <h5 class="diseno-subtitulo">Paleta de colores</h5>
+          <p class="diseno-desc">Define el fondo, superficie, texto principal, texto secundario y color de acento.</p>
+          <div class="paletas-grid">
+
+            <div class="paleta-card activo" data-paleta="clasico">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#c9a84c;"></div>
+                <div class="paleta-fondo" style="background:#080808;">
+                  <div class="paleta-dot" style="background:#111111;"></div>
+                  <div class="paleta-dot" style="background:#f0ede8;"></div>
+                  <div class="paleta-dot" style="background:#777777;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Clásico</strong><em>Dorado · Oscuro</em></div>
             </div>
-            <div class="tema-info">
-              <strong>Clásico</strong>
-              <span>Dorado · Cormorant</span>
+
+            <div class="paleta-card" data-paleta="bosque">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#7a9e6b;"></div>
+                <div class="paleta-fondo" style="background:#050a05;">
+                  <div class="paleta-dot" style="background:#0b120b;"></div>
+                  <div class="paleta-dot" style="background:#e8ede8;"></div>
+                  <div class="paleta-dot" style="background:#7a8878;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Bosque</strong><em>Verde · Noche</em></div>
             </div>
-          </label>
-          <label class="tema-card" data-tema="bosque">
-            <div class="tema-preview" style="background:#050a05;border-color:#7a9e6b;">
-              <span style="color:#7a9e6b;font-family:'Georgia',serif;">Ag</span>
+
+            <div class="paleta-card" data-paleta="lago">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#4a8fa8;"></div>
+                <div class="paleta-fondo" style="background:#04080e;">
+                  <div class="paleta-dot" style="background:#0a1018;"></div>
+                  <div class="paleta-dot" style="background:#e8ecf0;"></div>
+                  <div class="paleta-dot" style="background:#6a7e8a;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Lago</strong><em>Azul · Profundo</em></div>
             </div>
-            <div class="tema-info">
-              <strong>Bosque</strong>
-              <span>Verde · Playfair</span>
+
+            <div class="paleta-card" data-paleta="andes">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#b87340;"></div>
+                <div class="paleta-fondo" style="background:#0d0805;">
+                  <div class="paleta-dot" style="background:#180e08;"></div>
+                  <div class="paleta-dot" style="background:#f0ece8;"></div>
+                  <div class="paleta-dot" style="background:#8a7060;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Andes</strong><em>Cobre · Tierra</em></div>
             </div>
-          </label>
-          <label class="tema-card" data-tema="lago">
-            <div class="tema-preview" style="background:#04080e;border-color:#4a8fa8;">
-              <span style="color:#4a8fa8;font-family:'Georgia',serif;">Ag</span>
+
+            <div class="paleta-card" data-paleta="nieve">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#a8bfc8;"></div>
+                <div class="paleta-fondo" style="background:#06080a;">
+                  <div class="paleta-dot" style="background:#0e1214;"></div>
+                  <div class="paleta-dot" style="background:#e8ecf0;"></div>
+                  <div class="paleta-dot" style="background:#7a8a92;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Nieve</strong><em>Plateado · Frío</em></div>
             </div>
-            <div class="tema-info">
-              <strong>Lago</strong>
-              <span>Azul · DM Serif</span>
+
+            <div class="paleta-card" data-paleta="vino">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#9a4a6a;"></div>
+                <div class="paleta-fondo" style="background:#0a0508;">
+                  <div class="paleta-dot" style="background:#140a10;"></div>
+                  <div class="paleta-dot" style="background:#f0e8ec;"></div>
+                  <div class="paleta-dot" style="background:#7a6070;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Vino</strong><em>Borgoña · Íntimo</em></div>
             </div>
-          </label>
-          <label class="tema-card" data-tema="andes">
-            <div class="tema-preview" style="background:#0d0805;border-color:#b87340;">
-              <span style="color:#b87340;font-family:'Georgia',serif;">Ag</span>
+
+            <div class="paleta-card" data-paleta="tierra">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#c87850;"></div>
+                <div class="paleta-fondo" style="background:#0d0906;">
+                  <div class="paleta-dot" style="background:#181008;"></div>
+                  <div class="paleta-dot" style="background:#f0ede8;"></div>
+                  <div class="paleta-dot" style="background:#8a7060;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Tierra</strong><em>Terracota · Cálido</em></div>
             </div>
-            <div class="tema-info">
-              <strong>Andes</strong>
-              <span>Cobre · Baskerville</span>
+
+            <div class="paleta-card" data-paleta="arena">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#8a6030;"></div>
+                <div class="paleta-fondo" style="background:#f5f0e8;">
+                  <div class="paleta-dot" style="background:#e8e0d0;border-color:rgba(0,0,0,0.1);"></div>
+                  <div class="paleta-dot" style="background:#1a1714;"></div>
+                  <div class="paleta-dot" style="background:#7a7268;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Arena</strong><em>Ocre · Claro</em></div>
             </div>
-          </label>
-          <label class="tema-card" data-tema="nieve">
-            <div class="tema-preview" style="background:#06080a;border-color:#a8bfc8;">
-              <span style="color:#a8bfc8;font-family:'Georgia',serif;">Ag</span>
-            </div>
-            <div class="tema-info">
-              <strong>Nieve</strong>
-              <span>Plateado · Cinzel</span>
-            </div>
-          </label>
-          <label class="tema-card" data-tema="vino">
-            <div class="tema-preview" style="background:#0a0508;border-color:#9a4a6a;">
-              <span style="color:#9a4a6a;font-family:'Georgia',serif;">Ag</span>
-            </div>
-            <div class="tema-info">
-              <strong>Vino</strong>
-              <span>Borgoña · Cormorant</span>
-            </div>
-          </label>
-          <label class="tema-card" data-tema="tierra">
-            <div class="tema-preview" style="background:#0d0906;border-color:#c87850;">
-              <span style="color:#c87850;font-family:'Georgia',serif;">Ag</span>
-            </div>
-            <div class="tema-info">
-              <strong>Tierra</strong>
-              <span>Terracota · Lora</span>
-            </div>
-          </label>
+
+          </div>
         </div>
+
+        <!-- ── Tipografía de títulos ───────────────── -->
+        <div class="diseno-seccion">
+          <h5 class="diseno-subtitulo">Tipografía de títulos</h5>
+          <p class="diseno-desc">Se aplica al nombre del proyecto, títulos de sección, precios y estadísticas.</p>
+          <div class="fuentes-grid">
+
+            <div class="fuente-card activo" data-fuente-tipo="titulo" data-fuente="cormorant">
+              <span class="fuente-ag" style="font-family:'Cormorant Garamond',serif;font-style:italic;">Ag</span>
+              <span class="fuente-nombre">Cormorant</span>
+              <span class="fuente-desc">Clásico · Romántico</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="playfair">
+              <span class="fuente-ag" style="font-family:'Playfair Display',serif;font-style:italic;">Ag</span>
+              <span class="fuente-nombre">Playfair</span>
+              <span class="fuente-desc">Elegante · Editorial</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="dm-serif">
+              <span class="fuente-ag" style="font-family:'DM Serif Display',serif;">Ag</span>
+              <span class="fuente-nombre">DM Serif</span>
+              <span class="fuente-desc">Moderno · Limpio</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="baskerville">
+              <span class="fuente-ag" style="font-family:'Libre Baskerville',serif;font-style:italic;">Ag</span>
+              <span class="fuente-nombre">Baskerville</span>
+              <span class="fuente-desc">Sólido · Académico</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="cinzel">
+              <span class="fuente-ag" style="font-family:'Cinzel',serif;">Ag</span>
+              <span class="fuente-nombre">Cinzel</span>
+              <span class="fuente-desc">Romano · Monumental</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="lora">
+              <span class="fuente-ag" style="font-family:'Lora',serif;font-style:italic;">Ag</span>
+              <span class="fuente-nombre">Lora</span>
+              <span class="fuente-desc">Literario · Cálido</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── Tipografía de cuerpo ────────────────── -->
+        <div class="diseno-seccion">
+          <h5 class="diseno-subtitulo">Tipografía de cuerpo</h5>
+          <p class="diseno-desc">Se aplica a navegación, descripciones, botones y etiquetas.</p>
+          <div class="fuentes-grid">
+
+            <div class="fuente-card activo" data-fuente-tipo="cuerpo" data-fuente="montserrat">
+              <span class="fuente-ag" style="font-family:'Montserrat',sans-serif;font-size:1.8rem;">Ag</span>
+              <span class="fuente-nombre">Montserrat</span>
+              <span class="fuente-desc">Geométrico · Actual</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="cuerpo" data-fuente="raleway">
+              <span class="fuente-ag" style="font-family:'Raleway',sans-serif;font-size:1.8rem;font-weight:300;">Ag</span>
+              <span class="fuente-nombre">Raleway</span>
+              <span class="fuente-desc">Fino · Sofisticado</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="cuerpo" data-fuente="josefin">
+              <span class="fuente-ag" style="font-family:'Josefin Sans',sans-serif;font-size:1.8rem;">Ag</span>
+              <span class="fuente-nombre">Josefin Sans</span>
+              <span class="fuente-desc">Editorial · Espaciado</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="cuerpo" data-fuente="inter">
+              <span class="fuente-ag" style="font-family:'Inter',sans-serif;font-size:1.8rem;font-weight:300;">Ag</span>
+              <span class="fuente-nombre">Inter</span>
+              <span class="fuente-desc">Neutro · Legible</span>
+            </div>
+
+          </div>
+        </div>
+
       </div>
 
       <!-- Foto de portada -->
@@ -1103,12 +1270,29 @@ CREATE POLICY "lotes_publicos" ON lotes
       this.options[this.selectedIndex].text.split('(')[0].trim()
   })
 
-  // ── Selector de temas ──────────────────────────────────
-  document.querySelectorAll('.tema-card').forEach(card => {
+  // ── Selector de diseño visual ──────────────────────────
+  // Paletas de color
+  document.querySelectorAll('.paleta-card').forEach(card => {
     card.addEventListener('click', () => {
-      document.querySelectorAll('.tema-card').forEach(c => c.classList.remove('activo'))
+      document.querySelectorAll('.paleta-card').forEach(c => c.classList.remove('activo'))
       card.classList.add('activo')
-      document.getElementById('tema').value = card.dataset.tema
+      document.getElementById('paleta-val').value = card.dataset.paleta
+    })
+  })
+  // Tipografía de títulos
+  document.querySelectorAll('.fuente-card[data-fuente-tipo="titulo"]').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.fuente-card[data-fuente-tipo="titulo"]').forEach(c => c.classList.remove('activo'))
+      card.classList.add('activo')
+      document.getElementById('fuente-titulo-val').value = card.dataset.fuente
+    })
+  })
+  // Tipografía de cuerpo
+  document.querySelectorAll('.fuente-card[data-fuente-tipo="cuerpo"]').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.fuente-card[data-fuente-tipo="cuerpo"]').forEach(c => c.classList.remove('activo'))
+      card.classList.add('activo')
+      document.getElementById('fuente-cuerpo-val').value = card.dataset.fuente
     })
   })
 
@@ -1346,7 +1530,11 @@ CREATE POLICY "lotes_publicos" ON lotes
         monto_reserva: n('monto_reserva'), comision_pct: n('comision_pct'),
         condiciones_venta: v('condiciones_venta'),
         financiacion_banco: v('financiacion_banco'), ajuste_precios: v('ajuste_precios'),
-        tema: v('tema') || 'clasico',
+        tema: JSON.stringify({
+          paleta: document.getElementById('paleta-val').value || 'clasico',
+          titulo: document.getElementById('fuente-titulo-val').value || 'cormorant',
+          cuerpo:  document.getElementById('fuente-cuerpo-val').value  || 'montserrat',
+        }),
         foto_portada: v('foto_portada'), fotos: fotosArr,
         video_url: v('video_url'), masterplan_url: v('masterplan_url'), brochure_url: v('brochure_url'),
         dev_empresa: v('dev_empresa'), dev_cuit: v('dev_cuit'),
@@ -1433,12 +1621,19 @@ CREATE POLICY "lotes_publicos" ON lotes
     set('monto_reserva', p.monto_reserva); set('comision_pct', p.comision_pct)
     set('condiciones_venta', p.condiciones_venta)
     set('financiacion_banco', p.financiacion_banco); set('ajuste_precios', p.ajuste_precios)
-    // Tema
+    // Diseño visual — parsea JSON, con fallback para formato antiguo (string)
     if (p.tema) {
-      document.getElementById('tema').value = p.tema
-      document.querySelectorAll('.tema-card').forEach(c => {
-        c.classList.toggle('activo', c.dataset.tema === p.tema)
-      })
+      let t = { paleta: 'clasico', titulo: 'cormorant', cuerpo: 'montserrat' }
+      try { t = JSON.parse(p.tema) } catch(e) { t.paleta = p.tema }
+      document.getElementById('paleta-val').value = t.paleta
+      document.getElementById('fuente-titulo-val').value = t.titulo
+      document.getElementById('fuente-cuerpo-val').value = t.cuerpo
+      document.querySelectorAll('.paleta-card').forEach(c =>
+        c.classList.toggle('activo', c.dataset.paleta === t.paleta))
+      document.querySelectorAll('.fuente-card[data-fuente-tipo="titulo"]').forEach(c =>
+        c.classList.toggle('activo', c.dataset.fuente === t.titulo))
+      document.querySelectorAll('.fuente-card[data-fuente-tipo="cuerpo"]').forEach(c =>
+        c.classList.toggle('activo', c.dataset.fuente === t.cuerpo))
     }
     // Fotos ya guardadas
     if (p.foto_portada) {
