@@ -155,6 +155,40 @@
     .import-bar input[type="file"] { display: none; }
     .import-hint { font-size: 0.7rem; color: var(--gris-claro); margin-left: auto; }
 
+    /* ── Selector de temas ────────────────────────────── */
+    .temas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.8rem;
+    }
+    .tema-card {
+      border: 1px solid var(--gris-oscuro);
+      background: var(--negro);
+      cursor: pointer;
+      transition: border-color 0.2s;
+      overflow: hidden;
+    }
+    .tema-card:hover { border-color: var(--dorado); }
+    .tema-card.activo { border-color: var(--dorado); box-shadow: 0 0 0 1px var(--dorado); }
+    .tema-preview {
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 2px solid;
+      font-size: 2rem;
+      font-style: italic;
+    }
+    .tema-info { padding: 0.6rem 0.8rem; }
+    .tema-info strong {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--texto);
+      letter-spacing: 0.05em;
+      margin-bottom: 0.15rem;
+    }
+    .tema-info span { font-size: 0.62rem; color: var(--gris-claro); }
+
     /* ── Botón examinar / upload ──────────────────────── */
     .btn-upload {
       display: inline-flex;
@@ -614,6 +648,77 @@
     <!-- ══ PANEL 5: MEDIA ════════════════════════════════════════════════ -->
     <div class="form-panel" id="panel-media">
 
+      <!-- Tema visual -->
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Tema visual de la miniweb</h4>
+        <input type="hidden" id="tema" value="clasico" />
+        <div class="temas-grid">
+          <label class="tema-card activo" data-tema="clasico">
+            <div class="tema-preview" style="background:#080808;border-color:#c9a84c;">
+              <span style="color:#c9a84c;font-family:'Georgia',serif;">Ag</span>
+            </div>
+            <div class="tema-info">
+              <strong>Clásico</strong>
+              <span>Dorado · Cormorant</span>
+            </div>
+          </label>
+          <label class="tema-card" data-tema="bosque">
+            <div class="tema-preview" style="background:#050a05;border-color:#7a9e6b;">
+              <span style="color:#7a9e6b;font-family:'Georgia',serif;">Ag</span>
+            </div>
+            <div class="tema-info">
+              <strong>Bosque</strong>
+              <span>Verde · Playfair</span>
+            </div>
+          </label>
+          <label class="tema-card" data-tema="lago">
+            <div class="tema-preview" style="background:#04080e;border-color:#4a8fa8;">
+              <span style="color:#4a8fa8;font-family:'Georgia',serif;">Ag</span>
+            </div>
+            <div class="tema-info">
+              <strong>Lago</strong>
+              <span>Azul · DM Serif</span>
+            </div>
+          </label>
+          <label class="tema-card" data-tema="andes">
+            <div class="tema-preview" style="background:#0d0805;border-color:#b87340;">
+              <span style="color:#b87340;font-family:'Georgia',serif;">Ag</span>
+            </div>
+            <div class="tema-info">
+              <strong>Andes</strong>
+              <span>Cobre · Baskerville</span>
+            </div>
+          </label>
+          <label class="tema-card" data-tema="nieve">
+            <div class="tema-preview" style="background:#06080a;border-color:#a8bfc8;">
+              <span style="color:#a8bfc8;font-family:'Georgia',serif;">Ag</span>
+            </div>
+            <div class="tema-info">
+              <strong>Nieve</strong>
+              <span>Plateado · Cinzel</span>
+            </div>
+          </label>
+          <label class="tema-card" data-tema="vino">
+            <div class="tema-preview" style="background:#0a0508;border-color:#9a4a6a;">
+              <span style="color:#9a4a6a;font-family:'Georgia',serif;">Ag</span>
+            </div>
+            <div class="tema-info">
+              <strong>Vino</strong>
+              <span>Borgoña · Cormorant</span>
+            </div>
+          </label>
+          <label class="tema-card" data-tema="tierra">
+            <div class="tema-preview" style="background:#0d0906;border-color:#c87850;">
+              <span style="color:#c87850;font-family:'Georgia',serif;">Ag</span>
+            </div>
+            <div class="tema-info">
+              <strong>Tierra</strong>
+              <span>Terracota · Lora</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
       <!-- Foto de portada -->
       <div class="form-bloque">
         <h4 class="form-bloque-titulo">Foto de portada (hero)</h4>
@@ -998,6 +1103,15 @@ CREATE POLICY "lotes_publicos" ON lotes
       this.options[this.selectedIndex].text.split('(')[0].trim()
   })
 
+  // ── Selector de temas ──────────────────────────────────
+  document.querySelectorAll('.tema-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.tema-card').forEach(c => c.classList.remove('activo'))
+      card.classList.add('activo')
+      document.getElementById('tema').value = card.dataset.tema
+    })
+  })
+
   // ── Upload a Supabase Storage ──────────────────────────
   async function uploadFile(file, carpeta) {
     const ext  = file.name.split('.').pop().toLowerCase()
@@ -1232,6 +1346,7 @@ CREATE POLICY "lotes_publicos" ON lotes
         monto_reserva: n('monto_reserva'), comision_pct: n('comision_pct'),
         condiciones_venta: v('condiciones_venta'),
         financiacion_banco: v('financiacion_banco'), ajuste_precios: v('ajuste_precios'),
+        tema: v('tema') || 'clasico',
         foto_portada: v('foto_portada'), fotos: fotosArr,
         video_url: v('video_url'), masterplan_url: v('masterplan_url'), brochure_url: v('brochure_url'),
         dev_empresa: v('dev_empresa'), dev_cuit: v('dev_cuit'),
@@ -1318,6 +1433,13 @@ CREATE POLICY "lotes_publicos" ON lotes
     set('monto_reserva', p.monto_reserva); set('comision_pct', p.comision_pct)
     set('condiciones_venta', p.condiciones_venta)
     set('financiacion_banco', p.financiacion_banco); set('ajuste_precios', p.ajuste_precios)
+    // Tema
+    if (p.tema) {
+      document.getElementById('tema').value = p.tema
+      document.querySelectorAll('.tema-card').forEach(c => {
+        c.classList.toggle('activo', c.dataset.tema === p.tema)
+      })
+    }
     // Fotos ya guardadas
     if (p.foto_portada) {
       document.getElementById('foto_portada').value = p.foto_portada
