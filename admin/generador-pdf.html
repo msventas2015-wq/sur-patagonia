@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generador de PDF — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <style>
+    .gpdf-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+    }
+    .gpdf-tab {
+      padding: 0.9rem 2rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .gpdf-tab.activo {
+      color: var(--dorado);
+      border-bottom-color: var(--dorado);
+    }
+    .gpdf-panel { display: none; }
+    .gpdf-panel.activo { display: block; }
+
+    .gpdf-select-wrap {
+      margin-bottom: 2rem;
+    }
+    .gpdf-select-wrap label {
+      display: block;
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      margin-bottom: 0.6rem;
+    }
+    .gpdf-select {
+      width: 100%;
+      max-width: 480px;
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      color: var(--blanco);
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      appearance: none;
+      cursor: pointer;
+    }
+    .gpdf-select:focus { outline: 1px solid var(--dorado); }
+
+    .gpdf-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 900px) { .gpdf-grid { grid-template-columns: 1fr; } }
+
+    .gpdf-card {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1.5rem;
+    }
+    .gpdf-card-titulo {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--dorado);
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+    }
+
+    .gpdf-check-item {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.5rem 0;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--gris-claro);
+      transition: color 0.2s;
+    }
+    .gpdf-check-item:hover { color: var(--blanco); }
+    .gpdf-check-item input[type="checkbox"] {
+      accent-color: var(--dorado);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .gpdf-lotes-tabla {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .gpdf-lotes-tabla th {
+      text-align: left;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+    }
+    .gpdf-lotes-tabla td {
+      padding: 0.55rem 0.75rem;
+      color: var(--blanco);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .gpdf-lotes-tabla tr:hover td { background: rgba(255,255,255,0.03); }
+    .estado-badge {
+      display: inline-block;
+      padding: 0.15rem 0.6rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 2px;
+    }
+    .estado-disponible { background: rgba(50,160,80,0.15); color: #4cc982; }
+    .estado-reservado  { background: rgba(200,150,20,0.15); color: #c8a014; }
+    .estado-vendido    { background: rgba(180,50,50,0.15);  color: #e06060; }
+
+    .gpdf-filtro-lotes {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .gpdf-filtro-btn {
+      padding: 0.35rem 0.9rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      color: var(--gris-claro);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .gpdf-filtro-btn.activo, .gpdf-filtro-btn:hover {
+      border-color: var(--dorado);
+      color: var(--dorado);
+    }
+
+    .gpdf-acciones {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      margin-top: 2.5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--gris-oscuro);
+    }
+    .btn-generar-pdf {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--dorado);
+      color: var(--negro);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 600;
+      padding: 0.85rem 2rem;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-generar-pdf:hover { opacity: 0.88; }
+    .btn-generar-pdf:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-generar-pdf svg { width: 15px; height: 15px; }
+
+    .gpdf-empty {
+      color: var(--gris-claro);
+      font-size: 0.85rem;
+      padding: 2rem 0;
+      text-align: center;
+    }
+    .gpdf-propiedad-preview {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      display: none;
+    }
+    .gpdf-prop-foto {
+      width: 100%;
+      max-width: 320px;
+      height: 180px;
+      object-fit: cover;
+      margin-bottom: 1rem;
+      display: block;
+    }
+    .gpdf-prop-nombre {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem;
+      color: var(--blanco);
+      margin-bottom: 0.3rem;
+    }
+    .gpdf-prop-meta {
+      font-size: 0.75rem;
+      color: var(--gris-claro);
+    }
+    .gpdf-prop-precio {
+      font-size: 1.1rem;
+      color: var(--dorado);
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="nueva-propiedad.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nueva propiedad
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="nuevo-proyecto.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nuevo proyecto
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+      <a href="generador-pdf.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Generar PDF
+      </a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-titulo">Generador de PDF</h1>
+        <p class="admin-subtitulo">Seleccioná la información y generá un PDF personalizado</p>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="gpdf-tabs">
+      <button class="gpdf-tab activo" onclick="cambiarTab('proyectos')">Proyectos</button>
+      <button class="gpdf-tab" onclick="cambiarTab('propiedades')">Propiedades</button>
+    </div>
+
+    <!-- PANEL PROYECTOS -->
+    <div class="gpdf-panel activo" id="panel-proyectos">
+
+      <div class="gpdf-select-wrap">
+        <label>Seleccioná el proyecto</label>
+        <select class="gpdf-select" id="sel-proyecto" onchange="cargarProyecto()">
+          <option value="">— Elegí un proyecto —</option>
+        </select>
+      </div>
+
+      <div id="contenido-proyecto" style="display:none;">
+
+        <div class="gpdf-grid">
+
+          <!-- Secciones a incluir -->
+          <div class="gpdf-card">
+            <div class="gpdf-card-titulo">Secciones del PDF</div>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="sec-portada" checked>
+              Portada con foto y nombre
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="sec-descripcion" checked>
+              Descripción del proyecto
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="sec-datos" checked>
+              Datos técnicos (ha, lotes, precios)
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="sec-servicios" checked>
+              Servicios e infraestructura
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="sec-financiacion" checked>
+              Financiación y condiciones
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="sec-lotes" checked>
+              Tabla de lotes seleccionados
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="sec-contacto" checked>
+              Datos de contacto
+            </label>
+          </div>
+
+          <!-- Info del proyecto cargado -->
+          <div class="gpdf-card" id="proyecto-info-card">
+            <div class="gpdf-card-titulo">Proyecto seleccionado</div>
+            <div class="gpdf-empty" id="proyecto-info-vacio">Seleccioná un proyecto para ver su información</div>
+            <div id="proyecto-info-datos" style="display:none;">
+              <div style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--blanco);margin-bottom:0.3rem;" id="pi-nombre"></div>
+              <div style="font-size:0.75rem;color:var(--gris-claro);margin-bottom:0.8rem;" id="pi-loc"></div>
+              <div style="font-size:0.75rem;color:var(--gris-claro);line-height:1.6;" id="pi-stats"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Lotes -->
+        <div class="gpdf-card" id="card-lotes">
+          <div class="gpdf-card-titulo">Seleccioná los lotes a incluir</div>
+          <div class="gpdf-filtro-lotes">
+            <button class="gpdf-filtro-btn activo" onclick="filtrarLotes('todos', this)">Todos</button>
+            <button class="gpdf-filtro-btn" onclick="filtrarLotes('disponible', this)">Solo disponibles</button>
+            <button class="gpdf-filtro-btn" onclick="filtrarLotes('reservado', this)">Reservados</button>
+            <button class="gpdf-filtro-btn" onclick="marcarTodos(true)">Marcar todos</button>
+            <button class="gpdf-filtro-btn" onclick="marcarTodos(false)">Desmarcar todos</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="gpdf-lotes-tabla">
+              <thead>
+                <tr>
+                  <th style="width:40px;"></th>
+                  <th>N° Lote</th>
+                  <th>Superficie</th>
+                  <th>Precio USD</th>
+                  <th>Frente agua</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-lotes-body">
+                <tr><td colspan="6" class="gpdf-empty">Cargando lotes...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /contenido-proyecto -->
+
+      <div class="gpdf-acciones">
+        <button class="btn-generar-pdf" id="btn-gen-proyecto" onclick="generarPDFProyecto()" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg>
+          Generar PDF
+        </button>
+        <span style="font-size:0.75rem;color:var(--gris-claro);" id="estado-gen-proyecto"></span>
+      </div>
+
+    </div><!-- /panel-proyectos -->
+
+    <!-- PANEL PROPIEDADES -->
+    <div class="gpdf-panel" id="panel-propiedades">
+
+      <div class="gpdf-select-wrap">
+        <label>Seleccioná la propiedad</label>
+        <select class="gpdf-select" id="sel-propiedad" onchange="cargarPropiedad()">
+          <option value="">— Elegí una propiedad —</option>
+        </select>
+      </div>
+
+      <div id="contenido-propiedad" style="display:none;">
+
+        <div class="gpdf-grid">
+
+          <!-- Secciones -->
+          <div class="gpdf-card">
+            <div class="gpdf-card-titulo">Secciones del PDF</div>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="psec-foto" checked>
+              Foto principal
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="psec-descripcion" checked>
+              Descripción
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="psec-datos" checked>
+              Datos técnicos (m², dormitorios, baños)
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="psec-precio" checked>
+              Precio y condiciones
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="psec-ubicacion" checked>
+              Ubicación
+            </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="psec-contacto" checked>
+              Datos de contacto
+            </label>
+          </div>
+
+          <!-- Preview -->
+          <div class="gpdf-card">
+            <div class="gpdf-card-titulo">Propiedad seleccionada</div>
+            <div class="gpdf-empty" id="propiedad-info-vacio">Seleccioná una propiedad para ver su información</div>
+            <div id="propiedad-info-datos" style="display:none;">
+              <img id="prop-foto-prev" class="gpdf-prop-foto" src="" alt="" />
+              <div class="gpdf-prop-nombre" id="prop-nombre"></div>
+              <div class="gpdf-prop-meta" id="prop-meta"></div>
+              <div class="gpdf-prop-precio" id="prop-precio"></div>
+            </div>
+          </div>
+
+        </div>
+
+      </div><!-- /contenido-propiedad -->
+
+      <div class="gpdf-acciones">
+        <button class="btn-generar-pdf" id="btn-gen-propiedad" onclick="generarPDFPropiedad()" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg>
+          Generar PDF
+        </button>
+        <span style="font-size:0.75rem;color:var(--gris-claro);" id="estado-gen-propiedad"></span>
+      </div>
+
+    </div><!-- /panel-propiedades -->
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+import { supabase } from '../js/config.js'
+
+// ── Auth ──────────────────────────────────────────────────────────────────
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { location.href = 'login.html'; }
+
+document.getElementById('btnLogout').addEventListener('click', async e => {
+  e.preventDefault()
+  await supabase.auth.signOut()
+  location.href = 'login.html'
+})
+
+// ── Datos globales ────────────────────────────────────────────────────────
+let proyectoActual = null
+let lotesActuales  = []
+let propiedadActual = null
+
+const SITE = 'https://sur-patagonia.msventas2015.workers.dev'
+
+const SERVICIOS_LABELS = {
+  agua:'Agua potable', luz:'Electricidad', gas:'Gas natural', cloacas:'Cloacas',
+  internet:'Internet / Fibra', seguridad:'Seguridad 24hs', porteria:'Portería',
+  acceso_pavimentado:'Acceso pavimentado', laguna:'Laguna artificial',
+  piscina:'Piscina común', quincho:'Quincho / SUM', cancha:'Cancha deportiva',
+  senderos:'Senderos / Bike paths', bosque:'Reserva de bosque',
+  muelle:'Muelle / Costa de río', vista_lago:'Vista al lago'
+}
+
+// ── Cargar listas ─────────────────────────────────────────────────────────
+async function cargarListaProyectos() {
+  const { data } = await supabase
+    .from('proyectos')
+    .select('id, nombre, estado')
+    .order('nombre')
+  const sel = document.getElementById('sel-proyecto')
+  if (data) data.forEach(p => {
+    const o = document.createElement('option')
+    o.value = p.id
+    o.textContent = p.nombre + (p.estado === 'activo' ? '' : ' (borrador)')
+    sel.appendChild(o)
+  })
+}
+
+async function cargarListaPropiedades() {
+  const { data } = await supabase
+    .from('propiedades')
+    .select('id, titulo, tipo, ciudad, precio, moneda, activa')
+    .order('titulo')
+  const sel = document.getElementById('sel-propiedad')
+  if (data) data.forEach(p => {
+    const o = document.createElement('option')
+    o.value = p.id
+    o.textContent = p.titulo + (p.activa ? '' : ' (inactiva)')
+    sel.appendChild(o)
+  })
+}
+
+await Promise.all([cargarListaProyectos(), cargarListaPropiedades()])
+
+// ── Tab ───────────────────────────────────────────────────────────────────
+window.cambiarTab = function(tab) {
+  document.querySelectorAll('.gpdf-tab').forEach((t,i) => {
+    t.classList.toggle('activo', (tab === 'proyectos' && i === 0) || (tab === 'propiedades' && i === 1))
+  })
+  document.getElementById('panel-proyectos').classList.toggle('activo', tab === 'proyectos')
+  document.getElementById('panel-propiedades').classList.toggle('activo', tab === 'propiedades')
+}
+
+// ── Proyecto ──────────────────────────────────────────────────────────────
+window.cargarProyecto = async function() {
+  const id = document.getElementById('sel-proyecto').value
+  if (!id) {
+    document.getElementById('contenido-proyecto').style.display = 'none'
+    document.getElementById('btn-gen-proyecto').disabled = true
+    return
+  }
+
+  const [{ data: p }, { data: lotes }] = await Promise.all([
+    supabase.from('proyectos').select('*').eq('id', id).single(),
+    supabase.from('lotes').select('*').eq('proyecto_id', id).order('numero')
+  ])
+
+  proyectoActual = p
+  lotesActuales  = lotes || []
+
+  // Info card
+  document.getElementById('pi-nombre').textContent = p.nombre
+  const loc = [p.ciudad, p.provincia?.replace(/_/g,' ')].filter(Boolean).join(', ')
+  document.getElementById('pi-loc').textContent = loc || ''
+  const stats = []
+  if (p.hectareas_total) stats.push(`${p.hectareas_total} ha`)
+  if (p.cantidad_lotes)  stats.push(`${p.cantidad_lotes} lotes`)
+  if (p.precio_desde)    stats.push(`Desde USD ${Number(p.precio_desde).toLocaleString()}`)
+  document.getElementById('pi-stats').textContent = stats.join(' · ')
+  document.getElementById('proyecto-info-vacio').style.display = 'none'
+  document.getElementById('proyecto-info-datos').style.display = 'block'
+
+  // Tabla lotes
+  renderTablaLotes(lotesActuales)
+
+  document.getElementById('contenido-proyecto').style.display = 'block'
+  document.getElementById('btn-gen-proyecto').disabled = false
+}
+
+function renderTablaLotes(lotes) {
+  const tbody = document.getElementById('tabla-lotes-body')
+  if (!lotes.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="gpdf-empty">No hay lotes cargados</td></tr>'
+    return
+  }
+  tbody.innerHTML = lotes.map(l => `
+    <tr>
+      <td><input type="checkbox" class="lote-check" data-id="${l.id}" checked
+          style="accent-color:var(--dorado);width:15px;height:15px;cursor:pointer;"></td>
+      <td>${l.numero ?? '—'}</td>
+      <td>${l.superficie_m2 ? l.superficie_m2 + ' m²' : '—'}</td>
+      <td>${l.precio_usd ? 'USD ' + Number(l.precio_usd).toLocaleString() : '—'}</td>
+      <td>${l.frente_agua ? '✓' : '—'}</td>
+      <td><span class="estado-badge estado-${l.estado}">${l.estado || '—'}</span></td>
+    </tr>
+  `).join('')
+}
+
+window.filtrarLotes = function(filtro, btn) {
+  document.querySelectorAll('.gpdf-filtro-btn').forEach(b => b.classList.remove('activo'))
+  btn.classList.add('activo')
+  const lotesFiltrados = filtro === 'todos'
+    ? lotesActuales
+    : lotesActuales.filter(l => l.estado === filtro)
+  renderTablaLotes(lotesFiltrados)
+}
+
+window.marcarTodos = function(val) {
+  document.querySelectorAll('.lote-check').forEach(c => c.checked = val)
+}
+
+// ── Propiedad ─────────────────────────────────────────────────────────────
+window.cargarPropiedad = async function() {
+  const id = document.getElementById('sel-propiedad').value
+  if (!id) {
+    document.getElementById('contenido-propiedad').style.display = 'none'
+    document.getElementById('btn-gen-propiedad').disabled = true
+    return
+  }
+
+  const { data: p } = await supabase.from('propiedades').select('*').eq('id', id).single()
+  propiedadActual = p
+
+  const foto = p.imagenes?.[0] || ''
+  const prev = document.getElementById('prop-foto-prev')
+  if (foto) { prev.src = foto; prev.style.display = 'block' }
+  else { prev.style.display = 'none' }
+
+  document.getElementById('prop-nombre').textContent = p.titulo
+  const meta = [p.tipo, p.ciudad, p.provincia].filter(Boolean).join(' · ')
+  document.getElementById('prop-meta').textContent = meta
+  document.getElementById('prop-precio').textContent =
+    p.precio ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString()}` : ''
+
+  document.getElementById('propiedad-info-vacio').style.display = 'none'
+  document.getElementById('propiedad-info-datos').style.display = 'block'
+  document.getElementById('contenido-propiedad').style.display = 'block'
+  document.getElementById('btn-gen-propiedad').disabled = false
+}
+
+// ── Helper imagen ─────────────────────────────────────────────────────────
+async function fetchImageAsBase64(url) {
+  const res = await fetch(url)
+  const blob = await res.blob()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// GENERAR PDF — PROYECTO
+// ══════════════════════════════════════════════════════════════════════════
+window.generarPDFProyecto = async function() {
+  if (!proyectoActual) return
+  const btn  = document.getElementById('btn-gen-proyecto')
+  const info = document.getElementById('estado-gen-proyecto')
+  btn.disabled = true
+  info.textContent = 'Generando PDF...'
+
+  try {
+    const { jsPDF } = window.jspdf
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const W = 210, H = 297
+    const p = proyectoActual
+
+    // Lotes seleccionados
+    const idsSeleccionados = new Set(
+      Array.from(document.querySelectorAll('.lote-check:checked')).map(c => c.dataset.id)
+    )
+    const lotesSel = lotesActuales.filter(l => idsSeleccionados.has(String(l.id)))
+
+    // Secciones
+    const sec = {
+      portada:     document.getElementById('sec-portada').checked,
+      descripcion: document.getElementById('sec-descripcion').checked,
+      datos:       document.getElementById('sec-datos').checked,
+      servicios:   document.getElementById('sec-servicios').checked,
+      financiacion:document.getElementById('sec-financiacion').checked,
+      lotes:       document.getElementById('sec-lotes').checked,
+      contacto:    document.getElementById('sec-contacto').checked,
+    }
+
+    // Paleta
+    const BG      = [245, 240, 232]
+    const SURFACE = [235, 229, 218]
+    const DARK    = [28,  25,  20]
+    const MUTED   = [130, 122, 108]
+    const WHITE   = [255, 255, 255]
+    const GOLD    = [201, 168, 76]
+
+    const f  = c => doc.setFillColor(c[0], c[1], c[2])
+    const d  = c => doc.setDrawColor(c[0], c[1], c[2])
+    const t  = c => doc.setTextColor(c[0], c[1], c[2])
+    const sp = n => doc.setCharSpace(n)
+    const gs = o => { try { doc.setGState(new doc.GState({ opacity: o })) } catch(e){} }
+
+    // Fondo crema
+    f(BG); doc.rect(0, 0, W, H, 'F')
+
+    // ── Header ────────────────────────────────────────────────────────────
+    const hH = 26
+    f(SURFACE); doc.rect(0, 0, W, hH, 'F')
+    try {
+      const logo = await fetchImageAsBase64(SITE + '/picos.png')
+      gs(0.68); doc.addImage(logo, 'PNG', 11, 3, 18, 18); gs(1)
+    } catch(e) {}
+    t(GOLD); doc.setFont('helvetica','bold'); doc.setFontSize(11); sp(3.5)
+    doc.text('SUR PATAGONIA', 33, 11); sp(0)
+    t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.8); sp(1.8)
+    doc.text('DESARROLLO INMOBILIARIO', 33, 16.5); sp(0)
+    t([150,142,128]); doc.setFontSize(4.5); sp(1.2)
+    doc.text('FICHA DE PROYECTO', 33, 21); sp(0)
+    d(GOLD); doc.setLineWidth(0.4); doc.line(0, hH, W, hH)
+
+    let y = hH
+
+    // ── Foto portada ──────────────────────────────────────────────────────
+    if (sec.portada) {
+      const heroH = 68
+      if (p.foto_portada) {
+        try {
+          const img = await fetchImageAsBase64(p.foto_portada)
+          doc.addImage(img, 'JPEG', 0, y, W, heroH)
+        } catch(e) { f([35,30,22]); doc.rect(0, y, W, heroH, 'F') }
+      } else { f([35,30,22]); doc.rect(0, y, W, heroH, 'F') }
+      // Overlay
+      const ov = document.createElement('canvas'); ov.width=1; ov.height=1
+      const oc = ov.getContext('2d'); oc.fillStyle='rgba(8,5,2,0.48)'; oc.fillRect(0,0,1,1)
+      doc.addImage(ov.toDataURL(), 'PNG', 0, y, W, heroH)
+      // Nombre
+      t(WHITE); doc.setFont('times','italic'); doc.setFontSize(30); sp(0)
+      doc.text(p.nombre || 'Proyecto', 14, y + heroH - 20)
+      const loc = [p.ciudad, p.provincia?.replace(/_/g,' ')].filter(Boolean).join(', ')
+      if (loc) {
+        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(6); sp(2.5)
+        doc.text(loc.toUpperCase(), 14, y + heroH - 10); sp(0)
+      }
+      y += heroH + 6
+    } else {
+      // Sin foto: solo nombre
+      y += 8
+      t(DARK); doc.setFont('times','italic'); doc.setFontSize(22); sp(0)
+      doc.text(p.nombre || 'Proyecto', 14, y)
+      y += 12
+    }
+
+    // ── Descripción ───────────────────────────────────────────────────────
+    if (sec.descripcion && p.descripcion) {
+      t(MUTED); doc.setFont('times','italic'); doc.setFontSize(8.5); sp(0)
+      const lines = doc.splitTextToSize(p.descripcion, W - 28)
+      const visibles = lines.slice(0, 4)
+      doc.text(visibles, 14, y)
+      y += visibles.length * 5 + 6
+      d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+    }
+
+    // ── Datos técnicos ────────────────────────────────────────────────────
+    if (sec.datos) {
+      const items = []
+      if (p.tipo_propiedad)  items.push(['Tipo', p.tipo_propiedad])
+      if (p.hectareas_total) items.push(['Superficie', p.hectareas_total + ' ha'])
+      if (p.cantidad_lotes)  items.push(['Lotes totales', p.cantidad_lotes])
+      const disp = lotesActuales.filter(l => l.estado === 'disponible').length
+      if (disp)              items.push(['Disponibles', disp + ' lotes'])
+      if (p.precio_desde)    items.push(['Precio desde', 'USD ' + Number(p.precio_desde).toLocaleString()])
+      if (p.sup_min_m2 && p.sup_max_m2) items.push(['Superficies', `${p.sup_min_m2} – ${p.sup_max_m2} m²`])
+      if (p.ciudad)          items.push(['Ubicación', [p.ciudad, p.provincia?.replace(/_/g,' ')].filter(Boolean).join(', ')])
+      if (p.distancia_km)    items.push(['Distancia', p.distancia_km + ' km del centro'])
+
+      if (items.length) {
+        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+        doc.text('DATOS DEL PROYECTO', 14, y); sp(0); y += 7
+
+        const colW = (W - 28) / 2
+        items.forEach((item, i) => {
+          const col = i % 2
+          const row = Math.floor(i / 2)
+          const ix = 14 + col * (colW + 4)
+          const iy = y + row * 10
+          t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
+          doc.text(item[0].toUpperCase(), ix, iy); sp(0)
+          t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
+          doc.text(String(item[1]), ix, iy + 5)
+        })
+        y += Math.ceil(items.length / 2) * 10 + 6
+        d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+      }
+    }
+
+    // ── Servicios ─────────────────────────────────────────────────────────
+    if (sec.servicios) {
+      const svcs = Object.entries(SERVICIOS_LABELS).filter(([k]) => p[k] === true)
+      if (svcs.length) {
+        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+        doc.text('SERVICIOS E INFRAESTRUCTURA', 14, y); sp(0); y += 7
+        const colW2 = (W - 28) / 2
+        svcs.forEach(([, label], i) => {
+          const col = i % 2
+          const row = Math.floor(i / 2)
+          t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(7.5)
+          doc.text('· ' + label, 14 + col * (colW2 + 4), y + row * 6.5)
+        })
+        y += Math.ceil(svcs.length / 2) * 6.5 + 6
+        d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+      }
+    }
+
+    // ── Financiación ──────────────────────────────────────────────────────
+    if (sec.financiacion && p.financiacion) {
+      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+      doc.text('FINANCIACIÓN', 14, y); sp(0); y += 6
+      t(DARK); doc.setFont('times','normal'); doc.setFontSize(8.5)
+      const finLines = doc.splitTextToSize(p.financiacion, W - 28)
+      doc.text(finLines.slice(0,3), 14, y)
+      y += finLines.slice(0,3).length * 5 + 6
+      d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+    }
+
+    // ── Tabla lotes ───────────────────────────────────────────────────────
+    if (sec.lotes && lotesSel.length) {
+      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+      doc.text('DISPONIBILIDAD DE LOTES', 14, y); sp(0); y += 7
+
+      // Header
+      f(DARK); doc.rect(14, y, W-28, 6.5, 'F')
+      t(WHITE); doc.setFont('helvetica','normal'); doc.setFontSize(5.2); sp(0.8)
+      doc.text('N°', 18, y+4.5)
+      doc.text('SUPERFICIE', 40, y+4.5)
+      doc.text('PRECIO USD', 88, y+4.5)
+      doc.text('FRENTE AGUA', 138, y+4.5)
+      doc.text('ESTADO', 170, y+4.5)
+      sp(0); y += 6.5
+
+      const colores = { disponible:[50,130,70], reservado:[190,130,20], vendido:[170,50,50] }
+      lotesSel.forEach((l, i) => {
+        // Nueva página si no hay espacio
+        if (y > H - 30) {
+          doc.addPage()
+          f(BG); doc.rect(0, 0, W, H, 'F')
+          y = 14
+        }
+        const ry = y + i * 6
+        if (i % 2 === 0) { f(SURFACE); doc.rect(14, ry, W-28, 6, 'F') }
+        t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(6.5)
+        doc.text(String(l.numero ?? i+1), 18, ry+4)
+        doc.text(l.superficie_m2 ? l.superficie_m2 + ' m²' : '—', 40, ry+4)
+        doc.text(l.precio_usd ? 'USD '+Number(l.precio_usd).toLocaleString() : '—', 88, ry+4)
+        doc.text(l.frente_agua ? 'Sí' : 'No', 138, ry+4)
+        const ec = colores[l.estado] || [120,120,120]
+        t(ec); doc.text(l.estado || '—', 170, ry+4)
+      })
+      y += lotesSel.length * 6 + 8
+    }
+
+    // ── Contacto ──────────────────────────────────────────────────────────
+    if (sec.contacto) {
+      if (y > H - 40) { doc.addPage(); f(BG); doc.rect(0,0,W,H,'F'); y = 14 }
+      d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 8
+      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+      doc.text('CONTACTO', 14, y); sp(0); y += 7
+
+      const contactoItems = []
+      if (p.contacto_nombre)    contactoItems.push(['Asesor', p.contacto_nombre])
+      if (p.contacto_whatsapp)  contactoItems.push(['WhatsApp', p.contacto_whatsapp])
+      if (p.contacto_email)     contactoItems.push(['Email', p.contacto_email])
+
+      contactoItems.forEach(item => {
+        t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
+        doc.text(item[0].toUpperCase(), 14, y); sp(0)
+        t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
+        doc.text(item[1], 14, y + 4.5)
+        y += 10
+      })
+    }
+
+    // ── Footer ────────────────────────────────────────────────────────────
+    f(DARK); doc.rect(0, H-14, W, 14, 'F')
+    t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2)
+    doc.text('SUR PATAGONIA · DESARROLLO INMOBILIARIO', 14, H-6); sp(0)
+    t(MUTED); doc.setFontSize(5)
+    doc.text('sur-patagonia.msventas2015.workers.dev', W-14, H-6, { align: 'right' })
+
+    const nombre = (p.nombre || 'proyecto').toLowerCase().replace(/\s+/g,'-')
+    doc.save(`ficha-${nombre}.pdf`)
+    info.textContent = '✓ PDF generado'
+  } catch(err) {
+    console.error(err)
+    info.textContent = 'Error al generar PDF'
+  }
+  btn.disabled = false
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// GENERAR PDF — PROPIEDAD
+// ══════════════════════════════════════════════════════════════════════════
+window.generarPDFPropiedad = async function() {
+  if (!propiedadActual) return
+  const btn  = document.getElementById('btn-gen-propiedad')
+  const info = document.getElementById('estado-gen-propiedad')
+  btn.disabled = true
+  info.textContent = 'Generando PDF...'
+
+  try {
+    const { jsPDF } = window.jspdf
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const W = 210, H = 297
+    const p = propiedadActual
+
+    const sec = {
+      foto:        document.getElementById('psec-foto').checked,
+      descripcion: document.getElementById('psec-descripcion').checked,
+      datos:       document.getElementById('psec-datos').checked,
+      precio:      document.getElementById('psec-precio').checked,
+      ubicacion:   document.getElementById('psec-ubicacion').checked,
+      contacto:    document.getElementById('psec-contacto').checked,
+    }
+
+    const BG      = [245, 240, 232]
+    const SURFACE = [235, 229, 218]
+    const DARK    = [28,  25,  20]
+    const MUTED   = [130, 122, 108]
+    const WHITE   = [255, 255, 255]
+    const GOLD    = [201, 168, 76]
+
+    const f  = c => doc.setFillColor(c[0], c[1], c[2])
+    const d  = c => doc.setDrawColor(c[0], c[1], c[2])
+    const t  = c => doc.setTextColor(c[0], c[1], c[2])
+    const sp = n => doc.setCharSpace(n)
+    const gs = o => { try { doc.setGState(new doc.GState({ opacity: o })) } catch(e){} }
+
+    f(BG); doc.rect(0, 0, W, H, 'F')
+
+    // Header
+    const hH = 26
+    f(SURFACE); doc.rect(0, 0, W, hH, 'F')
+    try {
+      const logo = await fetchImageAsBase64(SITE + '/picos.png')
+      gs(0.68); doc.addImage(logo, 'PNG', 11, 3, 18, 18); gs(1)
+    } catch(e) {}
+    t(GOLD); doc.setFont('helvetica','bold'); doc.setFontSize(11); sp(3.5)
+    doc.text('SUR PATAGONIA', 33, 11); sp(0)
+    t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.8); sp(1.8)
+    doc.text('DESARROLLO INMOBILIARIO', 33, 16.5); sp(0)
+    t([150,142,128]); doc.setFontSize(4.5); sp(1.2)
+    doc.text('FICHA DE PROPIEDAD', 33, 21); sp(0)
+    d(GOLD); doc.setLineWidth(0.4); doc.line(0, hH, W, hH)
+
+    let y = hH
+
+    // Foto principal
+    if (sec.foto && p.imagenes?.[0]) {
+      const heroH = 72
+      try {
+        const img = await fetchImageAsBase64(p.imagenes[0])
+        doc.addImage(img, 'JPEG', 0, y, W, heroH)
+      } catch(e) { f([35,30,22]); doc.rect(0, y, W, heroH, 'F') }
+      const ov = document.createElement('canvas'); ov.width=1; ov.height=1
+      const oc = ov.getContext('2d'); oc.fillStyle='rgba(8,5,2,0.42)'; oc.fillRect(0,0,1,1)
+      doc.addImage(ov.toDataURL(), 'PNG', 0, y, W, heroH)
+      t(WHITE); doc.setFont('times','italic'); doc.setFontSize(26); sp(0)
+      doc.text(p.titulo || 'Propiedad', 14, y + heroH - 20)
+      const sub = [p.tipo, p.ciudad].filter(Boolean).join(' · ')
+      if (sub) {
+        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(6); sp(2)
+        doc.text(sub.toUpperCase(), 14, y + heroH - 10); sp(0)
+      }
+      y += heroH + 8
+    } else {
+      y += 8
+      t(DARK); doc.setFont('times','italic'); doc.setFontSize(22)
+      doc.text(p.titulo || 'Propiedad', 14, y)
+      y += 12
+    }
+
+    // Precio
+    if (sec.precio && p.precio) {
+      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+      doc.text('PRECIO', 14, y); sp(0); y += 6
+      t(DARK); doc.setFont('times','normal'); doc.setFontSize(16)
+      doc.text(`${p.moneda || 'USD'} ${Number(p.precio).toLocaleString()}`, 14, y)
+      if (p.operacion) {
+        t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(6); sp(1)
+        doc.text(p.operacion.toUpperCase(), 80, y); sp(0)
+      }
+      y += 10
+      d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+    }
+
+    // Descripción
+    if (sec.descripcion && p.descripcion) {
+      t(MUTED); doc.setFont('times','italic'); doc.setFontSize(8.5)
+      const lines = doc.splitTextToSize(p.descripcion, W - 28)
+      doc.text(lines.slice(0,5), 14, y)
+      y += lines.slice(0,5).length * 5 + 6
+      d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+    }
+
+    // Datos técnicos
+    if (sec.datos) {
+      const items = []
+      if (p.tipo)               items.push(['Tipo', p.tipo])
+      if (p.operacion)          items.push(['Operación', p.operacion])
+      if (p.dormitorios)        items.push(['Dormitorios', p.dormitorios])
+      if (p.banos)              items.push(['Baños', p.banos])
+      if (p.superficie_cubierta) items.push(['Sup. cubierta', p.superficie_cubierta + ' m²'])
+      if (p.superficie_total)   items.push(['Sup. total', p.superficie_total + ' m²'])
+
+      if (items.length) {
+        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+        doc.text('DATOS TÉCNICOS', 14, y); sp(0); y += 7
+        const colW = (W - 28) / 2
+        items.forEach((item, i) => {
+          const col = i % 2
+          const row = Math.floor(i / 2)
+          const ix = 14 + col * (colW + 4)
+          const iy = y + row * 10
+          t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
+          doc.text(item[0].toUpperCase(), ix, iy); sp(0)
+          t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
+          doc.text(String(item[1]), ix, iy + 5)
+        })
+        y += Math.ceil(items.length / 2) * 10 + 6
+        d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+      }
+    }
+
+    // Ubicación
+    if (sec.ubicacion) {
+      const loc = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
+      if (loc) {
+        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+        doc.text('UBICACIÓN', 14, y); sp(0); y += 6
+        t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
+        doc.text(loc, 14, y); y += 10
+        d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+      }
+    }
+
+    // Contacto
+    if (sec.contacto) {
+      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
+      doc.text('CONTACTO', 14, y); sp(0); y += 7
+      t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
+      doc.text('ASESOR', 14, y); sp(0)
+      t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
+      doc.text('Sur Patagonia · Propiedades', 14, y + 5)
+      y += 12
+    }
+
+    // Footer
+    f(DARK); doc.rect(0, H-14, W, 14, 'F')
+    t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2)
+    doc.text('SUR PATAGONIA · DESARROLLO INMOBILIARIO', 14, H-6); sp(0)
+    t(MUTED); doc.setFontSize(5)
+    doc.text('sur-patagonia.msventas2015.workers.dev', W-14, H-6, { align: 'right' })
+
+    const nombre = (p.titulo || 'propiedad').toLowerCase().replace(/\s+/g,'-')
+    doc.save(`ficha-${nombre}.pdf`)
+    info.textContent = '✓ PDF generado'
+  } catch(err) {
+    console.error(err)
+    info.textContent = 'Error al generar PDF'
+  }
+  btn.disabled = false
+}
+
+</script>
+</body>
+</html>
