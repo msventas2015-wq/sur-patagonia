@@ -927,6 +927,26 @@
         </div>
       </div>
 
+      <!-- Foto de atmósfera -->
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Foto de atmósfera (sección debajo del hero)</h4>
+        <p style="font-size:0.75rem;color:var(--gris-claro);margin-bottom:1.2rem;">
+          Foto en pantalla completa con efecto parallax que aparece debajo del hero. Recomendado: paisaje amplio, lago, bosque, montaña. Si no se carga, se usa la primera foto de la galería.
+        </p>
+        <input type="hidden" id="foto_atmosfera" />
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <label class="btn-upload" for="atmosferaFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Examinar imagen
+          </label>
+          <input type="file" id="atmosferaFile" accept="image/*" style="display:none" onchange="subirAtmosfera(this)" />
+          <span id="atmosferaStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin imagen cargada</span>
+        </div>
+        <div id="atmosferaPreview" style="display:none;margin-top:1rem;max-width:420px;">
+          <img id="atmosferaImg" src="" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--gris-oscuro);" />
+        </div>
+      </div>
+
       <!-- Galería -->
       <div class="form-bloque">
         <h4 class="form-bloque-titulo">Galería de fotos</h4>
@@ -1430,6 +1450,29 @@ CREATE POLICY "lotes_publicos" ON lotes
     input.value = ''
   }
 
+  // ── Foto de atmósfera ──────────────────────────────────
+  window.subirAtmosfera = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('atmosferaStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'atmosfera')
+      document.getElementById('foto_atmosfera').value = url
+      document.getElementById('atmosferaPreview').style.display = 'block'
+      document.getElementById('atmosferaImg').src = url
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
+    }
+    btn.classList.remove('cargando')
+    input.value = ''
+  }
+
   // ── Galería ────────────────────────────────────────────
   const fotosArr = []
 
@@ -1639,6 +1682,7 @@ CREATE POLICY "lotes_publicos" ON lotes
           cuerpo:  document.getElementById('fuente-cuerpo-val').value  || 'montserrat',
         }),
         foto_portada: v('foto_portada'), fotos: fotosArr,
+        foto_atmosfera: v('foto_atmosfera') || null,
         foto_fondo: v('foto_fondo'),
         opacidad_fondo: parseInt(document.getElementById('opacidad_fondo').value) || 7,
         video_url: v('video_url'), masterplan_url: v('masterplan_url'), brochure_url: v('brochure_url'),
@@ -1748,6 +1792,14 @@ CREATE POLICY "lotes_publicos" ON lotes
       document.getElementById('portadaImg').src = p.foto_portada
       document.getElementById('portadaStatus').textContent = '✓ Imagen cargada'
       document.getElementById('portadaStatus').style.color = '#4cc982'
+    }
+    // Foto de atmósfera
+    if (p.foto_atmosfera) {
+      document.getElementById('foto_atmosfera').value = p.foto_atmosfera
+      document.getElementById('atmosferaPreview').style.display = 'block'
+      document.getElementById('atmosferaImg').src = p.foto_atmosfera
+      document.getElementById('atmosferaStatus').textContent = '✓ Imagen cargada'
+      document.getElementById('atmosferaStatus').style.color = '#4cc982'
     }
     // Fondo de página
     if (p.foto_fondo) {
