@@ -780,77 +780,97 @@ window.generarPDFProyecto = async function() {
     // ══════════════════════════════════════════════════════════════════════
     f(BG); doc.rect(0,0,W,H,'F')
 
-    // ── HERO: foto full-bleed desde (0,0) ────────────────────────────────
-    const heroH = 95   // mm — foto cubre todo el bloque superior
+    // ── FOTO PORTADA full-bleed con aspect ratio correcto ─────────────────
+    const heroH = 100  // altura del bloque foto en mm
     let fotoRaw = null
     if (p.foto_portada) {
       try { fotoRaw = await fetchImageAsBase64(p.foto_portada) } catch(e) {}
     }
 
     if (fotoRaw) {
-      // Cover sin estiramiento: renderizar en canvas al aspect ratio correcto
-      const fotoFit = await coverImg(fotoRaw, 1240, 560) // ~210mm × 95mm @ 150dpi
+      // Render en canvas con lógica cover: sin estiramiento
+      const fotoFit = await coverImg(fotoRaw, Math.round(W * 4), Math.round(heroH * 4))
       doc.addImage(fotoFit || fotoRaw, 'JPEG', 0, 0, W, heroH, '', 'FAST')
     } else {
-      f(DARK); doc.rect(0,0,W,heroH,'F')
+      f(DARK); doc.rect(0, 0, W, heroH, 'F')
     }
 
-    // Gradiente: oscuro arriba (logo) + oscuro abajo (nombre proyecto)
-    // Arriba
-    const gradTop = document.createElement('canvas'); gradTop.width=1; gradTop.height=50
-    const gtx = gradTop.getContext('2d')
-    const gTop = gtx.createLinearGradient(0,0,0,50)
-    gTop.addColorStop(0,'rgba(8,5,2,0.72)'); gTop.addColorStop(1,'rgba(8,5,2,0)')
-    gtx.fillStyle = gTop; gtx.fillRect(0,0,1,50)
-    doc.addImage(gradTop.toDataURL(),'PNG',0,0,W,50)
+    // Gradiente superior (oscuro para legibilidad del logo)
+    const gtCanvas = document.createElement('canvas'); gtCanvas.width=1; gtCanvas.height=60
+    const gtCtx = gtCanvas.getContext('2d')
+    const gtGrad = gtCtx.createLinearGradient(0,0,0,60)
+    gtGrad.addColorStop(0,'rgba(5,3,1,0.80)'); gtGrad.addColorStop(1,'rgba(5,3,1,0)')
+    gtCtx.fillStyle = gtGrad; gtCtx.fillRect(0,0,1,60)
+    doc.addImage(gtCanvas.toDataURL(),'PNG',0,0,W,60)
 
-    // Abajo
-    const gradBot = document.createElement('canvas'); gradBot.width=1; gradBot.height=40
-    const gbx = gradBot.getContext('2d')
-    const gBot = gbx.createLinearGradient(0,0,0,40)
-    gBot.addColorStop(0,'rgba(8,5,2,0)'); gBot.addColorStop(1,'rgba(8,5,2,0.85)')
-    gbx.fillStyle = gBot; gbx.fillRect(0,0,1,40)
-    doc.addImage(gradBot.toDataURL(),'PNG',0,heroH-40,W,40)
+    // Gradiente inferior (oscuro para nombre del proyecto)
+    const gbCanvas = document.createElement('canvas'); gbCanvas.width=1; gbCanvas.height=45
+    const gbCtx = gbCanvas.getContext('2d')
+    const gbGrad = gbCtx.createLinearGradient(0,0,0,45)
+    gbGrad.addColorStop(0,'rgba(5,3,1,0)'); gbGrad.addColorStop(1,'rgba(5,3,1,0.88)')
+    gbCtx.fillStyle = gbGrad; gbCtx.fillRect(0,0,1,45)
+    doc.addImage(gbCanvas.toDataURL(),'PNG',0,heroH-45,W,45)
 
-    // Logo: picos.png — proporciones originales (ancho > alto), pequeño arriba-centro
-    // picos.png es aprox 1:1, lo ponemos en 16×12 para que no se deforme
+    // ── LOGO: picos centrado con proporción real ───────────────────────────
+    let logoY = 6  // posición Y inicial del logo
     try {
-      const logo = await fetchImageAsBase64(SITE + '/picos.png')
-      // Dibujamos en canvas para conocer proporción real
-      const logoSize = 14 // mm de ancho
+      const logoB64 = await fetchImageAsBase64(SITE + '/picos.png')
+
+      // Obtener dimensiones reales para mantener aspect ratio
+      const logoDims = await new Promise(resolve => {
+        const img = new Image()
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
+        img.onerror = () => resolve({ w: 100, h: 100 })
+        img.src = logoB64
+      })
+
+      // Ancho fijo 18mm, alto proporcional
+      const logoW_mm = 18
+      const logoH_mm = logoW_mm * (logoDims.h / logoDims.w)
+      const logoX = W/2 - logoW_mm/2
+
       gs(0.95)
-      doc.addImage(logo, 'PNG', W/2 - logoSize/2, 5, logoSize, logoSize)
+      doc.addImage(logoB64, 'PNG', logoX, logoY, logoW_mm, logoH_mm)
       gs(1)
-    } catch(e) {}
 
-    // Marca centrada sobre el logo
-    t(WHITE); doc.setFont('helvetica','bold'); doc.setFontSize(12); sp(5)
-    doc.text('SUR PATAGONIA', W/2, 26, { align:'center' }); sp(0)
-    t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(4)
-    doc.text('PROPIEDADES', W/2, 31.5, { align:'center' }); sp(0)
-
-    // Fecha (arriba-derecha sobre la foto)
-    if (fechaStr) {
-      t([220,210,190]); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(0.5)
-      doc.text(fechaStr, W-10, 10, { align:'right' }); sp(0)
-    }
-    if (cotCliente) {
-      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(0.8)
-      doc.text('COTIZACIÓN PARA: ' + cotCliente.toUpperCase(), W-10, 16, { align:'right' }); sp(0)
+      logoY += logoH_mm + 3  // siguiente elemento bajo el logo
+    } catch(e) {
+      logoY += 16
     }
 
-    // Nombre del proyecto (abajo-izq sobre foto)
-    t(WHITE); doc.setFont('times','italic'); doc.setFontSize(30); sp(0)
-    doc.text(p.nombre || 'Proyecto', 12, heroH - 14)
-    // Localidad
+    // SUR PATAGONIA — centrado, espaciado
+    t(WHITE); doc.setFont('helvetica','bold'); doc.setFontSize(13); sp(5)
+    doc.text('SUR PATAGONIA', W/2, logoY + 5, { align:'center' }); sp(0)
+
+    // PROPIEDADES — centrado, dorado, más pequeño
+    t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(4)
+    doc.text('PROPIEDADES', W/2, logoY + 11, { align:'center' }); sp(0)
+
+    // ── NOMBRE DEL PROYECTO (abajo-izquierda sobre la foto) ───────────────
     const prov = (p.provincia||'').replace(/_/g,' ')
     const locLabel = [p.ciudad, prov].filter(Boolean).join(' · ').toUpperCase()
+
+    t(WHITE); doc.setFont('times','italic'); doc.setFontSize(30); sp(0)
+    doc.text(p.nombre || 'Proyecto', 12, heroH - 14)
     if (locLabel) {
       t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(6); sp(2.5)
-      doc.text(locLabel, 12, heroH - 6); sp(0)
+      doc.text(locLabel, 12, heroH - 5); sp(0)
     }
 
     let y = heroH
+
+    // ── BANDA STATS + fecha/cliente ───────────────────────────────────────
+    const statsH = 20
+    f(SURFACE); doc.rect(0, y, W, statsH, 'F')
+    d(GOLD); doc.setLineWidth(0.2)
+    doc.line(0, y, W, y); doc.line(0, y+statsH, W, y+statsH)
+
+    const statsArr = []
+    if (p.hectareas_total) statsArr.push([p.hectareas_total + ' ha', 'SUPERFICIE TOTAL'])
+    if (p.cantidad_lotes)  statsArr.push([String(p.cantidad_lotes), 'LOTES EN TOTAL'])
+    const nDisp = lotesActuales.filter(l => l.estado === 'disponible').length
+    if (nDisp)             statsArr.push([String(nDisp), 'DISPONIBLES HOY'])
+    if (p.tipo_propiedad)  statsArr.push([p.tipo_propiedad, 'TIPO DE PROPIEDAD'])
 
     // ── BANDA STATS (sin precio) ──────────────────────────────────────────
     const statsH = 20
@@ -876,7 +896,22 @@ window.generarPDFProyecto = async function() {
         doc.text(st[1], cx, y+18, { align:'center' }); sp(0)
       })
     }
-    y += statsH + 5
+    y += statsH
+
+    // ── BANDA FECHA / CLIENTE (debajo de stats, antes del contenido) ──────
+    if (fechaStr || cotCliente) {
+      const bandaH = 8
+      f(BG); doc.rect(0, y, W, bandaH, 'F')
+      d(GOLD); doc.setLineWidth(0.15); doc.line(0, y+bandaH, W, y+bandaH)
+      t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(0.5)
+      if (fechaStr) doc.text(fechaStr, 14, y+5.5)
+      if (cotCliente) {
+        t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(0.5)
+        doc.text('Cotización para: ' + cotCliente, W-14, y+5.5, { align:'right' }); sp(0)
+      }
+      y += bandaH
+    }
+    y += 5
 
     // ── DESCRIPCIÓN ───────────────────────────────────────────────────────
     if (sec.descripcion && p.descripcion) {
