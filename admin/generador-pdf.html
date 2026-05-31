@@ -651,10 +651,10 @@ async function fetchImageAsBase64(url) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// GENERAR PDF — PROYECTO
+// HELPERS PDF
 // ══════════════════════════════════════════════════════════════════════════
 
-// Helper: genera QR como base64 via canvas
+// QR como base64
 async function qrBase64(texto, size = 120) {
   return new Promise((resolve) => {
     const div = document.createElement('div')
@@ -671,15 +671,14 @@ async function qrBase64(texto, size = 120) {
   })
 }
 
-// Helper: nueva página con fondo crema
+// Nueva página con fondo crema
 function nuevaPagina(doc, BG) {
   doc.addPage()
-  const [r,g,b] = BG
-  doc.setFillColor(r,g,b); doc.rect(0,0,210,297,'F')
+  doc.setFillColor(BG[0],BG[1],BG[2]); doc.rect(0,0,210,297,'F')
   return 14
 }
 
-// Helper: sección header dentro de página
+// Título de sección
 function secHeader(doc, texto, y, GOLD, sp) {
   doc.setTextColor(GOLD[0],GOLD[1],GOLD[2])
   doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
@@ -687,16 +686,37 @@ function secHeader(doc, texto, y, GOLD, sp) {
   return y + 7
 }
 
+// Imagen con crop tipo "cover" para evitar estiramiento
+async function coverImg(base64, pxW, pxH) {
+  return new Promise(resolve => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = pxW; canvas.height = pxH
+      const ctx = canvas.getContext('2d')
+      const scale = Math.max(pxW / img.width, pxH / img.height)
+      const sw = img.width * scale, sh = img.height * scale
+      ctx.drawImage(img, (pxW - sw) / 2, (pxH - sh) / 2, sw, sh)
+      resolve(canvas.toDataURL('image/jpeg', 0.92))
+    }
+    img.onerror = () => resolve(null)
+    img.crossOrigin = 'anonymous'
+    img.src = base64
+  })
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// GENERAR PDF — PROYECTO
+// ══════════════════════════════════════════════════════════════════════════
 window.generarPDFProyecto = async function() {
   if (!proyectoActual) return
   const btn  = document.getElementById('btn-gen-proyecto')
   const info = document.getElementById('estado-gen-proyecto')
-  btn.disabled = true
-  info.textContent = 'Generando PDF...'
+  btn.disabled = true; info.textContent = 'Generando PDF...'
 
   try {
     const { jsPDF } = window.jspdf
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' })
     const W = 210, H = 297
     const p = proyectoActual
 
@@ -708,32 +728,36 @@ window.generarPDFProyecto = async function() {
 
     // Secciones
     const sec = {
-      portada:     document.getElementById('sec-portada').checked,
-      descripcion: document.getElementById('sec-descripcion').checked,
-      datos:       document.getElementById('sec-datos').checked,
-      servicios:   document.getElementById('sec-servicios').checked,
-      comercial:   document.getElementById('sec-comercial').checked,
-      financiacion:document.getElementById('sec-financiacion').checked,
-      lotes:       document.getElementById('sec-lotes').checked,
-      mapa:        document.getElementById('sec-mapa').checked,
-      qr:          document.getElementById('sec-qr').checked,
-      nota:        document.getElementById('sec-nota').checked,
+      portada:      document.getElementById('sec-portada').checked,
+      descripcion:  document.getElementById('sec-descripcion').checked,
+      datos:        document.getElementById('sec-datos').checked,
+      servicios:    document.getElementById('sec-servicios').checked,
+      comercial:    document.getElementById('sec-comercial').checked,
+      financiacion: document.getElementById('sec-financiacion').checked,
+      lotes:        document.getElementById('sec-lotes').checked,
+      mapa:         document.getElementById('sec-mapa').checked,
+      qr:           document.getElementById('sec-qr').checked,
+      nota:         document.getElementById('sec-nota').checked,
     }
 
     // Datos cotización
-    const cotFecha       = document.getElementById('cot-fecha').value
-    const cotCliente     = document.getElementById('cot-cliente').value.trim()
-    const cotPrecio      = document.getElementById('cot-precio').value.trim()
-    const cotFinanciacion= document.getElementById('cot-financiacion').value.trim()
-    const cotNota        = document.getElementById('cot-nota').value.trim()
+    const cotFecha        = document.getElementById('cot-fecha').value
+    const cotCliente      = document.getElementById('cot-cliente').value.trim()
+    const cotPrecio       = document.getElementById('cot-precio').value.trim()
+    const cotFinanciacion = document.getElementById('cot-financiacion').value.trim()
+    const cotNota         = document.getElementById('cot-nota').value.trim()
 
-    // Formato fecha legible
+    // Fecha
     let fechaStr = ''
     if (cotFecha) {
       const [yy,mm,dd] = cotFecha.split('-')
       const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
       fechaStr = `${parseInt(dd)} de ${meses[parseInt(mm)-1]} de ${yy}`
     }
+
+    // Servicios — guardados como array text[] en p.servicios
+    const svcsArr = Array.isArray(p.servicios) ? p.servicios : []
+    const svcsLabels = svcsArr.map(k => SERVICIOS_LABELS[k]).filter(Boolean)
 
     // Paleta
     const BG      = [245, 240, 232]
@@ -743,444 +767,397 @@ window.generarPDFProyecto = async function() {
     const WHITE   = [255, 255, 255]
     const GOLD    = [201, 168, 76]
 
-    const f  = c => doc.setFillColor(c[0], c[1], c[2])
-    const d  = c => doc.setDrawColor(c[0], c[1], c[2])
-    const t  = c => doc.setTextColor(c[0], c[1], c[2])
-    const sp = n => doc.setCharSpace(n)
-    const gs = o => { try { doc.setGState(new doc.GState({ opacity: o })) } catch(e){} }
-    const linea = y => { d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); return y + 5 }
-    const checkPage = y => { if (y > H - 35) { return nuevaPagina(doc, BG) } return y }
+    const f   = c => doc.setFillColor(c[0],c[1],c[2])
+    const d   = c => doc.setDrawColor(c[0],c[1],c[2])
+    const t   = c => doc.setTextColor(c[0],c[1],c[2])
+    const sp  = n => doc.setCharSpace(n)
+    const gs  = o => { try { doc.setGState(new doc.GState({ opacity: o })) } catch(e){} }
+    const linea     = y => { d(GOLD); doc.setLineWidth(0.25); doc.line(14,y,W-14,y); return y+5 }
+    const checkPage = y => y > H-40 ? nuevaPagina(doc, BG) : y
 
-    // ══ PÁGINA 1 ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════
+    // PÁGINA 1 — fondo crema
+    // ══════════════════════════════════════════════════════════════════════
+    f(BG); doc.rect(0,0,W,H,'F')
 
-    // Fondo crema
-    f(BG); doc.rect(0, 0, W, H, 'F')
+    // ── HERO: foto full-bleed desde (0,0) ────────────────────────────────
+    const heroH = 95   // mm — foto cubre todo el bloque superior
+    let fotoRaw = null
+    if (p.foto_portada) {
+      try { fotoRaw = await fetchImageAsBase64(p.foto_portada) } catch(e) {}
+    }
 
-    // ── Header con logo estilo brochure ───────────────────────────────────
-    // Banda oscura superior
-    f(DARK); doc.rect(0, 0, W, 38, 'F')
-    d(GOLD); doc.setLineWidth(0.5); doc.line(0, 38, W, 38)
+    if (fotoRaw) {
+      // Cover sin estiramiento: renderizar en canvas al aspect ratio correcto
+      const fotoFit = await coverImg(fotoRaw, 1240, 560) // ~210mm × 95mm @ 150dpi
+      doc.addImage(fotoFit || fotoRaw, 'JPEG', 0, 0, W, heroH, '', 'FAST')
+    } else {
+      f(DARK); doc.rect(0,0,W,heroH,'F')
+    }
 
-    // Logo centrado
+    // Gradiente: oscuro arriba (logo) + oscuro abajo (nombre proyecto)
+    // Arriba
+    const gradTop = document.createElement('canvas'); gradTop.width=1; gradTop.height=50
+    const gtx = gradTop.getContext('2d')
+    const gTop = gtx.createLinearGradient(0,0,0,50)
+    gTop.addColorStop(0,'rgba(8,5,2,0.72)'); gTop.addColorStop(1,'rgba(8,5,2,0)')
+    gtx.fillStyle = gTop; gtx.fillRect(0,0,1,50)
+    doc.addImage(gradTop.toDataURL(),'PNG',0,0,W,50)
+
+    // Abajo
+    const gradBot = document.createElement('canvas'); gradBot.width=1; gradBot.height=40
+    const gbx = gradBot.getContext('2d')
+    const gBot = gbx.createLinearGradient(0,0,0,40)
+    gBot.addColorStop(0,'rgba(8,5,2,0)'); gBot.addColorStop(1,'rgba(8,5,2,0.85)')
+    gbx.fillStyle = gBot; gbx.fillRect(0,0,1,40)
+    doc.addImage(gradBot.toDataURL(),'PNG',0,heroH-40,W,40)
+
+    // Logo: picos.png — proporciones originales (ancho > alto), pequeño arriba-centro
+    // picos.png es aprox 1:1, lo ponemos en 16×12 para que no se deforme
     try {
       const logo = await fetchImageAsBase64(SITE + '/picos.png')
-      gs(0.92); doc.addImage(logo, 'PNG', W/2 - 10, 3, 20, 18); gs(1)
+      // Dibujamos en canvas para conocer proporción real
+      const logoSize = 14 // mm de ancho
+      gs(0.95)
+      doc.addImage(logo, 'PNG', W/2 - logoSize/2, 5, logoSize, logoSize)
+      gs(1)
     } catch(e) {}
 
-    // Nombre marca centrado
-    t(WHITE); doc.setFont('helvetica','bold'); doc.setFontSize(13); sp(5)
-    doc.text('SUR PATAGONIA', W/2, 27, { align: 'center' }); sp(0)
-    t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(4)
-    doc.text('PROPIEDADES', W/2, 33, { align: 'center' }); sp(0)
+    // Marca centrada sobre el logo
+    t(WHITE); doc.setFont('helvetica','bold'); doc.setFontSize(12); sp(5)
+    doc.text('SUR PATAGONIA', W/2, 26, { align:'center' }); sp(0)
+    t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(4)
+    doc.text('PROPIEDADES', W/2, 31.5, { align:'center' }); sp(0)
 
-    // Fecha y cliente (arriba derecha)
+    // Fecha (arriba-derecha sobre la foto)
     if (fechaStr) {
-      t([180,172,155]); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(0.5)
-      doc.text(fechaStr, W - 14, 10, { align: 'right' }); sp(0)
+      t([220,210,190]); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(0.5)
+      doc.text(fechaStr, W-10, 10, { align:'right' }); sp(0)
     }
     if (cotCliente) {
-      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(0.5)
-      doc.text('COTIZACIÓN PARA: ' + cotCliente.toUpperCase(), W - 14, 16, { align: 'right' }); sp(0)
+      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(0.8)
+      doc.text('COTIZACIÓN PARA: ' + cotCliente.toUpperCase(), W-10, 16, { align:'right' }); sp(0)
     }
 
-    let y = 38
-
-    // ── Foto portada full-width ───────────────────────────────────────────
-    if (sec.portada) {
-      const heroH = 75
-      if (p.foto_portada) {
-        try {
-          const img = await fetchImageAsBase64(p.foto_portada)
-          doc.addImage(img, 'JPEG', 0, y, W, heroH, '', 'FAST')
-        } catch(e) { f([30,25,18]); doc.rect(0, y, W, heroH, 'F') }
-      } else { f([30,25,18]); doc.rect(0, y, W, heroH, 'F') }
-
-      // Gradiente oscuro en la parte inferior de la foto (2 capas)
-      const ovC = document.createElement('canvas'); ovC.width=1; ovC.height=1
-      const oc2 = ovC.getContext('2d')
-      oc2.fillStyle='rgba(8,5,2,0.35)'; oc2.fillRect(0,0,1,1)
-      doc.addImage(ovC.toDataURL(), 'PNG', 0, y, W, heroH)
-
-      // Gradiente inferior más oscuro para el texto
-      const gradC = document.createElement('canvas'); gradC.width=1; gradC.height=30
-      const gc = gradC.getContext('2d')
-      const grad = gc.createLinearGradient(0,0,0,30)
-      grad.addColorStop(0,'rgba(8,5,2,0)'); grad.addColorStop(1,'rgba(8,5,2,0.82)')
-      gc.fillStyle = grad; gc.fillRect(0,0,1,30)
-      doc.addImage(gradC.toDataURL(), 'PNG', 0, y + heroH - 30, W, 30)
-
-      // Nombre del proyecto
-      t(WHITE); doc.setFont('times','italic'); doc.setFontSize(28); sp(0)
-      doc.text(p.nombre || 'Proyecto', 14, y + heroH - 16)
-
-      // Localidad dorada
-      const prov = p.provincia?.replace(/_/g,' ') || ''
-      const locParts = [p.ciudad, prov].filter(Boolean)
-      if (locParts.length) {
-        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(6); sp(2.5)
-        doc.text(locParts.join(' · ').toUpperCase(), 14, y + heroH - 7); sp(0)
-      }
-
-      y += heroH
+    // Nombre del proyecto (abajo-izq sobre foto)
+    t(WHITE); doc.setFont('times','italic'); doc.setFontSize(30); sp(0)
+    doc.text(p.nombre || 'Proyecto', 12, heroH - 14)
+    // Localidad
+    const prov = (p.provincia||'').replace(/_/g,' ')
+    const locLabel = [p.ciudad, prov].filter(Boolean).join(' · ').toUpperCase()
+    if (locLabel) {
+      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(6); sp(2.5)
+      doc.text(locLabel, 12, heroH - 6); sp(0)
     }
 
-    // ── Banda con stats clave ─────────────────────────────────────────────
-    f(SURFACE); doc.rect(0, y, W, 20, 'F')
-    d(GOLD); doc.setLineWidth(0.25)
-    doc.line(0, y, W, y); doc.line(0, y+20, W, y+20)
+    let y = heroH
+
+    // ── BANDA STATS (sin precio) ──────────────────────────────────────────
+    const statsH = 20
+    f(SURFACE); doc.rect(0, y, W, statsH, 'F')
+    d(GOLD); doc.setLineWidth(0.2)
+    doc.line(0, y, W, y); doc.line(0, y+statsH, W, y+statsH)
 
     const statsArr = []
     if (p.hectareas_total) statsArr.push([p.hectareas_total + ' ha', 'SUPERFICIE TOTAL'])
     if (p.cantidad_lotes)  statsArr.push([String(p.cantidad_lotes), 'LOTES EN TOTAL'])
-    const disponibles = lotesActuales.filter(l => l.estado === 'disponible').length
-    if (disponibles)       statsArr.push([String(disponibles), 'DISPONIBLES HOY'])
-    const precioDisplay = cotPrecio ? 'USD ' + Number(cotPrecio).toLocaleString()
-      : p.precio_desde   ? 'USD ' + Number(p.precio_desde).toLocaleString() : null
-    if (precioDisplay)     statsArr.push([precioDisplay, 'PRECIO DESDE'])
+    const nDisp = lotesActuales.filter(l => l.estado === 'disponible').length
+    if (nDisp)             statsArr.push([String(nDisp), 'DISPONIBLES HOY'])
+    if (p.tipo_propiedad)  statsArr.push([p.tipo_propiedad, 'TIPO DE PROPIEDAD'])
 
     if (statsArr.length) {
-      const colW = W / statsArr.length
+      const cw = W / statsArr.length
       statsArr.forEach((st, i) => {
-        const cx = colW * i + colW / 2
-        if (i > 0) { d(GOLD); doc.setLineWidth(0.2); doc.line(colW * i, y+3, colW*i, y+17) }
-        t(DARK); doc.setFont('times','bold'); doc.setFontSize(13); sp(0)
-        doc.text(st[0], cx, y + 12, { align: 'center' })
+        const cx = cw * i + cw/2
+        if (i > 0) { d(GOLD); doc.setLineWidth(0.15); doc.line(cw*i, y+3, cw*i, y+statsH-3) }
+        t(DARK); doc.setFont('times','bold'); doc.setFontSize(12); sp(0)
+        doc.text(st[0], cx, y+13, { align:'center' })
         t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.5); sp(1.5)
-        doc.text(st[1], cx, y + 17, { align: 'center' }); sp(0)
+        doc.text(st[1], cx, y+18, { align:'center' }); sp(0)
       })
     }
-    y += 22
+    y += statsH + 5
 
-    // ── Descripción ───────────────────────────────────────────────────────
+    // ── DESCRIPCIÓN ───────────────────────────────────────────────────────
     if (sec.descripcion && p.descripcion) {
-      y += 4
-      t(MUTED); doc.setFont('times','italic'); doc.setFontSize(8.5); sp(0)
-      const lines = doc.splitTextToSize(p.descripcion, W - 28)
-      doc.text(lines.slice(0,4), 14, y)
-      y += lines.slice(0,4).length * 5 + 5
+      t(MUTED); doc.setFont('times','italic'); doc.setFontSize(8.5)
+      const dLines = doc.splitTextToSize(p.descripcion, W-28)
+      doc.text(dLines.slice(0,4), 14, y)
+      y += dLines.slice(0,4).length * 5 + 4
       y = linea(y)
     }
 
-    // ── Datos técnicos + ubicación ────────────────────────────────────────
+    // ── GALERÍA PEQUEÑA ───────────────────────────────────────────────────
+    const fotos = (p.fotos || []).filter(Boolean)
+    if (fotos.length >= 2) {
+      const galH = 32, gap = 2
+      const nFotos = Math.min(fotos.length, 4)
+      const fW = (W - 28 - gap * (nFotos-1)) / nFotos
+      for (let i = 0; i < nFotos; i++) {
+        try {
+          const raw = await fetchImageAsBase64(fotos[i])
+          const fit = await coverImg(raw, Math.round(fW * 4), Math.round(galH * 4))
+          doc.addImage(fit || raw, 'JPEG', 14 + i*(fW+gap), y, fW, galH, '', 'FAST')
+        } catch(e) { f(SURFACE); doc.rect(14+i*(fW+gap), y, fW, galH,'F') }
+      }
+      y += galH + 6
+    }
+
+    // ── EL DESARROLLO ─────────────────────────────────────────────────────
     if (sec.datos) {
       y = checkPage(y)
       y = secHeader(doc, 'EL DESARROLLO', y, GOLD, sp)
 
       const items = []
-      if (p.tipo_propiedad)  items.push(['Tipo de propiedad', p.tipo_propiedad])
-      if (p.hectareas_total) items.push(['Superficie total', p.hectareas_total + ' ha'])
-      if (p.cantidad_lotes)  items.push(['Lotes totales', String(p.cantidad_lotes)])
+      if (p.hectareas_total)     items.push(['Superficie total',    p.hectareas_total + ' ha'])
+      if (p.cantidad_lotes)      items.push(['Lotes totales',       String(p.cantidad_lotes)])
       if (p.sup_min_m2 && p.sup_max_m2) items.push(['Superficies lotes', `${p.sup_min_m2} – ${p.sup_max_m2} m²`])
-      const locStr = [p.ciudad, (p.provincia||'').replace(/_/g,' ')].filter(Boolean).join(', ')
-      if (locStr)            items.push(['Provincia / Ciudad', locStr])
-      if (p.distancia_km)    items.push(['Distancia al centro', p.distancia_km + ' km'])
-      if (p.tipo_acceso)     items.push(['Tipo de acceso', p.tipo_acceso])
-      if (p.acceso_desc)     items.push(['Descripción acceso', p.acceso_desc])
-      if (p.zonificacion)    items.push(['Zonificación', p.zonificacion])
-      if (p.altura_max)      items.push(['Altura máx. edificable', p.altura_max])
+      const locStr = [p.ciudad, prov].filter(Boolean).join(', ')
+      if (locStr)                items.push(['Provincia / Ciudad',  locStr])
+      if (p.distancia_km)        items.push(['Distancia al centro', p.distancia_km + ' km'])
+      if (p.tipo_acceso)         items.push(['Tipo de acceso',      p.tipo_acceso])
+      if (p.acceso_desc)         items.push(['Descripción acceso',  p.acceso_desc])
+      if (p.zonificacion)        items.push(['Zonificación',        p.zonificacion])
+      if (p.altura_max)          items.push(['Altura máx. edificable', String(p.altura_max)])
 
-      const colW2 = (W - 28) / 2
+      const cW2 = (W-28)/2
       items.forEach((item, i) => {
-        y = checkPage(y)
-        const col = i % 2
-        const row = Math.floor(i / 2)
-        const ix = 14 + col * (colW2 + 4)
-        const iy = y + row * 11
+        const col = i%2, row = Math.floor(i/2)
+        const ix = 14 + col*(cW2+4), iy = y + row*11
+        if (row === 0 && col === 0) y = checkPage(y)
         t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
         doc.text(item[0].toUpperCase(), ix, iy); sp(0)
         t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
-        const txt = doc.splitTextToSize(String(item[1]), colW2 - 4)
-        doc.text(txt[0], ix, iy + 5.5)
+        doc.text(doc.splitTextToSize(String(item[1]), cW2-4)[0], ix, iy+5.5)
       })
-      y += Math.ceil(items.length / 2) * 11 + 4
+      y += Math.ceil(items.length/2)*11 + 2
       y = linea(y)
     }
 
-    // ── Servicios ─────────────────────────────────────────────────────────
-    if (sec.servicios) {
-      const svcs = Object.entries(SERVICIOS_LABELS).filter(([k]) => p[k] === true)
-      if (svcs.length) {
-        y = checkPage(y)
-        y = secHeader(doc, 'SERVICIOS E INFRAESTRUCTURA', y, GOLD, sp)
-        const colW3 = (W - 28) / 2
-        svcs.forEach(([, label], i) => {
-          y = checkPage(y + Math.floor(i/2) * 0 )
-          const col = i % 2
-          const row = Math.floor(i / 2)
-          t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(7.5)
-          doc.text('· ' + label, 14 + col * (colW3 + 4), y + row * 6.5)
-        })
-        y += Math.ceil(svcs.length / 2) * 6.5 + 4
-        y = linea(y)
-      }
+    // ── SERVICIOS ─────────────────────────────────────────────────────────
+    if (sec.servicios && svcsLabels.length) {
+      y = checkPage(y)
+      y = secHeader(doc, 'SERVICIOS E INFRAESTRUCTURA', y, GOLD, sp)
+      const cW3 = (W-28)/2
+      svcsLabels.forEach((label, i) => {
+        const col = i%2, row = Math.floor(i/2)
+        t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(7.5)
+        doc.text('· ' + label, 14 + col*(cW3+4), y + row*6.5)
+      })
+      y += Math.ceil(svcsLabels.length/2)*6.5 + 4
+      y = linea(y)
     }
 
-    // ── Condiciones comerciales ────────────────────────────────────────────
+    // ── CONDICIONES COMERCIALES ───────────────────────────────────────────
     if (sec.comercial) {
       y = checkPage(y)
       y = secHeader(doc, 'CONDICIONES COMERCIALES', y, GOLD, sp)
 
       const cItems = []
-      const precioCot = cotPrecio ? 'USD ' + Number(cotPrecio).toLocaleString() : null
-      if (precioCot)          cItems.push(['Precio cotizado', precioCot])
-      else if (p.precio_desde) cItems.push(['Precio desde', 'USD ' + Number(p.precio_desde).toLocaleString()])
-      if (p.precio_hasta)     cItems.push(['Precio hasta', 'USD ' + Number(p.precio_hasta).toLocaleString()])
+      // Precio: si hay precio acordado → ese; si no → precio del proyecto
+      const precioMostrar = cotPrecio
+        ? 'USD ' + Number(cotPrecio).toLocaleString()
+        : p.precio_desde ? 'USD ' + Number(p.precio_desde).toLocaleString() : null
+      if (precioMostrar)      cItems.push(['Precio' + (cotPrecio ? ' acordado' : ' desde'), precioMostrar])
       if (p.monto_reserva)    cItems.push(['Monto de reserva', 'USD ' + Number(p.monto_reserva).toLocaleString()])
       if (p.comision_pct)     cItems.push(['Comisión', p.comision_pct + '%'])
       if (p.tipo_propiedad)   cItems.push(['Tipo de propiedad', p.tipo_propiedad])
 
-      const colW4 = (W - 28) / 2
+      const cW4 = (W-28)/2
       cItems.forEach((item, i) => {
-        const col = i % 2
-        const row = Math.floor(i / 2)
-        const ix = 14 + col * (colW4 + 4)
-        const iy = y + row * 11
+        const col = i%2, row = Math.floor(i/2)
+        const ix = 14 + col*(cW4+4), iy = y + row*11
         t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
         doc.text(item[0].toUpperCase(), ix, iy); sp(0)
         t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
-        doc.text(String(item[1]), ix, iy + 5.5)
+        doc.text(String(item[1]), ix, iy+5.5)
       })
-      if (cItems.length) y += Math.ceil(cItems.length / 2) * 11 + 2
+      if (cItems.length) y += Math.ceil(cItems.length/2)*11 + 2
 
-      // Condiciones de venta del proyecto
       if (p.condiciones_venta) {
         y = checkPage(y)
         t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
         doc.text('CONDICIONES DE VENTA', 14, y); sp(0); y += 5
         t(DARK); doc.setFont('times','normal'); doc.setFontSize(8.5)
-        const cvLines = doc.splitTextToSize(p.condiciones_venta, W - 28)
-        doc.text(cvLines.slice(0,5), 14, y)
-        y += cvLines.slice(0,5).length * 5 + 4
+        const cvL = doc.splitTextToSize(p.condiciones_venta, W-28)
+        doc.text(cvL.slice(0,5), 14, y)
+        y += cvL.slice(0,5).length*5 + 4
       }
       y = linea(y)
     }
 
-    // ── Financiación ──────────────────────────────────────────────────────
+    // ── FINANCIACIÓN ──────────────────────────────────────────────────────
     if (sec.financiacion) {
       const finTexto = cotFinanciacion || p.financiacion
       if (finTexto) {
         y = checkPage(y)
-        y = secHeader(doc, 'FINANCIACIÓN' + (cotFinanciacion ? ' (ACORDADA EN COTIZACIÓN)' : ''), y, GOLD, sp)
-
-        // Fondo destacado
-        f(SURFACE); doc.rect(12, y-2, W-24, 1, 'F') // placeholder, calculo real abajo
+        y = secHeader(doc, cotFinanciacion ? 'FINANCIACIÓN (ACORDADA EN COTIZACIÓN)' : 'FINANCIACIÓN', y, GOLD, sp)
         t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
-        const finLines = doc.splitTextToSize(finTexto, W - 28)
-        const finH = finLines.length * 5.5 + 8
-        f(SURFACE); doc.rect(12, y-2, W-24, finH, 'F')
-        d(GOLD); doc.setLineWidth(0.25)
-        doc.line(12, y-2, 12, y-2+finH)
-        doc.text(finLines, 16, y + 4)
+        const finL = doc.splitTextToSize(finTexto, W-32)
+        const finH = finL.length*5.5 + 10
+        f(SURFACE); doc.rect(12, y-3, W-24, finH, 'F')
+        d(GOLD); doc.setLineWidth(0.3); doc.line(12, y-3, 12, y-3+finH)
+        doc.text(finL, 16, y+4)
         y += finH + 4
         y = linea(y)
       }
     }
 
-    // ── Lotes ─────────────────────────────────────────────────────────────
+    // ── LOTE(S) ───────────────────────────────────────────────────────────
     if (sec.lotes && lotesSel.length) {
       y = checkPage(y)
-      y = secHeader(doc, lotesSel.length === 1 ? 'LOTE SELECCIONADO' : 'LOTES SELECCIONADOS', y, GOLD, sp)
+      y = secHeader(doc, lotesSel.length===1 ? 'LOTE SELECCIONADO' : 'LOTES SELECCIONADOS', y, GOLD, sp)
+      const colores = { disponible:[50,130,70], reservado:[190,130,20], vendido:[170,50,50] }
 
       if (lotesSel.length === 1) {
-        // Ficha detallada de 1 lote
         const l = lotesSel[0]
-        f(SURFACE); doc.rect(12, y-2, W-24, 52, 'F')
-        d(GOLD); doc.setLineWidth(0.4)
-        doc.line(12, y-2, 12, y+50)
+        // Precio del lote: si hay precio acordado de cotización diferente → ese prevalece
+        const precioLote = cotPrecio
+          ? 'USD ' + Number(cotPrecio).toLocaleString()
+          : l.precio_usd ? 'USD ' + Number(l.precio_usd).toLocaleString() : '—'
 
         const lItems = [
-          ['N° de lote', String(l.numero ?? '—')],
-          ['Superficie', l.superficie_m2 ? l.superficie_m2 + ' m²' : '—'],
-          ['Precio USD', l.precio_usd ? 'USD ' + Number(l.precio_usd).toLocaleString() : '—'],
-          ['Frente al agua', l.frente_agua ? 'Sí' : 'No'],
-          ['Estado', l.estado || '—'],
+          ['N° de lote',    String(l.numero ?? '—')],
+          ['Superficie',    l.superficie_m2 ? l.superficie_m2 + ' m²' : '—'],
+          ['Precio USD',    precioLote],
+          ['Frente al agua',l.frente_agua ? 'Sí' : 'No'],
+          ['Estado',        l.estado || '—'],
         ]
         if (l.notas) lItems.push(['Observaciones', l.notas])
 
-        const colL = (W - 32) / 2
+        const cardH = Math.ceil(lItems.length/2)*14 + 10
+        f(SURFACE); doc.rect(12, y-3, W-24, cardH, 'F')
+        d(GOLD); doc.setLineWidth(0.4); doc.line(12, y-3, 12, y-3+cardH)
+        const cL = (W-32)/2
         lItems.forEach((item, i) => {
-          const col = i % 2
-          const row = Math.floor(i / 2)
-          const ix = 16 + col * (colL + 4)
-          const iy = y + 4 + row * 13
+          const col = i%2, row = Math.floor(i/2)
+          const ix = 16 + col*(cL+4), iy = y + 4 + row*14
           t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
           doc.text(item[0].toUpperCase(), ix, iy); sp(0)
-
-          const isEstado = item[0] === 'Estado'
-          const colores = { disponible:[50,130,70], reservado:[190,130,20], vendido:[170,50,50] }
-          const ec = isEstado ? (colores[l.estado] || DARK) : DARK
-          t(ec); doc.setFont('times','bold'); doc.setFontSize(11)
-          doc.text(String(item[1]), ix, iy + 7)
+          const isEstado = item[0]==='Estado'
+          t(isEstado ? (colores[l.estado]||DARK) : DARK)
+          doc.setFont('times','bold'); doc.setFontSize(11)
+          doc.text(String(item[1]), ix, iy+7.5)
         })
-        y += 56
-
+        y += cardH + 6
       } else {
-        // Tabla de lotes
         f(DARK); doc.rect(14, y, W-28, 7, 'F')
         t(WHITE); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(1)
-        doc.text('N°',    18,  y+5)
-        doc.text('SUPERFICIE', 38, y+5)
-        doc.text('PRECIO USD',  85, y+5)
-        doc.text('FRENTE AGUA', 135, y+5)
-        doc.text('ESTADO',     168, y+5)
-        sp(0); y += 7
-
-        const colores = { disponible:[50,130,70], reservado:[190,130,20], vendido:[170,50,50] }
-        lotesSel.forEach((l, i) => {
+        doc.text('N°',18,y+5); doc.text('SUPERFICIE',38,y+5)
+        doc.text('PRECIO USD',85,y+5); doc.text('FRENTE AGUA',135,y+5)
+        doc.text('ESTADO',168,y+5); sp(0); y+=7
+        lotesSel.forEach((l,i) => {
           y = checkPage(y)
-          const ry = y
-          if (i%2===0) { f(SURFACE); doc.rect(14, ry, W-28, 7, 'F') }
+          if (i%2===0) { f(SURFACE); doc.rect(14,y,W-28,7,'F') }
+          // Precio: cotizado si existe
+          const px = cotPrecio ? 'USD '+Number(cotPrecio).toLocaleString()
+            : l.precio_usd ? 'USD '+Number(l.precio_usd).toLocaleString() : '—'
           t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(7)
-          doc.text(String(l.numero ?? i+1), 18, ry+5)
-          doc.text(l.superficie_m2 ? l.superficie_m2+' m²' : '—', 38, ry+5)
-          doc.text(l.precio_usd ? 'USD '+Number(l.precio_usd).toLocaleString() : '—', 85, ry+5)
-          doc.text(l.frente_agua ? 'Sí' : 'No', 135, ry+5)
-          const ec = colores[l.estado] || [120,120,120]
-          t(ec); doc.text(l.estado||'—', 168, ry+5)
-          y += 7
+          doc.text(String(l.numero??i+1),18,y+5)
+          doc.text(l.superficie_m2?l.superficie_m2+' m²':'—',38,y+5)
+          doc.text(px,85,y+5)
+          doc.text(l.frente_agua?'Sí':'No',135,y+5)
+          t(colores[l.estado]||[120,120,120]); doc.text(l.estado||'—',168,y+5)
+          y+=7
         })
-        y += 4
+        y+=4
       }
       y = linea(y)
     }
 
-    // ── Nota de cotización ────────────────────────────────────────────────
+    // ── NOTA DE COTIZACIÓN ────────────────────────────────────────────────
     if (sec.nota && cotNota) {
       y = checkPage(y)
       y = secHeader(doc, 'NOTA DE COTIZACIÓN', y, GOLD, sp)
-      f([255,252,244]); const ntLines = doc.splitTextToSize(cotNota, W-32)
-      const ntH = ntLines.length * 5.5 + 10
-      doc.rect(12, y-3, W-24, ntH, 'F')
-      d(GOLD); doc.setLineWidth(0.3); doc.line(12, y-3, 12, y-3+ntH)
+      const ntL = doc.splitTextToSize(cotNota, W-32)
+      const ntH = ntL.length*5.5 + 10
+      f([255,252,244]); doc.rect(12,y-3,W-24,ntH,'F')
+      d(GOLD); doc.setLineWidth(0.3); doc.line(12,y-3,12,y-3+ntH)
       t(DARK); doc.setFont('times','italic'); doc.setFontSize(8.5)
-      doc.text(ntLines, 16, y+4)
-      y += ntH + 4
-      y = linea(y)
+      doc.text(ntL, 16, y+4)
+      y += ntH + 4; y = linea(y)
     }
 
-    // ── Mapa de ubicación ────────────────────────────────────────────────
+    // ── MAPA ─────────────────────────────────────────────────────────────
     if (sec.mapa && p.latitud && p.longitud) {
       y = checkPage(y)
-      y = secHeader(doc, 'UBICACIÓN', y, GOLD, sp)
-
+      y = secHeader(doc, 'UBICACIÓN EN EL MAPA', y, GOLD, sp)
       const lat = p.latitud, lng = p.longitud
-      const mapW = W - 28, mapH = 55
-
-      // Intento 1: OpenStreetMap static map
+      const mapW2 = W-28, mapH2 = 55
       let mapImg = null
-      const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=14&size=600x330&markers=${lat},${lng},red-pushpin`
-      try {
-        mapImg = await fetchImageAsBase64(mapUrl)
-      } catch(e) {}
-
-      // Intento 2: Geoapify (sin API key, free tier)
-      if (!mapImg) {
-        try {
-          const geo = `https://maps.geoapify.com/v1/staticmap?style=osm-carto&width=600&height=330&center=lonlat:${lng},${lat}&zoom=13&marker=lonlat:${lng},${lat};color:%23c9a84c;size:medium`
-          mapImg = await fetchImageAsBase64(geo)
-        } catch(e) {}
-      }
-
+      try { mapImg = await fetchImageAsBase64(`https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=14&size=600x330&markers=${lat},${lng},red-pushpin`) } catch(e){}
       if (mapImg) {
-        // Marco dorado
-        d(GOLD); doc.setLineWidth(0.4)
-        doc.rect(14, y, mapW, mapH)
-        doc.addImage(mapImg, 'PNG', 14, y, mapW, mapH)
-        // Coordenadas debajo
+        doc.addImage(mapImg,'PNG',14,y,mapW2,mapH2,'','FAST')
+        d(GOLD); doc.setLineWidth(0.4); doc.rect(14,y,mapW2,mapH2)
         t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(0.5)
-        const coordStr = `${lat}, ${lng}`
-        doc.text(coordStr, 14, y + mapH + 4); sp(0)
-        // Link Google Maps
+        doc.text(`${lat}, ${lng}`,14,y+mapH2+4); sp(0)
         t(GOLD); doc.setFontSize(5)
-        const mapsLink = `https://maps.google.com/?q=${lat},${lng}`
-        doc.textWithLink('Ver en Google Maps →', W - 14, y + mapH + 4, { url: mapsLink, align: 'right' })
-        y += mapH + 10
+        doc.textWithLink('Ver en Google Maps →',W-14,y+mapH2+4,{url:`https://maps.google.com/?q=${lat},${lng}`,align:'right'})
+        y += mapH2+10
       } else {
-        // Sin imagen: mostrar coords + QR al mapa
-        f(SURFACE); doc.rect(14, y, mapW, 22, 'F')
-        t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(0)
-        doc.text(`Coordenadas: ${lat}, ${lng}`, 18, y + 8)
+        f(SURFACE); doc.rect(14,y,mapW2,22,'F')
+        t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(6)
+        doc.text(`${lat}, ${lng}`,18,y+9)
         t(GOLD); doc.setFontSize(5)
-        doc.textWithLink('Abrir en Google Maps →', 18, y + 15, { url: `https://maps.google.com/?q=${lat},${lng}` })
-        // QR al mapa
-        const mapsQr = await qrBase64(`https://maps.google.com/?q=${lat},${lng}`, 120)
-        if (mapsQr) {
-          doc.addImage(mapsQr, 'PNG', W - 14 - 22, y, 22, 22)
-          t(MUTED); doc.setFontSize(4.5)
-          doc.text('VER MAPA', W - 14 - 11, y + 24, { align: 'center' })
-        }
-        y += 30
+        doc.textWithLink('Abrir en Google Maps →',18,y+15,{url:`https://maps.google.com/?q=${lat},${lng}`})
+        const mqr = await qrBase64(`https://maps.google.com/?q=${lat},${lng}`,120)
+        if (mqr) { doc.addImage(mqr,'PNG',W-14-22,y,22,22); t(MUTED); doc.setFontSize(4.5); doc.text('VER MAPA',W-14-11,y+24,{align:'center'}) }
+        y+=30
       }
       y = linea(y)
     }
 
-    // ── QR codes + contacto ────────────────────────────────────────────────
-    if (sec.qr || p.contacto_whatsapp || p.contacto_email) {
+    // ── CONTACTO + QR ─────────────────────────────────────────────────────
+    {
       y = checkPage(y)
       y = secHeader(doc, 'CONTACTO', y, GOLD, sp)
-
-      // Datos textuales
       const ctItems = []
-      if (p.contacto_nombre)   ctItems.push(['Asesor', p.contacto_nombre])
-      if (p.contacto_whatsapp) ctItems.push(['WhatsApp', '+' + p.contacto_whatsapp.replace(/\D/g,'')])
-      if (p.contacto_email)    ctItems.push(['Email', p.contacto_email])
-
-      ctItems.forEach((item, i) => {
+      if (p.contacto_nombre)   ctItems.push(['Asesor',    p.contacto_nombre])
+      if (p.contacto_whatsapp) ctItems.push(['WhatsApp',  '+' + p.contacto_whatsapp.replace(/\D/g,'')])
+      if (p.contacto_email)    ctItems.push(['Email',     p.contacto_email])
+      ctItems.forEach((item,i) => {
         t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
-        doc.text(item[0].toUpperCase(), 14, y + i*10); sp(0)
+        doc.text(item[0].toUpperCase(),14,y+i*10); sp(0)
         t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
-        doc.text(item[1], 14, y + i*10 + 5)
+        doc.text(item[1],14,y+i*10+5)
       })
-      const afterContact = y + ctItems.length * 10 + 4
+      const yAfterCt = y + ctItems.length*10 + 4
 
-      // QR codes a la derecha
       if (sec.qr) {
-        const qrSize = 28 // mm en PDF
-        let qrX = W - 14 - qrSize
-
-        // QR miniweb
-        const miniwebUrl = `${SITE}/${p.slug || ''}`
-        const qrMiniData = await qrBase64(miniwebUrl, 150)
-        if (qrMiniData) {
-          doc.addImage(qrMiniData, 'PNG', qrX, y, qrSize, qrSize)
+        const qrSz = 28; let qrX = W-14-qrSz
+        const qrMini = await qrBase64(`${SITE}/${p.slug||''}`,150)
+        if (qrMini) {
+          doc.addImage(qrMini,'PNG',qrX,y,qrSz,qrSz)
           t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.5); sp(1)
-          doc.text('VER PROYECTO', qrX + qrSize/2, y + qrSize + 3.5, { align: 'center' }); sp(0)
-          qrX -= qrSize + 6
+          doc.text('VER PROYECTO',qrX+qrSz/2,y+qrSz+4,{align:'center'}); sp(0)
+          qrX -= qrSz+6
         }
-
-        // QR WhatsApp
         if (p.contacto_whatsapp) {
-          const waUrl = `https://wa.me/${p.contacto_whatsapp.replace(/\D/g,'')}`
-          const qrWaData = await qrBase64(waUrl, 150)
-          if (qrWaData) {
-            doc.addImage(qrWaData, 'PNG', qrX, y, qrSize, qrSize)
+          const qrWa = await qrBase64(`https://wa.me/${p.contacto_whatsapp.replace(/\D/g,'')}`,150)
+          if (qrWa) {
+            doc.addImage(qrWa,'PNG',qrX,y,qrSz,qrSz)
             t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.5); sp(1)
-            doc.text('WHATSAPP', qrX + qrSize/2, y + qrSize + 3.5, { align: 'center' }); sp(0)
+            doc.text('WHATSAPP',qrX+qrSz/2,y+qrSz+4,{align:'center'}); sp(0)
           }
         }
-        y = Math.max(afterContact, y + qrSize + 8)
-      } else {
-        y = afterContact
-      }
+        y = Math.max(yAfterCt, y+qrSz+8)
+      } else { y = yAfterCt }
     }
 
-    // ── Footer ────────────────────────────────────────────────────────────
-    // En cada página
-    const totalPages = doc.getNumberOfPages()
-    for (let pg = 1; pg <= totalPages; pg++) {
+    // ── FOOTER EN TODAS LAS PÁGINAS ───────────────────────────────────────
+    const totalPgs = doc.getNumberOfPages()
+    for (let pg=1; pg<=totalPgs; pg++) {
       doc.setPage(pg)
-      f(DARK); doc.rect(0, H-12, W, 12, 'F')
+      f(DARK); doc.rect(0,H-12,W,12,'F')
       t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(2)
-      doc.text('SUR PATAGONIA · TIERRA, NATURALEZA Y VISIÓN', 14, H-5); sp(0)
+      doc.text('SUR PATAGONIA · TIERRA, NATURALEZA Y VISIÓN',14,H-5); sp(0)
       t(MUTED); doc.setFontSize(5)
-      doc.text(`${SITE}`, W/2, H-5, { align: 'center' })
-      if (fechaStr) {
-        t([150,142,128]); doc.text(fechaStr, W-14, H-5, { align: 'right' })
-      }
+      doc.text(SITE,W/2,H-5,{align:'center'})
+      if (fechaStr) { t([150,142,128]); doc.text(fechaStr,W-14,H-5,{align:'right'}) }
     }
 
-    const nombre = (p.nombre || 'proyecto').toLowerCase().replace(/\s+/g,'-')
-    doc.save(`ficha-${nombre}.pdf`)
+    const slug = (p.nombre||'proyecto').toLowerCase().replace(/\s+/g,'-')
+    doc.save(`ficha-${slug}.pdf`)
     info.textContent = '✓ PDF generado'
   } catch(err) {
     console.error(err)
