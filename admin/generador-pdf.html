@@ -304,6 +304,7 @@
             <label class="gpdf-check-item"><input type="checkbox" id="sec-comercial" checked> Condiciones comerciales</label>
             <label class="gpdf-check-item"><input type="checkbox" id="sec-financiacion" checked> Financiación detallada</label>
             <label class="gpdf-check-item"><input type="checkbox" id="sec-lotes" checked> Detalle de lotes</label>
+            <label class="gpdf-check-item"><input type="checkbox" id="sec-mapa" checked> Mapa de ubicación</label>
             <label class="gpdf-check-item"><input type="checkbox" id="sec-qr" checked> QR de contacto y miniweb</label>
             <label class="gpdf-check-item"><input type="checkbox" id="sec-nota" checked> Nota de cotización</label>
           </div>
@@ -714,6 +715,7 @@ window.generarPDFProyecto = async function() {
       comercial:   document.getElementById('sec-comercial').checked,
       financiacion:document.getElementById('sec-financiacion').checked,
       lotes:       document.getElementById('sec-lotes').checked,
+      mapa:        document.getElementById('sec-mapa').checked,
       qr:          document.getElementById('sec-qr').checked,
       nota:        document.getElementById('sec-nota').checked,
     }
@@ -1053,6 +1055,62 @@ window.generarPDFProyecto = async function() {
       t(DARK); doc.setFont('times','italic'); doc.setFontSize(8.5)
       doc.text(ntLines, 16, y+4)
       y += ntH + 4
+      y = linea(y)
+    }
+
+    // ── Mapa de ubicación ────────────────────────────────────────────────
+    if (sec.mapa && p.latitud && p.longitud) {
+      y = checkPage(y)
+      y = secHeader(doc, 'UBICACIÓN', y, GOLD, sp)
+
+      const lat = p.latitud, lng = p.longitud
+      const mapW = W - 28, mapH = 55
+
+      // Intento 1: OpenStreetMap static map
+      let mapImg = null
+      const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=14&size=600x330&markers=${lat},${lng},red-pushpin`
+      try {
+        mapImg = await fetchImageAsBase64(mapUrl)
+      } catch(e) {}
+
+      // Intento 2: Geoapify (sin API key, free tier)
+      if (!mapImg) {
+        try {
+          const geo = `https://maps.geoapify.com/v1/staticmap?style=osm-carto&width=600&height=330&center=lonlat:${lng},${lat}&zoom=13&marker=lonlat:${lng},${lat};color:%23c9a84c;size:medium`
+          mapImg = await fetchImageAsBase64(geo)
+        } catch(e) {}
+      }
+
+      if (mapImg) {
+        // Marco dorado
+        d(GOLD); doc.setLineWidth(0.4)
+        doc.rect(14, y, mapW, mapH)
+        doc.addImage(mapImg, 'PNG', 14, y, mapW, mapH)
+        // Coordenadas debajo
+        t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(0.5)
+        const coordStr = `${lat}, ${lng}`
+        doc.text(coordStr, 14, y + mapH + 4); sp(0)
+        // Link Google Maps
+        t(GOLD); doc.setFontSize(5)
+        const mapsLink = `https://maps.google.com/?q=${lat},${lng}`
+        doc.textWithLink('Ver en Google Maps →', W - 14, y + mapH + 4, { url: mapsLink, align: 'right' })
+        y += mapH + 10
+      } else {
+        // Sin imagen: mostrar coords + QR al mapa
+        f(SURFACE); doc.rect(14, y, mapW, 22, 'F')
+        t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(0)
+        doc.text(`Coordenadas: ${lat}, ${lng}`, 18, y + 8)
+        t(GOLD); doc.setFontSize(5)
+        doc.textWithLink('Abrir en Google Maps →', 18, y + 15, { url: `https://maps.google.com/?q=${lat},${lng}` })
+        // QR al mapa
+        const mapsQr = await qrBase64(`https://maps.google.com/?q=${lat},${lng}`, 120)
+        if (mapsQr) {
+          doc.addImage(mapsQr, 'PNG', W - 14 - 22, y, 22, 22)
+          t(MUTED); doc.setFontSize(4.5)
+          doc.text('VER MAPA', W - 14 - 11, y + 24, { align: 'center' })
+        }
+        y += 30
+      }
       y = linea(y)
     }
 
