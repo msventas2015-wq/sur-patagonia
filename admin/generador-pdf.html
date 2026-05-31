@@ -783,8 +783,9 @@ window.generarPDFProyecto = async function() {
     // ── FOTO PORTADA full-bleed con aspect ratio correcto ─────────────────
     const heroH = 100  // altura del bloque foto en mm
     let fotoRaw = null
-    if (p.foto_portada) {
-      try { fotoRaw = await fetchImageAsBase64(p.foto_portada) } catch(e) {}
+    const fotoUrl = p.foto_atmosfera || p.foto_portada
+    if (fotoUrl) {
+      try { fotoRaw = await fetchImageAsBase64(fotoUrl) } catch(e) {}
     }
 
     if (fotoRaw) {
@@ -796,59 +797,69 @@ window.generarPDFProyecto = async function() {
     }
 
     // Gradiente superior (oscuro para legibilidad del logo)
-    const gtCanvas = document.createElement('canvas'); gtCanvas.width=1; gtCanvas.height=60
+    const gtCanvas = document.createElement('canvas'); gtCanvas.width=8; gtCanvas.height=240
     const gtCtx = gtCanvas.getContext('2d')
-    const gtGrad = gtCtx.createLinearGradient(0,0,0,60)
-    gtGrad.addColorStop(0,'rgba(5,3,1,0.80)'); gtGrad.addColorStop(1,'rgba(5,3,1,0)')
-    gtCtx.fillStyle = gtGrad; gtCtx.fillRect(0,0,1,60)
+    const gtGrad = gtCtx.createLinearGradient(0,0,0,240)
+    gtGrad.addColorStop(0,'rgba(5,3,1,0.82)'); gtGrad.addColorStop(1,'rgba(5,3,1,0)')
+    gtCtx.fillStyle = gtGrad; gtCtx.fillRect(0,0,8,240)
     doc.addImage(gtCanvas.toDataURL(),'PNG',0,0,W,60)
 
     // Gradiente inferior (oscuro para nombre del proyecto)
-    const gbCanvas = document.createElement('canvas'); gbCanvas.width=1; gbCanvas.height=45
+    const gbCanvas = document.createElement('canvas'); gbCanvas.width=8; gbCanvas.height=180
     const gbCtx = gbCanvas.getContext('2d')
-    const gbGrad = gbCtx.createLinearGradient(0,0,0,45)
-    gbGrad.addColorStop(0,'rgba(5,3,1,0)'); gbGrad.addColorStop(1,'rgba(5,3,1,0.88)')
-    gbCtx.fillStyle = gbGrad; gbCtx.fillRect(0,0,1,45)
+    const gbGrad = gbCtx.createLinearGradient(0,0,0,180)
+    gbGrad.addColorStop(0,'rgba(5,3,1,0)'); gbGrad.addColorStop(1,'rgba(5,3,1,0.90)')
+    gbCtx.fillStyle = gbGrad; gbCtx.fillRect(0,0,8,180)
     doc.addImage(gbCanvas.toDataURL(),'PNG',0,heroH-45,W,45)
 
-    // ── LOGO: picos centrado con proporción real ───────────────────────────
-    let logoY = 6  // posición Y inicial del logo
+    // ── LOGO COMPUESTO: picos + SUR PATAGONIA + PROPIEDADES en canvas ──────
     try {
       const logoB64 = await fetchImageAsBase64(SITE + '/picos.png')
+      const logoComp = await new Promise(resolve => {
+        const cW = 600, cH = 200
+        const cv = document.createElement('canvas')
+        cv.width = cW; cv.height = cH
+        const ctx = cv.getContext('2d')
 
-      // Obtener dimensiones reales para mantener aspect ratio
-      const logoDims = await new Promise(resolve => {
+        const drawTexto = () => {
+          // SUR PATAGONIA
+          ctx.fillStyle = '#ffffff'
+          ctx.font = 'bold 56px Arial, Helvetica, sans-serif'
+          ctx.textAlign = 'center'
+          ctx.letterSpacing = '12px'
+          ctx.fillText('SUR PATAGONIA', cW / 2, 148)
+          // PROPIEDADES
+          ctx.fillStyle = '#C9A84C'
+          ctx.font = '300 26px Arial, Helvetica, sans-serif'
+          ctx.letterSpacing = '8px'
+          ctx.fillText('PROPIEDADES', cW / 2, 184)
+          resolve(cv.toDataURL('image/png'))
+        }
+
         const img = new Image()
-        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
-        img.onerror = () => resolve({ w: 100, h: 100 })
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          const picosH = 90
+          const picosW = img.naturalWidth * (picosH / img.naturalHeight)
+          ctx.drawImage(img, (cW - picosW) / 2, 6, picosW, picosH)
+          drawTexto()
+        }
+        img.onerror = drawTexto
         img.src = logoB64
       })
 
-      // Ancho fijo 18mm, alto proporcional
-      const logoW_mm = 18
-      const logoH_mm = logoW_mm * (logoDims.h / logoDims.w)
-      const logoX = W/2 - logoW_mm/2
-
-      gs(0.95)
-      doc.addImage(logoB64, 'PNG', logoX, logoY, logoW_mm, logoH_mm)
-      gs(1)
-
-      logoY += logoH_mm + 3  // siguiente elemento bajo el logo
+      // Ancho fijo 68mm, alto proporcional (600:200 = 3:1)
+      const compW_mm = 68, compH_mm = 68 * (200 / 600)
+      doc.addImage(logoComp, 'PNG', W / 2 - compW_mm / 2, 5, compW_mm, compH_mm)
     } catch(e) {
-      logoY += 16
+      // fallback texto puro
+      t(WHITE); doc.setFont('helvetica','bold'); doc.setFontSize(13); sp(5)
+      doc.text('SUR PATAGONIA', W/2, 18, { align:'center' }); sp(0)
     }
 
-    // SUR PATAGONIA — centrado, espaciado
-    t(WHITE); doc.setFont('helvetica','bold'); doc.setFontSize(13); sp(5)
-    doc.text('SUR PATAGONIA', W/2, logoY + 5, { align:'center' }); sp(0)
-
-    // PROPIEDADES — centrado, dorado, más pequeño
-    t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(4)
-    doc.text('PROPIEDADES', W/2, logoY + 11, { align:'center' }); sp(0)
-
     // ── NOMBRE DEL PROYECTO (abajo-izquierda sobre la foto) ───────────────
-    const prov = (p.provincia||'').replace(/_/g,' ')
-    const locLabel = [p.ciudad, prov].filter(Boolean).join(' · ').toUpperCase()
+    const prov = (p.provincia||'').replace(/_/g,' ')  // usado más adelante en datos técnicos
+    const locLabel = p.ciudad ? p.ciudad.toUpperCase() : ''
 
     t(WHITE); doc.setFont('times','italic'); doc.setFontSize(30); sp(0)
     doc.text(p.nombre || 'Proyecto', 12, heroH - 14)
