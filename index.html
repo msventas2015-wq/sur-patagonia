@@ -955,182 +955,178 @@
 </div>
 
 <!-- ACCESO RÁPIDO 3 COLUMNAS -->
-<section id="sec-acceso" style="background:var(--bg); padding: 0; overflow:hidden;">
+<section id="sec-acceso">
+<style>
+  #sec-acceso {
+    background: var(--bg);
+    padding: 6rem 0;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .acceso-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 3rem;
+  }
+  .acceso-header {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+  .acceso-header .eyebrow {
+    display: block;
+    margin-bottom: 0.8rem;
+  }
+  .acceso-header h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.8rem, 3vw, 2.6rem);
+    font-weight: 300;
+    color: #f5f3ef;
+  }
+  .acceso-header h2 em { color: var(--gold); font-style: italic; }
 
-  <style>
-    .acceso-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      min-height: 88vh;
-    }
-    .acceso-col {
-      position: relative;
-      overflow: hidden;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      padding: 3rem 2.5rem;
-      min-height: 500px;
-      transition: flex-grow 0.6s cubic-bezier(0.4,0,0.2,1);
-    }
-    .acceso-col::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: var(--col-overlay);
-      z-index: 1;
-      transition: opacity 0.5s;
-    }
-    .acceso-col:hover::before { opacity: 0.5; }
-    .acceso-bg {
-      position: absolute;
-      inset: 0;
-      background-size: cover;
-      background-position: center;
-      transition: transform 0.9s cubic-bezier(0.25,0.46,0.45,0.94);
-      will-change: transform;
-    }
-    .acceso-col:hover .acceso-bg { transform: scale(1.07); }
+  .acceso-cols {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: rgba(255,255,255,0.06);
+  }
+  .ac {
+    background: var(--bg);
+    padding: 3rem 2.5rem 2.8rem;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.4s;
+    text-decoration: none;
+    display: block;
+  }
+  .ac:hover { background: rgba(255,255,255,0.025); }
 
-    /* Línea lateral dorada animada */
-    .acceso-col::after {
-      content: '';
-      position: absolute;
-      top: 0; left: 0;
-      width: 1px; height: 0%;
-      background: var(--gold);
-      z-index: 3;
-      transition: height 0.6s cubic-bezier(0.4,0,0.2,1);
-    }
-    .acceso-col:hover::after { height: 100%; }
+  /* Línea dorada top que crece al hover */
+  .ac::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: var(--gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+  .ac:hover::before { transform: scaleX(1); }
 
-    .acceso-content {
-      position: relative;
-      z-index: 2;
-    }
-    .acceso-num {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 5rem;
-      font-weight: 300;
-      color: rgba(201,168,76,0.18);
-      line-height: 1;
-      margin-bottom: 1.5rem;
-      transition: color 0.4s;
-      display: block;
-    }
-    .acceso-col:hover .acceso-num { color: rgba(201,168,76,0.35); }
-    .acceso-eyebrow {
-      font-size: 0.58rem;
-      font-weight: 600;
-      letter-spacing: 0.3em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 0.8rem;
-      display: block;
-    }
-    .acceso-titulo {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2rem, 3vw, 2.8rem);
-      font-weight: 300;
-      color: #f5f3ef;
-      line-height: 1.15;
-      margin-bottom: 1rem;
-    }
-    .acceso-titulo em { color: var(--gold); font-style: italic; }
-    .acceso-desc {
-      font-size: 0.78rem;
-      color: rgba(240,237,232,0.55);
-      line-height: 1.8;
-      margin-bottom: 2rem;
-      max-width: 280px;
-    }
-    .acceso-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.7rem;
-      font-size: 0.65rem;
-      font-weight: 600;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: #f5f3ef;
-      padding-bottom: 4px;
-      border-bottom: 1px solid rgba(255,255,255,0.25);
-      transition: color 0.3s, border-color 0.3s, gap 0.3s;
-    }
-    .acceso-cta:hover, .acceso-col:hover .acceso-cta {
-      color: var(--gold);
-      border-color: var(--gold);
-      gap: 1.1rem;
-    }
-    .acceso-divider {
-      position: absolute;
-      top: 8%; bottom: 8%;
-      right: 0;
-      width: 1px;
-      background: rgba(255,255,255,0.06);
-      z-index: 2;
-    }
-    @media (max-width: 768px) {
-      .acceso-grid { grid-template-columns: 1fr; min-height: auto; }
-      .acceso-col { min-height: 420px; }
-      .acceso-divider { display: none; }
-    }
-  </style>
+  .ac-icon {
+    width: 40px; height: 40px;
+    margin-bottom: 2rem;
+    color: var(--gold);
+    opacity: 0.7;
+    transition: opacity 0.3s, transform 0.4s;
+  }
+  .ac:hover .ac-icon { opacity: 1; transform: translateY(-3px); }
 
-  <div class="acceso-grid">
+  .ac-label {
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    display: block;
+    margin-bottom: 1rem;
+  }
+  .ac-titulo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2rem, 2.8vw, 2.6rem);
+    font-weight: 300;
+    color: #f5f3ef;
+    line-height: 1.15;
+    margin-bottom: 1.2rem;
+  }
+  .ac-titulo em { color: var(--gold); font-style: italic; }
+  .ac-desc {
+    font-size: 0.78rem;
+    color: rgba(240,237,232,0.45);
+    line-height: 1.85;
+    margin-bottom: 2.2rem;
+  }
+  .ac-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(240,237,232,0.5);
+    transition: color 0.3s, gap 0.3s;
+  }
+  .ac:hover .ac-link {
+    color: var(--gold);
+    gap: 1rem;
+  }
+  .ac-link svg { transition: transform 0.3s; }
+  .ac:hover .ac-link svg { transform: translateX(3px); }
+
+  @media (max-width: 768px) {
+    .acceso-cols { grid-template-columns: 1fr; }
+    .acceso-wrap { padding: 0 1.5rem; }
+  }
+</style>
+
+<div class="acceso-wrap">
+  <div class="acceso-header reveal">
+    <span class="eyebrow">¿Qué estás buscando?</span>
+    <h2>Todo lo que la Patagonia <em>tiene para vos.</em></h2>
+  </div>
+
+  <div class="acceso-cols">
 
     <!-- COMPRAR -->
-    <div class="acceso-col" style="--col-overlay: linear-gradient(to top, rgba(5,3,1,0.92) 0%, rgba(5,3,1,0.45) 60%, rgba(5,3,1,0.2) 100%);"
-         onclick="location.href='propiedades.html?op=venta'">
-      <div class="acceso-bg" style="background-image: url('assets/DJI_0269.jpg');"></div>
-      <div class="acceso-divider"></div>
-      <div class="acceso-content">
-        <span class="acceso-num">01</span>
-        <span class="acceso-eyebrow">En venta</span>
-        <h2 class="acceso-titulo">Comprar en la<br><em>Patagonia.</em></h2>
-        <p class="acceso-desc">Lotes, casas y terrenos en los paisajes más extraordinarios de la Argentina.</p>
-        <a href="propiedades.html?op=venta" class="acceso-cta">
-          Ver propiedades
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </a>
-      </div>
-    </div>
+    <a href="propiedades.html?op=venta" class="ac reveal">
+      <svg class="ac-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9,22 9,12 15,12 15,22"/>
+      </svg>
+      <span class="ac-label">Propiedades en venta</span>
+      <div class="ac-titulo">Comprar en la<br><em>Patagonia.</em></div>
+      <p class="ac-desc">Lotes, casas y terrenos en los paisajes más extraordinarios de la Argentina. Encontrá tu lugar.</p>
+      <span class="ac-link">
+        Ver propiedades
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </span>
+    </a>
 
     <!-- ALQUILAR -->
-    <div class="acceso-col" style="--col-overlay: linear-gradient(to top, rgba(5,3,1,0.94) 0%, rgba(5,3,1,0.5) 60%, rgba(5,3,1,0.25) 100%);"
-         onclick="location.href='propiedades.html?op=alquiler'">
-      <div class="acceso-bg" style="background-image: url('assets/BUENA VISTA SUP.png'); background-position: center top;"></div>
-      <div class="acceso-divider"></div>
-      <div class="acceso-content">
-        <span class="acceso-num">02</span>
-        <span class="acceso-eyebrow">Alquileres</span>
-        <h2 class="acceso-titulo">Vivir la<br><em>experiencia.</em></h2>
-        <p class="acceso-desc">Temporadas cortas y largo plazo. Cabañas, casas y espacios únicos en la naturaleza.</p>
-        <a href="propiedades.html?op=alquiler" class="acceso-cta">
-          Ver alquileres
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </a>
-      </div>
-    </div>
+    <a href="propiedades.html?op=alquiler" class="ac reveal">
+      <svg class="ac-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <path d="M16 2v4M8 2v4M3 10h18"/>
+        <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+      </svg>
+      <span class="ac-label">Alquileres</span>
+      <div class="ac-titulo">Vivir la<br><em>experiencia.</em></div>
+      <p class="ac-desc">Temporadas cortas y largo plazo. Cabañas, casas y espacios únicos rodeados de naturaleza patagónica.</p>
+      <span class="ac-link">
+        Ver alquileres
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </span>
+    </a>
 
-    <!-- PUBLICAR -->
-    <div class="acceso-col" style="--col-overlay: linear-gradient(to top, rgba(5,3,1,0.96) 0%, rgba(5,3,1,0.6) 55%, rgba(5,3,1,0.3) 100%);"
-         onclick="location.href='#contacto'">
-      <div class="acceso-bg" style="background-image: url('assets/IMG_1517 (1).JPG');"></div>
-      <div class="acceso-content">
-        <span class="acceso-num">03</span>
-        <span class="acceso-eyebrow">Propietarios</span>
-        <h2 class="acceso-titulo">¿Tenés una<br><em>propiedad?</em></h2>
-        <p class="acceso-desc">Publicá con nosotros y llegá a miles de interesados en vivir la Patagonia. Sin complicaciones.</p>
-        <a href="#contacto" class="acceso-cta">
-          Hablemos
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </a>
-      </div>
-    </div>
+    <!-- ¿TENÉS UNA PROPIEDAD? -->
+    <a href="#contacto" class="ac reveal">
+      <svg class="ac-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 8v4l3 3"/>
+        <path d="M9 2l3 3 3-3"/>
+      </svg>
+      <span class="ac-label">Propietarios</span>
+      <div class="ac-titulo">¿Tenés una<br><em>propiedad?</em></div>
+      <p class="ac-desc">Publicá con nosotros y llegá a miles de interesados en vivir la Patagonia. Sin complicaciones, sin vueltas.</p>
+      <span class="ac-link">
+        Hablemos
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </span>
+    </a>
 
   </div>
+</div>
 </section>
 
 <!-- PROPIEDADES -->
