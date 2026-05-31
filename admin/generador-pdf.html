@@ -812,47 +812,22 @@ window.generarPDFProyecto = async function() {
     gbCtx.fillStyle = gbGrad; gbCtx.fillRect(0,0,8,180)
     doc.addImage(gbCanvas.toDataURL(),'PNG',0,heroH-45,W,45)
 
-    // ── LOGO COMPUESTO: picos + SUR PATAGONIA + PROPIEDADES en canvas ──────
+    // ── LOGO VERTICAL: logovertical.png (logo real del sitio) ───────────────
     try {
-      const logoB64 = await fetchImageAsBase64(SITE + '/picos.png')
-      const logoComp = await new Promise(resolve => {
-        const cW = 600, cH = 200
-        const cv = document.createElement('canvas')
-        cv.width = cW; cv.height = cH
-        const ctx = cv.getContext('2d')
-
-        const drawTexto = () => {
-          // SUR PATAGONIA
-          ctx.fillStyle = '#ffffff'
-          ctx.font = 'bold 56px Arial, Helvetica, sans-serif'
-          ctx.textAlign = 'center'
-          ctx.letterSpacing = '12px'
-          ctx.fillText('SUR PATAGONIA', cW / 2, 148)
-          // PROPIEDADES
-          ctx.fillStyle = '#C9A84C'
-          ctx.font = '300 26px Arial, Helvetica, sans-serif'
-          ctx.letterSpacing = '8px'
-          ctx.fillText('PROPIEDADES', cW / 2, 184)
-          resolve(cv.toDataURL('image/png'))
-        }
-
+      const logoVB64 = await fetchImageAsBase64(SITE + '/logovertical.png')
+      const logoDims = await new Promise(resolve => {
         const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => {
-          const picosH = 90
-          const picosW = img.naturalWidth * (picosH / img.naturalHeight)
-          ctx.drawImage(img, (cW - picosW) / 2, 6, picosW, picosH)
-          drawTexto()
-        }
-        img.onerror = drawTexto
-        img.src = logoB64
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
+        img.onerror = () => resolve({ w: 800, h: 800 })
+        img.src = logoVB64
       })
-
-      // Ancho fijo 68mm, alto proporcional (600:200 = 3:1)
-      const compW_mm = 68, compH_mm = 68 * (200 / 600)
-      doc.addImage(logoComp, 'PNG', W / 2 - compW_mm / 2, 5, compW_mm, compH_mm)
+      // Ancho fijo 44mm, alto proporcional, centrado en franja superior
+      const logoW_mm = 44
+      const logoH_mm = logoW_mm * (logoDims.h / logoDims.w)
+      const logoX_mm = W / 2 - logoW_mm / 2
+      const logoY_mm = (40 - logoH_mm) / 2 + 3
+      doc.addImage(logoVB64, 'PNG', logoX_mm, logoY_mm, logoW_mm, logoH_mm)
     } catch(e) {
-      // fallback texto puro
       t(WHITE); doc.setFont('helvetica','bold'); doc.setFontSize(13); sp(5)
       doc.text('SUR PATAGONIA', W/2, 18, { align:'center' }); sp(0)
     }
