@@ -276,29 +276,39 @@
       </div>
     </div>
 
-    <!-- ── OPACIDAD VIDEOS ───────────────────────────────────── -->
+    <!-- ── OVERLAY VIDEOS ───────────────────────────────────── -->
     <div class="ap-section">
-      <div class="ap-section-title">Opacidad del negro sobre los videos</div>
-      <p style="font-size:0.75rem; color:var(--gris-claro); margin-bottom:1.5rem;">Controlá qué tan oscuro se ve el overlay negro sobre cada video. Más alto = más oscuro = texto más legible.</p>
+      <div class="ap-section-title">Overlay negro — Sección Audiovisual</div>
+      <p style="font-size:0.75rem; color:var(--gris-claro); margin-bottom:1.5rem;">Podés usar opacidad plana, degradé izquierda→derecha, o los dos juntos.</p>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+
+        <!-- Opacidad plana -->
         <div class="ap-video-item" style="margin-bottom:0;">
-          <div class="ap-item-label">Video Hero</div>
-          <div style="display:flex; align-items:center; gap:1rem;">
-            <input type="range" id="sliderHeroOp" min="0" max="100" value="75" style="flex:1; accent-color:var(--dorado);" oninput="actualizarLabel('sliderHeroOp','labelHeroOp')" />
-            <span id="labelHeroOp" style="font-size:0.8rem; color:var(--dorado); min-width:35px;">75%</span>
+          <div class="ap-item-label">Opacidad plana (negro uniforme)</div>
+          <div style="display:flex; align-items:center; gap:1rem; margin:0.5rem 0;">
+            <input type="range" id="sliderAvFlat" min="0" max="100" value="55" style="flex:1; accent-color:var(--dorado);" oninput="actualizarLabel('sliderAvFlat','labelAvFlat')" />
+            <span id="labelAvFlat" style="font-size:0.8rem; color:var(--dorado); min-width:35px;">55%</span>
           </div>
-          <button class="ap-save-btn" onclick="guardarOpacidad('overlay_hero', 'sliderHeroOp')">Guardar</button>
+          <button class="ap-save-btn" onclick="guardarConfig('overlay_av_flat', document.getElementById('sliderAvFlat').value)">Guardar</button>
         </div>
 
+        <!-- Degradé -->
         <div class="ap-video-item" style="margin-bottom:0;">
-          <div class="ap-item-label">Video Audiovisual</div>
-          <div style="display:flex; align-items:center; gap:1rem;">
-            <input type="range" id="sliderAvOp" min="0" max="100" value="85" style="flex:1; accent-color:var(--dorado);" oninput="actualizarLabel('sliderAvOp','labelAvOp')" />
-            <span id="labelAvOp" style="font-size:0.8rem; color:var(--dorado); min-width:35px;">85%</span>
+          <div class="ap-item-label">Degradé izquierda → derecha</div>
+          <div style="display:flex; align-items:center; gap:1rem; margin:1rem 0;">
+            <span style="font-size:0.75rem; color:var(--gris-claro);">Desactivado</span>
+            <label style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
+              <input type="checkbox" id="toggleGrad" style="opacity:0; width:0; height:0;" onchange="toggleGradLabel()" />
+              <span id="toggleTrack" style="position:absolute; inset:0; background:var(--gris-oscuro); border-radius:24px; transition:0.2s;"></span>
+              <span id="toggleThumb" style="position:absolute; left:3px; top:3px; width:18px; height:18px; background:white; border-radius:50%; transition:0.2s;"></span>
+            </label>
+            <span style="font-size:0.75rem; color:var(--gris-claro);">Activado</span>
           </div>
-          <button class="ap-save-btn" onclick="guardarOpacidad('overlay_audiovisual', 'sliderAvOp')">Guardar</button>
+          <div style="font-size:0.62rem; color:var(--gris); margin-bottom:0.8rem;">Negro fuerte a la izquierda que se aclara hacia la derecha</div>
+          <button class="ap-save-btn" onclick="guardarConfig('overlay_av_grad', document.getElementById('toggleGrad').checked ? 'true' : 'false')">Guardar</button>
         </div>
+
       </div>
     </div>
 
@@ -463,24 +473,33 @@ window.guardarFont = async () => {
   mostrarAlerta(`Tipografía "${font}" guardada`, 'ok')
 }
 
-// ── Opacidad videos ──────────────────────────────────────────
-const heroOp = cfg['overlay_hero'] || '75'
-const avOp   = cfg['overlay_audiovisual'] || '85'
-document.getElementById('sliderHeroOp').value = heroOp
-document.getElementById('labelHeroOp').textContent = heroOp + '%'
-document.getElementById('sliderAvOp').value = avOp
-document.getElementById('labelAvOp').textContent = avOp + '%'
+// ── Overlay audiovisual ───────────────────────────────────────
+const avFlat = cfg['overlay_av_flat'] || '55'
+const avGrad = cfg['overlay_av_grad'] !== 'false'
+
+document.getElementById('sliderAvFlat').value = avFlat
+document.getElementById('labelAvFlat').textContent = avFlat + '%'
+document.getElementById('toggleGrad').checked = avGrad
+aplicarToggleEstilo(avGrad)
 
 window.actualizarLabel = (sliderId, labelId) => {
   document.getElementById(labelId).textContent = document.getElementById(sliderId).value + '%'
 }
 
-window.guardarOpacidad = async (key, sliderId) => {
-  const val = document.getElementById(sliderId).value
+window.toggleGradLabel = () => {
+  aplicarToggleEstilo(document.getElementById('toggleGrad').checked)
+}
+
+function aplicarToggleEstilo(activo) {
+  document.getElementById('toggleTrack').style.background = activo ? 'var(--dorado)' : 'var(--gris-oscuro)'
+  document.getElementById('toggleThumb').style.left = activo ? '23px' : '3px'
+}
+
+window.guardarConfig = async (key, value) => {
   const { error } = await supabase.from('site_config')
-    .upsert({ key, value: val, label: key, tipo: 'opacidad' }, { onConflict: 'key' })
+    .upsert({ key, value, label: key, tipo: 'overlay' }, { onConflict: 'key' })
   if (error) { mostrarAlerta('Error: ' + error.message, 'err'); return }
-  mostrarAlerta('Opacidad guardada', 'ok')
+  mostrarAlerta('Guardado correctamente', 'ok')
 }
 
 // ── Alertas ──────────────────────────────────────────────────
