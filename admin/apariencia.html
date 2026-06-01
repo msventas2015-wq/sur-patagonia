@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apariencia — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <style>
+    .ap-section {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    .ap-section-title {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--dorado);
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+    }
+    .ap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1.5rem;
+    }
+    .ap-item {
+      background: var(--negro-3);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .ap-item-label {
+      font-size: 0.68rem;
+      color: var(--gris-claro);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .ap-preview {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      background: var(--negro);
+      display: block;
+    }
+    .ap-preview-placeholder {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: var(--negro);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gris);
+      font-size: 0.7rem;
+    }
+    .ap-upload-btn {
+      display: block;
+      width: 100%;
+      padding: 0.6rem;
+      background: transparent;
+      border: 1px solid var(--gris-oscuro);
+      color: var(--gris-claro);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .ap-upload-btn:hover { border-color: var(--dorado); color: var(--dorado); }
+    .ap-upload-input { display: none; }
+    .ap-uploading {
+      font-size: 0.65rem;
+      color: var(--dorado);
+      text-align: center;
+      display: none;
+    }
+    .ap-success {
+      font-size: 0.65rem;
+      color: #27ae60;
+      text-align: center;
+      display: none;
+    }
+
+    /* Videos */
+    .ap-video-item {
+      background: var(--negro-3);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .ap-video-preview {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: var(--negro);
+    }
+    .ap-video-preview iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .ap-input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .ap-input {
+      flex: 1;
+      background: var(--negro);
+      border: 1px solid var(--gris-oscuro);
+      color: var(--texto);
+      padding: 0.6rem 0.8rem;
+      font-size: 0.8rem;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .ap-input:focus { outline: none; border-color: var(--dorado); }
+    .ap-save-btn {
+      padding: 0.6rem 1.2rem;
+      background: var(--dorado);
+      color: var(--negro);
+      border: none;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .ap-save-btn:hover { opacity: 0.85; }
+
+    /* Tipografías */
+    .ap-font-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .ap-font-card {
+      border: 2px solid var(--gris-oscuro);
+      padding: 1.5rem 1rem;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.2s;
+      background: var(--negro-3);
+    }
+    .ap-font-card:hover { border-color: var(--gris); }
+    .ap-font-card.selected { border-color: var(--dorado); }
+    .ap-font-sample {
+      font-size: 2rem;
+      font-weight: 300;
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+      color: var(--texto);
+    }
+    .ap-font-name {
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+    }
+    .ap-font-apply {
+      margin-top: 1.5rem;
+    }
+
+    .alerta { padding: 0.8rem 1rem; font-size: 0.75rem; margin-bottom: 1rem; display: none; }
+    .alerta-ok { background: rgba(39,174,96,0.08); border-left: 3px solid #27ae60; color: #27ae60; }
+    .alerta-err { background: rgba(192,57,43,0.08); border-left: 3px solid #c0392b; color: #c0392b; }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="nueva-propiedad.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nueva propiedad
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="nuevo-proyecto.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nuevo proyecto
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Generar PDF
+      </a>
+      <a href="apariencia.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+        Apariencia
+      </a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+    <div class="admin-header">
+      <div>
+        <h2 style="font-weight:300; margin-bottom:0.2rem;">Apariencia</h2>
+        <p style="font-size:0.78rem; color:var(--gris-claro);">Administrá las imágenes, videos y tipografías del sitio</p>
+      </div>
+    </div>
+
+    <div id="alertaGlobal" class="alerta"></div>
+
+    <!-- ── IMÁGENES ─────────────────────────────────────────── -->
+    <div class="ap-section">
+      <div class="ap-section-title">Imágenes del sitio</div>
+      <div class="ap-grid" id="gridImagenes">
+        <div style="color:var(--gris-claro); font-size:0.78rem;">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- ── VIDEOS ──────────────────────────────────────────── -->
+    <div class="ap-section">
+      <div class="ap-section-title">Videos de YouTube</div>
+
+      <div class="ap-video-item">
+        <div class="ap-item-label">Video Hero (pantalla de inicio)</div>
+        <div class="ap-video-preview" id="previewHero">
+          <iframe id="iframeHero" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+        <div class="ap-input-row">
+          <input class="ap-input" id="inputHero" type="text" placeholder="ID de YouTube — ej: VMkGpUK7E2Q" />
+          <button class="ap-save-btn" onclick="guardarVideo('video_hero', 'inputHero', 'iframeHero')">Guardar</button>
+        </div>
+        <div style="font-size:0.62rem; color:var(--gris);">Pegá solo el ID del video (lo que va después de ?v= en la URL)</div>
+      </div>
+
+      <div class="ap-video-item">
+        <div class="ap-item-label">Video Audiovisual ("Hacemos que tu proyecto se vea increíble")</div>
+        <div class="ap-video-preview" id="previewAv">
+          <iframe id="iframeAv" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+        <div class="ap-input-row">
+          <input class="ap-input" id="inputAv" type="text" placeholder="ID de YouTube — ej: 7bxKpIxdhXU" />
+          <button class="ap-save-btn" onclick="guardarVideo('video_audiovisual', 'inputAv', 'iframeAv')">Guardar</button>
+        </div>
+        <div style="font-size:0.62rem; color:var(--gris);">Pegá solo el ID del video (lo que va después de ?v= en la URL)</div>
+      </div>
+    </div>
+
+    <!-- ── TIPOGRAFÍAS ─────────────────────────────────────── -->
+    <div class="ap-section">
+      <div class="ap-section-title">Tipografía de títulos</div>
+      <div class="ap-font-grid">
+        <div class="ap-font-card" data-font="Cormorant Garamond" onclick="seleccionarFont(this)">
+          <div class="ap-font-sample" style="font-family:'Cormorant Garamond',serif;">Sur Patagonia</div>
+          <div class="ap-font-name">Cormorant Garamond</div>
+        </div>
+        <div class="ap-font-card" data-font="Didot" onclick="seleccionarFont(this)">
+          <div class="ap-font-sample" style="font-family:'Didot',serif;">Sur Patagonia</div>
+          <div class="ap-font-name">Didot</div>
+        </div>
+        <div class="ap-font-card" data-font="Georgia" onclick="seleccionarFont(this)">
+          <div class="ap-font-sample" style="font-family:'Georgia',serif;">Sur Patagonia</div>
+          <div class="ap-font-name">Georgia</div>
+        </div>
+        <div class="ap-font-card" data-font="Montserrat" onclick="seleccionarFont(this)">
+          <div class="ap-font-sample" style="font-family:'Montserrat',sans-serif; font-size:1.4rem;">SUR PATAGONIA</div>
+          <div class="ap-font-name">Montserrat</div>
+        </div>
+      </div>
+      <div class="ap-font-apply">
+        <button class="ap-save-btn" onclick="guardarFont()">Aplicar tipografía</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script type="module">
+import { supabase, subirImagen, STORAGE_URL } from '../js/config.js'
+
+// ── Auth ────────────────────────────────────────────────────
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html'; }
+
+document.getElementById('btnLogout').addEventListener('click', async (e) => {
+  e.preventDefault()
+  await supabase.auth.signOut()
+  window.location.href = 'login.html'
+})
+
+// ── Cargar configuración ────────────────────────────────────
+const { data: config } = await supabase.from('site_config').select('*')
+const cfg = {}
+config?.forEach(r => cfg[r.key] = r.value)
+
+// ── Imágenes ────────────────────────────────────────────────
+const imagenesConfig = [
+  { key: 'img_hero_scroll_1',     label: 'Scroll imagen 1' },
+  { key: 'img_hero_scroll_2',     label: 'Scroll imagen 2' },
+  { key: 'img_hero_scroll_3',     label: 'Scroll imagen 3' },
+  { key: 'img_hero_scroll_4',     label: 'Scroll imagen 4' },
+  { key: 'img_servicios_bg',      label: 'Fondo — Nuestros Servicios' },
+  { key: 'img_stats_bg',          label: 'Fondo — Estadísticas' },
+  { key: 'img_acordeon_comprar',  label: 'Acordeón — Comprá' },
+  { key: 'img_acordeon_alquiler', label: 'Acordeón — Alquilá' },
+  { key: 'img_acordeon_prop',     label: 'Acordeón — Propietario' },
+]
+
+const grid = document.getElementById('gridImagenes')
+grid.innerHTML = ''
+
+imagenesConfig.forEach(({ key, label }) => {
+  const url = cfg[key] || ''
+  const isSupabase = url.startsWith('http')
+  const previewSrc = isSupabase ? url : '../' + url
+
+  const item = document.createElement('div')
+  item.className = 'ap-item'
+  item.innerHTML = `
+    <div class="ap-item-label">${label}</div>
+    ${url
+      ? `<img class="ap-preview" id="prev-${key}" src="${previewSrc}" alt="${label}" onerror="this.style.display='none'" />`
+      : `<div class="ap-preview-placeholder" id="prev-${key}">Sin imagen</div>`
+    }
+    <label class="ap-upload-btn" for="file-${key}">↑ Reemplazar imagen</label>
+    <input class="ap-upload-input" type="file" id="file-${key}" accept="image/*" data-key="${key}" />
+    <div class="ap-uploading" id="load-${key}">Subiendo...</div>
+    <div class="ap-success" id="ok-${key}">✓ Guardado</div>
+  `
+  grid.appendChild(item)
+
+  document.getElementById(`file-${key}`).addEventListener('change', async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const loadEl = document.getElementById(`load-${key}`)
+    const okEl = document.getElementById(`ok-${key}`)
+    loadEl.style.display = 'block'
+    okEl.style.display = 'none'
+    try {
+      const newUrl = await subirImagen(file, 'sitio')
+      await supabase.from('site_config')
+        .upsert({ key, value: newUrl, label, tipo: 'imagen' }, { onConflict: 'key' })
+      const prev = document.getElementById(`prev-${key}`)
+      if (prev.tagName === 'IMG') { prev.src = newUrl }
+      else {
+        const img = document.createElement('img')
+        img.className = 'ap-preview'
+        img.id = `prev-${key}`
+        img.src = newUrl
+        prev.replaceWith(img)
+      }
+      okEl.style.display = 'block'
+    } catch (err) {
+      mostrarAlerta('Error al subir: ' + err.message, 'err')
+    } finally {
+      loadEl.style.display = 'none'
+    }
+  })
+})
+
+// ── Videos ──────────────────────────────────────────────────
+function buildYtSrc(id) {
+  return `https://www.youtube.com/embed/${id}?autoplay=0&mute=1&controls=1&rel=0&modestbranding=1`
+}
+
+const heroId = cfg['video_hero'] || ''
+const avId = cfg['video_audiovisual'] || ''
+
+document.getElementById('inputHero').value = heroId
+document.getElementById('iframeHero').src = heroId ? buildYtSrc(heroId) : ''
+
+document.getElementById('inputAv').value = avId
+document.getElementById('iframeAv').src = avId ? buildYtSrc(avId) : ''
+
+window.guardarVideo = async (key, inputId, iframeId) => {
+  const rawVal = document.getElementById(inputId).value.trim()
+  // Extraer ID si pegaron URL completa
+  let id = rawVal
+  const match = rawVal.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  if (match) id = match[1]
+  if (!id) { mostrarAlerta('Ingresá un ID o URL de YouTube válido', 'err'); return }
+  const { error } = await supabase.from('site_config')
+    .upsert({ key, value: id, tipo: 'video' }, { onConflict: 'key' })
+  if (error) { mostrarAlerta('Error: ' + error.message, 'err'); return }
+  document.getElementById(iframeId).src = buildYtSrc(id)
+  mostrarAlerta('Video guardado correctamente', 'ok')
+}
+
+// ── Tipografías ──────────────────────────────────────────────
+const fontActual = cfg['font_titulos'] || 'Cormorant Garamond'
+document.querySelectorAll('.ap-font-card').forEach(card => {
+  if (card.dataset.font === fontActual) card.classList.add('selected')
+})
+
+window.seleccionarFont = (card) => {
+  document.querySelectorAll('.ap-font-card').forEach(c => c.classList.remove('selected'))
+  card.classList.add('selected')
+}
+
+window.guardarFont = async () => {
+  const selected = document.querySelector('.ap-font-card.selected')
+  if (!selected) return
+  const font = selected.dataset.font
+  const { error } = await supabase.from('site_config')
+    .upsert({ key: 'font_titulos', value: font, label: 'Tipografía títulos', tipo: 'tipografia' }, { onConflict: 'key' })
+  if (error) { mostrarAlerta('Error: ' + error.message, 'err'); return }
+  mostrarAlerta(`Tipografía "${font}" guardada`, 'ok')
+}
+
+// ── Alertas ──────────────────────────────────────────────────
+function mostrarAlerta(msg, tipo) {
+  const el = document.getElementById('alertaGlobal')
+  el.textContent = msg
+  el.className = `alerta alerta-${tipo}`
+  el.style.display = 'block'
+  setTimeout(() => el.style.display = 'none', 4000)
+}
+</script>
+</body>
+</html>
