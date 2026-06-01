@@ -1,0 +1,1896 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nuevo proyecto — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Playfair+Display:ital,wght@0,400;1,400&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Cinzel:wght@400&family=Lora:ital,wght@0,400;1,400&family=Montserrat:wght@300;400;500&family=Raleway:wght@300;400&family=Josefin+Sans:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Tabs de sección ──────────────────────────────── */
+    .form-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--gris-oscuro);
+      margin-bottom: 2rem;
+      overflow-x: auto;
+    }
+    .form-tab {
+      padding: 0.75rem 1.4rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      white-space: nowrap;
+      transition: color 0.2s, border-color 0.2s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .form-tab:hover { color: var(--dorado); }
+    .form-tab.activo {
+      color: var(--dorado);
+      border-bottom-color: var(--dorado);
+    }
+    .form-panel { display: none; }
+    .form-panel.activo { display: block; }
+
+    /* ── Bloque de formulario ─────────────────────────── */
+    .form-bloque {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .form-bloque-titulo {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--dorado);
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+    }
+
+    /* ── Servicios checkboxes ─────────────────────────── */
+    .servicios-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+    .servicio-check {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem 0.9rem;
+      border: 1px solid var(--gris-oscuro);
+      background: var(--negro);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .servicio-check:hover { border-color: var(--dorado); }
+    .servicio-check input[type="checkbox"] { accent-color: var(--dorado); width: 14px; height: 14px; }
+    .servicio-check span { font-size: 0.78rem; color: var(--texto); }
+
+    /* ── Tabla de lotes ───────────────────────────────── */
+    .lotes-tabla {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .lotes-tabla th {
+      text-align: left;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--dorado);
+      border-bottom: 1px solid var(--gris-oscuro);
+      background: var(--negro);
+    }
+    .lotes-tabla td {
+      padding: 0.5rem 0.8rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--texto);
+    }
+    .lotes-tabla tr:hover td { background: rgba(255,255,255,0.02); }
+    .lotes-tabla input, .lotes-tabla select {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--gris-oscuro);
+      color: var(--texto);
+      font-size: 0.78rem;
+      padding: 0.2rem 0.3rem;
+      width: 100%;
+    }
+    .lotes-tabla input:focus, .lotes-tabla select:focus {
+      outline: none;
+      border-bottom-color: var(--dorado);
+    }
+    .btn-add-lote {
+      margin-top: 1rem;
+      padding: 0.5rem 1.2rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: transparent;
+      border: 1px solid var(--gris-oscuro);
+      color: var(--gris-claro);
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-add-lote:hover { border-color: var(--dorado); color: var(--dorado); }
+    .btn-del-lote {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0 0.3rem;
+      transition: color 0.2s;
+    }
+    .btn-del-lote:hover { color: #c94c4c; }
+
+    /* ── Import CSV ───────────────────────────────────── */
+    .import-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      padding: 0.8rem 1rem;
+      background: var(--negro);
+      border: 1px dashed var(--gris-oscuro);
+    }
+    .import-bar label {
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      cursor: pointer;
+    }
+    .import-bar label:hover { color: var(--dorado); }
+    .import-bar input[type="file"] { display: none; }
+    .import-hint { font-size: 0.7rem; color: var(--gris-claro); margin-left: auto; }
+
+    /* ── Diseño visual: Paletas y Fuentes ─────────────── */
+    .diseno-seccion { margin-bottom: 2rem; }
+    .diseno-seccion:last-child { margin-bottom: 0; }
+    .diseno-subtitulo {
+      font-size: 0.65rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--dorado);
+      margin-bottom: 0.3rem; font-weight: 500;
+    }
+    .diseno-desc { font-size: 0.7rem; color: var(--gris-claro); margin-bottom: 1rem; }
+
+    /* Paletas */
+    .paletas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 0.7rem;
+    }
+    .paleta-card {
+      border: 1px solid var(--gris-oscuro);
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      overflow: hidden;
+    }
+    .paleta-card:hover { border-color: rgba(201,168,76,0.5); }
+    .paleta-card.activo { border-color: var(--dorado); box-shadow: 0 0 0 1px var(--dorado); }
+    .paleta-preview {
+      height: 56px; position: relative;
+      display: flex; flex-direction: column;
+    }
+    .paleta-banda {
+      height: 14px;
+    }
+    .paleta-fondo {
+      flex: 1;
+      display: flex; align-items: flex-end;
+      padding: 0 0.5rem 0.4rem;
+      gap: 3px;
+    }
+    .paleta-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .paleta-info { padding: 0.4rem 0.6rem 0.5rem; }
+    .paleta-info strong {
+      display: block; font-size: 0.68rem;
+      color: var(--texto); letter-spacing: 0.04em;
+    }
+    .paleta-info em {
+      font-size: 0.6rem; color: var(--gris-claro); font-style: normal;
+    }
+
+    /* Fuentes */
+    .fuentes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+      gap: 0.7rem;
+    }
+    .fuente-card {
+      border: 1px solid var(--gris-oscuro);
+      background: var(--negro);
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      padding: 0.9rem 0.7rem 0.6rem;
+      text-align: center;
+    }
+    .fuente-card:hover { border-color: rgba(201,168,76,0.5); }
+    .fuente-card.activo { border-color: var(--dorado); box-shadow: 0 0 0 1px var(--dorado); }
+    .fuente-ag {
+      font-size: 2.2rem; line-height: 1; color: var(--texto);
+      margin-bottom: 0.45rem; display: block;
+    }
+    .fuente-nombre {
+      display: block; font-size: 0.65rem; color: var(--texto);
+      letter-spacing: 0.04em; margin-bottom: 0.1rem;
+    }
+    .fuente-desc { display: block; font-size: 0.58rem; color: var(--gris-claro); }
+
+    /* ── Botón examinar / upload ──────────────────────── */
+    .btn-upload {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.55rem 1.2rem;
+      border: 1px solid var(--gris-oscuro);
+      background: var(--negro-3, #1a1a1a);
+      color: var(--texto);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      font-family: 'Montserrat', sans-serif;
+      white-space: nowrap;
+    }
+    .btn-upload:hover { border-color: var(--dorado); color: var(--dorado); }
+    .btn-upload.cargando { opacity: 0.6; pointer-events: none; }
+
+    /* ── Foto upload preview ──────────────────────────── */
+    .foto-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.8rem;
+      margin-bottom: 1rem;
+    }
+    .foto-preview {
+      position: relative;
+      aspect-ratio: 4/3;
+      background: var(--negro);
+      border: 1px solid var(--gris-oscuro);
+      overflow: hidden;
+    }
+    .foto-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .foto-preview .remove-foto {
+      position: absolute;
+      top: 4px; right: 4px;
+      background: rgba(0,0,0,0.7);
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 2px 5px;
+      line-height: 1;
+    }
+
+    /* ── Estado badge ─────────────────────────────────── */
+    .estado-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .estado-badge.borrador { background: rgba(136,136,128,0.15); color: var(--gris-claro); }
+    .estado-badge.activo { background: rgba(76,201,130,0.12); color: #4cc982; }
+    .estado-badge.pausado { background: rgba(201,168,76,0.12); color: var(--dorado); }
+    .estado-badge.vendido { background: rgba(201,76,76,0.12); color: #c94c4c; }
+
+    /* ── Progress barra guardado ──────────────────────── */
+    .save-bar {
+      position: sticky;
+      bottom: 0;
+      background: var(--negro-2);
+      border-top: 1px solid var(--gris-oscuro);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      z-index: 10;
+    }
+    .save-bar-info { font-size: 0.75rem; color: var(--gris-claro); }
+    .save-bar-info strong { color: var(--dorado); }
+    .save-actions { display: flex; gap: 0.8rem; }
+
+    /* ── Schema SQL modal ─────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      max-width: 680px;
+      width: 92%;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 2rem;
+    }
+    .modal-box pre {
+      font-size: 0.72rem;
+      line-height: 1.7;
+      color: var(--gris-claro);
+      overflow-x: auto;
+      background: var(--negro);
+      padding: 1rem;
+      border-left: 3px solid var(--dorado);
+    }
+    .modal-close {
+      float: right;
+      background: none;
+      border: none;
+      color: var(--gris-claro);
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: var(--dorado); }
+
+    /* ── Slug preview ─────────────────────────────────── */
+    .slug-preview {
+      font-size: 0.72rem;
+      color: var(--gris-claro);
+      margin-top: 0.4rem;
+    }
+    .slug-preview span { color: var(--dorado); }
+
+    @media (max-width: 768px) {
+      .save-bar { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="nueva-propiedad.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nueva propiedad
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="nuevo-proyecto.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nuevo proyecto
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+            <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+        Apariencia
+      </a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Generar PDF
+      </a>
+            <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+    <div class="admin-header">
+      <div>
+        <h2 style="font-weight:300;" id="tituloPagina">Nuevo proyecto</h2>
+        <p style="font-size:0.78rem; color:var(--gris-claro);" id="subtituloPagina">
+          Completá la información del loteo o desarrollo para generar su miniweb
+        </p>
+      </div>
+      <div style="display:flex;gap:0.8rem;align-items:center;">
+        <button class="btn-secundario" onclick="document.getElementById('modalSQL').classList.add('open')">
+          Ver SQL Supabase
+        </button>
+        <a id="linkMiniweb" href="#" target="_blank" class="btn-secundario" style="display:none;">
+          Ver miniweb →
+        </a>
+      </div>
+    </div>
+
+    <div id="alerta"></div>
+
+    <!-- TABS -->
+    <div class="form-tabs">
+      <button class="form-tab activo" data-panel="panel-identidad">Identidad</button>
+      <button class="form-tab" data-panel="panel-datos">Datos técnicos</button>
+      <button class="form-tab" data-panel="panel-lotes">Lotes</button>
+      <button class="form-tab" data-panel="panel-servicios">Servicios</button>
+      <button class="form-tab" data-panel="panel-media">Media</button>
+      <button class="form-tab" data-panel="panel-comercial">Comercial</button>
+      <button class="form-tab" data-panel="panel-desarrollador">Desarrollador</button>
+    </div>
+
+    <!-- ══ PANEL 1: IDENTIDAD ═══════════════════════════════════════════ -->
+    <div class="form-panel activo" id="panel-identidad">
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Identidad del proyecto</h4>
+        <div class="form-grid">
+          <div class="form-grupo form-full">
+            <label>Nombre comercial del proyecto *</label>
+            <input type="text" id="nombre" placeholder="Ej: Álamos I · Buena Vista · Río Azul" required />
+            <div class="slug-preview">URL de miniweb: surpatagonia.com.ar/<span id="slugPreview">—</span></div>
+          </div>
+          <div class="form-grupo">
+            <label>Slug (URL) *</label>
+            <input type="text" id="slug" placeholder="alamos-i" required />
+            <div class="slug-preview" style="margin-top:0.3rem;">Solo minúsculas, números y guiones</div>
+          </div>
+          <div class="form-grupo">
+            <label>Estado</label>
+            <select id="estado">
+              <option value="borrador">Borrador (no visible en el sitio)</option>
+              <option value="activo">Activo (visible en el sitio)</option>
+              <option value="pausado">Pausado (oculto temporalmente)</option>
+              <option value="vendido">Vendido (todos los lotes)</option>
+            </select>
+          </div>
+          <div class="form-grupo form-full">
+            <label>Eslogan / tagline</label>
+            <input type="text" id="tagline" placeholder="Ej: Tu lugar en la montaña" maxlength="100" />
+          </div>
+          <div class="form-grupo form-full">
+            <label>Descripción del proyecto</label>
+            <textarea id="descripcion" rows="5" placeholder="Describí el proyecto: ubicación, entorno natural, propuesta de valor, acceso..."></textarea>
+          </div>
+          <div class="form-grupo">
+            <label>Categoría</label>
+            <select id="categoria">
+              <option value="loteo">Loteo residencial</option>
+              <option value="loteo_rural">Loteo residencial rural</option>
+              <option value="loteo_turistico">Loteo turístico</option>
+              <option value="barrio_cerrado">Barrio cerrado</option>
+              <option value="chacras">Chacras</option>
+              <option value="desarrollo_mixto">Desarrollo mixto</option>
+            </select>
+          </div>
+          <div class="form-grupo">
+            <label>Destacado en home</label>
+            <select id="destacado">
+              <option value="false">No</option>
+              <option value="true">Sí — mostrar en la home</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ PANEL 2: DATOS TÉCNICOS ═══════════════════════════════════════ -->
+    <div class="form-panel" id="panel-datos">
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Ubicación</h4>
+        <div class="form-grid">
+          <div class="form-grupo">
+            <label>Provincia</label>
+            <select id="provincia">
+              <option value="rio_negro">Río Negro</option>
+              <option value="neuquen">Neuquén</option>
+              <option value="chubut">Chubut</option>
+              <option value="santa_cruz">Santa Cruz</option>
+              <option value="tierra_del_fuego">Tierra del Fuego</option>
+            </select>
+          </div>
+          <div class="form-grupo">
+            <label>Ciudad / Localidad más cercana</label>
+            <input type="text" id="ciudad" placeholder="Ej: San Martín de los Andes" />
+          </div>
+          <div class="form-grupo">
+            <label>Distancia desde ciudad (km)</label>
+            <input type="number" id="distancia_km" placeholder="Ej: 12" min="0" step="0.5" />
+          </div>
+          <div class="form-grupo">
+            <label>Tipo de acceso</label>
+            <select id="tipo_acceso">
+              <option value="asfalto">Ruta asfaltada</option>
+              <option value="ripio">Camino de ripio</option>
+              <option value="tierra">Camino de tierra</option>
+              <option value="mixto">Mixto (asfaltado + ripio)</option>
+            </select>
+          </div>
+          <div class="form-grupo form-full">
+            <label>Descripción de acceso</label>
+            <input type="text" id="acceso_desc" placeholder="Ej: Por RN40 km 2015, luego 8km de ripio consolidado" />
+          </div>
+          <div class="form-grupo">
+            <label>Latitud (Google Maps)</label>
+            <input type="number" id="latitud" placeholder="-40.123456" step="0.000001" />
+          </div>
+          <div class="form-grupo">
+            <label>Longitud (Google Maps)</label>
+            <input type="number" id="longitud" placeholder="-71.123456" step="0.000001" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Superficie y lotes</h4>
+        <div class="form-grid">
+          <div class="form-grupo">
+            <label>Superficie total del emprendimiento (ha)</label>
+            <input type="number" id="hectareas_total" placeholder="Ej: 85.5" min="0" step="0.1" />
+          </div>
+          <div class="form-grupo">
+            <label>Cantidad total de lotes</label>
+            <input type="number" id="cantidad_lotes" placeholder="Ej: 48" min="1" />
+          </div>
+          <div class="form-grupo">
+            <label>Superficie mínima de lote (m²)</label>
+            <input type="number" id="sup_min_m2" placeholder="Ej: 1000" min="0" />
+          </div>
+          <div class="form-grupo">
+            <label>Superficie máxima de lote (m²)</label>
+            <input type="number" id="sup_max_m2" placeholder="Ej: 5000" min="0" />
+          </div>
+          <div class="form-grupo">
+            <label>Zonificación / Uso de suelo</label>
+            <input type="text" id="zonificacion" placeholder="Ej: Residencial rural · Turístico" />
+          </div>
+          <div class="form-grupo">
+            <label>Número de expediente municipal</label>
+            <input type="text" id="expediente" placeholder="Ej: EX-2024-00123" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Reglamento de construcción</h4>
+        <div class="form-grid">
+          <div class="form-grupo">
+            <label>Altura máxima permitida (m)</label>
+            <input type="number" id="altura_max" placeholder="Ej: 7" min="0" step="0.5" />
+          </div>
+          <div class="form-grupo">
+            <label>FOS (Factor de Ocupación del Suelo)</label>
+            <input type="number" id="fos" placeholder="Ej: 0.15" min="0" max="1" step="0.01" />
+          </div>
+          <div class="form-grupo form-full">
+            <label>Observaciones del reglamento</label>
+            <textarea id="reglamento_obs" rows="3" placeholder="Materiales permitidos, retiros, estética requerida..."></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ PANEL 3: LOTES ════════════════════════════════════════════════ -->
+    <div class="form-panel" id="panel-lotes">
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Planilla de lotes</h4>
+
+        <div class="import-bar">
+          <label for="csvInput">
+            <svg style="width:14px;height:14px;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importar CSV
+          </label>
+          <input type="file" id="csvInput" accept=".csv" />
+          <span class="import-hint">Columnas: numero, superficie_m2, precio_usd, estado, frente_agua</span>
+          <button class="btn-secundario" onclick="limpiarLotes()" style="margin-left:auto;">Limpiar tabla</button>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="lotes-tabla">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>N° Lote</th>
+                <th>Superficie (m²)</th>
+                <th>Precio (USD)</th>
+                <th>Estado</th>
+                <th>Frente agua</th>
+                <th>Notas</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="lotesBody">
+              <!-- filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+        <button class="btn-add-lote" onclick="agregarLote()">+ Agregar lote</button>
+
+        <div style="margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid var(--gris-oscuro);">
+          <div style="display:flex;gap:2rem;font-size:0.8rem;color:var(--gris-claro);">
+            <span>Total lotes: <strong id="resLotes" style="color:var(--dorado);">0</strong></span>
+            <span>Disponibles: <strong id="resDisp" style="color:#4cc982;">0</strong></span>
+            <span>Reservados: <strong id="resRes" style="color:var(--dorado);">0</strong></span>
+            <span>Vendidos: <strong id="resVend" style="color:#c94c4c;">0</strong></span>
+            <span>Precio desde: <strong id="resPrecioMin" style="color:var(--dorado);">—</strong></span>
+            <span>Precio hasta: <strong id="resPrecioMax" style="color:var(--dorado);">—</strong></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ PANEL 4: SERVICIOS ═══════════════════════════════════════════ -->
+    <div class="form-panel" id="panel-servicios">
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Servicios disponibles</h4>
+        <p style="font-size:0.78rem;color:var(--gris-claro);margin-bottom:1.2rem;">Marcá los servicios que ya están ejecutados o en construcción activa</p>
+        <div class="servicios-grid">
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="agua_corriente" /><span>Agua corriente</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="luz_electrica" /><span>Luz eléctrica</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="gas_natural" /><span>Gas natural</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="cloaca" /><span>Red cloacal</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="wifi" /><span>Wi-Fi / fibra óptica</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="porteria" /><span>Portería 24hs</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="sum" /><span>Salón de usos múltiples</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="parrillas" /><span>Parrillas comunitarias</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="senderos" /><span>Senderos peatonales</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="muelle" /><span>Muelle / acceso al agua</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="playa" /><span>Playa privada</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="cancha" /><span>Cancha deportiva</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="piscina" /><span>Piscina</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="vigilancia" /><span>Vigilancia privada</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="calles_ripio" /><span>Calles internas ripio</span></label>
+          <label class="servicio-check"><input type="checkbox" name="servicio" value="calles_asfalto" /><span>Calles internas asfalto</span></label>
+        </div>
+      </div>
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Cronograma de obras</h4>
+        <div class="form-grid">
+          <div class="form-grupo">
+            <label>Fecha estimada de entrega de infraestructura</label>
+            <input type="month" id="fecha_entrega" />
+          </div>
+          <div class="form-grupo form-full">
+            <label>Descripción del cronograma</label>
+            <textarea id="cronograma" rows="3" placeholder="Ej: Calles y agua corriente: junio 2025 · Luz eléctrica: diciembre 2025 · Escrituras: 2026"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ PANEL 5: MEDIA ════════════════════════════════════════════════ -->
+    <div class="form-panel" id="panel-media">
+
+      <!-- Diseño visual -->
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Diseño visual de la miniweb</h4>
+        <input type="hidden" id="paleta-val" value="clasico" />
+        <input type="hidden" id="fuente-titulo-val" value="cormorant" />
+        <input type="hidden" id="fuente-cuerpo-val" value="montserrat" />
+
+        <!-- ── Paleta de colores ───────────────────── -->
+        <div class="diseno-seccion">
+          <h5 class="diseno-subtitulo">Paleta de colores</h5>
+          <p class="diseno-desc">Define el fondo, superficie, texto principal, texto secundario y color de acento.</p>
+          <div class="paletas-grid">
+
+            <div class="paleta-card activo" data-paleta="clasico">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#c9a84c;"></div>
+                <div class="paleta-fondo" style="background:#080808;">
+                  <div class="paleta-dot" style="background:#111111;"></div>
+                  <div class="paleta-dot" style="background:#f0ede8;"></div>
+                  <div class="paleta-dot" style="background:#777777;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Clásico</strong><em>Dorado · Oscuro</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="bosque">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#7a9e6b;"></div>
+                <div class="paleta-fondo" style="background:#050a05;">
+                  <div class="paleta-dot" style="background:#0b120b;"></div>
+                  <div class="paleta-dot" style="background:#e8ede8;"></div>
+                  <div class="paleta-dot" style="background:#7a8878;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Bosque</strong><em>Verde · Noche</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="lago">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#4a8fa8;"></div>
+                <div class="paleta-fondo" style="background:#04080e;">
+                  <div class="paleta-dot" style="background:#0a1018;"></div>
+                  <div class="paleta-dot" style="background:#e8ecf0;"></div>
+                  <div class="paleta-dot" style="background:#6a7e8a;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Lago</strong><em>Azul · Profundo</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="andes">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#b87340;"></div>
+                <div class="paleta-fondo" style="background:#0d0805;">
+                  <div class="paleta-dot" style="background:#180e08;"></div>
+                  <div class="paleta-dot" style="background:#f0ece8;"></div>
+                  <div class="paleta-dot" style="background:#8a7060;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Andes</strong><em>Cobre · Tierra</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="nieve">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#a8bfc8;"></div>
+                <div class="paleta-fondo" style="background:#06080a;">
+                  <div class="paleta-dot" style="background:#0e1214;"></div>
+                  <div class="paleta-dot" style="background:#e8ecf0;"></div>
+                  <div class="paleta-dot" style="background:#7a8a92;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Nieve</strong><em>Plateado · Frío</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="vino">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#9a4a6a;"></div>
+                <div class="paleta-fondo" style="background:#0a0508;">
+                  <div class="paleta-dot" style="background:#140a10;"></div>
+                  <div class="paleta-dot" style="background:#f0e8ec;"></div>
+                  <div class="paleta-dot" style="background:#7a6070;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Vino</strong><em>Borgoña · Íntimo</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="tierra">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#c87850;"></div>
+                <div class="paleta-fondo" style="background:#0d0906;">
+                  <div class="paleta-dot" style="background:#181008;"></div>
+                  <div class="paleta-dot" style="background:#f0ede8;"></div>
+                  <div class="paleta-dot" style="background:#8a7060;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Tierra</strong><em>Terracota · Cálido</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="arena">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#8a6030;"></div>
+                <div class="paleta-fondo" style="background:#f5f0e8;">
+                  <div class="paleta-dot" style="background:#e8e0d0;border-color:rgba(0,0,0,0.1);"></div>
+                  <div class="paleta-dot" style="background:#1a1714;"></div>
+                  <div class="paleta-dot" style="background:#7a7268;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Arena</strong><em>Ocre · Claro</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="grafito">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#c9a84c;"></div>
+                <div class="paleta-fondo" style="background:#1c1c1c;">
+                  <div class="paleta-dot" style="background:#2a2a2a;"></div>
+                  <div class="paleta-dot" style="background:#f0ede8;"></div>
+                  <div class="paleta-dot" style="background:#888880;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Grafito</strong><em>Dorado · Gris oscuro</em></div>
+            </div>
+
+            <div class="paleta-card" data-paleta="plata">
+              <div class="paleta-preview">
+                <div class="paleta-banda" style="background:#a8bfc8;"></div>
+                <div class="paleta-fondo" style="background:#2e3238;">
+                  <div class="paleta-dot" style="background:#3a3f46;"></div>
+                  <div class="paleta-dot" style="background:#edf0f2;"></div>
+                  <div class="paleta-dot" style="background:#8a9298;"></div>
+                </div>
+              </div>
+              <div class="paleta-info"><strong>Plata</strong><em>Frío · Gris azulado</em></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── Tipografía de títulos ───────────────── -->
+        <div class="diseno-seccion">
+          <h5 class="diseno-subtitulo">Tipografía de títulos</h5>
+          <p class="diseno-desc">Se aplica al nombre del proyecto, títulos de sección, precios y estadísticas.</p>
+          <div class="fuentes-grid">
+
+            <div class="fuente-card activo" data-fuente-tipo="titulo" data-fuente="cormorant">
+              <span class="fuente-ag" style="font-family:'Cormorant Garamond',serif;font-style:italic;">Ag</span>
+              <span class="fuente-nombre">Cormorant</span>
+              <span class="fuente-desc">Clásico · Romántico</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="playfair">
+              <span class="fuente-ag" style="font-family:'Playfair Display',serif;font-style:italic;">Ag</span>
+              <span class="fuente-nombre">Playfair</span>
+              <span class="fuente-desc">Elegante · Editorial</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="dm-serif">
+              <span class="fuente-ag" style="font-family:'DM Serif Display',serif;">Ag</span>
+              <span class="fuente-nombre">DM Serif</span>
+              <span class="fuente-desc">Moderno · Limpio</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="baskerville">
+              <span class="fuente-ag" style="font-family:'Libre Baskerville',serif;font-style:italic;">Ag</span>
+              <span class="fuente-nombre">Baskerville</span>
+              <span class="fuente-desc">Sólido · Académico</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="cinzel">
+              <span class="fuente-ag" style="font-family:'Cinzel',serif;">Ag</span>
+              <span class="fuente-nombre">Cinzel</span>
+              <span class="fuente-desc">Romano · Monumental</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="titulo" data-fuente="lora">
+              <span class="fuente-ag" style="font-family:'Lora',serif;font-style:italic;">Ag</span>
+              <span class="fuente-nombre">Lora</span>
+              <span class="fuente-desc">Literario · Cálido</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── Tipografía de cuerpo ────────────────── -->
+        <div class="diseno-seccion">
+          <h5 class="diseno-subtitulo">Tipografía de cuerpo</h5>
+          <p class="diseno-desc">Se aplica a navegación, descripciones, botones y etiquetas.</p>
+          <div class="fuentes-grid">
+
+            <div class="fuente-card activo" data-fuente-tipo="cuerpo" data-fuente="montserrat">
+              <span class="fuente-ag" style="font-family:'Montserrat',sans-serif;font-size:1.8rem;">Ag</span>
+              <span class="fuente-nombre">Montserrat</span>
+              <span class="fuente-desc">Geométrico · Actual</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="cuerpo" data-fuente="raleway">
+              <span class="fuente-ag" style="font-family:'Raleway',sans-serif;font-size:1.8rem;font-weight:300;">Ag</span>
+              <span class="fuente-nombre">Raleway</span>
+              <span class="fuente-desc">Fino · Sofisticado</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="cuerpo" data-fuente="josefin">
+              <span class="fuente-ag" style="font-family:'Josefin Sans',sans-serif;font-size:1.8rem;">Ag</span>
+              <span class="fuente-nombre">Josefin Sans</span>
+              <span class="fuente-desc">Editorial · Espaciado</span>
+            </div>
+
+            <div class="fuente-card" data-fuente-tipo="cuerpo" data-fuente="inter">
+              <span class="fuente-ag" style="font-family:'Inter',sans-serif;font-size:1.8rem;font-weight:300;">Ag</span>
+              <span class="fuente-nombre">Inter</span>
+              <span class="fuente-desc">Neutro · Legible</span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Foto de portada -->
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Foto de portada (hero)</h4>
+        <input type="hidden" id="foto_portada" />
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <label class="btn-upload" for="portadaFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Examinar imagen
+          </label>
+          <input type="file" id="portadaFile" accept="image/*" style="display:none" onchange="subirPortada(this)" />
+          <span id="portadaStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin imagen cargada</span>
+        </div>
+        <div id="portadaPreview" style="display:none;margin-top:1rem;max-width:420px;">
+          <img id="portadaImg" src="" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--gris-oscuro);" />
+        </div>
+      </div>
+
+      <!-- Foto de atmósfera -->
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Foto de atmósfera (sección debajo del hero)</h4>
+        <p style="font-size:0.75rem;color:var(--gris-claro);margin-bottom:1.2rem;">
+          Foto en pantalla completa con efecto parallax que aparece debajo del hero. Recomendado: paisaje amplio, lago, bosque, montaña. Si no se carga, se usa la primera foto de la galería.
+        </p>
+        <input type="hidden" id="foto_atmosfera" />
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <label class="btn-upload" for="atmosferaFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Examinar imagen
+          </label>
+          <input type="file" id="atmosferaFile" accept="image/*" style="display:none" onchange="subirAtmosfera(this)" />
+          <span id="atmosferaStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin imagen cargada</span>
+        </div>
+        <div id="atmosferaPreview" style="display:none;margin-top:1rem;max-width:420px;">
+          <img id="atmosferaImg" src="" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--gris-oscuro);" />
+        </div>
+      </div>
+
+      <!-- Galería -->
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Galería de fotos</h4>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+          <label class="btn-upload" for="galeriaFiles">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Agregar fotos
+          </label>
+          <input type="file" id="galeriaFiles" accept="image/*" multiple style="display:none" onchange="subirGaleria(this)" />
+          <span id="galeriaStatus" style="font-size:0.75rem;color:var(--gris-claro);"></span>
+        </div>
+        <div id="galeriaFotos" class="foto-grid"></div>
+      </div>
+
+      <!-- Fondo de página -->
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Fondo de página (textura sutil)</h4>
+        <p style="font-size:0.75rem;color:var(--gris-claro);margin-bottom:1.2rem;">
+          Foto oscura que se aplica como trama de fondo en toda la miniweb. Recomendado: paisaje, bosque, terreno. Máx. opacidad 30% para garantizar legibilidad.
+        </p>
+        <input type="hidden" id="foto_fondo" />
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+          <label class="btn-upload" for="fondoFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Subir foto de fondo
+          </label>
+          <input type="file" id="fondoFile" accept="image/*" style="display:none" onchange="subirFondo(this)" />
+          <span id="fondoStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin imagen cargada</span>
+        </div>
+        <div id="fondoPreview" style="display:none;margin-bottom:1.2rem;max-width:420px;">
+          <img id="fondoImg" src="" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border:1px solid var(--gris-oscuro);filter:brightness(0.5) grayscale(0.5);" />
+        </div>
+        <!-- Slider de opacidad -->
+        <div style="max-width:360px;">
+          <label style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--gris-claro);display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+            <span>Opacidad del fondo</span>
+            <span id="fondoOpacidadVal" style="color:var(--dorado);">7%</span>
+          </label>
+          <input type="range" id="opacidad_fondo" min="1" max="30" value="7"
+            style="width:100%;accent-color:var(--dorado);cursor:pointer;"
+            oninput="document.getElementById('fondoOpacidadVal').textContent=this.value+'%'" />
+          <div style="display:flex;justify-content:space-between;font-size:0.62rem;color:var(--gris-claro);margin-top:0.25rem;">
+            <span>1% · Muy sutil</span><span>30% · Máximo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Video y plano -->
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Video y plano</h4>
+        <div class="form-grid">
+
+          <div class="form-grupo form-full">
+            <label>URL de video (YouTube o Vimeo)</label>
+            <input type="url" id="video_url" placeholder="https://youtube.com/watch?v=..." />
+          </div>
+
+          <div class="form-grupo form-full">
+            <label>Plano / Masterplan (imagen)</label>
+            <input type="hidden" id="masterplan_url" />
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+              <label class="btn-upload" for="masterplanFile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Examinar imagen
+              </label>
+              <input type="file" id="masterplanFile" accept="image/*" style="display:none" onchange="subirMasterplan(this)" />
+              <span id="masterplanStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin archivo</span>
+            </div>
+            <div id="masterplanPreview" style="display:none;margin-top:0.8rem;max-width:420px;">
+              <img id="masterplanImg" src="" alt="" style="width:100%;height:auto;border:1px solid var(--gris-oscuro);" />
+            </div>
+          </div>
+
+          <div class="form-grupo form-full">
+            <label>Brochure PDF</label>
+            <input type="hidden" id="brochure_url" />
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+              <label class="btn-upload" for="brochureFile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Examinar PDF
+              </label>
+              <input type="file" id="brochureFile" accept=".pdf" style="display:none" onchange="subirBrochure(this)" />
+              <span id="brochureStatus" style="font-size:0.75rem;color:var(--gris-claro);">Sin archivo</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ PANEL 6: COMERCIAL ═══════════════════════════════════════════ -->
+    <div class="form-panel" id="panel-comercial">
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Precios</h4>
+        <div class="form-grid">
+          <div class="form-grupo">
+            <label>Precio desde (USD)</label>
+            <input type="number" id="precio_desde" placeholder="Ej: 25000" min="0" />
+          </div>
+          <div class="form-grupo">
+            <label>Precio hasta (USD)</label>
+            <input type="number" id="precio_hasta" placeholder="Ej: 120000" min="0" />
+          </div>
+          <div class="form-grupo">
+            <label>Monto de reserva (USD)</label>
+            <input type="number" id="monto_reserva" placeholder="Ej: 3000" min="0" />
+          </div>
+          <div class="form-grupo">
+            <label>Comisión inmobiliaria (%)</label>
+            <input type="number" id="comision_pct" placeholder="Ej: 3" min="0" max="20" step="0.5" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Tipo de propiedad y financiación</h4>
+        <div class="form-grid">
+          <div class="form-grupo">
+            <label>Tipo de propiedad</label>
+            <select id="tipo_propiedad">
+              <option value="">Sin especificar</option>
+              <option value="Título directo">Título directo</option>
+              <option value="Fideicomiso">Fideicomiso</option>
+              <option value="PH especial">PH especial</option>
+              <option value="Boleto de compraventa">Boleto de compraventa</option>
+              <option value="Propiedad horizontal">Propiedad horizontal</option>
+            </select>
+          </div>
+          <div class="form-grupo form-full">
+            <label>Financiación disponible</label>
+            <textarea id="financiacion" rows="3" placeholder="Ej: Contado con 10% de descuento · Cuotas en USD hasta 36 meses · 30% anticipo y resto en cuotas sin interés..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Condiciones de venta</h4>
+        <div class="form-grid">
+          <div class="form-grupo form-full">
+            <label>Descripción de condiciones</label>
+            <textarea id="condiciones_venta" rows="4" placeholder="Ej: Contado con descuento · Cuotas en pesos ajustadas por ICL · Financiación propia hasta 36 cuotas..."></textarea>
+          </div>
+          <div class="form-grupo">
+            <label>¿Acepta financiación bancaria?</label>
+            <select id="financiacion_banco">
+              <option value="no">No</option>
+              <option value="si">Sí</option>
+              <option value="consultar">Consultar</option>
+            </select>
+          </div>
+          <div class="form-grupo">
+            <label>Ajuste de precios</label>
+            <select id="ajuste_precios">
+              <option value="ninguno">Sin ajuste (precio fijo)</option>
+              <option value="dolar">Dólar oficial</option>
+              <option value="icl">ICL (Índice Casa Propia)</option>
+              <option value="inflacion">Inflación (CPI/IPC)</option>
+              <option value="uva">UVA</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ PANEL 7: DESARROLLADOR ══════════════════════════════════════ -->
+    <div class="form-panel" id="panel-desarrollador">
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Datos del desarrollador</h4>
+        <div class="form-grid">
+          <div class="form-grupo">
+            <label>Empresa / Razón social</label>
+            <input type="text" id="dev_empresa" placeholder="Ej: Desarrollos Patagonia SA" />
+          </div>
+          <div class="form-grupo">
+            <label>CUIT</label>
+            <input type="text" id="dev_cuit" placeholder="Ej: 30-12345678-9" />
+          </div>
+          <div class="form-grupo">
+            <label>Contacto principal (nombre)</label>
+            <input type="text" id="dev_contacto_nombre" placeholder="Nombre y apellido" />
+          </div>
+          <div class="form-grupo">
+            <label>Cargo</label>
+            <input type="text" id="dev_contacto_cargo" placeholder="Ej: Gerente comercial" />
+          </div>
+          <div class="form-grupo">
+            <label>WhatsApp</label>
+            <input type="tel" id="dev_whatsapp" placeholder="+54 9 294 XXX-XXXX" />
+          </div>
+          <div class="form-grupo">
+            <label>Email</label>
+            <input type="email" id="dev_email" placeholder="comercial@empresa.com" />
+          </div>
+          <div class="form-grupo form-full">
+            <label>Domicilio legal</label>
+            <input type="text" id="dev_domicilio" placeholder="Calle, número, ciudad, provincia" />
+          </div>
+          <div class="form-grupo form-full">
+            <label>Notas internas (visibles solo en el admin)</label>
+            <textarea id="notas_internas" rows="3" placeholder="Comentarios sobre el acuerdo, condiciones especiales, historial de reuniones..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Contacto para la miniweb (público)</h4>
+        <p style="font-size:0.78rem;color:var(--gris-claro);margin-bottom:1rem;">
+          Este contacto aparecerá en la página pública del proyecto.
+        </p>
+        <div class="form-grid">
+          <div class="form-grupo">
+            <label>Nombre a mostrar</label>
+            <input type="text" id="contacto_nombre" placeholder="Ej: Equipo comercial Álamos I" />
+          </div>
+          <div class="form-grupo">
+            <label>WhatsApp público</label>
+            <input type="tel" id="contacto_whatsapp" placeholder="+54 9 294 XXX-XXXX" />
+          </div>
+          <div class="form-grupo">
+            <label>Email público</label>
+            <input type="email" id="contacto_email" placeholder="info@proyecto.com" />
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ SAVE BAR ═══════════════════════════════════════════════════════ -->
+    <div class="save-bar">
+      <div class="save-bar-info">
+        Proyecto: <strong id="saveBarNombre">Sin nombre</strong>
+        &nbsp;·&nbsp;
+        Estado: <strong id="saveBarEstado">Borrador</strong>
+      </div>
+      <div class="save-actions">
+        <button class="btn-secundario" onclick="guardarBorrador()">Guardar borrador</button>
+        <button class="btn-primario" onclick="publicarProyecto()">Publicar proyecto</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══ MODAL SQL ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalSQL">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('modalSQL').classList.remove('open')">✕</button>
+    <h3 style="font-weight:300;font-size:1.1rem;color:var(--dorado);margin-bottom:1rem;">SQL — Tabla proyectos</h3>
+    <p style="font-size:0.78rem;color:var(--gris-claro);margin-bottom:1rem;">
+      Ejecutá este SQL en el editor de Supabase (SQL Editor) para crear la tabla de proyectos.
+    </p>
+    <pre id="sqlContent">-- Ejecutar en Supabase > SQL Editor
+
+CREATE TABLE IF NOT EXISTS proyectos (
+  id              uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  nombre          text NOT NULL,
+  slug            text UNIQUE NOT NULL,
+  tagline         text,
+  descripcion     text,
+  categoria       text DEFAULT 'loteo',
+  estado          text DEFAULT 'borrador',
+  destacado       boolean DEFAULT false,
+  activo          boolean GENERATED ALWAYS AS (estado = 'activo') STORED,
+
+  -- Ubicación
+  provincia       text,
+  ciudad          text,
+  distancia_km    numeric,
+  tipo_acceso     text,
+  acceso_desc     text,
+  latitud         numeric,
+  longitud        numeric,
+
+  -- Superficie
+  hectareas_total numeric,
+  cantidad_lotes  integer,
+  sup_min_m2      numeric,
+  sup_max_m2      numeric,
+  zonificacion    text,
+  expediente      text,
+
+  -- Reglamento
+  altura_max      numeric,
+  fos             numeric,
+  reglamento_obs  text,
+
+  -- Servicios (array de strings)
+  servicios       text[] DEFAULT '{}',
+  fecha_entrega   text,
+  cronograma      text,
+
+  -- Precios comerciales
+  precio_desde    numeric,
+  precio_hasta    numeric,
+  monto_reserva   numeric,
+  comision_pct    numeric,
+  condiciones_venta text,
+  financiacion_banco text DEFAULT 'no',
+  ajuste_precios  text DEFAULT 'ninguno',
+
+  -- Media
+  foto_portada    text,
+  fotos           text[] DEFAULT '{}',
+  video_url       text,
+  masterplan_url  text,
+  brochure_url    text,
+
+  -- Desarrollador (privado)
+  dev_empresa     text,
+  dev_cuit        text,
+  dev_contacto_nombre text,
+  dev_contacto_cargo text,
+  dev_whatsapp    text,
+  dev_email       text,
+  dev_domicilio   text,
+  notas_internas  text,
+
+  -- Contacto público (miniweb)
+  contacto_nombre   text,
+  contacto_whatsapp text,
+  contacto_email    text,
+
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+-- Tabla de lotes individuales
+CREATE TABLE IF NOT EXISTS lotes (
+  id              uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  proyecto_id     uuid REFERENCES proyectos(id) ON DELETE CASCADE,
+  numero          text NOT NULL,
+  superficie_m2   numeric,
+  precio_usd      numeric,
+  estado          text DEFAULT 'disponible', -- disponible | reservado | vendido
+  frente_agua     boolean DEFAULT false,
+  notas           text,
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_proyectos_slug ON proyectos(slug);
+CREATE INDEX IF NOT EXISTS idx_lotes_proyecto ON lotes(proyecto_id);
+CREATE INDEX IF NOT EXISTS idx_lotes_estado ON lotes(estado);
+
+-- Row Level Security (opcional pero recomendado)
+ALTER TABLE proyectos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lotes ENABLE ROW LEVEL SECURITY;
+
+-- Política: lectura pública para proyectos activos
+CREATE POLICY "proyectos_publicos" ON proyectos
+  FOR SELECT USING (estado = 'activo');
+
+-- Política: lectura pública de lotes de proyectos activos
+CREATE POLICY "lotes_publicos" ON lotes
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM proyectos p WHERE p.id = proyecto_id AND p.estado = 'activo')
+  );
+
+-- IMPORTANTE: para el admin necesitás autenticación con service_role
+-- o deshabilitar RLS temporalmente para desarrollo:
+-- ALTER TABLE proyectos DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE lotes DISABLE ROW LEVEL SECURITY;</pre>
+    <div style="margin-top:1rem;display:flex;gap:0.8rem;">
+      <button class="btn-primario" onclick="copiarSQL()">Copiar SQL</button>
+      <button class="btn-secundario" onclick="document.getElementById('modalSQL').classList.remove('open')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { supabase } from '../js/config.js'
+  window._sb = supabase
+
+  // ── Estado global ──────────────────────────────────────
+  let proyectoId = null
+  const lotesData = []
+
+  // Leer ?id= para modo edición
+  const params = new URLSearchParams(location.search)
+  if (params.get('id')) {
+    proyectoId = params.get('id')
+    cargarProyecto(proyectoId)
+    document.getElementById('tituloPagina').textContent = 'Editar proyecto'
+    document.getElementById('subtituloPagina').textContent = 'Modificá los datos del proyecto y guardá los cambios'
+  }
+
+  // ── Tabs ───────────────────────────────────────────────
+  document.querySelectorAll('.form-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.form-tab').forEach(t => t.classList.remove('activo'))
+      document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('activo'))
+      tab.classList.add('activo')
+      document.getElementById(tab.dataset.panel).classList.add('activo')
+    })
+  })
+
+  // ── Slug auto ──────────────────────────────────────────
+  document.getElementById('nombre').addEventListener('input', function() {
+    const slug = this.value
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+    document.getElementById('slug').value = slug
+    document.getElementById('slugPreview').textContent = slug || '—'
+    document.getElementById('saveBarNombre').textContent = this.value || 'Sin nombre'
+  })
+  document.getElementById('slug').addEventListener('input', function() {
+    document.getElementById('slugPreview').textContent = this.value || '—'
+  })
+  document.getElementById('estado').addEventListener('change', function() {
+    document.getElementById('saveBarEstado').textContent =
+      this.options[this.selectedIndex].text.split('(')[0].trim()
+  })
+
+  // ── Selector de diseño visual ──────────────────────────
+  // Paletas de color
+  document.querySelectorAll('.paleta-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.paleta-card').forEach(c => c.classList.remove('activo'))
+      card.classList.add('activo')
+      document.getElementById('paleta-val').value = card.dataset.paleta
+    })
+  })
+  // Tipografía de títulos
+  document.querySelectorAll('.fuente-card[data-fuente-tipo="titulo"]').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.fuente-card[data-fuente-tipo="titulo"]').forEach(c => c.classList.remove('activo'))
+      card.classList.add('activo')
+      document.getElementById('fuente-titulo-val').value = card.dataset.fuente
+    })
+  })
+  // Tipografía de cuerpo
+  document.querySelectorAll('.fuente-card[data-fuente-tipo="cuerpo"]').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.fuente-card[data-fuente-tipo="cuerpo"]').forEach(c => c.classList.remove('activo'))
+      card.classList.add('activo')
+      document.getElementById('fuente-cuerpo-val').value = card.dataset.fuente
+    })
+  })
+
+  // ── Upload a Supabase Storage ──────────────────────────
+  async function uploadFile(file, carpeta) {
+    const ext  = file.name.split('.').pop().toLowerCase()
+    const path = `${carpeta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
+    if (error) throw new Error(error.message)
+    const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
+    return data.publicUrl
+  }
+
+  // ── Foto de portada ────────────────────────────────────
+  window.subirPortada = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('portadaStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'portadas')
+      document.getElementById('foto_portada').value = url
+      document.getElementById('portadaPreview').style.display = 'block'
+      document.getElementById('portadaImg').src = url
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
+    }
+    btn.classList.remove('cargando')
+    input.value = ''
+  }
+
+  // ── Fondo de página ───────────────────────────────────
+  window.subirFondo = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('fondoStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'fondos')
+      document.getElementById('foto_fondo').value = url
+      document.getElementById('fondoPreview').style.display = 'block'
+      document.getElementById('fondoImg').src = url
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
+    }
+    btn.classList.remove('cargando')
+    input.value = ''
+  }
+
+  // ── Foto de atmósfera ──────────────────────────────────
+  window.subirAtmosfera = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('atmosferaStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'atmosfera')
+      document.getElementById('foto_atmosfera').value = url
+      document.getElementById('atmosferaPreview').style.display = 'block'
+      document.getElementById('atmosferaImg').src = url
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
+    }
+    btn.classList.remove('cargando')
+    input.value = ''
+  }
+
+  // ── Galería ────────────────────────────────────────────
+  const fotosArr = []
+
+  window.subirGaleria = async function(input) {
+    const files = Array.from(input.files)
+    if (!files.length) return
+    const status = document.getElementById('galeriaStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    status.textContent = `Subiendo ${files.length} foto${files.length > 1 ? 's' : ''}...`
+    status.style.color = 'var(--gris-claro)'
+    let ok = 0
+    for (const file of files) {
+      try {
+        const url = await uploadFile(file, 'galeria')
+        fotosArr.push(url)
+        ok++
+      } catch(e) { /* skip */ }
+    }
+    renderGaleria()
+    status.textContent = `✓ ${ok} foto${ok !== 1 ? 's' : ''} cargada${ok !== 1 ? 's' : ''}`
+    status.style.color = '#4cc982'
+    btn.classList.remove('cargando')
+    input.value = ''
+  }
+
+  window.removeFoto = function(i) {
+    fotosArr.splice(i, 1)
+    renderGaleria()
+  }
+  function renderGaleria() {
+    const g = document.getElementById('galeriaFotos')
+    g.innerHTML = fotosArr.map((url, i) => `
+      <div class="foto-preview">
+        <img src="${url}" alt="" onerror="this.style.opacity=0.3" />
+        <button class="remove-foto" onclick="removeFoto(${i})">✕</button>
+      </div>
+    `).join('')
+  }
+
+  // ── Masterplan ─────────────────────────────────────────
+  window.subirMasterplan = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('masterplanStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'masterplans')
+      document.getElementById('masterplan_url').value = url
+      document.getElementById('masterplanPreview').style.display = 'block'
+      document.getElementById('masterplanImg').src = url
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
+    }
+    btn.classList.remove('cargando')
+    input.value = ''
+  }
+
+  // ── Brochure PDF ───────────────────────────────────────
+  window.subirBrochure = async function(input) {
+    const file = input.files[0]
+    if (!file) return
+    const lbl = document.getElementById('brochureStatus')
+    const btn = input.previousElementSibling
+    btn.classList.add('cargando')
+    lbl.textContent = 'Subiendo...'
+    try {
+      const url = await uploadFile(file, 'brochures')
+      document.getElementById('brochure_url').value = url
+      lbl.textContent = '✓ ' + file.name
+      lbl.style.color = '#4cc982'
+    } catch(e) {
+      lbl.textContent = 'Error: ' + e.message
+      lbl.style.color = '#c94c4c'
+    }
+    btn.classList.remove('cargando')
+    input.value = ''
+  }
+
+  // ── Lotes ──────────────────────────────────────────────
+  let loteIdx = 0
+  window.agregarLote = function(data = {}) {
+    const id = loteIdx++
+    const tr = document.createElement('tr')
+    tr.dataset.id = id
+    tr.innerHTML = `
+      <td style="color:var(--gris-claro);font-size:0.7rem;">${id + 1}</td>
+      <td><input type="text" placeholder="L-01" value="${data.numero || ''}" class="l-numero" /></td>
+      <td><input type="number" placeholder="1500" min="0" value="${data.superficie_m2 || ''}" class="l-sup" /></td>
+      <td><input type="number" placeholder="25000" min="0" value="${data.precio_usd || ''}" class="l-precio" /></td>
+      <td>
+        <select class="l-estado">
+          <option value="disponible" ${(data.estado||'disponible')==='disponible'?'selected':''}>Disponible</option>
+          <option value="reservado" ${data.estado==='reservado'?'selected':''}>Reservado</option>
+          <option value="vendido" ${data.estado==='vendido'?'selected':''}>Vendido</option>
+        </select>
+      </td>
+      <td style="text-align:center;">
+        <input type="checkbox" ${data.frente_agua?'checked':''} class="l-agua" />
+      </td>
+      <td><input type="text" placeholder="—" value="${data.notas || ''}" class="l-notas" /></td>
+      <td><button class="btn-del-lote" onclick="eliminarLote(this)">✕</button></td>
+    `
+    document.getElementById('lotesBody').appendChild(tr)
+    tr.querySelectorAll('input,select').forEach(el => el.addEventListener('input', actualizarResumen))
+    actualizarResumen()
+  }
+  window.eliminarLote = function(btn) {
+    btn.closest('tr').remove()
+    actualizarResumen()
+  }
+  window.limpiarLotes = function() {
+    if (confirm('¿Limpiar toda la tabla de lotes?')) {
+      document.getElementById('lotesBody').innerHTML = ''
+      actualizarResumen()
+    }
+  }
+  function actualizarResumen() {
+    const rows = document.querySelectorAll('#lotesBody tr')
+    let disp = 0, res = 0, vend = 0, precios = []
+    rows.forEach(tr => {
+      const est = tr.querySelector('.l-estado').value
+      if (est === 'disponible') disp++
+      else if (est === 'reservado') res++
+      else if (est === 'vendido') vend++
+      const p = parseFloat(tr.querySelector('.l-precio').value)
+      if (p > 0) precios.push(p)
+    })
+    document.getElementById('resLotes').textContent = rows.length
+    document.getElementById('resDisp').textContent = disp
+    document.getElementById('resRes').textContent = res
+    document.getElementById('resVend').textContent = vend
+    document.getElementById('resPrecioMin').textContent = precios.length ? 'USD ' + Math.min(...precios).toLocaleString() : '—'
+    document.getElementById('resPrecioMax').textContent = precios.length ? 'USD ' + Math.max(...precios).toLocaleString() : '—'
+  }
+
+  // ── Import CSV ─────────────────────────────────────────
+  document.getElementById('csvInput').addEventListener('change', function(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = function(ev) {
+      const lines = ev.target.result.split('\n').filter(l => l.trim())
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      document.getElementById('lotesBody').innerHTML = ''
+      loteIdx = 0
+      lines.slice(1).forEach(line => {
+        const vals = line.split(',')
+        const obj = {}
+        headers.forEach((h, i) => obj[h] = (vals[i] || '').trim())
+        agregarLote({
+          numero: obj.numero || obj['n° lote'] || obj.nro,
+          superficie_m2: obj.superficie_m2 || obj.superficie || obj.sup,
+          precio_usd: obj.precio_usd || obj.precio || obj.price,
+          estado: obj.estado || 'disponible',
+          frente_agua: ['si','sí','true','1','yes'].includes((obj.frente_agua||'').toLowerCase()),
+          notas: obj.notas || obj.nota || '',
+        })
+      })
+    }
+    reader.readAsText(file)
+    this.value = ''
+  })
+
+  // ── Recopilar datos del formulario ─────────────────────
+  function getDatos() {
+    const servicios = Array.from(document.querySelectorAll('input[name="servicio"]:checked')).map(c => c.value)
+    const lotes = Array.from(document.querySelectorAll('#lotesBody tr')).map(tr => ({
+      numero: tr.querySelector('.l-numero').value,
+      superficie_m2: parseFloat(tr.querySelector('.l-sup').value) || null,
+      precio_usd: parseFloat(tr.querySelector('.l-precio').value) || null,
+      estado: tr.querySelector('.l-estado').value,
+      frente_agua: tr.querySelector('.l-agua').checked,
+      notas: tr.querySelector('.l-notas').value,
+    }))
+    const v = id => document.getElementById(id)?.value?.trim() || null
+    const n = id => parseFloat(document.getElementById(id)?.value) || null
+    const b = id => document.getElementById(id)?.value === 'true'
+    return {
+      proyecto: {
+        nombre: v('nombre'), slug: v('slug'), tagline: v('tagline'),
+        descripcion: v('descripcion'), categoria: v('categoria'),
+        estado: v('estado'), destacado: b('destacado'),
+        provincia: v('provincia'), ciudad: v('ciudad'),
+        distancia_km: n('distancia_km'), tipo_acceso: v('tipo_acceso'),
+        acceso_desc: v('acceso_desc'),
+        latitud: n('latitud'), longitud: n('longitud'),
+        hectareas_total: n('hectareas_total'), cantidad_lotes: parseInt(v('cantidad_lotes')) || null,
+        sup_min_m2: n('sup_min_m2'), sup_max_m2: n('sup_max_m2'),
+        zonificacion: v('zonificacion'), expediente: v('expediente'),
+        altura_max: n('altura_max'), fos: n('fos'), reglamento_obs: v('reglamento_obs'),
+        servicios, fecha_entrega: v('fecha_entrega'), cronograma: v('cronograma'),
+        tipo_propiedad: v('tipo_propiedad') || null,
+        financiacion: v('financiacion') || null,
+        precio_desde: n('precio_desde'), precio_hasta: n('precio_hasta'),
+        monto_reserva: n('monto_reserva'), comision_pct: n('comision_pct'),
+        condiciones_venta: v('condiciones_venta'),
+        financiacion_banco: v('financiacion_banco'), ajuste_precios: v('ajuste_precios'),
+        tema: JSON.stringify({
+          paleta: document.getElementById('paleta-val').value || 'clasico',
+          titulo: document.getElementById('fuente-titulo-val').value || 'cormorant',
+          cuerpo:  document.getElementById('fuente-cuerpo-val').value  || 'montserrat',
+        }),
+        foto_portada: v('foto_portada'), fotos: fotosArr,
+        foto_atmosfera: v('foto_atmosfera') || null,
+        foto_fondo: v('foto_fondo'),
+        opacidad_fondo: parseInt(document.getElementById('opacidad_fondo').value) || 7,
+        video_url: v('video_url'), masterplan_url: v('masterplan_url'), brochure_url: v('brochure_url'),
+        dev_empresa: v('dev_empresa'), dev_cuit: v('dev_cuit'),
+        dev_contacto_nombre: v('dev_contacto_nombre'), dev_contacto_cargo: v('dev_contacto_cargo'),
+        dev_whatsapp: v('dev_whatsapp'), dev_email: v('dev_email'), dev_domicilio: v('dev_domicilio'),
+        notas_internas: v('notas_internas'),
+        contacto_nombre: v('contacto_nombre'), contacto_whatsapp: v('contacto_whatsapp'), contacto_email: v('contacto_email'),
+        updated_at: new Date().toISOString(),
+      },
+      lotes
+    }
+  }
+
+  // ── Guardar / Publicar ─────────────────────────────────
+  async function guardar(estadoForzado) {
+    const { proyecto, lotes } = getDatos()
+    if (!proyecto.nombre || !proyecto.slug) {
+      mostrarAlerta('error', 'El nombre y el slug son obligatorios.')
+      document.querySelector('[data-panel="panel-identidad"]').click()
+      return
+    }
+    if (estadoForzado) proyecto.estado = estadoForzado
+
+    try {
+      let id = proyectoId
+      if (id) {
+        const { error } = await window._sb.from('proyectos').update(proyecto).eq('id', id)
+        if (error) throw error
+      } else {
+        const { data, error } = await window._sb.from('proyectos').insert(proyecto).select().single()
+        if (error) throw error
+        id = data.id
+        proyectoId = id
+        history.replaceState({}, '', `?id=${id}`)
+      }
+
+      // Guardar lotes (borrar y reinsertar)
+      if (lotes.length > 0) {
+        await window._sb.from('lotes').delete().eq('proyecto_id', id)
+        const lotesConId = lotes.map(l => ({ ...l, proyecto_id: id }))
+        const { error: errLotes } = await window._sb.from('lotes').insert(lotesConId)
+        if (errLotes) console.warn('Error lotes:', errLotes)
+      }
+
+      const isActivo = proyecto.estado === 'activo'
+      mostrarAlerta('ok', isActivo
+        ? `Proyecto publicado. Miniweb disponible en surpatagonia.com.ar/${proyecto.slug}`
+        : 'Borrador guardado correctamente.')
+
+      if (isActivo) {
+        const link = document.getElementById('linkMiniweb')
+        link.href = `../${proyecto.slug}`
+        link.style.display = 'inline-flex'
+      }
+
+    } catch (err) {
+      mostrarAlerta('error', 'Error al guardar: ' + err.message)
+    }
+  }
+
+  window.guardarBorrador = () => guardar('borrador')
+  window.publicarProyecto = () => guardar('activo')
+
+  // ── Cargar proyecto existente ──────────────────────────
+  async function cargarProyecto(id) {
+    const { data: p, error } = await window._sb.from('proyectos').select('*').eq('id', id).single()
+    if (error || !p) { mostrarAlerta('error', 'Proyecto no encontrado.'); return }
+
+    const set = (elId, val) => { if (document.getElementById(elId)) document.getElementById(elId).value = val || '' }
+    const chk = (elId, val) => { if (document.getElementById(elId)) document.getElementById(elId).checked = !!val }
+
+    set('nombre', p.nombre); set('slug', p.slug); set('tagline', p.tagline)
+    set('descripcion', p.descripcion); set('categoria', p.categoria)
+    set('estado', p.estado); set('destacado', p.destacado ? 'true' : 'false')
+    set('provincia', p.provincia); set('ciudad', p.ciudad)
+    set('distancia_km', p.distancia_km); set('tipo_acceso', p.tipo_acceso)
+    set('acceso_desc', p.acceso_desc); set('latitud', p.latitud); set('longitud', p.longitud)
+    set('hectareas_total', p.hectareas_total); set('cantidad_lotes', p.cantidad_lotes)
+    set('sup_min_m2', p.sup_min_m2); set('sup_max_m2', p.sup_max_m2)
+    set('zonificacion', p.zonificacion); set('expediente', p.expediente)
+    set('altura_max', p.altura_max); set('fos', p.fos); set('reglamento_obs', p.reglamento_obs)
+    set('fecha_entrega', p.fecha_entrega); set('cronograma', p.cronograma)
+    set('tipo_propiedad', p.tipo_propiedad||''); set('financiacion', p.financiacion||'')
+    set('precio_desde', p.precio_desde); set('precio_hasta', p.precio_hasta)
+    set('monto_reserva', p.monto_reserva); set('comision_pct', p.comision_pct)
+    set('condiciones_venta', p.condiciones_venta)
+    set('financiacion_banco', p.financiacion_banco); set('ajuste_precios', p.ajuste_precios)
+    // Diseño visual — parsea JSON, con fallback para formato antiguo (string)
+    if (p.tema) {
+      let t = { paleta: 'clasico', titulo: 'cormorant', cuerpo: 'montserrat' }
+      try { t = JSON.parse(p.tema) } catch(e) { t.paleta = p.tema }
+      document.getElementById('paleta-val').value = t.paleta
+      document.getElementById('fuente-titulo-val').value = t.titulo
+      document.getElementById('fuente-cuerpo-val').value = t.cuerpo
+      document.querySelectorAll('.paleta-card').forEach(c =>
+        c.classList.toggle('activo', c.dataset.paleta === t.paleta))
+      document.querySelectorAll('.fuente-card[data-fuente-tipo="titulo"]').forEach(c =>
+        c.classList.toggle('activo', c.dataset.fuente === t.titulo))
+      document.querySelectorAll('.fuente-card[data-fuente-tipo="cuerpo"]').forEach(c =>
+        c.classList.toggle('activo', c.dataset.fuente === t.cuerpo))
+    }
+    // Fotos ya guardadas
+    if (p.foto_portada) {
+      document.getElementById('foto_portada').value = p.foto_portada
+      document.getElementById('portadaPreview').style.display = 'block'
+      document.getElementById('portadaImg').src = p.foto_portada
+      document.getElementById('portadaStatus').textContent = '✓ Imagen cargada'
+      document.getElementById('portadaStatus').style.color = '#4cc982'
+    }
+    // Foto de atmósfera
+    if (p.foto_atmosfera) {
+      document.getElementById('foto_atmosfera').value = p.foto_atmosfera
+      document.getElementById('atmosferaPreview').style.display = 'block'
+      document.getElementById('atmosferaImg').src = p.foto_atmosfera
+      document.getElementById('atmosferaStatus').textContent = '✓ Imagen cargada'
+      document.getElementById('atmosferaStatus').style.color = '#4cc982'
+    }
+    // Fondo de página
+    if (p.foto_fondo) {
+      document.getElementById('foto_fondo').value = p.foto_fondo
+      document.getElementById('fondoPreview').style.display = 'block'
+      document.getElementById('fondoImg').src = p.foto_fondo
+      document.getElementById('fondoStatus').textContent = '✓ Imagen cargada'
+      document.getElementById('fondoStatus').style.color = '#4cc982'
+    }
+    if (p.opacidad_fondo) {
+      document.getElementById('opacidad_fondo').value = p.opacidad_fondo
+      document.getElementById('fondoOpacidadVal').textContent = p.opacidad_fondo + '%'
+    }
+    set('video_url', p.video_url)
+    if (p.masterplan_url) {
+      document.getElementById('masterplan_url').value = p.masterplan_url
+      document.getElementById('masterplanPreview').style.display = 'block'
+      document.getElementById('masterplanImg').src = p.masterplan_url
+      document.getElementById('masterplanStatus').textContent = '✓ Plano cargado'
+      document.getElementById('masterplanStatus').style.color = '#4cc982'
+    }
+    if (p.brochure_url) {
+      document.getElementById('brochure_url').value = p.brochure_url
+      document.getElementById('brochureStatus').textContent = '✓ PDF cargado'
+      document.getElementById('brochureStatus').style.color = '#4cc982'
+    }
+    set('dev_empresa', p.dev_empresa); set('dev_cuit', p.dev_cuit)
+    set('dev_contacto_nombre', p.dev_contacto_nombre); set('dev_contacto_cargo', p.dev_contacto_cargo)
+    set('dev_whatsapp', p.dev_whatsapp); set('dev_email', p.dev_email); set('dev_domicilio', p.dev_domicilio)
+    set('notas_internas', p.notas_internas)
+    set('contacto_nombre', p.contacto_nombre); set('contacto_whatsapp', p.contacto_whatsapp); set('contacto_email', p.contacto_email)
+
+    document.getElementById('slugPreview').textContent = p.slug || '—'
+    document.getElementById('saveBarNombre').textContent = p.nombre || 'Sin nombre'
+    document.getElementById('saveBarEstado').textContent = p.estado || 'Borrador'
+
+    // Servicios
+    if (p.servicios) {
+      document.querySelectorAll('input[name="servicio"]').forEach(cb => {
+        cb.checked = p.servicios.includes(cb.value)
+      })
+    }
+
+    // Fotos
+    if (p.fotos) { fotosArr.splice(0); fotosArr.push(...p.fotos); renderGaleria() }
+
+    // Lotes
+    const { data: lotes } = await window._sb.from('lotes').select('*').eq('proyecto_id', id).order('numero')
+    if (lotes) lotes.forEach(l => agregarLote(l))
+
+    if (p.estado === 'activo') {
+      const link = document.getElementById('linkMiniweb')
+      link.href = `../${p.slug}`
+      link.style.display = 'inline-flex'
+    }
+  }
+
+  // ── Alerta ─────────────────────────────────────────────
+  function mostrarAlerta(tipo, msg) {
+    const el = document.getElementById('alerta')
+    el.innerHTML = `<div class="alerta ${tipo === 'ok' ? 'alerta-ok' : 'alerta-error'}">${msg}</div>`
+    setTimeout(() => el.innerHTML = '', 6000)
+  }
+
+  // ── Logout ─────────────────────────────────────────────
+  document.getElementById('btnLogout').addEventListener('click', async (e) => {
+    e.preventDefault()
+    await window._sb.auth.signOut()
+    location.href = 'login.html'
+  })
+
+  // ── SQL copiar ─────────────────────────────────────────
+  window.copiarSQL = function() {
+    navigator.clipboard.writeText(document.getElementById('sqlContent').textContent)
+      .then(() => alert('SQL copiado al portapapeles'))
+  }
+
+  // init
+  actualizarResumen()
+</script>
+</body>
+</html>

@@ -254,6 +254,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         Generar PDF
       </a>
+            <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
       <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
         Ver sitio
@@ -812,57 +816,21 @@ window.generarPDFProyecto = async function() {
     gbCtx.fillStyle = gbGrad; gbCtx.fillRect(0,0,8,180)
     doc.addImage(gbCanvas.toDataURL(),'PNG',0,heroH-45,W,45)
 
-    // ── LOGO: picos.png + texto idéntico al intro de la web ─────────────────
-    // Fuente del intro: Montserrat 700, letter-spacing 0.45em / 0.55em
-    // La cargamos en el documento antes de usarla en canvas
+    // ── LOGO VERTICAL: logovertical.png (logo real del sitio) ───────────────
     try {
-      const logoB64 = await fetchImageAsBase64(SITE + '/picos.png')
-
-      // Aseguramos que Montserrat esté cargada en el documento
-      await document.fonts.load('700 48px Montserrat')
-      await document.fonts.load('400 16px Montserrat')
-
-      const logoComp = await new Promise(resolve => {
-        const cW = 700, cH = 220
-        const cv = document.createElement('canvas')
-        cv.width = cW; cv.height = cH
-        const ctx = cv.getContext('2d')
-
-        const drawTexto = () => {
-          // "SUR PATAGONIA" — Montserrat 700, letter-spacing 0.45em ≈ 22px sobre 48px
-          ctx.fillStyle = '#f5f3ef'
-          ctx.font = '700 48px Montserrat, sans-serif'
-          ctx.textAlign = 'center'
-          ctx.letterSpacing = '22px'
-          ctx.fillText('SUR PATAGONIA', cW / 2 + 11, 158)  // +offset mitad del last letter-spacing
-
-          // "PROPIEDADES" — Montserrat 400, letter-spacing 0.55em ≈ 9px sobre 17px, color muted
-          ctx.fillStyle = '#888880'
-          ctx.font = '400 17px Montserrat, sans-serif'
-          ctx.letterSpacing = '9px'
-          ctx.fillText('PROPIEDADES', cW / 2 + 4, 190)
-
-          resolve(cv.toDataURL('image/png'))
-        }
-
+      const logoVB64 = await fetchImageAsBase64(SITE + '/logovertical.png')
+      const logoDims = await new Promise(resolve => {
         const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => {
-          // picos centrado, ancho proporcional a 110px original → escalar a canvas
-          const picosH = 96
-          const picosW = img.naturalWidth * (picosH / img.naturalHeight)
-          ctx.drawImage(img, (cW - picosW) / 2, 8, picosW, picosH)
-          drawTexto()
-        }
-        img.onerror = drawTexto
-        img.src = logoB64
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
+        img.onerror = () => resolve({ w: 800, h: 800 })
+        img.src = logoVB64
       })
-
-      // 700x220 → 66mm × 20.8mm, centrado
-      const compW_mm = 66, compH_mm = 66 * (220 / 700)
-      // Centrado vertical en zona superior de 40mm
-      const compY_mm = (40 - compH_mm) / 2 + 3
-      doc.addImage(logoComp, 'PNG', W / 2 - compW_mm / 2, compY_mm, compW_mm, compH_mm)
+      // Ancho fijo 44mm, alto proporcional, centrado en franja superior
+      const logoW_mm = 44
+      const logoH_mm = logoW_mm * (logoDims.h / logoDims.w)
+      const logoX_mm = W / 2 - logoW_mm / 2
+      const logoY_mm = (40 - logoH_mm) / 2 + 3
+      doc.addImage(logoVB64, 'PNG', logoX_mm, logoY_mm, logoW_mm, logoH_mm)
     } catch(e) {
       t(WHITE); doc.setFont('helvetica','bold'); doc.setFontSize(13); sp(5)
       doc.text('SUR PATAGONIA', W/2, 18, { align:'center' }); sp(0)

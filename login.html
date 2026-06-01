@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Sur Patagonia</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--negro);
+    }
+    .login-box {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 3rem;
+      width: 100%;
+      max-width: 420px;
+    }
+    .login-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.8rem;
+      font-weight: 300;
+      letter-spacing: 0.1em;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .login-logo span { color: var(--dorado); }
+    .login-subtitulo {
+      text-align: center;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      margin-bottom: 2.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="login-logo">SUR <span>PATAGONIA</span></div>
+    <p class="login-subtitulo">Panel de administración</p>
+    <div id="alertaLogin"></div>
+    <form id="formLogin">
+      <div class="form-grupo" style="margin-bottom:1.2rem;">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="admin@surpatagonia.com" required autofocus />
+      </div>
+      <div class="form-grupo" style="margin-bottom:2rem;">
+        <label>Contraseña</label>
+        <input type="password" id="password" placeholder="••••••••" required />
+      </div>
+      <button type="submit" class="btn btn-dorado" style="width:100%;" id="btnLogin">Ingresar</button>
+    </form>
+    <p style="text-align:center; margin-top:1.5rem;">
+      <a href="../index.html" style="font-size:0.75rem; color:var(--gris-claro);">← Volver al sitio</a>
+    </p>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../js/config.js'
+
+    // Si ya hay sesión, redirigir
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.href = 'dashboard.html'
+    })
+
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const btn = document.getElementById('btnLogin')
+      btn.textContent = 'Ingresando...'
+      btn.disabled = true
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value
+      })
+
+      if (error) {
+        document.getElementById('alertaLogin').innerHTML =
+          `<div class="alerta alerta-error">Email o contraseña incorrectos.</div>`
+        btn.textContent = 'Ingresar'
+        btn.disabled = false
+      } else {
+        window.location.href = 'dashboard.html'
+      }
+    })
+  </script>
+</body>
+</html>
