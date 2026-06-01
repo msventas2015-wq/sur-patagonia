@@ -1462,6 +1462,65 @@
 
 <script type="module">
 import { supabase } from './js/config.js'
+
+// ── Cargar configuración del sitio desde Supabase ─────────────
+async function aplicarSiteConfig() {
+  try {
+    const { data } = await supabase.from('site_config').select('key, value')
+    if (!data) return
+    const cfg = {}
+    data.forEach(r => cfg[r.key] = r.value)
+
+    // Imágenes de fondo
+    if (cfg.img_servicios_bg) {
+      document.getElementById('sec-servicios').style.backgroundImage = `url('${cfg.img_servicios_bg}')`
+    }
+    if (cfg.img_stats_bg) {
+      const statsEl = document.querySelector('#stats')
+      if (statsEl) statsEl.style.backgroundImage = `url('${cfg.img_stats_bg}')`
+    }
+    if (cfg.img_acordeon_comprar) {
+      const el = document.getElementById('bg-comprar')
+      if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_comprar}')`
+    }
+    if (cfg.img_acordeon_alquiler) {
+      const el = document.getElementById('bg-alquilar')
+      if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_alquiler}')`
+    }
+    if (cfg.img_acordeon_prop) {
+      const el = document.getElementById('bg-propiedad')
+      if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_prop}')`
+    }
+
+    // Imágenes scroll hero
+    const scrollKeys = ['img_hero_scroll_1','img_hero_scroll_2','img_hero_scroll_3','img_hero_scroll_4']
+    const slides = document.querySelectorAll('.story-slide')
+    scrollKeys.forEach((key, i) => {
+      if (cfg[key] && slides[i]) slides[i].style.backgroundImage = `url('${cfg[key]}')`
+    })
+
+    // Videos YouTube
+    const ytParams = '?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&disablekb=1'
+    if (cfg.video_hero) {
+      const heroIframe = document.querySelector('#yt-bg iframe')
+      if (heroIframe) heroIframe.src = `https://www.youtube.com/embed/${cfg.video_hero}${ytParams}&playlist=${cfg.video_hero}`
+    }
+    if (cfg.video_audiovisual) {
+      const avIframe = document.querySelector('#av-yt-bg iframe')
+      if (avIframe) avIframe.src = `https://www.youtube.com/embed/${cfg.video_audiovisual}${ytParams}&playlist=${cfg.video_audiovisual}`
+    }
+
+    // Tipografía títulos
+    if (cfg.font_titulos) {
+      document.querySelectorAll('.section-title, .av-title, .srv-title, .hero-title').forEach(el => {
+        el.style.fontFamily = `'${cfg.font_titulos}', serif`
+      })
+    }
+  } catch (e) {
+    console.warn('site_config no disponible, usando valores por defecto')
+  }
+}
+aplicarSiteConfig()
 gsap.registerPlugin(ScrollTrigger)
 
 // LOADING
