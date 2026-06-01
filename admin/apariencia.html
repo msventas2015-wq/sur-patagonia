@@ -213,6 +213,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
         Apariencia
       </a>
+            <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
       <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
         Ver sitio
@@ -269,6 +273,32 @@
           <button class="ap-save-btn" onclick="guardarVideo('video_audiovisual', 'inputAv', 'iframeAv')">Guardar</button>
         </div>
         <div style="font-size:0.62rem; color:var(--gris);">Pegá solo el ID del video (lo que va después de ?v= en la URL)</div>
+      </div>
+    </div>
+
+    <!-- ── OPACIDAD VIDEOS ───────────────────────────────────── -->
+    <div class="ap-section">
+      <div class="ap-section-title">Opacidad del negro sobre los videos</div>
+      <p style="font-size:0.75rem; color:var(--gris-claro); margin-bottom:1.5rem;">Controlá qué tan oscuro se ve el overlay negro sobre cada video. Más alto = más oscuro = texto más legible.</p>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+        <div class="ap-video-item" style="margin-bottom:0;">
+          <div class="ap-item-label">Video Hero</div>
+          <div style="display:flex; align-items:center; gap:1rem;">
+            <input type="range" id="sliderHeroOp" min="0" max="100" value="75" style="flex:1; accent-color:var(--dorado);" oninput="actualizarLabel('sliderHeroOp','labelHeroOp')" />
+            <span id="labelHeroOp" style="font-size:0.8rem; color:var(--dorado); min-width:35px;">75%</span>
+          </div>
+          <button class="ap-save-btn" onclick="guardarOpacidad('overlay_hero', 'sliderHeroOp')">Guardar</button>
+        </div>
+
+        <div class="ap-video-item" style="margin-bottom:0;">
+          <div class="ap-item-label">Video Audiovisual</div>
+          <div style="display:flex; align-items:center; gap:1rem;">
+            <input type="range" id="sliderAvOp" min="0" max="100" value="85" style="flex:1; accent-color:var(--dorado);" oninput="actualizarLabel('sliderAvOp','labelAvOp')" />
+            <span id="labelAvOp" style="font-size:0.8rem; color:var(--dorado); min-width:35px;">85%</span>
+          </div>
+          <button class="ap-save-btn" onclick="guardarOpacidad('overlay_audiovisual', 'sliderAvOp')">Guardar</button>
+        </div>
       </div>
     </div>
 
@@ -431,6 +461,26 @@ window.guardarFont = async () => {
     .upsert({ key: 'font_titulos', value: font, label: 'Tipografía títulos', tipo: 'tipografia' }, { onConflict: 'key' })
   if (error) { mostrarAlerta('Error: ' + error.message, 'err'); return }
   mostrarAlerta(`Tipografía "${font}" guardada`, 'ok')
+}
+
+// ── Opacidad videos ──────────────────────────────────────────
+const heroOp = cfg['overlay_hero'] || '75'
+const avOp   = cfg['overlay_audiovisual'] || '85'
+document.getElementById('sliderHeroOp').value = heroOp
+document.getElementById('labelHeroOp').textContent = heroOp + '%'
+document.getElementById('sliderAvOp').value = avOp
+document.getElementById('labelAvOp').textContent = avOp + '%'
+
+window.actualizarLabel = (sliderId, labelId) => {
+  document.getElementById(labelId).textContent = document.getElementById(sliderId).value + '%'
+}
+
+window.guardarOpacidad = async (key, sliderId) => {
+  const val = document.getElementById(sliderId).value
+  const { error } = await supabase.from('site_config')
+    .upsert({ key, value: val, label: key, tipo: 'opacidad' }, { onConflict: 'key' })
+  if (error) { mostrarAlerta('Error: ' + error.message, 'err'); return }
+  mostrarAlerta('Opacidad guardada', 'ok')
 }
 
 // ── Alertas ──────────────────────────────────────────────────
