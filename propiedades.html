@@ -10,7 +10,9 @@
       padding: 10rem 0 5rem;
       background:
         linear-gradient(to bottom, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.85) 60%, rgba(8,8,8,1) 100%),
-        url('assets/DJI_0959.jpg') center/cover no-repeat;
+        var(--header-bg, linear-gradient(135deg, #0d0d0d 0%, #111 100%));
+      background-size: cover;
+      background-position: center;
       border-bottom: 1px solid rgba(255,255,255,0.06);
       position: relative;
     }
@@ -125,6 +127,7 @@
               <label class="filtro-opcion"><input type="checkbox" value="lote" class="filtro-tipo" /> Lote</label>
               <label class="filtro-opcion"><input type="checkbox" value="local" class="filtro-tipo" /> Local comercial</label>
               <label class="filtro-opcion"><input type="checkbox" value="oficina" class="filtro-tipo" /> Oficina</label>
+              <label class="filtro-opcion"><input type="checkbox" value="galpon" class="filtro-tipo" /> Galpón / Depósito</label>
             </div>
           </div>
 
@@ -331,6 +334,15 @@
     })
 
     cargarPropiedades()
+
+    // Cargar imagen del header desde site_config
+    supabase.from('site_config').select('value').eq('key','img_propiedades_header').single()
+      .then(({ data }) => {
+        if (data?.value) {
+          document.querySelector('.page-header').style.backgroundImage =
+            `linear-gradient(to bottom, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.85) 60%, rgba(8,8,8,1) 100%), url('${data.value}')`
+        }
+      })
   </script>
 </body>
 </html>
