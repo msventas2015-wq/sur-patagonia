@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Propiedad — Sur Patagonia</title>
   <link rel="stylesheet" href="css/estilos.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { cursor: none; }
+    #cur { position:fixed; z-index:9999; pointer-events:none; width:7px; height:7px; border-radius:50%; background:var(--dorado); transform:translate(-50%,-50%); transition:width .3s,height .3s,background .3s,border .3s; will-change:transform; }
+    #cur.big { width:40px; height:40px; background:transparent; border:1px solid rgba(201,168,76,0.6); }
+    a,button,[onclick],select,input,label,textarea { cursor: none; }
+  </style>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     .detalle-layout {
       display: grid;
@@ -151,6 +159,8 @@
 </head>
 <body>
 
+  <div id="cur"></div>
+
   <!-- NAV -->
   <nav class="nav scrolled">
     <div class="contenedor">
@@ -210,6 +220,13 @@
 
             <h3 style="font-weight:300; margin-bottom:1rem;">Descripción</h3>
             <div id="detalleDescripcion" style="color:var(--gris-claro); font-size:0.9rem; line-height:1.9; margin-bottom:2rem; white-space:pre-wrap;"></div>
+
+            <!-- MAPA -->
+            <div id="bloqueUbicacion" style="display:none; margin-top:2rem;">
+              <h3 style="font-weight:300; margin-bottom:1rem;">Ubicación</h3>
+              <div id="mapaPropiedad" style="height:380px; border:1px solid var(--gris-oscuro); overflow:hidden;"></div>
+              <p id="coordsLink" style="font-size:0.72rem; color:var(--gris-claro); margin-top:0.5rem;"></p>
+            </div>
           </div>
 
           <!-- SIDEBAR -->
@@ -376,6 +393,21 @@
 
       // Mensaje predeterminado
       document.getElementById('fMensaje').value = `Hola, quisiera más información sobre la propiedad "${p.titulo}".`
+
+      // Mapa de ubicación
+      if (p.latitud && p.longitud) {
+        document.getElementById('bloqueUbicacion').style.display = 'block'
+        const mapa = L.map('mapaPropiedad').setView([p.latitud, p.longitud], 15)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(mapa)
+        L.marker([p.latitud, p.longitud])
+          .addTo(mapa)
+          .bindPopup(`<b>${p.titulo}</b><br>${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}`)
+          .openPopup()
+        document.getElementById('coordsLink').innerHTML =
+          `<a href="https://www.google.com/maps?q=${p.latitud},${p.longitud}" target="_blank" style="color:var(--dorado);">📍 Ver en Google Maps</a>`
+      }
 
       // Botón WhatsApp — comparte link de la propiedad
       const urlPropiedad = window.location.href

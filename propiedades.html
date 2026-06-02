@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Propiedades — Sur Patagonia</title>
   <link rel="stylesheet" href="css/estilos.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { cursor: none; }
+    #cur { position:fixed; z-index:9999; pointer-events:none; width:7px; height:7px; border-radius:50%; background:var(--dorado); transform:translate(-50%,-50%); transition:width .3s,height .3s,background .3s,border .3s; will-change:transform; }
+    #cur.big { width:40px; height:40px; background:transparent; border:1px solid rgba(201,168,76,0.6); }
+    a,button,[onclick],select,input,label { cursor: none; }
+  </style>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     /* Fondo completo de la página */
     #page-bg {
@@ -92,6 +100,7 @@
   </style>
 </head>
 <body>
+<div id="cur"></div>
 <div id="page-bg"></div>
 <div id="page-bg-overlay"></div>
 
@@ -196,6 +205,15 @@
         </div>
 
       </div>
+    </div>
+  </div>
+
+  <!-- MAPA DE PROPIEDADES -->
+  <div class="seccion" style="background:var(--negro-2); border-top:1px solid var(--gris-oscuro);">
+    <div class="contenedor">
+      <h3 style="font-family:'Cormorant Garamond',serif; font-weight:300; font-size:2rem; margin-bottom:0.5rem;">Mapa de <em style="color:var(--dorado); font-style:italic;">propiedades</em></h3>
+      <p style="font-size:0.8rem; color:var(--gris-claro); margin-bottom:1.5rem;">Todas las propiedades disponibles en el mapa. Hacé clic en cada punto para ver más detalles.</p>
+      <div id="mapaPropiedades" style="height:480px; border:1px solid var(--gris-oscuro);"></div>
     </div>
   </div>
 
@@ -357,6 +375,44 @@
 
     cargarPropiedades()
 
+    // ── MAPA CON TODAS LAS PROPIEDADES ────────────────────────
+    const mapaEl = document.getElementById('mapaPropiedades')
+    const mapa = L.map(mapaEl).setView([-41.13, -71.31], 9)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(mapa)
+
+    const iconoProp = L.divIcon({
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:#c9a84c;border:2px solid #fff;box-shadow:0 0 6px rgba(201,168,76,0.8);"></div>`,
+      className: '',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
+    })
+
+    const { data: propsMapa } = await supabase
+      .from('propiedades')
+      .select('id, titulo, ubicacion, ciudad, precio, moneda, operacion, latitud, longitud')
+      .eq('activa', true)
+      .not('latitud', 'is', null)
+      .not('longitud', 'is', null)
+
+    if (propsMapa && propsMapa.length > 0) {
+      const bounds = []
+      propsMapa.forEach(p => {
+        const precio = p.precio ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}` : 'Consultar'
+        L.marker([p.latitud, p.longitud], { icon: iconoProp })
+          .addTo(mapa)
+          .bindPopup(`<div style="font-family:sans-serif;min-width:160px;">
+            <strong style="font-size:0.85rem;">${p.titulo}</strong><br>
+            <span style="font-size:0.75rem;color:#666;">📍 ${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}</span><br>
+            <span style="font-size:0.8rem;color:#c9a84c;font-weight:600;">${precio}</span><br>
+            <a href="propiedad.html?id=${p.id}" style="font-size:0.75rem;color:#c9a84c;">Ver propiedad →</a>
+          </div>`)
+        bounds.push([p.latitud, p.longitud])
+      })
+      mapa.fitBounds(bounds, { padding: [40, 40] })
+    }
+
     // Cargar imágenes y opacidades desde site_config
     supabase.from('site_config').select('key, value')
       .in('key', ['img_propiedades_header', 'overlay_propiedades', 'img_propiedades_bg', 'overlay_propiedades_bg'])
@@ -386,6 +442,19 @@
           overlay.style.background = `rgba(9,9,9,${opBg})`
         }
       })
+  </script>
+  <script>
+    const cur = document.getElementById('cur')
+    document.addEventListener('mousemove', e => {
+      cur.style.left = e.clientX + 'px'
+      cur.style.top  = e.clientY + 'px'
+    })
+    document.addEventListener('mouseleave', () => cur.style.opacity = '0')
+    document.addEventListener('mouseenter', () => cur.style.opacity = '1')
+    document.querySelectorAll('a,button,[onclick],select,input,label').forEach(el => {
+      el.addEventListener('mouseenter', () => cur.classList.add('big'))
+      el.addEventListener('mouseleave', () => cur.classList.remove('big'))
+    })
   </script>
 </body>
 </html>
