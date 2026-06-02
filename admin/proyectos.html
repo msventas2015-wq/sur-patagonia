@@ -391,6 +391,17 @@
 <script type="module">
 import { supabase } from '../js/config.js'
 
+// ── Auth check ────────────────────────────────────────────────────
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html'; }
+
+// ── Logout ────────────────────────────────────────────────────────
+document.querySelector('a[href="login.html"]').addEventListener('click', async (e) => {
+  e.preventDefault()
+  await supabase.auth.signOut()
+  window.location.href = 'login.html'
+})
+
 let todosLosProyectos = []
 let filtroActual = 'todos'
 let idABorrar = null
@@ -454,7 +465,7 @@ function renderGrid(proyectos) {
       </div>
       <div class="card-actions">
         <a href="nuevo-proyecto.html?id=${p.id}" class="btn-accion primary">Editar</a>
-        <a href="../${p.slug}" target="_blank" class="btn-accion">Ver miniweb</a>
+        <a href="../proyecto-mini.html?slug=${p.slug}" target="_blank" class="btn-accion">Ver miniweb</a>
         ${p.estado !== 'activo'
           ? `<button class="btn-accion" onclick="publicar('${p.id}')">Publicar</button>`
           : `<button class="btn-accion" onclick="pausar('${p.id}')">Pausar</button>`}
