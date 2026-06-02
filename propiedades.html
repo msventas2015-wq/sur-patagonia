@@ -335,12 +335,20 @@
 
     cargarPropiedades()
 
-    // Cargar imagen del header desde site_config
-    supabase.from('site_config').select('value').eq('key','img_propiedades_header').single()
+    // Cargar imagen y opacidad del header desde site_config
+    supabase.from('site_config').select('key, value')
+      .in('key', ['img_propiedades_header', 'overlay_propiedades'])
       .then(({ data }) => {
-        if (data?.value) {
+        if (!data) return
+        const cfg = {}
+        data.forEach(r => cfg[r.key] = r.value)
+        const img = cfg['img_propiedades_header']
+        const op = parseInt(cfg['overlay_propiedades'] || '70') / 100
+        if (img) {
           document.querySelector('.page-header').style.backgroundImage =
-            `linear-gradient(to bottom, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.85) 60%, rgba(8,8,8,1) 100%), url('${data.value}')`
+            `linear-gradient(to bottom, rgba(8,8,8,${Math.min(op+0.1,1)}) 0%, rgba(8,8,8,${op}) 60%, rgba(8,8,8,1) 100%), url('${img}')`
+          document.querySelector('.page-header').style.backgroundSize = 'cover'
+          document.querySelector('.page-header').style.backgroundPosition = 'center'
         }
       })
   </script>
