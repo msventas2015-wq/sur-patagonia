@@ -3,150 +3,459 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Propiedades — Sur Patagonia Admin</title>
-  <link rel="stylesheet" href="../css/estilos.css" />
+  <title>Propiedades — Sur Patagonia</title>
+  <link rel="stylesheet" href="css/estilos.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { cursor: none; }
+    #cur { position:fixed; z-index:9999; pointer-events:none; width:7px; height:7px; border-radius:50%; background:var(--dorado); transform:translate(-50%,-50%); transition:width .3s,height .3s,background .3s,border .3s; will-change:transform; }
+    #cur.big { width:40px; height:40px; background:transparent; border:1px solid rgba(201,168,76,0.6); }
+    a,button,[onclick],select,input,label { cursor: none; }
+  </style>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    /* Fondo completo de la página */
+    #page-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+    #page-bg-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: rgba(9,9,9,0.85);
+      pointer-events: none;
+    }
+    nav, .page-header, .seccion, footer { position: relative; z-index: 1; }
+    .page-header {
+      padding: 10rem 0 5rem;
+      background:
+        linear-gradient(to bottom, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.85) 60%, rgba(8,8,8,1) 100%),
+        var(--header-bg, linear-gradient(135deg, #0d0d0d 0%, #111 100%));
+      background-size: cover;
+      background-position: center;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+    }
+    .page-header h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3rem, 6vw, 5.5rem);
+      font-weight: 300; letter-spacing: -0.01em;
+    }
+    .breadcrumb {
+      font-size: 0.72rem;
+      color: var(--gris-claro);
+      letter-spacing: 0.08em;
+      margin-bottom: 1rem;
+    }
+    .breadcrumb a { color: var(--dorado); }
+    .resultados-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .resultados-count {
+      font-size: 0.8rem;
+      color: var(--gris-claro);
+    }
+    .resultados-count span { color: var(--dorado); font-weight: 600; }
+    .ordenar-select {
+      background: var(--negro-3);
+      border: 1px solid var(--gris-oscuro);
+      color: var(--blanco);
+      padding: 0.5rem 1rem;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.78rem;
+      outline: none;
+      cursor: pointer;
+    }
+    .paginacion {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 3rem;
+    }
+    .pag-btn {
+      padding: 0.5rem 1rem;
+      background: var(--negro-3);
+      border: 1px solid var(--gris-oscuro);
+      color: var(--gris-claro);
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+    .pag-btn:hover, .pag-btn.activo {
+      background: var(--dorado);
+      color: var(--negro);
+      border-color: var(--dorado);
+    }
+  </style>
 </head>
 <body>
-<div class="admin-layout">
-  <aside class="admin-sidebar">
-    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
-    <nav class="admin-nav">
-      <a href="dashboard.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        Dashboard
-      </a>
-      <a href="propiedades.html" class="admin-nav-item activo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-        Propiedades
-      </a>
-      <a href="nueva-propiedad.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Nueva propiedad
-      </a>
-      <a href="proyectos.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-        Proyectos
-      </a>
-      <a href="nuevo-proyecto.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Nuevo proyecto
-      </a>
-      <a href="contactos.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        Consultas
-      </a>
-            <a href="apariencia.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
-        Apariencia
-      </a>
-      <a href="generador-pdf.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        Generar PDF
-      </a>
-            <a href="usuarios.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-        Usuarios
-      </a>
-      <a href="../index.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
-        Ver sitio
-      </a>
-      <a href="#" class="admin-nav-item" id="btnLogout">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Salir
-      </a>
-    </nav>
-  </aside>
+<div id="cur"></div>
+<div id="page-bg"></div>
+<div id="page-bg-overlay"></div>
 
-  <main class="admin-main">
-    <div class="admin-header">
-      <div>
-        <h2 style="font-weight:300;">Propiedades</h2>
-        <p style="font-size:0.78rem; color:var(--gris-claro);">Gestioná todas las propiedades del sitio</p>
+  <!-- NAV -->
+  <nav id="nav" style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:1rem 3rem;background:rgba(10,10,10,0.97);backdrop-filter:blur(20px);box-shadow:0 1px 0 rgba(255,255,255,0.06);transition:background .4s;">
+    <a href="index.html" style="display:block;">
+      <img src="logohorizontal.png" alt="Sur Patagonia" style="height:42px;display:block;" />
+    </a>
+    <div id="navLinks" style="display:flex;align-items:center;gap:.2rem;">
+      <a href="index.html" style="font-size:.68rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,0.55);padding:.5rem 1rem;transition:color .2s;text-decoration:none;">Inicio</a>
+      <a href="propiedades.html" style="font-size:.68rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#fff;padding:.5rem 1rem;transition:color .2s;text-decoration:none;">Propiedades</a>
+      <a href="proyectos.html" style="font-size:.68rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,0.55);padding:.5rem 1rem;transition:color .2s;text-decoration:none;">Proyectos</a>
+      <div style="width:1px;height:14px;background:rgba(255,255,255,0.15);margin:0 .5rem;"></div>
+      <a href="index.html#contacto" style="font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#1a1714;background:#c9a84c;padding:.55rem 1.4rem;margin-left:.5rem;transition:background .2s;text-decoration:none;">Contacto</a>
+    </div>
+    <button id="menuBtn" style="display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:4px;" aria-label="Menú">
+      <span style="display:block;width:22px;height:1px;background:#fff;"></span>
+      <span style="display:block;width:22px;height:1px;background:#fff;"></span>
+      <span style="display:block;width:22px;height:1px;background:#fff;"></span>
+    </button>
+  </nav>
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div class="contenedor">
+      <p class="breadcrumb"><a href="index.html">Inicio</a> / Propiedades</p>
+      <h1>Propiedades</h1>
+      <p style="color:var(--gris-claro); margin-top:0.5rem;">Encontrá la propiedad ideal en la Patagonia argentina</p>
+    </div>
+  </div>
+
+  <!-- CONTENIDO -->
+  <div class="seccion">
+    <div class="contenedor">
+      <div class="layout-propiedades">
+
+        <!-- SIDEBAR FILTROS -->
+        <aside class="filtros-sidebar">
+          <h4 style="margin-bottom:1.5rem; font-family:'Montserrat'; font-weight:600; font-size:0.75rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--blanco);">Filtrar</h4>
+
+          <div class="filtro-grupo">
+            <p class="filtro-titulo">Operación</p>
+            <div class="filtro-opciones">
+              <label class="filtro-opcion"><input type="checkbox" value="venta" class="filtro-op" /> Venta</label>
+              <label class="filtro-opcion"><input type="checkbox" value="alquiler" class="filtro-op" /> Alquiler</label>
+              <label class="filtro-opcion"><input type="checkbox" value="alquiler_temporario" class="filtro-op" /> Temporario</label>
+            </div>
+          </div>
+
+          <div class="filtro-grupo">
+            <p class="filtro-titulo">Tipo de propiedad</p>
+            <div class="filtro-opciones">
+              <label class="filtro-opcion"><input type="checkbox" value="casa" class="filtro-tipo" /> Casa</label>
+              <label class="filtro-opcion"><input type="checkbox" value="departamento" class="filtro-tipo" /> Departamento</label>
+              <label class="filtro-opcion"><input type="checkbox" value="terreno" class="filtro-tipo" /> Terreno</label>
+              <label class="filtro-opcion"><input type="checkbox" value="lote" class="filtro-tipo" /> Lote</label>
+              <label class="filtro-opcion"><input type="checkbox" value="local" class="filtro-tipo" /> Local comercial</label>
+              <label class="filtro-opcion"><input type="checkbox" value="oficina" class="filtro-tipo" /> Oficina</label>
+              <label class="filtro-opcion"><input type="checkbox" value="galpon" class="filtro-tipo" /> Galpón / Depósito</label>
+            </div>
+          </div>
+
+          <div class="filtro-grupo">
+            <p class="filtro-titulo">Precio (USD)</p>
+            <div class="rango-precio">
+              <input type="number" id="precioMin" placeholder="Mín" />
+              <input type="number" id="precioMax" placeholder="Máx" />
+            </div>
+          </div>
+
+          <div class="filtro-grupo">
+            <p class="filtro-titulo">Dormitorios mínimo</p>
+            <div class="filtro-opciones">
+              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="" class="filtro-dorm" checked /> Todos</label>
+              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="1" class="filtro-dorm" /> 1+</label>
+              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="2" class="filtro-dorm" /> 2+</label>
+              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="3" class="filtro-dorm" /> 3+</label>
+              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="4" class="filtro-dorm" /> 4+</label>
+            </div>
+          </div>
+
+          <button class="btn btn-dorado" id="btnAplicarFiltros" style="width:100%; margin-top:0.5rem;">Aplicar filtros</button>
+          <button class="btn btn-outline" id="btnLimpiarFiltros" style="width:100%; margin-top:0.5rem;">Limpiar</button>
+        </aside>
+
+        <!-- LISTADO -->
+        <div>
+          <div class="resultados-header">
+            <p class="resultados-count"><span id="totalResultados">—</span> propiedades encontradas</p>
+            <select class="ordenar-select" id="ordenar">
+              <option value="created_at_desc">Más recientes</option>
+              <option value="precio_asc">Precio: menor a mayor</option>
+              <option value="precio_desc">Precio: mayor a menor</option>
+            </select>
+          </div>
+          <div class="grid-propiedades" id="listadoPropiedades">
+            <div class="estado-cargando" style="grid-column:1/-1">
+              <div class="spinner"></div>
+              <p>Cargando propiedades...</p>
+            </div>
+          </div>
+          <div class="paginacion" id="paginacion"></div>
+        </div>
+
       </div>
-      <a href="nueva-propiedad.html" class="btn btn-dorado">+ Nueva propiedad</a>
     </div>
-    <div id="alerta"></div>
-    <div style="overflow-x:auto;">
-      <table class="admin-tabla">
-        <thead>
-          <tr>
-            <th>Imagen</th>
-            <th>Título</th>
-            <th>Tipo</th>
-            <th>Operación</th>
-            <th>Ciudad</th>
-            <th>Precio</th>
-            <th>Destacada</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="tablaPropiedades">
-          <tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--gris-claro);">Cargando...</td></tr>
-        </tbody>
-      </table>
+  </div>
+
+  <!-- MAPA DE PROPIEDADES -->
+  <div class="seccion" style="background:var(--negro-2); border-top:1px solid var(--gris-oscuro);">
+    <div class="contenedor">
+      <h3 style="font-family:'Cormorant Garamond',serif; font-weight:300; font-size:2rem; margin-bottom:0.5rem;">Mapa de <em style="color:var(--dorado); font-style:italic;">propiedades</em></h3>
+      <p style="font-size:0.8rem; color:var(--gris-claro); margin-bottom:1.5rem;">Todas las propiedades disponibles en el mapa. Hacé clic en cada punto para ver más detalles.</p>
+      <div id="mapaPropiedades" style="height:480px; border:1px solid var(--gris-oscuro);"></div>
     </div>
-  </main>
-</div>
+  </div>
 
-<script type="module">
-  import { supabase } from '../js/config.js'
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="contenedor">
+      <div class="footer-bottom" style="border-top:none;">
+        <span>© 2025 Sur Patagonia. Todos los derechos reservados.</span>
+        <a href="index.html" style="color:var(--dorado);">← Volver al inicio</a>
+      </div>
+    </div>
+  </footer>
 
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) window.location.href = 'login.html'
+  <script type="module">
+    import { supabase } from './js/config.js'
 
-  document.getElementById('btnLogout').addEventListener('click', async (e) => {
-    e.preventDefault()
-    await supabase.auth.signOut()
-    window.location.href = 'login.html'
-  })
+    const POR_PAGINA = 9
+    let paginaActual = 1
+    let totalPropiedades = 0
 
-  async function cargar() {
-    const { data } = await supabase
-      .from('propiedades')
-      .select('*')
-      .order('created_at', { ascending: false })
+    // Nav mobile
+    document.getElementById('menuBtn').addEventListener('click', () => {
+      document.getElementById('navLinks').classList.toggle('abierto')
+    })
 
-    const tbody = document.getElementById('tablaPropiedades')
-    if (!data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--gris-claro);">No hay propiedades. <a href="nueva-propiedad.html" style="color:var(--dorado)">Crear primera</a></td></tr>`
-      return
+    // Leer params de URL al cargar
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('op')) {
+      document.querySelectorAll('.filtro-op').forEach(cb => {
+        if (cb.value === urlParams.get('op')) cb.checked = true
+      })
+    }
+    if (urlParams.get('tipo')) {
+      document.querySelectorAll('.filtro-tipo').forEach(cb => {
+        if (cb.value === urlParams.get('tipo')) cb.checked = true
+      })
+    }
+    if (urlParams.get('precioMax')) {
+      document.getElementById('precioMax').value = urlParams.get('precioMax')
     }
 
-    tbody.innerHTML = data.map(p => `
-      <tr>
-        <td>${p.imagenes && p.imagenes[0] ? `<img src="${p.imagenes[0]}" alt="" />` : '—'}</td>
-        <td style="color:var(--blanco); font-weight:400;">${p.titulo}</td>
-        <td>${p.tipo || '—'}</td>
-        <td>${p.operacion || '—'}</td>
-        <td>${p.ciudad || '—'}</td>
-        <td>${p.precio ? (p.moneda || 'USD') + ' ' + Number(p.precio).toLocaleString() : 'Consultar'}</td>
-        <td><span class="badge-activo ${p.destacada ? 'si' : 'no'}">${p.destacada ? 'Sí' : 'No'}</span></td>
-        <td><span class="badge-activo ${p.activa ? 'si' : 'no'}">${p.activa ? 'Activa' : 'Inactiva'}</span></td>
-        <td>
-          <div class="acciones-tabla">
-            <button class="btn-accion btn-editar" data-id="${p.id}">Editar</button>
-            <button class="btn-accion btn-eliminar" data-id="${p.id}" data-activa="${p.activa}">${p.activa ? 'Desactivar' : 'Activar'}</button>
-          </div>
-        </td>
-      </tr>`).join('')
+    async function cargarPropiedades() {
+      const contenedor = document.getElementById('listadoPropiedades')
+      contenedor.innerHTML = `<div class="estado-cargando" style="grid-column:1/-1"><div class="spinner"></div><p>Cargando...</p></div>`
 
-    tbody.querySelectorAll('.btn-editar').forEach(btn => {
-      btn.addEventListener('click', () => window.location.href = `nueva-propiedad.html?id=${btn.dataset.id}`)
-    })
+      // Filtros
+      const ops = [...document.querySelectorAll('.filtro-op:checked')].map(c => c.value)
+      const tipos = [...document.querySelectorAll('.filtro-tipo:checked')].map(c => c.value)
+      const dormMin = document.querySelector('.filtro-dorm:checked')?.value
+      const precioMin = document.getElementById('precioMin').value
+      const precioMaxVal = document.getElementById('precioMax').value
 
-    tbody.querySelectorAll('.btn-eliminar').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const activar = btn.dataset.activa === 'false'
-        if (!confirm(`¿${activar ? 'Activar' : 'Desactivar'} esta propiedad?`)) return
-        await supabase.from('propiedades').update({ activa: activar }).eq('id', btn.dataset.id)
-        cargar()
+      // Ordenar
+      const ordenarVal = document.getElementById('ordenar').value
+      const [ordenCol, ordenDir] = ordenarVal.split('_').reduce((acc, v, i, arr) => {
+        if (i === arr.length - 1) return [arr.slice(0, -1).join('_'), v]
+        return acc
+      }, ['created_at', 'desc'])
+
+      let query = supabase.from('propiedades').select('*', { count: 'exact' }).eq('activa', true)
+
+      if (ops.length > 0) query = query.in('operacion', ops)
+      if (tipos.length > 0) query = query.in('tipo', tipos)
+      if (dormMin) query = query.gte('dormitorios', parseInt(dormMin))
+      if (precioMin) query = query.gte('precio', parseFloat(precioMin))
+      if (precioMaxVal) query = query.lte('precio', parseFloat(precioMaxVal))
+
+      query = query.order(ordenCol, { ascending: ordenDir === 'asc' })
+      query = query.range((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA - 1)
+
+      const { data, error, count } = await query
+
+      totalPropiedades = count || 0
+      document.getElementById('totalResultados').textContent = totalPropiedades
+
+      if (error) {
+        contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--rojo)">Error al cargar propiedades.</p></div>`
+        return
+      }
+
+      if (!data || data.length === 0) {
+        contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--gris-claro)">No se encontraron propiedades con esos filtros.</p></div>`
+        renderPaginacion()
+        return
+      }
+
+      contenedor.innerHTML = data.map(renderCard).join('')
+      renderPaginacion()
+    }
+
+    function renderPaginacion() {
+      const total = Math.ceil(totalPropiedades / POR_PAGINA)
+      const pag = document.getElementById('paginacion')
+      if (total <= 1) { pag.innerHTML = ''; return }
+      let html = ''
+      if (paginaActual > 1) html += `<button class="pag-btn" data-p="${paginaActual - 1}">‹ Anterior</button>`
+      for (let i = 1; i <= total; i++) {
+        html += `<button class="pag-btn${i === paginaActual ? ' activo' : ''}" data-p="${i}">${i}</button>`
+      }
+      if (paginaActual < total) html += `<button class="pag-btn" data-p="${paginaActual + 1}">Siguiente ›</button>`
+      pag.innerHTML = html
+      pag.querySelectorAll('.pag-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          paginaActual = parseInt(btn.dataset.p)
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+          cargarPropiedades()
+        })
       })
-    })
-  }
+    }
 
-  cargar()
-</script>
+    function renderCard(p) {
+      const img = p.imagenes && p.imagenes.length > 0
+        ? `<img src="${p.imagenes[0]}" alt="${p.titulo}" loading="lazy" />`
+        : `<div class="card-imagen-placeholder">🏠</div>`
+      const precio = p.precio
+        ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
+        : 'Consultar'
+      return `
+        <div class="card-propiedad" onclick="window.location='propiedad.html?id=${p.id}'">
+          <div class="card-imagen">
+            ${img}
+            <div class="card-badge badge-${p.operacion}">${p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'}</div>
+            ${p.destacada ? '<div class="badge-destacada">★</div>' : ''}
+          </div>
+          <div class="card-cuerpo">
+            <p class="card-tipo">${p.tipo || ''}</p>
+            <h3 class="card-titulo">${p.titulo}</h3>
+            <p class="card-ubicacion">📍 ${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}</p>
+            <div class="card-precio">${precio} <span>${p.operacion !== 'venta' ? '/ mes' : ''}</span></div>
+            <div class="card-detalles">
+              ${p.dormitorios ? `<div class="card-detalle"><strong>${p.dormitorios}</strong>Dorm.</div>` : ''}
+              ${p.banos ? `<div class="card-detalle"><strong>${p.banos}</strong>Baños</div>` : ''}
+              ${p.superficie_cubierta ? `<div class="card-detalle"><strong>${p.superficie_cubierta}</strong>m² cub.</div>` : ''}
+              ${p.superficie_total ? `<div class="card-detalle"><strong>${p.superficie_total}</strong>m² tot.</div>` : ''}
+            </div>
+          </div>
+        </div>`
+    }
+
+    // Eventos filtros
+    document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
+      paginaActual = 1
+      cargarPropiedades()
+    })
+
+    document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
+      document.querySelectorAll('.filtro-op, .filtro-tipo').forEach(c => c.checked = false)
+      document.querySelector('.filtro-dorm[value=""]').checked = true
+      document.getElementById('precioMin').value = ''
+      document.getElementById('precioMax').value = ''
+      paginaActual = 1
+      cargarPropiedades()
+    })
+
+    document.getElementById('ordenar').addEventListener('change', () => {
+      paginaActual = 1
+      cargarPropiedades()
+    })
+
+    cargarPropiedades()
+
+    // ── MAPA CON TODAS LAS PROPIEDADES ────────────────────────
+    const mapaEl = document.getElementById('mapaPropiedades')
+    const mapa = L.map(mapaEl).setView([-41.13, -71.31], 9)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(mapa)
+
+    const iconoProp = L.divIcon({
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:#c9a84c;border:2px solid #fff;box-shadow:0 0 6px rgba(201,168,76,0.8);"></div>`,
+      className: '',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
+    })
+
+    const { data: propsMapa } = await supabase
+      .from('propiedades')
+      .select('id, titulo, ubicacion, ciudad, precio, moneda, operacion, latitud, longitud')
+      .eq('activa', true)
+      .not('latitud', 'is', null)
+      .not('longitud', 'is', null)
+
+    if (propsMapa && propsMapa.length > 0) {
+      const bounds = []
+      propsMapa.forEach(p => {
+        const precio = p.precio ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}` : 'Consultar'
+        L.marker([p.latitud, p.longitud], { icon: iconoProp })
+          .addTo(mapa)
+          .bindPopup(`<div style="font-family:sans-serif;min-width:160px;">
+            <strong style="font-size:0.85rem;">${p.titulo}</strong><br>
+            <span style="font-size:0.75rem;color:#666;">📍 ${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}</span><br>
+            <span style="font-size:0.8rem;color:#c9a84c;font-weight:600;">${precio}</span><br>
+            <a href="propiedad.html?id=${p.id}" style="font-size:0.75rem;color:#c9a84c;">Ver propiedad →</a>
+          </div>`)
+        bounds.push([p.latitud, p.longitud])
+      })
+      mapa.fitBounds(bounds, { padding: [40, 40] })
+    }
+
+    // Cargar imágenes y opacidades desde site_config
+    supabase.from('site_config').select('key, value')
+      .in('key', ['img_propiedades_header', 'overlay_propiedades', 'img_propiedades_bg', 'overlay_propiedades_bg'])
+      .then(({ data }) => {
+        if (!data) return
+        const cfg = {}
+        data.forEach(r => cfg[r.key] = r.value)
+
+        // Header
+        const imgHeader = cfg['img_propiedades_header']
+        const opHeader = parseInt(cfg['overlay_propiedades'] || '70') / 100
+        if (imgHeader) {
+          document.querySelector('.page-header').style.backgroundImage =
+            `linear-gradient(to bottom, rgba(8,8,8,${Math.min(opHeader+0.1,1)}) 0%, rgba(8,8,8,${opHeader}) 60%, rgba(8,8,8,1) 100%), url('${imgHeader}')`
+          document.querySelector('.page-header').style.backgroundSize = 'cover'
+          document.querySelector('.page-header').style.backgroundPosition = 'center'
+        }
+
+        // Fondo completo de página
+        const imgBg = cfg['img_propiedades_bg']
+        const opBg = parseInt(cfg['overlay_propiedades_bg'] || '85') / 100
+        if (imgBg) {
+          const bg = document.getElementById('page-bg')
+          const overlay = document.getElementById('page-bg-overlay')
+          bg.style.backgroundImage = `url('${imgBg}')`
+          bg.style.opacity = '1'
+          overlay.style.background = `rgba(9,9,9,${opBg})`
+        }
+      })
+  </script>
+  <script>
+    const cur = document.getElementById('cur')
+    document.addEventListener('mousemove', e => {
+      cur.style.left = e.clientX + 'px'
+      cur.style.top  = e.clientY + 'px'
+    })
+    document.addEventListener('mouseleave', () => cur.style.opacity = '0')
+    document.addEventListener('mouseenter', () => cur.style.opacity = '1')
+    document.querySelectorAll('a,button,[onclick],select,input,label').forEach(el => {
+      el.addEventListener('mouseenter', () => cur.classList.add('big'))
+      el.addEventListener('mouseleave', () => cur.classList.remove('big'))
+    })
+  </script>
 </body>
 </html>
