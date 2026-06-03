@@ -946,7 +946,10 @@
         <button class="b-tab active" data-op="venta">Comprar</button>
         <button class="b-tab" data-op="alquiler">Alquilar</button>
         <button class="b-tab" data-op="alquiler_temporario">Temporario</button>
+        <button class="b-tab b-tab-ia" id="tabIA">✦ Buscar con IA</button>
       </div>
+
+      <!-- Formulario clásico -->
       <form class="buscador-form" id="formBuscador">
         <div class="b-field"><label>Ubicación</label><input type="text" id="busUbicacion" placeholder="Ciudad, barrio..." /></div>
         <div class="b-field">
@@ -964,9 +967,101 @@
         <div class="b-field"><label>Precio máximo (USD)</label><input type="number" id="busPrecio" placeholder="Sin límite" /></div>
         <button type="submit" class="btn-buscar">Buscar</button>
       </form>
+
+      <!-- Buscador IA -->
+      <div id="buscadorIA" style="display:none; padding: 1.5rem 0 0.5rem;">
+        <p style="font-size:0.72rem; color:var(--gris-claro); letter-spacing:0.05em; margin-bottom:1rem;">Describí lo que buscás en tus palabras y la IA encuentra las propiedades.</p>
+        <div style="display:flex; gap:0.5rem; align-items:stretch;">
+          <input type="text" id="iaQuery" placeholder="Ej: casa con pileta para comprar en El Bolsón..."
+            style="flex:1; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:0.8rem 1rem; font-family:'Montserrat',sans-serif; font-size:0.85rem; outline:none;" />
+          <button id="iaBuscar" style="background:var(--gold); color:var(--bg); border:none; padding:0 1.5rem; font-family:'Montserrat',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; white-space:nowrap;">
+            Buscar
+          </button>
+        </div>
+        <p id="iaEstado" style="font-size:0.72rem; color:var(--gold); margin-top:0.8rem; min-height:1.2em;"></p>
+      </div>
     </div>
   </div>
 </div>
+
+<style>
+  .b-tab-ia { border-left: 1px solid rgba(201,168,76,0.3) !important; color: var(--gold) !important; }
+  .b-tab-ia.active { background: var(--gold) !important; color: var(--bg) !important; }
+  #iaQuery::placeholder { color: rgba(255,255,255,0.35); }
+  #iaQuery:focus { border-color: var(--gold); }
+</style>
+
+<script>
+(function() {
+  const tabIA = document.getElementById('tabIA')
+  const buscadorIA = document.getElementById('buscadorIA')
+  const formBuscador = document.getElementById('formBuscador')
+  const buscadorTabs = document.querySelector('.buscador-tabs')
+
+  tabIA.addEventListener('click', () => {
+    // Desactivar otras tabs
+    document.querySelectorAll('.b-tab').forEach(t => t.classList.remove('active'))
+    tabIA.classList.add('active')
+    formBuscador.style.display = 'none'
+    buscadorIA.style.display = 'block'
+  })
+
+  // Cuando se activa otra tab, volver al form
+  document.querySelectorAll('.b-tab:not(#tabIA)').forEach(t => {
+    t.addEventListener('click', () => {
+      formBuscador.style.display = ''
+      buscadorIA.style.display = 'none'
+    })
+  })
+
+  document.getElementById('iaBuscar').addEventListener('click', buscarConIA)
+  document.getElementById('iaQuery').addEventListener('keydown', e => {
+    if (e.key === 'Enter') buscarConIA()
+  })
+
+  async function buscarConIA() {
+    const query = document.getElementById('iaQuery').value.trim()
+    if (!query) return
+
+    const estado = document.getElementById('iaEstado')
+    const btn = document.getElementById('iaBuscar')
+    estado.textContent = 'Analizando tu búsqueda...'
+    btn.disabled = true
+    btn.textContent = '...'
+
+    try {
+      const res = await fetch('https://sur-patagonia-ai.msventas2015.workers.dev/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      })
+
+      if (!res.ok) throw new Error('Error del servidor')
+      const filtros = await res.json()
+
+      // Construir URL con filtros
+      const params = new URLSearchParams()
+      if (filtros.operacion) params.set('operacion', filtros.operacion)
+      if (filtros.tipo) params.set('tipo', filtros.tipo)
+      if (filtros.ciudad) params.set('ciudad', filtros.ciudad)
+      if (filtros.dormitorios_min) params.set('dormitorios_min', filtros.dormitorios_min)
+      if (filtros.precio_max) params.set('precio_max', filtros.precio_max)
+      if (filtros.amenidades && filtros.amenidades.length) params.set('amenidades', filtros.amenidades.join(','))
+      if (filtros.texto_libre) params.set('q', filtros.texto_libre)
+
+      estado.textContent = filtros.texto_libre ? `Buscando: ${filtros.texto_libre}` : 'Redirigiendo...'
+      setTimeout(() => {
+        window.location.href = 'propiedades.html?' + params.toString()
+      }, 600)
+
+    } catch (err) {
+      estado.textContent = 'Error al conectar. Intentá de nuevo.'
+      btn.disabled = false
+      btn.textContent = 'Buscar'
+    }
+  }
+})()
+</script>
 
 <!-- ACCESO RÁPIDO 3 COLUMNAS -->
 <section id="sec-acceso">
