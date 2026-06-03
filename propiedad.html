@@ -112,8 +112,13 @@
 
     /* video */
     .prop-video { margin-bottom:2.5rem; }
-    .video-wrap { position:relative; aspect-ratio:16/9; overflow:hidden; background:#111; }
+    .video-wrap { position:relative; aspect-ratio:16/9; overflow:hidden; background:#111; cursor:pointer; }
     .video-wrap iframe { position:absolute; inset:0; width:100%; height:100%; border:none; }
+    .video-thumb { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transition:transform .4s; }
+    .video-wrap:hover .video-thumb { transform:scale(1.03); }
+    .video-play-btn { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:64px; height:64px; border-radius:50%; background:rgba(201,168,76,0.92); display:flex; align-items:center; justify-content:center; transition:transform .2s, background .2s; }
+    .video-wrap:hover .video-play-btn { transform:translate(-50%,-50%) scale(1.1); background:var(--gold); }
+    .video-play-btn svg { width:22px; height:22px; fill:#fff; margin-left:4px; }
 
     /* mapa */
     .prop-mapa { margin-bottom:2.5rem; }
@@ -299,7 +304,10 @@
       <div id="eVideoBloque" style="display:none; margin-bottom:2.5rem;">
         <div style="margin-bottom:.8rem;"><span class="sh">Video</span></div>
         <div class="prop-video">
-          <div class="video-wrap"><iframe id="eVideoIframe" src="" allow="autoplay;encrypted-media" allowfullscreen></iframe></div>
+          <div class="video-wrap" id="eVideoWrap">
+            <img class="video-thumb" id="eVideoThumb" src="" alt="Video" />
+            <div class="video-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+          </div>
         </div>
       </div>
 
@@ -404,7 +412,10 @@
       <div id="pVideoBloque" style="display:none; margin-bottom:2.5rem;">
         <div style="margin-bottom:.8rem;"><span class="sh">Video</span></div>
         <div class="prop-video">
-          <div class="video-wrap"><iframe id="pVideoIframe" src="" allow="autoplay;encrypted-media" allowfullscreen></iframe></div>
+          <div class="video-wrap" id="pVideoWrap">
+            <img class="video-thumb" id="pVideoThumb" src="" alt="Video" />
+            <div class="video-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+          </div>
         </div>
       </div>
 
@@ -691,22 +702,33 @@ function renderEstandar(p) {
   // Descripcion
   document.getElementById('eDescripcion').textContent = p.descripcion || ''
 
-  // Video
+  // Video — facade
   if (p.video_url) {
     const m = p.video_url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
     if (m) {
       document.getElementById('eVideoBloque').style.display = 'block'
-      document.getElementById('eVideoIframe').src = `https://www.youtube.com/embed/${m[1]}?rel=0&modestbranding=1`
+      document.getElementById('eVideoThumb').src = `https://img.youtube.com/vi/${m[1]}/maxresdefault.jpg`
+      document.getElementById('eVideoWrap').addEventListener('click', function() {
+        this.innerHTML = `<iframe src="https://www.youtube.com/embed/${m[1]}?autoplay=1&rel=0&modestbranding=1" allow="autoplay;encrypted-media" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;"></iframe>`
+      })
     }
   }
 
-  // Mapa
+  // Mapa — lazy load
   if (p.latitud && p.longitud) {
     document.getElementById('eMapaBloque').style.display = 'block'
-    const mapa = L.map('mapaPropiedad').setView([p.latitud, p.longitud], 15)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(mapa)
-    L.marker([p.latitud, p.longitud]).addTo(mapa).bindPopup(`<b>${p.titulo}</b>`).openPopup()
     document.getElementById('eMapaLink').href = `https://www.google.com/maps?q=${p.latitud},${p.longitud}`
+    let mapaIniciado = false
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !mapaIniciado) {
+        mapaIniciado = true
+        const mapa = L.map('mapaPropiedad').setView([p.latitud, p.longitud], 15)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(mapa)
+        L.marker([p.latitud, p.longitud]).addTo(mapa).bindPopup(`<b>${p.titulo}</b>`).openPopup()
+        obs.disconnect()
+      }
+    }, { rootMargin: '200px' })
+    obs.observe(document.getElementById('mapaPropiedad'))
   }
 
   // WhatsApp
@@ -769,17 +791,28 @@ async function renderPremium(p) {
     const m = p.video_url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
     if (m) {
       document.getElementById('pVideoBloque').style.display = 'block'
-      document.getElementById('pVideoIframe').src = `https://www.youtube.com/embed/${m[1]}?rel=0&modestbranding=1`
+      document.getElementById('pVideoThumb').src = `https://img.youtube.com/vi/${m[1]}/maxresdefault.jpg`
+      document.getElementById('pVideoWrap').addEventListener('click', function() {
+        this.innerHTML = `<iframe src="https://www.youtube.com/embed/${m[1]}?autoplay=1&rel=0&modestbranding=1" allow="autoplay;encrypted-media" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;"></iframe>`
+      })
     }
   }
 
-  // Mapa
+  // Mapa — lazy load
   if (p.latitud && p.longitud) {
     document.getElementById('pMapaBloque').style.display = 'block'
-    const mapa2 = L.map('mapaPropiedad2').setView([p.latitud, p.longitud], 15)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(mapa2)
-    L.marker([p.latitud, p.longitud]).addTo(mapa2).bindPopup(`<b>${p.titulo}</b>`).openPopup()
     document.getElementById('pMapaLink').href = `https://www.google.com/maps?q=${p.latitud},${p.longitud}`
+    let mapa2Iniciado = false
+    const obs2 = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !mapa2Iniciado) {
+        mapa2Iniciado = true
+        const mapa2 = L.map('mapaPropiedad2').setView([p.latitud, p.longitud], 15)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(mapa2)
+        L.marker([p.latitud, p.longitud]).addTo(mapa2).bindPopup(`<b>${p.titulo}</b>`).openPopup()
+        obs2.disconnect()
+      }
+    }, { rootMargin: '200px' })
+    obs2.observe(document.getElementById('mapaPropiedad2'))
   }
 
   // WhatsApp
