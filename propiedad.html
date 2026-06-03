@@ -6,155 +6,362 @@
   <title>Propiedad — Sur Patagonia</title>
   <link rel="stylesheet" href="css/estilos.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     body { cursor: none; }
     #cur { position:fixed; z-index:9999; pointer-events:none; width:7px; height:7px; border-radius:50%; background:var(--dorado); transform:translate(-50%,-50%); transition:width .3s,height .3s,background .3s,border .3s; will-change:transform; }
     #cur.big { width:40px; height:40px; background:transparent; border:1px solid rgba(201,168,76,0.6); }
     a,button,[onclick],select,input,label,textarea { cursor: none; }
-  </style>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    .detalle-layout {
+
+    /* ── LAYOUT ─────────────────────────────────── */
+    .prop-layout {
       display: grid;
-      grid-template-columns: 1fr 360px;
+      grid-template-columns: 1fr 340px;
       gap: 3rem;
       align-items: start;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
     }
-    .detalle-sidebar {
+    @media (max-width: 900px) {
+      .prop-layout { grid-template-columns: 1fr; padding: 1.5rem; }
+      .prop-sidebar { position: static !important; }
+    }
+
+    /* ── BREADCRUMB ──────────────────────────────── */
+    .prop-tags {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .prop-tag {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.7rem;
+      border: 1px solid rgba(201,168,76,0.4);
+      color: var(--dorado);
+    }
+    .prop-tag.filled { background: var(--dorado); color: var(--negro); border-color: var(--dorado); }
+    .prop-tag-sep { color: var(--gris); font-size: 0.7rem; }
+
+    /* ── TÍTULO ──────────────────────────────────── */
+    .prop-titulo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.6rem, 3vw, 2.6rem);
+      font-weight: 300;
+      line-height: 1.15;
+      color: var(--blanco);
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.01em;
+    }
+    .prop-ubicacion {
+      font-size: 0.8rem;
+      color: var(--gris-claro);
+      margin-bottom: 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* ── SPECS STRIP ─────────────────────────────── */
+    .prop-specs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      border: 1px solid var(--gris-oscuro);
+      margin-bottom: 2rem;
+    }
+    .prop-spec {
+      padding: 0.9rem 1.3rem;
+      border-right: 1px solid var(--gris-oscuro);
+      text-align: center;
+      min-width: 80px;
+    }
+    .prop-spec:last-child { border-right: none; }
+    .prop-spec-val {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem;
+      font-weight: 300;
+      color: var(--blanco);
+      display: block;
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+    .prop-spec-lbl {
+      font-size: 0.58rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+    }
+
+    /* ── SECCIÓN HEADING ─────────────────────────── */
+    .prop-section-title {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--dorado);
+      margin-bottom: 1rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .prop-section-title::before {
+      content: '';
+      display: block;
+      width: 20px;
+      height: 1px;
+      background: var(--dorado);
+    }
+
+    /* ── DESCRIPCIÓN ─────────────────────────────── */
+    .prop-desc {
+      font-size: 0.88rem;
+      color: var(--gris-claro);
+      line-height: 1.95;
+      margin-bottom: 2.5rem;
+      white-space: pre-wrap;
+    }
+
+    /* ── AMENIDADES ──────────────────────────────── */
+    .prop-amenidades {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .prop-amenidad {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 0.9rem;
+      border: 1px solid var(--gris-oscuro);
+      font-size: 0.68rem;
+      color: var(--gris-claro);
+      letter-spacing: 0.05em;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .prop-amenidad:hover { border-color: var(--dorado); color: var(--blanco); }
+    .prop-amenidad svg { width: 12px; height: 12px; stroke: var(--dorado); fill: none; stroke-width: 1.5; flex-shrink: 0; }
+
+    /* ── VIDEO ───────────────────────────────────── */
+    .prop-video {
+      margin-bottom: 2.5rem;
+    }
+    .prop-video-wrap {
+      position: relative;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      background: var(--negro-3);
+    }
+    .prop-video-wrap iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* ── MAPA ────────────────────────────────────── */
+    .prop-mapa {
+      margin-bottom: 2.5rem;
+    }
+    #mapaPropiedad {
+      height: 360px;
+      border: 1px solid var(--gris-oscuro);
+    }
+    .prop-mapa-link {
+      font-size: 0.72rem;
+      color: var(--dorado);
+      margin-top: 0.5rem;
+      display: inline-block;
+    }
+
+    /* ── SIDEBAR ─────────────────────────────────── */
+    .prop-sidebar {
       position: sticky;
       top: 6rem;
     }
-    .ficha-contacto {
+    .prop-precio-box {
       background: var(--negro-2);
       border: 1px solid var(--gris-oscuro);
-      padding: 2rem;
+      padding: 1.8rem;
+      margin-bottom: 1rem;
     }
-    .ficha-precio {
+    .prop-precio {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 2.2rem;
+      font-size: 2rem;
       color: var(--dorado);
-      margin-bottom: 1.5rem;
+      line-height: 1;
+      margin-bottom: 0.3rem;
     }
-    .ficha-precio small {
-      font-size: 1rem;
+    .prop-precio-tipo {
+      font-size: 0.68rem;
       color: var(--gris-claro);
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 300;
-    }
-    .modal-galeria {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.95);
-      z-index: 999;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-galeria.abierto { display: flex; }
-    .modal-galeria img {
-      max-width: 90vw;
-      max-height: 85vh;
-      object-fit: contain;
-    }
-    .modal-cerrar {
-      position: absolute;
-      top: 1.5rem;
-      right: 1.5rem;
-      background: none;
-      border: none;
-      color: var(--blanco);
-      font-size: 2rem;
-      cursor: pointer;
-    }
-    .modal-nav {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      background: rgba(255,255,255,0.1);
-      border: none;
-      color: var(--blanco);
-      font-size: 2rem;
-      cursor: pointer;
-      padding: 1rem;
-      transition: all 0.2s;
-    }
-    .modal-nav:hover { background: rgba(201,168,76,0.3); }
-    .modal-prev { left: 1rem; }
-    .modal-next { right: 1rem; }
-    @media (max-width: 768px) {
-      .detalle-layout { grid-template-columns: 1fr; }
-      .detalle-sidebar { position: static; }
+      letter-spacing: 0.1em;
     }
 
-    /* Botones de acción */
-    .prop-acciones {
-      display: flex;
-      gap: 0.6rem;
-      margin-top: 1rem;
-    }
-    .btn-wsp {
-      flex: 1;
+    /* ── BOTONES SIDEBAR ─────────────────────────── */
+    .btn-consultar-wsp {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      padding: 0.75rem;
+      gap: 0.6rem;
+      width: 100%;
+      padding: 0.95rem;
       background: #25D366;
       color: #fff;
       font-family: 'Montserrat', sans-serif;
-      font-size: 0.68rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       text-decoration: none;
       border: none;
       cursor: pointer;
       transition: opacity 0.2s;
+      margin-bottom: 0.5rem;
     }
-    .btn-wsp:hover { opacity: 0.88; }
-    .btn-pdf {
-      flex: 1;
+    .btn-consultar-wsp:hover { opacity: 0.88; }
+
+    .btn-compartir-wsp {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
+      gap: 0.6rem;
+      width: 100%;
       padding: 0.75rem;
+      background: transparent;
+      color: var(--gris-claro);
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border: 1px solid var(--gris-oscuro);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 1rem;
+    }
+    .btn-compartir-wsp:hover { border-color: var(--dorado); color: var(--dorado); }
+
+    .btn-brochure-prop {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid rgba(201,168,76,0.4);
       background: transparent;
       color: var(--dorado);
       font-family: 'Montserrat', sans-serif;
-      font-size: 0.68rem;
-      font-weight: 600;
+      font-size: 0.65rem;
+      font-weight: 500;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      border: 1px solid var(--dorado);
       cursor: pointer;
       transition: all 0.2s;
+      margin-bottom: 1.5rem;
     }
-    .btn-pdf:hover { background: var(--dorado); color: var(--negro); }
+    .btn-brochure-prop:hover { background: rgba(201,168,76,0.08); border-color: var(--dorado); }
+    .btn-brochure-prop svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 
-    /* Estilos de impresión para PDF */
-    @media print {
-      nav, .modal-galeria, .ficha-contacto, .prop-acciones,
-      .galeria-miniaturas, footer { display: none !important; }
-      body { background: white !important; color: #111 !important; }
-      .detalle-layout { grid-template-columns: 1fr !important; }
-      .galeria-principal { height: 300px !important; }
-      #detalleDescripcion { color: #333 !important; }
-      .detalle-spec { border: 1px solid #ddd !important; }
-      .detalle-spec-valor { color: #111 !important; }
-      .detalle-spec-label { color: #555 !important; }
-      .breadcrumb, .card-badge { display: none; }
-      h1 { color: #111 !important; font-size: 2rem !important; }
-      .print-header {
-        display: flex !important;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 2px solid #c9a84c;
-      }
+    /* ── FORMULARIO SIDEBAR ──────────────────────── */
+    .prop-form-box {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1.5rem;
     }
-    .print-header { display: none; }
+    .prop-form-title {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dorado);
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+    }
+
+    /* ── GALERÍA ─────────────────────────────────── */
+    .galeria-principal {
+      position: relative;
+      height: 520px;
+      overflow: hidden;
+      background: var(--negro-3);
+    }
+    .galeria-principal img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .galeria-miniaturas {
+      display: flex;
+      gap: 0.4rem;
+      margin-top: 0.4rem;
+      overflow-x: auto;
+      padding-bottom: 0.4rem;
+    }
+    .galeria-miniatura {
+      width: 80px;
+      height: 60px;
+      flex-shrink: 0;
+      cursor: pointer;
+      border: 2px solid transparent;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .galeria-miniatura.activa { border-color: var(--dorado); }
+    .galeria-miniatura img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ── MODAL GALERÍA ───────────────────────────── */
+    .modal-galeria {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.97);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-galeria.abierto { display: flex; }
+    .modal-galeria img { max-width: 92vw; max-height: 88vh; object-fit: contain; }
+    .modal-cerrar {
+      position: absolute; top: 1.5rem; right: 1.5rem;
+      background: none; border: none; color: var(--blanco);
+      font-size: 2rem; cursor: pointer;
+    }
+    .modal-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(255,255,255,0.08); border: none; color: var(--blanco);
+      font-size: 2rem; cursor: pointer; padding: 1rem; transition: all 0.2s;
+    }
+    .modal-nav:hover { background: rgba(201,168,76,0.25); }
+    .modal-prev { left: 1rem; }
+    .modal-next { right: 1rem; }
+
+    /* ── PRINT ───────────────────────────────────── */
+    @media print {
+      nav, .modal-galeria, .prop-form-box, .btn-consultar-wsp,
+      .btn-compartir-wsp, .btn-brochure-prop,
+      .galeria-miniaturas, footer, #cur { display: none !important; }
+      body { background: white !important; color: #111 !important; }
+      .prop-layout { grid-template-columns: 1fr !important; }
+      .galeria-principal { height: 280px !important; }
+      .prop-titulo, .prop-precio { color: #111 !important; }
+      .prop-spec-val { color: #111 !important; }
+      .prop-spec-lbl, .prop-ubicacion, .prop-desc { color: #444 !important; }
+      .prop-spec { border-color: #ddd !important; }
+      .prop-specs { border-color: #ddd !important; }
+    }
   </style>
 </head>
 <body>
@@ -188,9 +395,9 @@
   <!-- CONTENIDO PROPIEDAD -->
   <div id="contenidoPropiedad" style="display:none;">
 
-    <!-- GALERÍA -->
+    <!-- GALERÍA FULL WIDTH -->
     <div style="padding-top:5rem; background:var(--negro);">
-      <div class="contenedor">
+      <div style="max-width:1280px; margin:0 auto; padding:0 2rem;">
         <div class="galeria-principal" id="galeriaPrincipal">
           <div style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--negro-3);color:var(--gris);font-size:3rem;">🏠</div>
         </div>
@@ -198,81 +405,113 @@
       </div>
     </div>
 
-    <!-- DETALLE -->
-    <section class="seccion">
-      <div class="contenedor">
-        <p class="breadcrumb" style="margin-bottom:2rem;">
-          <a href="index.html" style="color:var(--dorado)">Inicio</a> /
-          <a href="propiedades.html" style="color:var(--dorado)">Propiedades</a> /
-          <span id="breadcrumbTitulo">—</span>
+    <!-- LAYOUT PRINCIPAL -->
+    <div class="prop-layout">
+
+      <!-- COLUMNA IZQUIERDA -->
+      <div>
+        <!-- Tags tipo + operación -->
+        <div class="prop-tags" id="propTags"></div>
+
+        <!-- Título -->
+        <h1 class="prop-titulo" id="detalleTitulo"></h1>
+        <p class="prop-ubicacion" id="detalleUbicacion">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          —
         </p>
-        <div class="detalle-layout">
-          <!-- COLUMNA PRINCIPAL -->
-          <div>
-            <div style="display:flex; gap:0.8rem; margin-bottom:1rem;">
-              <span class="card-badge" id="detalleBadgeOp" style="position:static; display:inline-block;"></span>
-              <span style="font-size:0.7rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--dorado);align-self:center;" id="detalleTipo"></span>
-            </div>
-            <h1 id="detalleTitulo" style="margin-bottom:0.5rem;"></h1>
-            <p id="detalleUbicacion" style="color:var(--gris-claro);margin-bottom:2rem;font-size:0.9rem;">📍 —</p>
 
-            <div class="detalle-specs" id="detalleSpecs"></div>
+        <!-- Specs -->
+        <div class="prop-specs" id="detalleSpecs"></div>
 
-            <h3 style="font-weight:300; margin-bottom:1rem;">Descripción</h3>
-            <div id="detalleDescripcion" style="color:var(--gris-claro); font-size:0.9rem; line-height:1.9; margin-bottom:2rem; white-space:pre-wrap;"></div>
+        <!-- Descripción -->
+        <div class="prop-section-title">Descripción</div>
+        <div class="prop-desc" id="detalleDescripcion"></div>
 
-            <!-- MAPA -->
-            <div id="bloqueUbicacion" style="display:none; margin-top:2rem;">
-              <h3 style="font-weight:300; margin-bottom:1rem;">Ubicación</h3>
-              <div id="mapaPropiedad" style="height:380px; border:1px solid var(--gris-oscuro); overflow:hidden;"></div>
-              <p id="coordsLink" style="font-size:0.72rem; color:var(--gris-claro); margin-top:0.5rem;"></p>
-            </div>
-          </div>
+        <!-- Amenidades -->
+        <div id="bloqueAmenidades" style="display:none;">
+          <div class="prop-section-title">Características</div>
+          <div class="prop-amenidades" id="detalleAmenidades"></div>
+        </div>
 
-          <!-- SIDEBAR -->
-          <div class="detalle-sidebar">
-            <div class="ficha-contacto">
-              <div class="ficha-precio" id="fichaPrecio"></div>
-              <!-- Botones compartir -->
-              <div class="prop-acciones">
-                <a id="btnWsp" href="#" target="_blank" class="btn-wsp">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.964-1.405A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 01-4.031-1.09l-.29-.172-2.947.835.797-2.877-.189-.295A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
-                  WhatsApp
-                </a>
-                <button onclick="window.print()" class="btn-pdf">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/></svg>
-                  PDF
-                </button>
-              </div>
-              <div id="alertaFicha"></div>
-              <form id="formFicha">
-                <div class="form-grupo" style="margin-bottom:1rem;">
-                  <label>Tu nombre</label>
-                  <input type="text" id="fNombre" placeholder="Nombre completo" required />
-                </div>
-                <div class="form-grupo" style="margin-bottom:1rem;">
-                  <label>Email</label>
-                  <input type="email" id="fEmail" placeholder="tu@email.com" required />
-                </div>
-                <div class="form-grupo" style="margin-bottom:1rem;">
-                  <label>Teléfono</label>
-                  <input type="tel" id="fTelefono" placeholder="+54 9..." />
-                </div>
-                <div class="form-grupo" style="margin-bottom:1.5rem;">
-                  <label>Mensaje</label>
-                  <textarea id="fMensaje" rows="3" placeholder="Quisiera más información sobre esta propiedad..."></textarea>
-                </div>
-                <button type="submit" class="btn btn-dorado" style="width:100%;">Consultar</button>
-              </form>
+        <!-- Video YouTube -->
+        <div id="bloqueVideo" style="display:none;">
+          <div class="prop-section-title">Video</div>
+          <div class="prop-video">
+            <div class="prop-video-wrap">
+              <iframe id="propVideoIframe" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
             </div>
           </div>
         </div>
-      </div>
-    </section>
 
+        <!-- Mapa -->
+        <div id="bloqueUbicacion" style="display:none;">
+          <div class="prop-section-title">Ubicación</div>
+          <div class="prop-mapa">
+            <div id="mapaPropiedad"></div>
+            <a id="coordsLink" href="#" target="_blank" class="prop-mapa-link">
+              📍 Ver en Google Maps
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIDEBAR DERECHO -->
+      <div class="prop-sidebar">
+
+        <!-- Precio -->
+        <div class="prop-precio-box">
+          <div class="prop-precio" id="fichaPrecio"></div>
+          <div class="prop-precio-tipo" id="fichaTipo"></div>
+        </div>
+
+        <!-- Botón WhatsApp (contactar a Sur Patagonia) -->
+        <a id="btnWspContacto" href="https://wa.me/5492944400000" target="_blank" class="btn-consultar-wsp">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.964-1.405A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 01-4.031-1.09l-.29-.172-2.947.835.797-2.877-.189-.295A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+          Consultar por WhatsApp
+        </a>
+
+        <!-- Compartir por WhatsApp -->
+        <a id="btnWspCompartir" href="#" target="_blank" class="btn-compartir-wsp">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+          Compartir propiedad
+        </a>
+
+        <!-- Descargar PDF -->
+        <button onclick="window.print()" class="btn-brochure-prop">
+          <svg viewBox="0 0 24 24"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg>
+          Descargar PDF
+        </button>
+
+        <!-- Formulario -->
+        <div class="prop-form-box">
+          <div class="prop-form-title">Consultar propiedad</div>
+          <div id="alertaFicha"></div>
+          <form id="formFicha">
+            <div class="form-grupo" style="margin-bottom:0.9rem;">
+              <label>Nombre</label>
+              <input type="text" id="fNombre" placeholder="Tu nombre completo" required />
+            </div>
+            <div class="form-grupo" style="margin-bottom:0.9rem;">
+              <label>Email</label>
+              <input type="email" id="fEmail" placeholder="tu@email.com" required />
+            </div>
+            <div class="form-grupo" style="margin-bottom:0.9rem;">
+              <label>Teléfono</label>
+              <input type="tel" id="fTelefono" placeholder="+54 9..." />
+            </div>
+            <div class="form-grupo" style="margin-bottom:1.2rem;">
+              <label>Mensaje</label>
+              <textarea id="fMensaje" rows="3" placeholder="¿En qué te puedo ayudar?"></textarea>
+            </div>
+            <button type="submit" class="btn btn-dorado" style="width:100%;">Enviar consulta</button>
+          </form>
+        </div>
+
+      </div>
+    </div>
   </div>
 
-  <!-- PROPIEDAD NO ENCONTRADA -->
+  <!-- NO ENCONTRADA -->
   <div id="noEncontrado" style="display:none; padding:10rem 0; text-align:center;">
     <h2 style="color:var(--gris-claro);">Propiedad no encontrada</h2>
     <a href="propiedades.html" class="btn btn-dorado" style="margin-top:2rem;">Ver todas las propiedades</a>
@@ -298,6 +537,26 @@
 
   <script type="module">
     import { supabase } from './js/config.js'
+
+    const AMENIDADES_LABELS = {
+      cochera:          { label: 'Cochera',        svg: '<rect x="1" y="3" width="15" height="13"/><path d="M16 8l5 5v3h-5V8z"/>' },
+      pileta:           { label: 'Pileta',          svg: '<path d="M2 12c1-2 3-3 5-3s4 1 5 3 3 3 5 3M2 17c1-2 3-3 5-3s4 1 5 3 3 3 5 3M6 6l3-3M15 6l3-3"/>' },
+      parrilla:         { label: 'Parrilla',        svg: '<path d="M4 8h16M4 16h16M8 4v16M16 4v16"/>' },
+      jardin:           { label: 'Jardín',          svg: '<path d="M12 22V12M12 12C12 7 6 3 3 6c3 0 6 3 9 6M12 12c0-5 6-9 9-6-3 0-6 3-9 6"/>' },
+      terraza:          { label: 'Terraza',         svg: '<rect x="2" y="14" width="20" height="2"/><path d="M6 14V4M18 14V4M2 8h20"/>' },
+      gimnasio:         { label: 'Gimnasio',        svg: '<path d="M6 4v6M18 4v6M4 7h4M16 7h4M6 20v-6M18 20v-6M4 17h4M16 17h4M11 11h2v2h-2z"/>' },
+      porteria:         { label: 'Portería 24hs',   svg: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6"/>' },
+      laundry:          { label: 'Laundry',         svg: '<rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="12" cy="12" r="5"/><path d="M9 9h1"/>' },
+      calefaccion:      { label: 'Calefacción',     svg: '<path d="M12 2v6M12 22v-6M4.93 4.93l4.24 4.24M18.36 18.36l-4.24-4.24M2 12h6M22 12h-6M4.93 19.07l4.24-4.24M18.36 5.64l-4.24 4.24"/>' },
+      aire:             { label: 'Aire acond.',     svg: '<path d="M4 6h16M4 10h16M4 14h10M16 14l2 2 2-2M18 14v6"/>' },
+      seguridad:        { label: 'Seguridad',       svg: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
+      vista_lago:       { label: 'Vista al lago',   svg: '<path d="M2 12c2-4 6-6 10-6s8 2 10 6M2 12c2 4 6 6 10 6s8-2 10-6"/>' },
+      vista_montana:    { label: 'Vista montaña',   svg: '<path d="M8 20l4-8 4 8M2 20l5-10 5 10M12 20l5-10 5 10"/>' },
+      baulera:          { label: 'Baulera',         svg: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>' },
+      quincho:          { label: 'Quincho / SUM',   svg: '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>' },
+      ascensor:         { label: 'Ascensor',        svg: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M9 8l3-3 3 3M9 16l3 3 3-3"/>' },
+      apto_mascotas:    { label: 'Apto mascotas',   svg: '<path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.45 2.344-2M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.96-1.45-2.344-2"/><path d="M8 14v.5M16 14v.5M11.25 16.25h1.5L12 17l-.75-.75z"/><path d="M4.42 11.247A13.152 13.152 0 004 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0112 5c.78 0 1.5.108 2.161.306"/>' },
+    }
 
     document.getElementById('menuBtn').addEventListener('click', () => {
       document.getElementById('navLinks').classList.toggle('abierto')
@@ -339,14 +598,12 @@
     function renderPropiedad(p) {
       imagenesActuales = p.imagenes || []
 
-      // Galería principal
+      // Galería
       const galPrincipal = document.getElementById('galeriaPrincipal')
       if (imagenesActuales.length > 0) {
         galPrincipal.innerHTML = `<img id="imgPrincipal" src="${imagenesActuales[0]}" alt="${p.titulo}" style="cursor:zoom-in;" />`
         document.getElementById('imgPrincipal').addEventListener('click', () => abrirModal(0))
       }
-
-      // Miniaturas
       const galMin = document.getElementById('galeriaMiniaturas')
       galMin.innerHTML = imagenesActuales.map((url, i) => `
         <div class="galeria-miniatura${i === 0 ? ' activa' : ''}" data-idx="${i}">
@@ -361,40 +618,78 @@
         })
       })
 
-      // Badge operación
-      const badgeOp = document.getElementById('detalleBadgeOp')
-      badgeOp.textContent = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
-      badgeOp.className = `card-badge badge-${p.operacion}`
+      // Tags
+      const opLabel = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
+      const tags = document.getElementById('propTags')
+      tags.innerHTML = `
+        <span class="prop-tag filled">${opLabel}</span>
+        ${p.tipo ? `<span class="prop-tag-sep">·</span><span class="prop-tag">${p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)}</span>` : ''}
+        ${p.ciudad ? `<span class="prop-tag-sep">·</span><span class="prop-tag">${p.ciudad}</span>` : ''}
+        ${p.provincia ? `<span class="prop-tag-sep">·</span><span class="prop-tag">${p.provincia}</span>` : ''}`
 
-      document.getElementById('detalleTipo').textContent = p.tipo || ''
+      // Título y ubicación
       document.getElementById('detalleTitulo').textContent = p.titulo
-      document.getElementById('breadcrumbTitulo').textContent = p.titulo
-      document.getElementById('detalleUbicacion').textContent = `📍 ${[p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')}`
-      document.getElementById('detalleDescripcion').textContent = p.descripcion || 'Sin descripción.'
+      const ubicEl = document.getElementById('detalleUbicacion')
+      const ubicStr = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
+      ubicEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ${ubicStr || '—'}`
+
+      // Specs
+      const specs = []
+      if (p.dormitorios) specs.push({ val: p.dormitorios, label: 'Dorm.' })
+      if (p.banos) specs.push({ val: p.banos, label: 'Baños' })
+      if (p.superficie_cubierta) specs.push({ val: p.superficie_cubierta + ' m²', label: 'Cub.' })
+      if (p.superficie_total) specs.push({ val: p.superficie_total + ' m²', label: 'Total' })
+      if (p.antiguedad) specs.push({ val: p.antiguedad, label: 'Antigüedad' })
+      document.getElementById('detalleSpecs').innerHTML = specs.map(s => `
+        <div class="prop-spec">
+          <span class="prop-spec-val">${s.val}</span>
+          <span class="prop-spec-lbl">${s.label}</span>
+        </div>`).join('')
+
+      // Descripción
+      document.getElementById('detalleDescripcion').textContent = p.descripcion || ''
+
+      // Amenidades
+      const amen = Array.isArray(p.amenidades) ? p.amenidades : []
+      if (amen.length > 0) {
+        document.getElementById('bloqueAmenidades').style.display = 'block'
+        document.getElementById('detalleAmenidades').innerHTML = amen.map(key => {
+          const info = AMENIDADES_LABELS[key] || { label: key, svg: '<circle cx="12" cy="12" r="2"/>' }
+          return `<div class="prop-amenidad">
+            <svg viewBox="0 0 24 24">${info.svg}</svg>
+            ${info.label}
+          </div>`
+        }).join('')
+      }
+
+      // Video YouTube
+      if (p.video_url) {
+        const match = p.video_url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+        const videoId = match ? match[1] : null
+        if (videoId) {
+          document.getElementById('bloqueVideo').style.display = 'block'
+          document.getElementById('propVideoIframe').src =
+            `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`
+        }
+      }
 
       // Precio
       const precio = p.precio
         ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
         : 'Consultar precio'
-      document.getElementById('fichaPrecio').innerHTML =
-        `${precio}<br><small>${p.operacion !== 'venta' ? '/ mes' : ''}</small>`
+      document.getElementById('fichaPrecio').textContent = precio
+      document.getElementById('fichaTipo').textContent =
+        p.operacion !== 'venta' ? '/ mes' : p.condicion ? p.condicion : ''
 
-      // Specs
-      const specs = []
-      if (p.dormitorios) specs.push({ val: p.dormitorios, label: 'Dormitorios' })
-      if (p.banos) specs.push({ val: p.banos, label: 'Baños' })
-      if (p.superficie_cubierta) specs.push({ val: p.superficie_cubierta + ' m²', label: 'Sup. cubierta' })
-      if (p.superficie_total) specs.push({ val: p.superficie_total + ' m²', label: 'Sup. total' })
-      document.getElementById('detalleSpecs').innerHTML = specs.map(s => `
-        <div class="detalle-spec">
-          <span class="detalle-spec-valor">${s.val}</span>
-          <span class="detalle-spec-label">${s.label}</span>
-        </div>`).join('')
+      // Botón WhatsApp CONTACTO (a nosotros)
+      const msgContacto = encodeURIComponent(`Hola, me interesa la propiedad "${p.titulo}".\n${window.location.href}`)
+      document.getElementById('btnWspContacto').href = `https://wa.me/5492944400000?text=${msgContacto}`
 
-      // Mensaje predeterminado
-      document.getElementById('fMensaje').value = `Hola, quisiera más información sobre la propiedad "${p.titulo}".`
+      // Botón WhatsApp COMPARTIR
+      const msgCompartir = encodeURIComponent(`Mirá esta propiedad en Sur Patagonia:\n*${p.titulo}*\n${window.location.href}`)
+      document.getElementById('btnWspCompartir').href = `https://wa.me/?text=${msgCompartir}`
 
-      // Mapa de ubicación
+      // Mapa
       if (p.latitud && p.longitud) {
         document.getElementById('bloqueUbicacion').style.display = 'block'
         const mapa = L.map('mapaPropiedad').setView([p.latitud, p.longitud], 15)
@@ -403,18 +698,15 @@
         }).addTo(mapa)
         L.marker([p.latitud, p.longitud])
           .addTo(mapa)
-          .bindPopup(`<b>${p.titulo}</b><br>${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}`)
+          .bindPopup(`<b>${p.titulo}</b><br>${ubicStr}`)
           .openPopup()
-        document.getElementById('coordsLink').innerHTML =
-          `<a href="https://www.google.com/maps?q=${p.latitud},${p.longitud}" target="_blank" style="color:var(--dorado);">📍 Ver en Google Maps</a>`
+        const coordsLink = document.getElementById('coordsLink')
+        coordsLink.href = `https://www.google.com/maps?q=${p.latitud},${p.longitud}`
+        coordsLink.textContent = '📍 Ver en Google Maps'
       }
 
-      // Botón WhatsApp — comparte link de la propiedad
-      const urlPropiedad = window.location.href
-      const msgWsp = encodeURIComponent(`Mirá esta propiedad en Sur Patagonia:\n*${p.titulo}*\n${urlPropiedad}`)
-      document.getElementById('btnWsp').href = `https://wa.me/?text=${msgWsp}`
-
-      // Formulario contacto
+      // Formulario
+      document.getElementById('fMensaje').value = `Hola, me interesa la propiedad "${p.titulo}".`
       document.getElementById('formFicha').addEventListener('submit', async (e) => {
         e.preventDefault()
         const btn = e.target.querySelector('button')
@@ -434,7 +726,7 @@
           alerta.innerHTML = `<div class="alerta alerta-exito">¡Consulta enviada! Te contactamos pronto.</div>`
           e.target.reset()
         }
-        btn.textContent = 'Consultar'
+        btn.textContent = 'Enviar consulta'
         btn.disabled = false
       })
     }
@@ -445,21 +737,17 @@
       document.getElementById('modalImg').src = imagenesActuales[idx]
       document.getElementById('modalGaleria').classList.add('abierto')
     }
-
     document.getElementById('modalCerrar').addEventListener('click', () => {
       document.getElementById('modalGaleria').classList.remove('abierto')
     })
-
     document.getElementById('modalPrev').addEventListener('click', () => {
       idxActual = (idxActual - 1 + imagenesActuales.length) % imagenesActuales.length
       document.getElementById('modalImg').src = imagenesActuales[idxActual]
     })
-
     document.getElementById('modalNext').addEventListener('click', () => {
       idxActual = (idxActual + 1) % imagenesActuales.length
       document.getElementById('modalImg').src = imagenesActuales[idxActual]
     })
-
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') document.getElementById('modalGaleria').classList.remove('abierto')
       if (e.key === 'ArrowLeft') document.getElementById('modalPrev').click()
