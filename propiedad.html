@@ -4,789 +4,819 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Propiedad — Sur Patagonia</title>
-  <link rel="stylesheet" href="css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    body { cursor: none; }
-    #cur { position:fixed; z-index:9999; pointer-events:none; width:7px; height:7px; border-radius:50%; background:var(--dorado); transform:translate(-50%,-50%); transition:width .3s,height .3s,background .3s,border .3s; will-change:transform; }
-    #cur.big { width:40px; height:40px; background:transparent; border:1px solid rgba(201,168,76,0.6); }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:      #f2f0ed;
+      --blanco:  #ffffff;
+      --negro:   #1a1714;
+      --negro2:  #2e2b28;
+      --gris:    #6a6560;
+      --gris2:   #9a9590;
+      --borde:   #dedad5;
+      --gold:    #c9a84c;
+      --gold2:   #e8c97a;
+    }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--negro);
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 300;
+      overflow-x: hidden;
+      cursor: none;
+    }
+    img { display:block; max-width:100%; }
+    a { text-decoration:none; color:inherit; }
+
+    /* ── CURSOR ─────────────────────────── */
+    #cur {
+      position: fixed; z-index: 9999; pointer-events: none;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--negro); transform: translate(-50%,-50%);
+      transition: width .3s, height .3s, background .3s, border .3s;
+      will-change: transform;
+    }
+    #cur.big { width: 38px; height: 38px; background: transparent; border: 1px solid rgba(26,23,20,0.4); }
     a,button,[onclick],select,input,label,textarea { cursor: none; }
 
-    /* ── FONDO CLARO ─────────────────────────────── */
-    #contenidoPropiedad {
-      background: #f0eeeb;
+    /* ── NAV — VERSIÓN CLARA ─────────────── */
+    #nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 3rem;
+      background: rgba(242,240,237,0);
+      transition: background 0.4s, box-shadow 0.4s;
     }
-    #contenidoPropiedad .prop-layout * {
-      color: inherit;
+    #nav.scrolled {
+      background: rgba(242,240,237,0.97);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 1px 0 var(--borde);
+    }
+    .nav-logo img { height: 42px; display:block; }
+    .nav-links {
+      display: flex; align-items: center; gap: 0.2rem;
+    }
+    .nav-link {
+      font-size: 0.68rem; font-weight: 500; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(26,23,20,0.55);
+      padding: 0.5rem 1rem; transition: color 0.2s;
+    }
+    .nav-link:hover, .nav-link.active { color: var(--negro); }
+    .nav-sep { width:1px; height:14px; background: var(--borde); margin: 0 0.5rem; }
+    .nav-cta {
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--bg);
+      background: var(--negro); padding: 0.55rem 1.4rem;
+      margin-left: 0.5rem; transition: background 0.2s;
+    }
+    .nav-cta:hover { background: var(--negro2); }
+    .nav-burger {
+      display: none; flex-direction: column; gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 4px;
+    }
+    .nav-burger span { display:block; width:22px; height:1px; background:var(--negro); transition:all 0.3s; }
+    @media (max-width: 768px) {
+      #nav { padding: 1rem 1.5rem; }
+      .nav-links { display:none; position:fixed; inset:0; background:rgba(242,240,237,0.98);
+        flex-direction:column; align-items:center; justify-content:center; gap:2rem; z-index:99; }
+      .nav-links.open { display:flex; }
+      .nav-burger { display:flex; z-index:101; }
+      .nav-sep { display:none; }
     }
 
-    /* ── LAYOUT ─────────────────────────────────── */
-    .prop-layout {
+    /* ── CARGANDO ────────────────────────── */
+    #estadoCargando {
+      padding: 12rem 0; text-align: center;
+    }
+    .spinner-claro {
+      width: 32px; height: 32px; border: 2px solid var(--borde);
+      border-top-color: var(--gold); border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── GALERÍA ─────────────────────────── */
+    .galeria-wrap {
+      padding-top: 70px;
+      background: #111;
+    }
+    .galeria-principal {
+      position: relative;
+      height: 540px;
+      overflow: hidden;
+      background: #111;
+    }
+    .galeria-principal img {
+      width: 100%; height: 100%;
+      object-fit: cover; display:block;
+      cursor: zoom-in;
+    }
+    .galeria-contador {
+      position: absolute; bottom: 1rem; right: 1rem;
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+      color: #fff; font-size: 0.7rem; letter-spacing: 0.1em;
+      padding: 0.3rem 0.75rem; border-radius: 2rem;
+    }
+    .galeria-miniaturas {
+      display: flex; gap: 3px; background: #111;
+      overflow-x: auto; padding: 3px 0 0;
+    }
+    .galeria-miniatura {
+      width: 100px; height: 68px; flex-shrink: 0;
+      overflow: hidden; cursor: pointer; opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    .galeria-miniatura.activa, .galeria-miniatura:hover { opacity: 1; }
+    .galeria-miniatura img { width:100%; height:100%; object-fit:cover; }
+
+    /* ── LAYOUT PRINCIPAL ────────────────── */
+    .prop-wrap {
+      max-width: 1200px; margin: 0 auto;
+      padding: 3.5rem 2rem;
       display: grid;
       grid-template-columns: 1fr 340px;
-      gap: 3rem;
+      gap: 3.5rem;
       align-items: start;
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 3rem 2rem;
-      background: #f0eeeb;
-      color: #1a1714;
     }
     @media (max-width: 900px) {
-      .prop-layout { grid-template-columns: 1fr; padding: 1.5rem; }
+      .prop-wrap { grid-template-columns: 1fr; padding: 2rem 1.5rem; }
       .prop-sidebar { position: static !important; }
     }
 
-    /* ── BREADCRUMB ──────────────────────────────── */
-    .prop-tags {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
+    /* ── BREADCRUMB ──────────────────────── */
+    .prop-breadcrumb {
+      font-size: 0.62rem; font-weight: 500;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--gris2); margin-bottom: 1.2rem;
     }
-    .prop-tag {
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      padding: 0.25rem 0.7rem;
-      border: 1px solid rgba(201,168,76,0.4);
-      color: var(--dorado);
-    }
-    .prop-tag.filled { background: var(--dorado); color: var(--negro); border-color: var(--dorado); }
-    .prop-tag-sep { color: var(--gris); font-size: 0.7rem; }
+    .prop-breadcrumb span { color: var(--gold); }
 
-    /* ── TÍTULO ──────────────────────────────────── */
+    /* ── TÍTULO ──────────────────────────── */
     .prop-titulo {
       font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(1.6rem, 3vw, 2.6rem);
-      font-weight: 300;
-      line-height: 1.15;
-      color: #1a1714;
-      margin-bottom: 0.5rem;
-      letter-spacing: 0.01em;
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 400; line-height: 1.15;
+      color: var(--negro); margin-bottom: 0.5rem;
     }
     .prop-ubicacion {
-      font-size: 0.8rem;
-      color: #6a6560;
-      margin-bottom: 1.8rem;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
+      font-size: 0.78rem; color: var(--gris);
+      margin-bottom: 1.5rem;
+      display: flex; align-items: center; gap: 0.4rem;
     }
 
-    /* ── SPECS STRIP ─────────────────────────────── */
+    /* ── PRECIO EN COLUMNA PRINCIPAL ─────── */
+    .prop-precio-main {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 400; color: var(--negro);
+      margin-bottom: 0.3rem; line-height: 1;
+    }
+    .prop-precio-sub {
+      font-size: 0.72rem; color: var(--gris);
+      letter-spacing: 0.08em; margin-bottom: 2rem;
+    }
+
+    /* ── SPECS ───────────────────────────── */
     .prop-specs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0;
-      border: 1px solid #d0cdc8;
-      margin-bottom: 2rem;
-      background: #fff;
+      display: flex; flex-wrap: wrap;
+      gap: 2rem; margin-bottom: 2.5rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--borde);
     }
-    .prop-spec {
-      padding: 0.9rem 1.3rem;
-      border-right: 1px solid #d0cdc8;
-      text-align: center;
-      min-width: 80px;
-    }
-    .prop-spec:last-child { border-right: none; }
+    .prop-spec { text-align: center; min-width: 48px; }
     .prop-spec-val {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 1.4rem;
-      font-weight: 300;
-      color: #1a1714;
-      display: block;
-      line-height: 1;
-      margin-bottom: 0.3rem;
+      font-size: 1.8rem; font-weight: 400;
+      color: var(--negro); line-height: 1;
+      display: block; margin-bottom: 0.3rem;
     }
     .prop-spec-lbl {
-      font-size: 0.58rem;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #6a6560;
+      font-size: 0.58rem; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--gris2);
     }
 
-    /* ── SECCIÓN HEADING ─────────────────────────── */
-    .prop-section-title {
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: var(--dorado);
-      margin-bottom: 1rem;
-      padding-bottom: 0.8rem;
-      border-bottom: 1px solid #d0cdc8;
-      display: flex;
-      align-items: center;
-      gap: 0.8rem;
-    }
-    .prop-section-title::before {
-      content: '';
-      display: block;
-      width: 20px;
-      height: 1px;
-      background: var(--dorado);
-    }
-
-    /* ── DESCRIPCIÓN ─────────────────────────────── */
-    .prop-desc {
-      font-size: 0.88rem;
-      color: #4a4540;
-      line-height: 1.95;
-      margin-bottom: 2.5rem;
-      white-space: pre-wrap;
-    }
-
-    /* ── AMENIDADES ──────────────────────────────── */
-    .prop-amenidades {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 2.5rem;
-    }
-    .prop-amenidad {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
-      padding: 0.45rem 0.9rem;
-      border: 1px solid #d0cdc8;
-      background: #fff;
-      font-size: 0.68rem;
-      color: #4a4540;
-      letter-spacing: 0.05em;
-      transition: border-color 0.2s, color 0.2s;
-    }
-    .prop-amenidad:hover { border-color: var(--dorado); color: #1a1714; }
-    .prop-amenidad svg { width: 12px; height: 12px; stroke: var(--dorado); fill: none; stroke-width: 1.5; flex-shrink: 0; }
-
-    /* ── VIDEO ───────────────────────────────────── */
-    .prop-video {
-      margin-bottom: 2.5rem;
-    }
-    .prop-video-wrap {
-      position: relative;
-      aspect-ratio: 16/9;
-      overflow: hidden;
-      background: var(--negro-3);
-    }
-    .prop-video-wrap iframe {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-
-    /* ── MAPA ────────────────────────────────────── */
-    .prop-mapa {
-      margin-bottom: 2.5rem;
-    }
-    #mapaPropiedad {
-      height: 360px;
-      border: 1px solid var(--gris-oscuro);
-    }
-    .prop-mapa-link {
-      font-size: 0.72rem;
-      color: var(--dorado);
-      margin-top: 0.5rem;
+    /* ── SECCIÓN TÍTULO ──────────────────── */
+    .prop-sh {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.68rem; font-weight: 600;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--negro); margin-bottom: 1rem;
+      padding-bottom: 0.7rem;
+      border-bottom: 2px solid var(--negro);
       display: inline-block;
     }
 
-    /* ── SIDEBAR ─────────────────────────────────── */
-    .prop-sidebar {
-      position: sticky;
-      top: 6rem;
+    /* ── DESCRIPCIÓN ─────────────────────── */
+    .prop-desc {
+      font-size: 0.88rem; color: var(--gris);
+      line-height: 2; margin-bottom: 3rem;
+      white-space: pre-wrap;
     }
-    .prop-precio-box {
-      background: #1a1714;
-      border: 1px solid #1a1714;
-      padding: 1.8rem;
+
+    /* ── AMENIDADES ──────────────────────── */
+    .prop-amenidades {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px,1fr));
+      gap: 0.8rem; margin-bottom: 3rem;
+    }
+    .prop-amenidad {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.6rem; padding: 1rem 0.5rem;
+      background: var(--blanco);
+      border: 1px solid var(--borde);
+      text-align: center;
+      font-size: 0.65rem; color: var(--gris);
+      letter-spacing: 0.05em;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .prop-amenidad:hover { border-color: var(--gold); color: var(--negro); }
+    .prop-amenidad svg {
+      width: 22px; height: 22px;
+      stroke: var(--gold); fill: none; stroke-width: 1.5;
+      flex-shrink: 0;
+    }
+
+    /* ── VIDEO ───────────────────────────── */
+    .prop-video { margin-bottom: 3rem; }
+    .prop-video-wrap {
+      position: relative; aspect-ratio: 16/9;
+      overflow: hidden; background: #111;
+    }
+    .prop-video-wrap iframe {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%; border: none;
+    }
+
+    /* ── MAPA ────────────────────────────── */
+    .prop-mapa { margin-bottom: 3rem; }
+    #mapaPropiedad { height: 380px; border: 1px solid var(--borde); }
+    .prop-mapa-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.72rem; color: var(--gold);
+      margin-top: 0.6rem;
+      border-bottom: 1px solid rgba(201,168,76,0.3);
+    }
+
+    /* ── SIDEBAR ─────────────────────────── */
+    .prop-sidebar { position: sticky; top: 5.5rem; }
+
+    /* Precio sidebar (repetido más compacto) */
+    .sidebar-precio {
+      background: var(--negro);
+      padding: 1.5rem;
       margin-bottom: 1rem;
     }
-    .prop-precio {
+    .sidebar-precio-num {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 2rem;
-      color: var(--dorado);
-      line-height: 1;
-      margin-bottom: 0.3rem;
+      font-size: 1.8rem; color: var(--gold);
+      line-height: 1; margin-bottom: 0.2rem;
     }
-    .prop-precio-tipo {
-      font-size: 0.68rem;
-      color: rgba(240,237,232,0.55);
+    .sidebar-precio-sub {
+      font-size: 0.65rem; color: rgba(240,237,232,0.5);
       letter-spacing: 0.1em;
     }
 
-    /* ── BOTONES SIDEBAR ─────────────────────────── */
-    .btn-consultar-wsp {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      width: 100%;
-      padding: 0.95rem;
-      background: #25D366;
-      color: #fff;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      text-decoration: none;
-      border: none;
-      cursor: pointer;
-      transition: opacity 0.2s;
-      margin-bottom: 0.5rem;
-    }
-    .btn-consultar-wsp:hover { opacity: 0.88; }
-
-    .btn-compartir-wsp {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      width: 100%;
-      padding: 0.75rem;
-      background: transparent;
-      color: var(--gris-claro);
-      font-family: 'Montserrat', sans-serif;
-      font-size: 0.65rem;
-      font-weight: 500;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      text-decoration: none;
-      border: 1px solid var(--gris-oscuro);
-      cursor: pointer;
-      transition: all 0.2s;
+    /* Asesor card */
+    .asesor-card {
+      background: var(--blanco);
+      border: 1px solid var(--borde);
+      padding: 1.5rem;
+      text-align: center;
       margin-bottom: 1rem;
     }
-    .btn-compartir-wsp:hover { border-color: var(--dorado); color: var(--dorado); }
-
-    .btn-brochure-prop {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid rgba(201,168,76,0.4);
-      background: transparent;
-      color: var(--dorado);
-      font-family: 'Montserrat', sans-serif;
-      font-size: 0.65rem;
-      font-weight: 500;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-bottom: 1.5rem;
+    .asesor-foto {
+      width: 72px; height: 72px; border-radius: 50%;
+      object-fit: cover; margin: 0 auto 0.8rem;
+      border: 2px solid var(--borde);
     }
-    .btn-brochure-prop:hover { background: rgba(201,168,76,0.08); border-color: var(--dorado); }
-    .btn-brochure-prop svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    .asesor-foto-placeholder {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--bg); border: 2px solid var(--borde);
+      margin: 0 auto 0.8rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .asesor-foto-placeholder svg { width:32px; height:32px; stroke:var(--gris2); fill:none; stroke-width:1.5; }
+    .asesor-nombre {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem; font-weight: 400;
+      color: var(--negro); margin-bottom: 0.2rem;
+    }
+    .asesor-cargo {
+      font-size: 0.62rem; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--gris2);
+      margin-bottom: 1.2rem;
+    }
+    .btn-wsp-asesor {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.55rem; width: 100%; padding: 0.85rem;
+      background: #25D366; color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      border: none; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .btn-wsp-asesor:hover { opacity: 0.88; }
 
-    /* ── FORMULARIO SIDEBAR ──────────────────────── */
-    .prop-form-box {
-      background: #fff;
-      border: 1px solid #d0cdc8;
+    /* Compartir + PDF */
+    .sidebar-acciones {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.5rem; margin-bottom: 1rem;
+    }
+    .btn-compartir, .btn-pdf-prop {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.4rem; padding: 0.7rem 0.5rem;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.62rem; font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      border: 1px solid var(--borde); background: var(--blanco);
+      color: var(--gris); text-decoration: none;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .btn-compartir:hover, .btn-pdf-prop:hover {
+      border-color: var(--gold); color: var(--negro);
+    }
+    .btn-compartir svg, .btn-pdf-prop svg {
+      width: 13px; height: 13px; stroke: currentColor;
+      fill: none; stroke-width: 1.8;
+    }
+
+    /* Formulario */
+    .form-card {
+      background: var(--blanco);
+      border: 1px solid var(--borde);
       padding: 1.5rem;
     }
-    .prop-form-title {
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--dorado);
-      margin-bottom: 1.2rem;
-      padding-bottom: 0.8rem;
-      border-bottom: 1px solid #d0cdc8;
+    .form-card-title {
+      font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--negro); margin-bottom: 1.2rem;
+      padding-bottom: 0.8rem; border-bottom: 1px solid var(--borde);
     }
-    .prop-form-box .form-grupo label { color: #6a6560; }
-    .prop-form-box input,
-    .prop-form-box textarea {
-      background: #f8f6f3;
-      border-color: #d0cdc8;
-      color: #1a1714;
+    .f-grupo { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.8rem; }
+    .f-grupo label {
+      font-size: 0.6rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--gris2);
     }
-    .prop-form-box input:focus,
-    .prop-form-box textarea:focus { border-color: var(--dorado); }
+    .f-grupo input, .f-grupo textarea {
+      background: var(--bg); border: 1px solid var(--borde);
+      color: var(--negro); padding: 0.65rem 0.8rem;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.82rem; font-weight: 300;
+      outline: none; transition: border-color 0.2s;
+      resize: vertical;
+    }
+    .f-grupo input::placeholder, .f-grupo textarea::placeholder { color: var(--gris2); }
+    .f-grupo input:focus, .f-grupo textarea:focus { border-color: var(--gold); }
+    .btn-enviar {
+      width: 100%; padding: 0.9rem;
+      background: var(--negro); color: var(--bg);
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      border: none; cursor: pointer;
+      transition: background 0.2s; margin-top: 0.5rem;
+    }
+    .btn-enviar:hover { background: var(--negro2); }
+    .alerta { padding: 0.7rem 0.8rem; font-size: 0.78rem; margin-bottom: 0.8rem; }
+    .alerta-ok { background: rgba(39,174,96,0.08); border-left: 3px solid #27ae60; color: #27ae60; }
+    .alerta-err { background: rgba(192,57,43,0.08); border-left: 3px solid #c0392b; color: #c0392b; }
 
-    /* ── GALERÍA ─────────────────────────────────── */
-    .galeria-principal {
-      position: relative;
-      height: 520px;
-      overflow: hidden;
-      background: var(--negro-3);
+    /* ── FOOTER ──────────────────────────── */
+    footer {
+      background: var(--negro); color: rgba(240,237,232,0.5);
+      padding: 2rem; text-align: center;
+      font-size: 0.72rem; border-top: 1px solid #2a2a2a;
     }
-    .galeria-principal img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .galeria-miniaturas {
-      display: flex;
-      gap: 0.4rem;
-      margin-top: 0.4rem;
-      overflow-x: auto;
-      padding-bottom: 0.4rem;
-    }
-    .galeria-miniatura {
-      width: 80px;
-      height: 60px;
-      flex-shrink: 0;
-      cursor: pointer;
-      border: 2px solid transparent;
-      overflow: hidden;
-      transition: border-color 0.2s;
-    }
-    .galeria-miniatura.activa { border-color: var(--dorado); }
-    .galeria-miniatura img { width: 100%; height: 100%; object-fit: cover; }
+    footer a { color: var(--gold); }
 
-    /* ── MODAL GALERÍA ───────────────────────────── */
+    /* ── MODAL GALERÍA ───────────────────── */
     .modal-galeria {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.97);
-      z-index: 999;
-      align-items: center;
-      justify-content: center;
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.97); z-index: 999;
+      align-items: center; justify-content: center;
     }
     .modal-galeria.abierto { display: flex; }
     .modal-galeria img { max-width: 92vw; max-height: 88vh; object-fit: contain; }
     .modal-cerrar {
       position: absolute; top: 1.5rem; right: 1.5rem;
-      background: none; border: none; color: var(--blanco);
+      background: none; border: none; color: #fff;
       font-size: 2rem; cursor: pointer;
     }
     .modal-nav {
       position: absolute; top: 50%; transform: translateY(-50%);
-      background: rgba(255,255,255,0.08); border: none; color: var(--blanco);
-      font-size: 2rem; cursor: pointer; padding: 1rem; transition: all 0.2s;
+      background: rgba(255,255,255,0.08); border: none;
+      color: #fff; font-size: 2rem; cursor: pointer;
+      padding: 1rem; transition: background 0.2s;
     }
-    .modal-nav:hover { background: rgba(201,168,76,0.25); }
+    .modal-nav:hover { background: rgba(201,168,76,0.2); }
     .modal-prev { left: 1rem; }
     .modal-next { right: 1rem; }
 
-    /* ── PRINT ───────────────────────────────────── */
+    /* ── PRINT ───────────────────────────── */
     @media print {
-      nav, .modal-galeria, .prop-form-box, .btn-consultar-wsp,
-      .btn-compartir-wsp, .btn-brochure-prop,
+      #nav, .modal-galeria, .prop-sidebar,
       .galeria-miniaturas, footer, #cur { display: none !important; }
-      body { background: white !important; color: #111 !important; }
-      .prop-layout { grid-template-columns: 1fr !important; }
-      .galeria-principal { height: 280px !important; }
-      .prop-titulo, .prop-precio { color: #111 !important; }
-      .prop-spec-val { color: #111 !important; }
-      .prop-spec-lbl, .prop-ubicacion, .prop-desc { color: #444 !important; }
-      .prop-spec { border-color: #ddd !important; }
-      .prop-specs { border-color: #ddd !important; }
+      body { background: white !important; }
+      .prop-wrap { grid-template-columns: 1fr !important; }
+      .galeria-principal { height: 300px !important; }
+      .prop-titulo, .prop-precio-main { color: #111 !important; }
     }
   </style>
 </head>
 <body>
 
-  <div id="cur"></div>
+<div id="cur"></div>
 
-  <!-- NAV -->
-  <nav class="nav scrolled">
-    <div class="contenedor">
-      <div class="nav-inner">
-        <a href="index.html" class="nav-logo"><img src="logohorizontal.png" alt="Sur Patagonia" style="height:49px;" /></a>
-        <ul class="nav-links" id="navLinks">
-          <li><a href="index.html">Inicio</a></li>
-          <li><a href="propiedades.html" class="activo">Propiedades</a></li>
-          <li><a href="proyectos.html">Proyectos</a></li>
-          <li><a href="index.html#contacto">Contacto</a></li>
-        </ul>
-        <button class="nav-menu-btn" id="menuBtn" aria-label="Menú">
-          <span></span><span></span><span></span>
-        </button>
-      </div>
+<!-- NAV -->
+<nav id="nav">
+  <a href="index.html" class="nav-logo">
+    <img src="logohorizontalnegro.png" alt="Sur Patagonia" />
+  </a>
+  <div class="nav-links" id="navLinks">
+    <a href="index.html" class="nav-link">Inicio</a>
+    <a href="propiedades.html" class="nav-link active">Propiedades</a>
+    <a href="proyectos.html" class="nav-link">Proyectos</a>
+    <div class="nav-sep"></div>
+    <a href="index.html#contacto" class="nav-cta">Contacto</a>
+  </div>
+  <button class="nav-burger" id="navBurger"><span></span><span></span><span></span></button>
+</nav>
+
+<!-- CARGANDO -->
+<div id="estadoCargando">
+  <div class="spinner-claro"></div>
+  <p style="font-size:0.8rem; color:var(--gris);">Cargando propiedad...</p>
+</div>
+
+<!-- CONTENIDO -->
+<div id="contenidoPropiedad" style="display:none;">
+
+  <!-- GALERÍA -->
+  <div class="galeria-wrap">
+    <div class="galeria-principal" id="galeriaPrincipal">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#222;color:#555;font-size:3rem;">🏠</div>
     </div>
-  </nav>
-
-  <!-- CARGANDO -->
-  <div id="estadoCargando" style="padding:10rem 0; text-align:center;">
-    <div class="spinner" style="margin:0 auto 1rem;"></div>
-    <p style="color:var(--gris-claro);">Cargando propiedad...</p>
+    <div class="galeria-miniaturas" id="galeriaMiniaturas"></div>
   </div>
 
-  <!-- CONTENIDO PROPIEDAD -->
-  <div id="contenidoPropiedad" style="display:none;">
+  <!-- LAYOUT -->
+  <div class="prop-wrap">
 
-    <!-- GALERÍA FULL WIDTH -->
-    <div style="padding-top:5rem; background:var(--negro);">
-      <div style="max-width:1280px; margin:0 auto; padding:0 2rem;">
-        <div class="galeria-principal" id="galeriaPrincipal">
-          <div style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--negro-3);color:var(--gris);font-size:3rem;">🏠</div>
+    <!-- COLUMNA PRINCIPAL -->
+    <div>
+      <p class="prop-breadcrumb" id="propBreadcrumb">—</p>
+      <h1 class="prop-titulo" id="detalleTitulo"></h1>
+      <p class="prop-ubicacion" id="detalleUbicacion">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        —
+      </p>
+      <div class="prop-precio-main" id="precioMain"></div>
+      <div class="prop-precio-sub" id="precioSub"></div>
+      <div class="prop-specs" id="detalleSpecs"></div>
+
+      <div style="margin-bottom:0.8rem;"><span class="prop-sh">Descripción</span></div>
+      <div class="prop-desc" id="detalleDescripcion"></div>
+
+      <div id="bloqueAmenidades" style="display:none; margin-bottom:0.8rem;">
+        <span class="prop-sh">Características</span>
+        <div class="prop-amenidades" id="detalleAmenidades" style="margin-top:1rem;"></div>
+      </div>
+
+      <div id="bloqueVideo" style="display:none; margin-bottom:0.8rem;">
+        <span class="prop-sh">Video</span>
+        <div class="prop-video" style="margin-top:1rem;">
+          <div class="prop-video-wrap">
+            <iframe id="propVideoIframe" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          </div>
         </div>
-        <div class="galeria-miniaturas" id="galeriaMiniaturas"></div>
+      </div>
+
+      <div id="bloqueUbicacion" style="display:none; margin-bottom:0.8rem;">
+        <span class="prop-sh">Ubicación</span>
+        <div class="prop-mapa" style="margin-top:1rem;">
+          <div id="mapaPropiedad"></div>
+          <a id="coordsLink" href="#" target="_blank" class="prop-mapa-link">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Ver en Google Maps
+          </a>
+        </div>
       </div>
     </div>
 
-    <!-- LAYOUT PRINCIPAL -->
-    <div class="prop-layout">
+    <!-- SIDEBAR -->
+    <div class="prop-sidebar">
 
-      <!-- COLUMNA IZQUIERDA -->
-      <div>
-        <!-- Tags tipo + operación -->
-        <div class="prop-tags" id="propTags"></div>
-
-        <!-- Título -->
-        <h1 class="prop-titulo" id="detalleTitulo"></h1>
-        <p class="prop-ubicacion" id="detalleUbicacion">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          —
-        </p>
-
-        <!-- Specs -->
-        <div class="prop-specs" id="detalleSpecs"></div>
-
-        <!-- Descripción -->
-        <div class="prop-section-title">Descripción</div>
-        <div class="prop-desc" id="detalleDescripcion"></div>
-
-        <!-- Amenidades -->
-        <div id="bloqueAmenidades" style="display:none;">
-          <div class="prop-section-title">Características</div>
-          <div class="prop-amenidades" id="detalleAmenidades"></div>
-        </div>
-
-        <!-- Video YouTube -->
-        <div id="bloqueVideo" style="display:none;">
-          <div class="prop-section-title">Video</div>
-          <div class="prop-video">
-            <div class="prop-video-wrap">
-              <iframe id="propVideoIframe" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mapa -->
-        <div id="bloqueUbicacion" style="display:none;">
-          <div class="prop-section-title">Ubicación</div>
-          <div class="prop-mapa">
-            <div id="mapaPropiedad"></div>
-            <a id="coordsLink" href="#" target="_blank" class="prop-mapa-link">
-              📍 Ver en Google Maps
-            </a>
-          </div>
-        </div>
+      <!-- Precio compacto -->
+      <div class="sidebar-precio">
+        <div class="sidebar-precio-num" id="sidebarPrecio"></div>
+        <div class="sidebar-precio-sub" id="sidebarPrecioSub"></div>
       </div>
 
-      <!-- SIDEBAR DERECHO -->
-      <div class="prop-sidebar">
-
-        <!-- Precio -->
-        <div class="prop-precio-box">
-          <div class="prop-precio" id="fichaPrecio"></div>
-          <div class="prop-precio-tipo" id="fichaTipo"></div>
+      <!-- Asesor -->
+      <div class="asesor-card">
+        <div class="asesor-foto-placeholder">
+          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </div>
-
-        <!-- Botón WhatsApp (contactar a Sur Patagonia) -->
-        <a id="btnWspContacto" href="https://wa.me/5492944400000" target="_blank" class="btn-consultar-wsp">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.964-1.405A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 01-4.031-1.09l-.29-.172-2.947.835.797-2.877-.189-.295A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+        <div class="asesor-nombre">Mariana Ayelén García</div>
+        <div class="asesor-cargo">Martillera · Corredora Pública</div>
+        <a id="btnWspAsesor" href="https://wa.me/5492944400000" target="_blank" class="btn-wsp-asesor">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.964-1.405A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 01-4.031-1.09l-.29-.172-2.947.835.797-2.877-.189-.295A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
           Consultar por WhatsApp
         </a>
+      </div>
 
-        <!-- Compartir por WhatsApp -->
-        <a id="btnWspCompartir" href="#" target="_blank" class="btn-compartir-wsp">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
-          Compartir propiedad
+      <!-- Compartir + PDF -->
+      <div class="sidebar-acciones">
+        <a id="btnCompartir" href="#" target="_blank" class="btn-compartir">
+          <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+          Compartir
         </a>
-
-        <!-- Descargar PDF -->
-        <button onclick="window.print()" class="btn-brochure-prop">
+        <button onclick="window.print()" class="btn-pdf-prop">
           <svg viewBox="0 0 24 24"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg>
-          Descargar PDF
+          PDF
         </button>
-
-        <!-- Formulario -->
-        <div class="prop-form-box">
-          <div class="prop-form-title">Consultar propiedad</div>
-          <div id="alertaFicha"></div>
-          <form id="formFicha">
-            <div class="form-grupo" style="margin-bottom:0.9rem;">
-              <label>Nombre</label>
-              <input type="text" id="fNombre" placeholder="Tu nombre completo" required />
-            </div>
-            <div class="form-grupo" style="margin-bottom:0.9rem;">
-              <label>Email</label>
-              <input type="email" id="fEmail" placeholder="tu@email.com" required />
-            </div>
-            <div class="form-grupo" style="margin-bottom:0.9rem;">
-              <label>Teléfono</label>
-              <input type="tel" id="fTelefono" placeholder="+54 9..." />
-            </div>
-            <div class="form-grupo" style="margin-bottom:1.2rem;">
-              <label>Mensaje</label>
-              <textarea id="fMensaje" rows="3" placeholder="¿En qué te puedo ayudar?"></textarea>
-            </div>
-            <button type="submit" class="btn btn-dorado" style="width:100%;">Enviar consulta</button>
-          </form>
-        </div>
-
       </div>
+
+      <!-- Formulario -->
+      <div class="form-card">
+        <div class="form-card-title">Consultar propiedad</div>
+        <div id="alertaFicha"></div>
+        <form id="formFicha">
+          <div class="f-grupo"><label>Nombre</label><input type="text" id="fNombre" placeholder="Tu nombre" required /></div>
+          <div class="f-grupo"><label>Email</label><input type="email" id="fEmail" placeholder="tu@email.com" required /></div>
+          <div class="f-grupo"><label>Teléfono</label><input type="tel" id="fTelefono" placeholder="+54 9..." /></div>
+          <div class="f-grupo"><label>Mensaje</label><textarea id="fMensaje" rows="3"></textarea></div>
+          <button type="submit" class="btn-enviar">Enviar consulta</button>
+        </form>
+      </div>
+
     </div>
   </div>
+</div>
 
-  <!-- NO ENCONTRADA -->
-  <div id="noEncontrado" style="display:none; padding:10rem 0; text-align:center;">
-    <h2 style="color:var(--gris-claro);">Propiedad no encontrada</h2>
-    <a href="propiedades.html" class="btn btn-dorado" style="margin-top:2rem;">Ver todas las propiedades</a>
-  </div>
+<!-- NO ENCONTRADA -->
+<div id="noEncontrado" style="display:none; padding:12rem 0; text-align:center;">
+  <h2 style="font-family:'Cormorant Garamond',serif; font-weight:300; color:var(--gris); margin-bottom:2rem;">Propiedad no encontrada</h2>
+  <a href="propiedades.html" style="display:inline-block; padding:0.8rem 2rem; background:var(--negro); color:var(--bg); font-size:0.7rem; letter-spacing:0.15em; text-transform:uppercase;">Ver todas las propiedades</a>
+</div>
 
-  <!-- MODAL GALERÍA -->
-  <div class="modal-galeria" id="modalGaleria">
-    <button class="modal-cerrar" id="modalCerrar">✕</button>
-    <button class="modal-nav modal-prev" id="modalPrev">‹</button>
-    <img id="modalImg" src="" alt="" />
-    <button class="modal-nav modal-next" id="modalNext">›</button>
-  </div>
+<!-- MODAL GALERÍA -->
+<div class="modal-galeria" id="modalGaleria">
+  <button class="modal-cerrar" id="modalCerrar">✕</button>
+  <button class="modal-nav modal-prev" id="modalPrev">‹</button>
+  <img id="modalImg" src="" alt="" />
+  <button class="modal-nav modal-next" id="modalNext">›</button>
+</div>
 
-  <!-- FOOTER -->
-  <footer class="footer">
-    <div class="contenedor">
-      <div class="footer-bottom" style="border-top:none;">
-        <span>© 2025 Sur Patagonia.</span>
-        <a href="propiedades.html" style="color:var(--dorado);">← Volver a propiedades</a>
-      </div>
-    </div>
-  </footer>
+<!-- FOOTER -->
+<footer>
+  <span>© 2025 Sur Patagonia — Propiedades.</span>
+  &nbsp;·&nbsp;
+  <a href="propiedades.html">← Volver a propiedades</a>
+</footer>
 
-  <script type="module">
-    import { supabase } from './js/config.js'
+<script type="module">
+import { supabase } from './js/config.js'
 
-    const AMENIDADES_LABELS = {
-      cochera:          { label: 'Cochera',        svg: '<rect x="1" y="3" width="15" height="13"/><path d="M16 8l5 5v3h-5V8z"/>' },
-      pileta:           { label: 'Pileta',          svg: '<path d="M2 12c1-2 3-3 5-3s4 1 5 3 3 3 5 3M2 17c1-2 3-3 5-3s4 1 5 3 3 3 5 3M6 6l3-3M15 6l3-3"/>' },
-      parrilla:         { label: 'Parrilla',        svg: '<path d="M4 8h16M4 16h16M8 4v16M16 4v16"/>' },
-      jardin:           { label: 'Jardín',          svg: '<path d="M12 22V12M12 12C12 7 6 3 3 6c3 0 6 3 9 6M12 12c0-5 6-9 9-6-3 0-6 3-9 6"/>' },
-      terraza:          { label: 'Terraza',         svg: '<rect x="2" y="14" width="20" height="2"/><path d="M6 14V4M18 14V4M2 8h20"/>' },
-      gimnasio:         { label: 'Gimnasio',        svg: '<path d="M6 4v6M18 4v6M4 7h4M16 7h4M6 20v-6M18 20v-6M4 17h4M16 17h4M11 11h2v2h-2z"/>' },
-      porteria:         { label: 'Portería 24hs',   svg: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6"/>' },
-      laundry:          { label: 'Laundry',         svg: '<rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="12" cy="12" r="5"/><path d="M9 9h1"/>' },
-      calefaccion:      { label: 'Calefacción',     svg: '<path d="M12 2v6M12 22v-6M4.93 4.93l4.24 4.24M18.36 18.36l-4.24-4.24M2 12h6M22 12h-6M4.93 19.07l4.24-4.24M18.36 5.64l-4.24 4.24"/>' },
-      aire:             { label: 'Aire acond.',     svg: '<path d="M4 6h16M4 10h16M4 14h10M16 14l2 2 2-2M18 14v6"/>' },
-      seguridad:        { label: 'Seguridad',       svg: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
-      vista_lago:       { label: 'Vista al lago',   svg: '<path d="M2 12c2-4 6-6 10-6s8 2 10 6M2 12c2 4 6 6 10 6s8-2 10-6"/>' },
-      vista_montana:    { label: 'Vista montaña',   svg: '<path d="M8 20l4-8 4 8M2 20l5-10 5 10M12 20l5-10 5 10"/>' },
-      baulera:          { label: 'Baulera',         svg: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>' },
-      quincho:          { label: 'Quincho / SUM',   svg: '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>' },
-      ascensor:         { label: 'Ascensor',        svg: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M9 8l3-3 3 3M9 16l3 3 3-3"/>' },
-      apto_mascotas:    { label: 'Apto mascotas',   svg: '<path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.45 2.344-2M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.96-1.45-2.344-2"/><path d="M8 14v.5M16 14v.5M11.25 16.25h1.5L12 17l-.75-.75z"/><path d="M4.42 11.247A13.152 13.152 0 004 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0112 5c.78 0 1.5.108 2.161.306"/>' },
+const AMENIDADES = {
+  gas_natural:   { label:'Gas natural',      svg:'<path d="M12 2c-4 4-6 8-6 11a6 6 0 0012 0c0-3-2-7-6-11z"/>' },
+  electricidad:  { label:'Electricidad',     svg:'<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>' },
+  agua_corriente:{ label:'Agua corriente',   svg:'<path d="M12 2C6 8 4 12 4 15a8 8 0 0016 0c0-3-2-7-8-13z"/>' },
+  cloaca:        { label:'Red cloacal',      svg:'<circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>' },
+  pavimento:     { label:'Pavimento',        svg:'<path d="M5 20h14M5 4h14M9 4v16M15 4v16"/>' },
+  wifi:          { label:'Wi-Fi',            svg:'<path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1"/>' },
+  cocina_equipada:{ label:'Cocina equipada', svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><circle cx="12" cy="14" r="2"/>' },
+  amoblado:      { label:'Amoblado',         svg:'<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><rect x="9" y="12" width="6" height="9"/>' },
+  cochera:       { label:'Cochera',          svg:'<rect x="1" y="3" width="15" height="13"/><path d="M16 8l5 5v3h-5V8z"/>' },
+  baulera:       { label:'Baulera',          svg:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>' },
+  pileta:        { label:'Pileta',           svg:'<path d="M2 12c1-2 3-3 5-3s4 1 5 3 3 3 5 3M2 17c1-2 3-3 5-3s4 1 5 3 3 3 5 3M6 6l3-3M15 6l3-3"/>' },
+  parrilla:      { label:'Parrilla',         svg:'<path d="M4 8h16M4 16h16M8 4v16M16 4v16"/>' },
+  jardin:        { label:'Jardín',           svg:'<path d="M12 22V12M12 12C12 7 6 3 3 6c3 0 6 3 9 6M12 12c0-5 6-9 9-6-3 0-6 3-9 6"/>' },
+  terraza:       { label:'Terraza',          svg:'<rect x="2" y="14" width="20" height="2"/><path d="M6 14V4M18 14V4M2 8h20"/>' },
+  gimnasio:      { label:'Gimnasio',         svg:'<path d="M6 4v6M18 4v6M4 7h4M16 7h4M6 20v-6M18 20v-6M4 17h4M16 17h4"/>' },
+  quincho:       { label:'Quincho / SUM',    svg:'<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>' },
+  porteria:      { label:'Portería 24hs',    svg:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6"/>' },
+  calefaccion:   { label:'Calefacción',      svg:'<path d="M12 2v6M12 22v-6M4.93 4.93l4.24 4.24M18.36 18.36l-4.24-4.24M2 12h6M22 12h-6"/>' },
+  aire:          { label:'Aire acond.',      svg:'<path d="M4 6h16M4 10h16M4 14h10M16 14l2 2 2-2M18 14v6"/>' },
+  seguridad:     { label:'Seguridad',        svg:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
+  ascensor:      { label:'Ascensor',         svg:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M9 8l3-3 3 3M9 16l3 3 3-3"/>' },
+  vista_lago:    { label:'Vista al lago',    svg:'<path d="M2 12c2-4 6-6 10-6s8 2 10 6M2 12c2 4 6 6 10 6s8-2 10-6"/>' },
+  vista_montana: { label:'Vista montaña',    svg:'<path d="M8 20l4-8 4 8M2 20l5-10 5 10M12 20l5-10 5 10"/>' },
+  apto_mascotas: { label:'Apto mascotas',    svg:'<circle cx="9" cy="7" r="4"/><path d="M17 11c0 4-2 6-5 6s-5-2-5-6"/>' },
+  laundry:       { label:'Laundry',          svg:'<rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="12" cy="12" r="5"/>' },
+}
+
+// Nav
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 30)
+})
+document.getElementById('navBurger').addEventListener('click', () => {
+  document.getElementById('navLinks').classList.toggle('open')
+})
+
+// Cargar propiedad
+const params = new URLSearchParams(window.location.search)
+const id = params.get('id')
+
+if (!id) {
+  document.getElementById('estadoCargando').style.display = 'none'
+  document.getElementById('noEncontrado').style.display = 'block'
+} else {
+  const { data, error } = await supabase
+    .from('propiedades').select('*').eq('id', id).eq('activa', true).single()
+
+  document.getElementById('estadoCargando').style.display = 'none'
+
+  if (error || !data) {
+    document.getElementById('noEncontrado').style.display = 'block'
+  } else {
+    renderPropiedad(data)
+    document.getElementById('contenidoPropiedad').style.display = 'block'
+    document.title = `${data.titulo} — Sur Patagonia`
+  }
+}
+
+let imgs = [], idx = 0
+
+function renderPropiedad(p) {
+  imgs = p.imagenes || []
+
+  // Galería
+  const gal = document.getElementById('galeriaPrincipal')
+  if (imgs.length > 0) {
+    gal.innerHTML = `
+      <img id="imgPrincipal" src="${imgs[0]}" alt="${p.titulo}" />
+      <div class="galeria-contador"><span id="contadorActual">1</span> / ${imgs.length}</div>`
+    document.getElementById('imgPrincipal').addEventListener('click', () => abrirModal(0))
+  }
+  const min = document.getElementById('galeriaMiniaturas')
+  min.innerHTML = imgs.map((url, i) => `
+    <div class="galeria-miniatura${i===0?' activa':''}" data-idx="${i}">
+      <img src="${url}" alt="" loading="lazy" />
+    </div>`).join('')
+  min.querySelectorAll('.galeria-miniatura').forEach(m => {
+    m.addEventListener('click', () => {
+      const i = parseInt(m.dataset.idx)
+      document.getElementById('imgPrincipal').src = imgs[i]
+      document.getElementById('contadorActual').textContent = i + 1
+      min.querySelectorAll('.galeria-miniatura').forEach(x => x.classList.remove('activa'))
+      m.classList.add('activa')
+    })
+  })
+
+  // Breadcrumb
+  const opLabel = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
+  const parts = [p.tipo?.charAt(0).toUpperCase() + p.tipo?.slice(1), opLabel, p.ciudad, p.provincia].filter(Boolean)
+  document.getElementById('propBreadcrumb').innerHTML = parts.map((pt, i) =>
+    i < parts.length - 1 ? `${pt} <span>·</span> ` : pt
+  ).join('')
+
+  // Título y ubicación
+  document.getElementById('detalleTitulo').textContent = p.titulo
+  const ubicStr = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
+  document.getElementById('detalleUbicacion').innerHTML = `
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    ${ubicStr || '—'}`
+
+  // Precio
+  const precio = p.precio
+    ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
+    : 'Consultar precio'
+  const precioSub = p.operacion !== 'venta' ? '/ mes' : p.condicion || ''
+  document.getElementById('precioMain').textContent = precio
+  document.getElementById('precioSub').textContent = precioSub
+  document.getElementById('sidebarPrecio').textContent = precio
+  document.getElementById('sidebarPrecioSub').textContent = precioSub
+
+  // Specs
+  const specs = []
+  if (p.dormitorios) specs.push({ val: p.dormitorios, lbl: 'Dorm.' })
+  if (p.banos) specs.push({ val: p.banos, lbl: 'Baños' })
+  if (p.superficie_cubierta) specs.push({ val: p.superficie_cubierta + ' m²', lbl: 'Sup. cubierta' })
+  if (p.superficie_total) specs.push({ val: p.superficie_total + ' m²', lbl: 'Sup. total' })
+  if (p.antiguedad) specs.push({ val: p.antiguedad, lbl: 'Antigüedad' })
+  document.getElementById('detalleSpecs').innerHTML = specs.map(s => `
+    <div class="prop-spec">
+      <span class="prop-spec-val">${s.val}</span>
+      <span class="prop-spec-lbl">${s.lbl}</span>
+    </div>`).join('')
+
+  // Descripción
+  document.getElementById('detalleDescripcion').textContent = p.descripcion || ''
+
+  // Amenidades
+  const amen = Array.isArray(p.amenidades) ? p.amenidades : []
+  if (amen.length > 0) {
+    document.getElementById('bloqueAmenidades').style.display = 'block'
+    document.getElementById('detalleAmenidades').innerHTML = amen.map(k => {
+      const info = AMENIDADES[k] || { label: k, svg: '<circle cx="12" cy="12" r="2"/>' }
+      return `<div class="prop-amenidad">
+        <svg viewBox="0 0 24 24">${info.svg}</svg>
+        ${info.label}
+      </div>`
+    }).join('')
+  }
+
+  // Video
+  if (p.video_url) {
+    const m = p.video_url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+    if (m) {
+      document.getElementById('bloqueVideo').style.display = 'block'
+      document.getElementById('propVideoIframe').src =
+        `https://www.youtube.com/embed/${m[1]}?rel=0&modestbranding=1`
     }
+  }
 
-    document.getElementById('menuBtn').addEventListener('click', () => {
-      document.getElementById('navLinks').classList.toggle('abierto')
+  // Mapa
+  if (p.latitud && p.longitud) {
+    document.getElementById('bloqueUbicacion').style.display = 'block'
+    const mapa = L.map('mapaPropiedad').setView([p.latitud, p.longitud], 15)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(mapa)
+    L.marker([p.latitud, p.longitud])
+      .addTo(mapa)
+      .bindPopup(`<b>${p.titulo}</b><br>${ubicStr}`)
+      .openPopup()
+    const cl = document.getElementById('coordsLink')
+    cl.href = `https://www.google.com/maps?q=${p.latitud},${p.longitud}`
+  }
+
+  // WhatsApp asesor
+  const msgWsp = encodeURIComponent(`Hola Mariana, me interesa la propiedad "${p.titulo}".\n${window.location.href}`)
+  document.getElementById('btnWspAsesor').href = `https://wa.me/5492944400000?text=${msgWsp}`
+
+  // Compartir
+  const msgComp = encodeURIComponent(`Mirá esta propiedad en Sur Patagonia:\n*${p.titulo}*\n${window.location.href}`)
+  document.getElementById('btnCompartir').href = `https://wa.me/?text=${msgComp}`
+
+  // Formulario
+  document.getElementById('fMensaje').value = `Hola, me interesa la propiedad "${p.titulo}".`
+  document.getElementById('formFicha').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const btn = e.target.querySelector('.btn-enviar')
+    btn.textContent = 'Enviando...'
+    btn.disabled = true
+    const { error } = await supabase.from('contactos').insert({
+      nombre: document.getElementById('fNombre').value,
+      email: document.getElementById('fEmail').value,
+      telefono: document.getElementById('fTelefono').value,
+      mensaje: document.getElementById('fMensaje').value,
+      propiedad_id: p.id
     })
+    const al = document.getElementById('alertaFicha')
+    al.innerHTML = error
+      ? `<div class="alerta alerta-err">Error. Intentá de nuevo.</div>`
+      : `<div class="alerta alerta-ok">✓ ¡Consulta enviada! Te contactamos pronto.</div>`
+    if (!error) e.target.reset()
+    btn.textContent = 'Enviar consulta'
+    btn.disabled = false
+  })
+}
 
-    const params = new URLSearchParams(window.location.search)
-    const id = params.get('id')
+// Modal
+function abrirModal(i) {
+  idx = i
+  document.getElementById('modalImg').src = imgs[i]
+  document.getElementById('modalGaleria').classList.add('abierto')
+}
+document.getElementById('modalCerrar').addEventListener('click', () =>
+  document.getElementById('modalGaleria').classList.remove('abierto'))
+document.getElementById('modalPrev').addEventListener('click', () => {
+  idx = (idx - 1 + imgs.length) % imgs.length
+  document.getElementById('modalImg').src = imgs[idx]
+})
+document.getElementById('modalNext').addEventListener('click', () => {
+  idx = (idx + 1) % imgs.length
+  document.getElementById('modalImg').src = imgs[idx]
+})
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('modalGaleria').classList.remove('abierto')
+  if (e.key === 'ArrowLeft') document.getElementById('modalPrev').click()
+  if (e.key === 'ArrowRight') document.getElementById('modalNext').click()
+})
+</script>
 
-    if (!id) {
-      document.getElementById('estadoCargando').style.display = 'none'
-      document.getElementById('noEncontrado').style.display = 'block'
-    } else {
-      cargarPropiedad(id)
-    }
-
-    async function cargarPropiedad(id) {
-      const { data, error } = await supabase
-        .from('propiedades')
-        .select('*')
-        .eq('id', id)
-        .eq('activa', true)
-        .single()
-
-      document.getElementById('estadoCargando').style.display = 'none'
-
-      if (error || !data) {
-        document.getElementById('noEncontrado').style.display = 'block'
-        return
-      }
-
-      renderPropiedad(data)
-      document.getElementById('contenidoPropiedad').style.display = 'block'
-      document.title = `${data.titulo} — Sur Patagonia`
-    }
-
-    let imagenesActuales = []
-    let idxActual = 0
-
-    function renderPropiedad(p) {
-      imagenesActuales = p.imagenes || []
-
-      // Galería
-      const galPrincipal = document.getElementById('galeriaPrincipal')
-      if (imagenesActuales.length > 0) {
-        galPrincipal.innerHTML = `<img id="imgPrincipal" src="${imagenesActuales[0]}" alt="${p.titulo}" style="cursor:zoom-in;" />`
-        document.getElementById('imgPrincipal').addEventListener('click', () => abrirModal(0))
-      }
-      const galMin = document.getElementById('galeriaMiniaturas')
-      galMin.innerHTML = imagenesActuales.map((url, i) => `
-        <div class="galeria-miniatura${i === 0 ? ' activa' : ''}" data-idx="${i}">
-          <img src="${url}" alt="${p.titulo}" loading="lazy" />
-        </div>`).join('')
-      galMin.querySelectorAll('.galeria-miniatura').forEach(m => {
-        m.addEventListener('click', () => {
-          const idx = parseInt(m.dataset.idx)
-          document.getElementById('imgPrincipal').src = imagenesActuales[idx]
-          galMin.querySelectorAll('.galeria-miniatura').forEach(x => x.classList.remove('activa'))
-          m.classList.add('activa')
-        })
-      })
-
-      // Tags
-      const opLabel = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
-      const tags = document.getElementById('propTags')
-      tags.innerHTML = `
-        <span class="prop-tag filled">${opLabel}</span>
-        ${p.tipo ? `<span class="prop-tag-sep">·</span><span class="prop-tag">${p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)}</span>` : ''}
-        ${p.ciudad ? `<span class="prop-tag-sep">·</span><span class="prop-tag">${p.ciudad}</span>` : ''}
-        ${p.provincia ? `<span class="prop-tag-sep">·</span><span class="prop-tag">${p.provincia}</span>` : ''}`
-
-      // Título y ubicación
-      document.getElementById('detalleTitulo').textContent = p.titulo
-      const ubicEl = document.getElementById('detalleUbicacion')
-      const ubicStr = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
-      ubicEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ${ubicStr || '—'}`
-
-      // Specs
-      const specs = []
-      if (p.dormitorios) specs.push({ val: p.dormitorios, label: 'Dorm.' })
-      if (p.banos) specs.push({ val: p.banos, label: 'Baños' })
-      if (p.superficie_cubierta) specs.push({ val: p.superficie_cubierta + ' m²', label: 'Cub.' })
-      if (p.superficie_total) specs.push({ val: p.superficie_total + ' m²', label: 'Total' })
-      if (p.antiguedad) specs.push({ val: p.antiguedad, label: 'Antigüedad' })
-      document.getElementById('detalleSpecs').innerHTML = specs.map(s => `
-        <div class="prop-spec">
-          <span class="prop-spec-val">${s.val}</span>
-          <span class="prop-spec-lbl">${s.label}</span>
-        </div>`).join('')
-
-      // Descripción
-      document.getElementById('detalleDescripcion').textContent = p.descripcion || ''
-
-      // Amenidades
-      const amen = Array.isArray(p.amenidades) ? p.amenidades : []
-      if (amen.length > 0) {
-        document.getElementById('bloqueAmenidades').style.display = 'block'
-        document.getElementById('detalleAmenidades').innerHTML = amen.map(key => {
-          const info = AMENIDADES_LABELS[key] || { label: key, svg: '<circle cx="12" cy="12" r="2"/>' }
-          return `<div class="prop-amenidad">
-            <svg viewBox="0 0 24 24">${info.svg}</svg>
-            ${info.label}
-          </div>`
-        }).join('')
-      }
-
-      // Video YouTube
-      if (p.video_url) {
-        const match = p.video_url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-        const videoId = match ? match[1] : null
-        if (videoId) {
-          document.getElementById('bloqueVideo').style.display = 'block'
-          document.getElementById('propVideoIframe').src =
-            `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`
-        }
-      }
-
-      // Precio
-      const precio = p.precio
-        ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
-        : 'Consultar precio'
-      document.getElementById('fichaPrecio').textContent = precio
-      document.getElementById('fichaTipo').textContent =
-        p.operacion !== 'venta' ? '/ mes' : p.condicion ? p.condicion : ''
-
-      // Botón WhatsApp CONTACTO (a nosotros)
-      const msgContacto = encodeURIComponent(`Hola, me interesa la propiedad "${p.titulo}".\n${window.location.href}`)
-      document.getElementById('btnWspContacto').href = `https://wa.me/5492944400000?text=${msgContacto}`
-
-      // Botón WhatsApp COMPARTIR
-      const msgCompartir = encodeURIComponent(`Mirá esta propiedad en Sur Patagonia:\n*${p.titulo}*\n${window.location.href}`)
-      document.getElementById('btnWspCompartir').href = `https://wa.me/?text=${msgCompartir}`
-
-      // Mapa
-      if (p.latitud && p.longitud) {
-        document.getElementById('bloqueUbicacion').style.display = 'block'
-        const mapa = L.map('mapaPropiedad').setView([p.latitud, p.longitud], 15)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap'
-        }).addTo(mapa)
-        L.marker([p.latitud, p.longitud])
-          .addTo(mapa)
-          .bindPopup(`<b>${p.titulo}</b><br>${ubicStr}`)
-          .openPopup()
-        const coordsLink = document.getElementById('coordsLink')
-        coordsLink.href = `https://www.google.com/maps?q=${p.latitud},${p.longitud}`
-        coordsLink.textContent = '📍 Ver en Google Maps'
-      }
-
-      // Formulario
-      document.getElementById('fMensaje').value = `Hola, me interesa la propiedad "${p.titulo}".`
-      document.getElementById('formFicha').addEventListener('submit', async (e) => {
-        e.preventDefault()
-        const btn = e.target.querySelector('button')
-        btn.textContent = 'Enviando...'
-        btn.disabled = true
-        const { error } = await supabase.from('contactos').insert({
-          nombre: document.getElementById('fNombre').value,
-          email: document.getElementById('fEmail').value,
-          telefono: document.getElementById('fTelefono').value,
-          mensaje: document.getElementById('fMensaje').value,
-          propiedad_id: p.id
-        })
-        const alerta = document.getElementById('alertaFicha')
-        if (error) {
-          alerta.innerHTML = `<div class="alerta alerta-error">Error. Intentá de nuevo.</div>`
-        } else {
-          alerta.innerHTML = `<div class="alerta alerta-exito">¡Consulta enviada! Te contactamos pronto.</div>`
-          e.target.reset()
-        }
-        btn.textContent = 'Enviar consulta'
-        btn.disabled = false
-      })
-    }
-
-    // Modal galería
-    function abrirModal(idx) {
-      idxActual = idx
-      document.getElementById('modalImg').src = imagenesActuales[idx]
-      document.getElementById('modalGaleria').classList.add('abierto')
-    }
-    document.getElementById('modalCerrar').addEventListener('click', () => {
-      document.getElementById('modalGaleria').classList.remove('abierto')
-    })
-    document.getElementById('modalPrev').addEventListener('click', () => {
-      idxActual = (idxActual - 1 + imagenesActuales.length) % imagenesActuales.length
-      document.getElementById('modalImg').src = imagenesActuales[idxActual]
-    })
-    document.getElementById('modalNext').addEventListener('click', () => {
-      idxActual = (idxActual + 1) % imagenesActuales.length
-      document.getElementById('modalImg').src = imagenesActuales[idxActual]
-    })
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') document.getElementById('modalGaleria').classList.remove('abierto')
-      if (e.key === 'ArrowLeft') document.getElementById('modalPrev').click()
-      if (e.key === 'ArrowRight') document.getElementById('modalNext').click()
-    })
-  </script>
-  <script>
-    const cur = document.getElementById('cur')
-    document.addEventListener('mousemove', e => {
-      cur.style.left = e.clientX + 'px'
-      cur.style.top  = e.clientY + 'px'
-    })
-    document.addEventListener('mouseleave', () => cur.style.opacity = '0')
-    document.addEventListener('mouseenter', () => cur.style.opacity = '1')
-    document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forEach(el => {
-      el.addEventListener('mouseenter', () => cur.classList.add('big'))
-      el.addEventListener('mouseleave', () => cur.classList.remove('big'))
-    })
-  </script>
+<script>
+const cur = document.getElementById('cur')
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX + 'px'
+  cur.style.top  = e.clientY + 'px'
+})
+document.addEventListener('mouseleave', () => cur.style.opacity = '0')
+document.addEventListener('mouseenter', () => cur.style.opacity = '1')
+document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forEach(el => {
+  el.addEventListener('mouseenter', () => cur.classList.add('big'))
+  el.addEventListener('mouseleave', () => cur.classList.remove('big'))
+})
+</script>
 </body>
 </html>
