@@ -6,9 +6,15 @@
   <title>Proyectos — Sur Patagonia</title>
   <link rel="stylesheet" href="css/estilos.css" />
   <style>
+    body { cursor: none; }
+    #cur { position:fixed; z-index:9999; pointer-events:none; width:7px; height:7px; border-radius:50%; background:var(--dorado); transform:translate(-50%,-50%); transition:width .3s,height .3s,background .3s,border .3s; will-change:transform; }
+    #cur.big { width:40px; height:40px; background:transparent; border:1px solid rgba(201,168,76,0.6); }
+    a,button,[onclick],select,input,label { cursor: none; }
     .page-header-proyectos {
       padding: 10rem 0 5rem;
       background: linear-gradient(135deg, #090909 0%, #0a0a1e 100%);
+      background-size: cover;
+      background-position: center;
       text-align: center;
       position: relative;
       overflow: hidden;
@@ -100,6 +106,7 @@
   </style>
 </head>
 <body>
+<div id="cur"></div>
 
   <!-- NAV -->
   <nav class="nav scrolled">
@@ -343,6 +350,24 @@
 
     cargarProyectos()
 
+    // Cargar imagen y opacidad del header desde site_config
+    supabase.from('site_config').select('key, value')
+      .in('key', ['img_proyectos_header', 'overlay_proyectos'])
+      .then(({ data }) => {
+        if (!data) return
+        const cfg = {}
+        data.forEach(r => cfg[r.key] = r.value)
+        const img = cfg['img_proyectos_header']
+        const op = parseInt(cfg['overlay_proyectos'] || '70') / 100
+        if (img) {
+          const header = document.querySelector('.page-header-proyectos')
+          header.style.backgroundImage =
+            `linear-gradient(to bottom, rgba(8,8,8,${Math.min(op+0.1,1)}) 0%, rgba(8,8,8,${op}) 60%, rgba(8,8,8,1) 100%), url('${img}')`
+          header.style.backgroundSize = 'cover'
+          header.style.backgroundPosition = 'center'
+        }
+      })
+
     // Scroll al anchor si viene con #proyecto-xxx
     if (window.location.hash.startsWith('#proyecto-')) {
       setTimeout(() => {
@@ -350,6 +375,19 @@
         if (el) el.scrollIntoView({ behavior: 'smooth' })
       }, 800)
     }
+  </script>
+  <script>
+    const cur = document.getElementById('cur')
+    document.addEventListener('mousemove', e => {
+      cur.style.left = e.clientX + 'px'
+      cur.style.top  = e.clientY + 'px'
+    })
+    document.addEventListener('mouseleave', () => cur.style.opacity = '0')
+    document.addEventListener('mouseenter', () => cur.style.opacity = '1')
+    document.querySelectorAll('a,button,[onclick],select,input,label').forEach(el => {
+      el.addEventListener('mouseenter', () => cur.classList.add('big'))
+      el.addEventListener('mouseleave', () => cur.classList.remove('big'))
+    })
   </script>
 </body>
 </html>
