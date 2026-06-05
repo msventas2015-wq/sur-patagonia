@@ -28,32 +28,61 @@
     @media(max-width:768px){ .audiovisual-grid{grid-template-columns:1fr;gap:3rem;} .servicios-grid{grid-template-columns:1fr;} }
 
     /* ── MAPA SCROLL ── */
-    #mapa-seccion { background:#080503; }
-    .mapa-wrap { height:560vh; }
+    #mapa-seccion { background: var(--negro); }
+    .mapa-wrap { height: 600vh; }
     .mapa-sticky {
       position:sticky; top:0; height:100vh;
       display:flex; align-items:center; justify-content:center;
-      overflow:hidden; background:#080503;
+      overflow:hidden; background:var(--negro);
     }
     #mapa-svg { height:88vh; width:auto; display:block; }
-    .mprov { fill:#160a04; stroke:#060200; stroke-width:0.6; stroke-linejoin:round; }
+    .mprov {
+      fill: #12100a;
+      stroke: #05040200;
+      stroke-width: 0.4;
+      stroke-linejoin: round;
+    }
+    @keyframes prov-flash {
+      0%   { filter: drop-shadow(0px 0px 18px rgba(232,201,122,1)) drop-shadow(0px 0px 40px rgba(201,168,76,0.9)); }
+      100% { filter: drop-shadow(0px 0px 5px rgba(201,168,76,0.92)) drop-shadow(0px 0px 14px rgba(171,138,56,0.58)) drop-shadow(0px 0px 30px rgba(140,110,35,0.28)); }
+    }
+    @keyframes rio-pulse {
+      0%,100% { filter: drop-shadow(0px 0px 6px rgba(232,201,122,0.95)) drop-shadow(0px 0px 16px rgba(201,168,76,0.72)) drop-shadow(0px 0px 34px rgba(160,128,40,0.38)); }
+      50%     { filter: drop-shadow(0px 0px 10px rgba(232,201,122,1))    drop-shadow(0px 0px 26px rgba(201,168,76,0.90)) drop-shadow(0px 0px 55px rgba(160,128,40,0.55)); }
+    }
+    .mprov.lit {
+      fill: #352010;
+      filter: drop-shadow(0px 0px 5px rgba(201,168,76,0.92))
+              drop-shadow(0px 0px 14px rgba(171,138,56,0.58))
+              drop-shadow(0px 0px 30px rgba(140,110,35,0.28));
+    }
+    .mprov.flash { animation: prov-flash 0.5s ease-out forwards; }
+    #mp_arr.pulse { animation: rio-pulse 2.2s ease-in-out infinite; }
     #mapa-label {
       position:absolute; bottom:5vh; width:100%; text-align:center;
-      color:#c9a84c; font-size:0.7rem; letter-spacing:.35em;
-      text-transform:uppercase; opacity:0; pointer-events:none; z-index:3;
+      color:var(--dorado); font-family:'Montserrat',sans-serif;
+      font-size:0.65rem; letter-spacing:.35em; text-transform:uppercase;
+      opacity:0; pointer-events:none; z-index:3;
     }
     #mapa-titulo {
       position:absolute; top:9vh; width:100%; text-align:center;
       z-index:2; pointer-events:none;
     }
-    #mapa-titulo span { display:block; font-size:0.6rem; letter-spacing:.28em; text-transform:uppercase; color:#c9a84c; margin-bottom:.4rem; }
-    #mapa-titulo h2 { font-family:'Cormorant Garamond',serif; font-weight:300; font-size:clamp(1.2rem,2.5vw,2rem); color:rgba(255,255,255,0.65); letter-spacing:.04em; }
+    #mapa-titulo span { display:block; font-size:0.6rem; letter-spacing:.28em; text-transform:uppercase; color:var(--dorado); margin-bottom:.4rem; font-family:'Montserrat',sans-serif; }
+    #mapa-titulo h2 { font-family:'Cormorant Garamond',serif; font-weight:300; font-size:clamp(1.2rem,2.5vw,2rem); color:rgba(245,243,239,0.6); letter-spacing:.04em; }
     #mapa-bolson {
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       text-align:center; opacity:0; pointer-events:none; z-index:4;
     }
-    #mapa-bolson h3 { font-family:'Cormorant Garamond',serif; font-weight:300; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:.25em; text-transform:uppercase; color:#c9a84c; }
-    #mapa-bolson p { font-size:0.65rem; letter-spacing:.28em; color:rgba(201,168,76,0.5); margin-top:.5rem; text-transform:uppercase; }
+    #mapa-bolson h3 {
+      font-family:'Cormorant Garamond',serif; font-weight:300;
+      font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:.25em;
+      text-transform:uppercase; color:var(--dorado);
+    }
+    #mapa-bolson p {
+      font-size:0.65rem; letter-spacing:.28em; color:var(--dorado-oscuro);
+      margin-top:.5rem; text-transform:uppercase; font-family:'Montserrat',sans-serif;
+    }
   </style>
 </head>
 <body>
@@ -114,12 +143,22 @@
         </defs>
         <g id="mg-base" filter="url(#mf-depth)"></g>
         <g id="mg-grain" filter="url(#mf-wood)" opacity="0.45" pointer-events="none"></g>
+        <!-- Marcadores geográficos (ocultos hasta el final) -->
+        <g id="mg-markers" opacity="0">
+          <!-- El Bolsón: lon -71.5 lat -41.9 → approx SVG 98, 695 in 1000x1000 -->
+          <circle id="dot-bolson"    cx="97"  cy="692" r="5"  fill="#c9a84c" stroke="#e8c97a" stroke-width="1.5"/>
+          <circle id="dot-bariloche" cx="103" cy="655" r="4"  fill="#c9a84c" stroke="#e8c97a" stroke-width="1.5" opacity="0.75"/>
+          <circle id="dot-esquel"    cx="92"  cy="730" r="4"  fill="#c9a84c" stroke="#e8c97a" stroke-width="1.5" opacity="0.75"/>
+          <!-- Pulse rings -->
+          <circle id="ring-bolson"   cx="97"  cy="692" r="5"  fill="none" stroke="#c9a84c" stroke-width="1" opacity="0"/>
+        </g>
       </svg>
 
       <div id="mapa-label"></div>
       <div id="mapa-bolson">
         <h3>El Bolsón</h3>
         <p>Río Negro · Patagonia Andina</p>
+        <div id="mapa-tagline" style="margin-top:1.4rem;opacity:0;font-family:'Montserrat',sans-serif;font-size:0.6rem;letter-spacing:.3em;color:var(--gris-claro);text-transform:uppercase;">Más que una propiedad, un estilo de vida.</div>
       </div>
 
     </div>
@@ -269,17 +308,21 @@ gsap.registerPlugin(ScrollTrigger);
 const labelEl  = document.getElementById('mapa-label');
 const tituloEl = document.getElementById('mapa-titulo');
 const bolsonEl = document.getElementById('mapa-bolson');
+const taglineEl= document.getElementById('mapa-tagline');
+const markersG = document.getElementById('mg-markers');
+const ringEl   = document.getElementById('ring-bolson');
 
+/* Dorado del brand */
 const GLOW = [
-  'drop-shadow(0px 0px 4px rgba(255,142,32,0.96))',
-  'drop-shadow(0px 0px 11px rgba(215,100,15,0.64))',
-  'drop-shadow(0px 0px 25px rgba(175,65,10,0.32))'
+  'drop-shadow(0px 0px 5px rgba(201,168,76,0.92))',
+  'drop-shadow(0px 0px 14px rgba(171,138,56,0.58))',
+  'drop-shadow(0px 0px 30px rgba(140,110,35,0.28))'
 ].join(' ');
 
 const GLOW_STRONG = [
-  'drop-shadow(0px 0px 7px rgba(255,155,40,1))',
-  'drop-shadow(0px 0px 18px rgba(215,110,20,0.85))',
-  'drop-shadow(0px 0px 40px rgba(175,70,10,0.48))'
+  'drop-shadow(0px 0px 8px rgba(232,201,122,1))',
+  'drop-shadow(0px 0px 22px rgba(201,168,76,0.88))',
+  'drop-shadow(0px 0px 48px rgba(160,128,40,0.50))'
 ].join(' ');
 
 const tl = gsap.timeline({
@@ -292,23 +335,57 @@ tl.to(tituloEl,{opacity:0,duration:0.4},0);
 tl.to(labelEl,{opacity:1,duration:0.3},0.3);
 
 PROVINCIAS.forEach((p,i)=>{
-  tl.to('#mp_'+p.id,{
-    fill:'#3b1b09',
-    filter:GLOW,
-    duration:0.8,
+  const el = '#mp_'+p.id;
+  tl.to(el,{
+    fill:'#352010',
+    duration:0.6,
     ease:'power2.out',
-    onStart(){ labelEl.textContent = p.name; }
-  }, i*0.82);
+    onStart(){
+      labelEl.textContent = p.name;
+      /* Flash de encendido */
+      const node = document.getElementById('mp_'+p.id);
+      if(node){
+        node.style.filter = 'drop-shadow(0px 0px 22px rgba(232,201,122,1)) drop-shadow(0px 0px 45px rgba(201,168,76,0.85))';
+        setTimeout(()=>{ node.style.filter = GLOW; }, 400);
+      }
+    }
+  }, i*0.78);
 });
 
-const Z = PROVINCIAS.length * 0.82;
+const Z = PROVINCIAS.length * 0.78;
 
-// Apagar todo menos Río Negro
-const otrosIds = PROVINCIAS.filter(p=>p.id!=='rio_negro').map(p=>'#mp_'+p.id);
-tl.to(otrosIds,{fill:'#110700',filter:'none',duration:1.4,ease:'power2.inOut'}, Z);
-tl.to('#mp_rio_negro',{fill:'#5c2d0d',filter:GLOW_STRONG,duration:1.4}, Z);
+/* Apagar todo menos Río Negro */
+const otrosIds = PROVINCIAS.filter(p=>p.id!=='arr').map(p=>'#mp_'+p.id);
+tl.to(otrosIds,{fill:'#0e0b06',filter:'none',duration:1.4,ease:'power2.inOut'}, Z);
+tl.to('#mp_arr',{fill:'#4a2a08',filter:GLOW_STRONG,duration:1.4}, Z);
 tl.to(labelEl,{opacity:0,duration:0.4}, Z);
-tl.to(bolsonEl,{opacity:1,duration:0.9,ease:'power2.out'}, Z+1.7);
+
+/* Marcadores geográficos */
+tl.to('#mg-markers',{opacity:1,duration:0.8,ease:'power2.out'}, Z+1.6);
+
+/* El Bolsón label + tagline */
+tl.to(bolsonEl,{opacity:1,duration:0.9,ease:'power2.out'}, Z+2.0);
+tl.to(taglineEl,{opacity:1,duration:0.8,ease:'power2.out'}, Z+2.8);
+
+/* Pulse de Río Negro: se activa después del zoom */
+ScrollTrigger.create({
+  trigger:'.mapa-wrap', start:'90% top', end:'bottom bottom',
+  onEnter(){ document.getElementById('mp_arr')?.classList.add('pulse'); },
+  onLeaveBack(){ document.getElementById('mp_arr')?.classList.remove('pulse'); }
+});
+
+/* Ring pulse en El Bolsón dot */
+gsap.to(ringEl,{
+  attr:{r:18},opacity:0,
+  duration:1.8,ease:'power2.out',
+  repeat:-1,repeatDelay:0.4,
+  paused:true,
+  id:'ringAnim'
+});
+ScrollTrigger.create({
+  trigger:'.mapa-wrap', start:'88% top',
+  onEnter(){ gsap.getById('ringAnim')?.play(); },
+});
 </script>
 
 <!-- Supabase + lógica de proyectos (sin cambios) -->
