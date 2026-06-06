@@ -8,6 +8,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
+  <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
     :root {
@@ -319,6 +321,12 @@
         </div>
       </div>
 
+      <!-- Tour 360 estándar -->
+      <div id="eTour360Bloque" style="display:none; margin-bottom:2.5rem;">
+        <div style="margin-bottom:.8rem;"><span class="sh">Tour 360°</span></div>
+        <div id="eTour360Viewer" style="width:100%; height:420px;"></div>
+      </div>
+
       <!-- Mapa -->
       <div id="eMapaBloque" style="display:none; margin-bottom:2.5rem;">
         <div style="margin-bottom:.8rem;"><span class="sh">Ubicación</span></div>
@@ -425,6 +433,12 @@
             <div class="video-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
           </div>
         </div>
+      </div>
+
+      <!-- Tour 360 premium -->
+      <div id="pTour360Bloque" style="display:none; margin-bottom:2.5rem;">
+        <div style="margin-bottom:.8rem;"><span class="sh">Tour 360°</span></div>
+        <div id="pTour360Viewer" style="width:100%; height:420px;"></div>
       </div>
 
       <!-- Mapa -->
@@ -830,6 +844,20 @@ function renderEstandar(p) {
     }
   }
 
+  // Tour 360
+  if (p.tour_360) {
+    document.getElementById('eTour360Bloque').style.display = 'block'
+    pannellum.viewer('eTour360Viewer', {
+      type: 'equirectangular',
+      panorama: p.tour_360,
+      autoLoad: true,
+      compass: false,
+      showZoomCtrl: true,
+      showFullscreenCtrl: true,
+      hfov: 100
+    })
+  }
+
   // Mapa — lazy load
   if (p.latitud && p.longitud) {
     document.getElementById('eMapaBloque').style.display = 'block'
@@ -914,6 +942,20 @@ async function renderPremium(p) {
         this.innerHTML = `<iframe src="https://www.youtube.com/embed/${m[1]}?autoplay=1&rel=0&modestbranding=1" allow="autoplay;encrypted-media" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none;"></iframe>`
       })
     }
+  }
+
+  // Tour 360 premium
+  if (p.tour_360) {
+    document.getElementById('pTour360Bloque').style.display = 'block'
+    pannellum.viewer('pTour360Viewer', {
+      type: 'equirectangular',
+      panorama: p.tour_360,
+      autoLoad: true,
+      compass: false,
+      showZoomCtrl: true,
+      showFullscreenCtrl: true,
+      hfov: 100
+    })
   }
 
   // Mapa — lazy load
