@@ -48,6 +48,7 @@
     .nav-cta { font-size:.65rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--bg); background:var(--negro); padding:.55rem 1.4rem; margin-left:.5rem; transition:background .2s; }
     .nav-cta:hover { background:var(--negro2); }
     .nav-burger { display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:4px; }
+    .nav-close { display:none; }
     .nav-burger span { display:block; width:22px; height:1px; background:var(--negro); transition:all .3s; }
     @media(max-width:768px){
       #nav{padding:1rem 1.5rem;}
@@ -249,15 +250,16 @@
   <a href="index.html" class="nav-logo">
     <img src="logohorizontalnegro.png" alt="Sur Patagonia" />
   </a>
+  <div class="nav-links" id="navLinks">
+    <a href="index.html" class="nav-link">Inicio</a>
+    <a href="propiedades.html" class="nav-link active">Propiedades</a>
+    <a href="proyectos.html" class="nav-link">Proyectos</a>
+    <div class="nav-sep"></div>
+    <a href="index.html#contacto" class="nav-cta">Contacto</a>
+    <button class="nav-close" id="navClose" aria-label="Cerrar menú">✕</button>
+  </div>
   <button class="nav-burger" id="navBurger"><span></span><span></span><span></span></button>
 </nav>
-<div class="nav-links" id="navLinks">
-  <a href="index.html" class="nav-link">Inicio</a>
-  <a href="propiedades.html" class="nav-link active">Propiedades</a>
-  <a href="proyectos.html" class="nav-link">Proyectos</a>
-  <div class="nav-sep"></div>
-  <a href="index.html#contacto" class="nav-cta">Contacto</a>
-</div>
 
 <!-- CARGANDO -->
 <div id="estadoCargando">
@@ -556,12 +558,16 @@ const AMENIDADES = {
 }
 
 // Nav scroll
-window.addEventListener('scroll', () => {
-  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 30)
-})
-document.getElementById('navBurger').addEventListener('click', () => {
-  document.getElementById('navLinks').classList.toggle('open')
-})
+const navEl = document.getElementById('nav')
+function actualizarNav() { navEl.classList.toggle('scrolled', window.scrollY > 30) }
+actualizarNav()
+window.addEventListener('scroll', actualizarNav)
+const burger = document.getElementById('navBurger')
+const navLinks = document.getElementById('navLinks')
+burger.addEventListener('click', () => { burger.classList.toggle('open'); navLinks.classList.toggle('open') })
+const navClose = document.getElementById('navClose')
+if (navClose) navClose.addEventListener('click', () => { burger.classList.remove('open'); navLinks.classList.remove('open') })
+navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { burger.classList.remove('open'); navLinks.classList.remove('open') }))
 
 // Helpers
 let imgs = [], modalIdx = 0
