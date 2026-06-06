@@ -395,28 +395,34 @@
     const mapaEl = document.getElementById('mapaPropiedades')
     const mapa = L.map(mapaEl).setView([-41.13, -71.31], 9)
 
-    // ── CAMBIO 1: Tiles CartoDB Voyager (gris con más definición) ──
+    // ── CAMBIO 1: Tiles CartoDB Voyager — definición buena, colores suaves ──
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 19
     }).addTo(mapa)
 
-    // Aplicar escala de grises con más contraste vía CSS
-    document.querySelector('#mapaPropiedades').style.filter = 'grayscale(1) contrast(1.15) brightness(1.02)'
+    // Grayscale SOLO sobre los tiles, no afecta popups ni pines
+    const styleEl = document.createElement('style')
+    styleEl.textContent = `
+      #mapaPropiedades .leaflet-tile-pane {
+        filter: grayscale(80%) contrast(1.2) brightness(0.97);
+      }
+    `
+    document.head.appendChild(styleEl)
 
-    // ── CAMBIO 2: Pin clásico — círculo con PICOS.PNG + punta abajo ──
+    // ── CAMBIO 2: Pin con PICOS.PNG vía URL absoluta + punta abajo ──
     const iconoProp = L.divIcon({
-      html: `<div style="display:flex; flex-direction:column; align-items:center; filter:drop-shadow(0 3px 8px rgba(0,0,0,0.35));">
-        <div style="width:42px; height:42px; border-radius:50%; background:#1a1714; border:2.5px solid #c9a84c; display:flex; align-items:center; justify-content:center;">
-          <img src="assets/PICOS.PNG" style="width:26px; height:auto; display:block;" />
+      html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 10px rgba(0,0,0,0.5));">
+        <div style="width:44px;height:44px;border-radius:50%;background:#1a1714;border:2px solid #c9a84c;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+          <img src="https://surpatagonia.com.ar/assets/PICOS.PNG" style="width:28px;height:auto;display:block;" />
         </div>
-        <div style="width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-top:13px solid #1a1714; margin-top:-1px;"></div>
+        <div style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:14px solid #1a1714;margin-top:-1px;"></div>
       </div>`,
       className: '',
-      iconSize: [42, 55],
-      iconAnchor: [21, 55],
-      popupAnchor: [0, -58]
+      iconSize: [44, 58],
+      iconAnchor: [22, 58],
+      popupAnchor: [0, -62]
     })
 
     // ── CAMBIO 3: SELECT incluye imagenes + popup con foto ──
