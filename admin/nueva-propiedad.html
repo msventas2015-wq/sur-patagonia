@@ -338,6 +338,26 @@
         <p style="font-size:0.72rem; color:var(--gris); margin-top:0.5rem;">Pegá la URL completa de YouTube o solo el ID del video.</p>
       </div>
 
+      <!-- TOUR 360 -->
+      <div style="background:var(--negro-2); border:1px solid var(--gris-oscuro); padding:2rem; margin-bottom:2rem;">
+        <h4 style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dorado); margin-bottom:0.5rem;">Tour 360° (opcional)</h4>
+        <p style="font-size:0.72rem; color:var(--gris-claro); margin-bottom:1.5rem;">Subí una foto panorámica equirectangular para mostrar el recorrido 360° interactivo.</p>
+
+        <div class="upload-area" id="uploadArea360" style="margin-bottom:1rem;">
+          <p style="font-size:0.85rem; color:var(--gris-claro); margin-bottom:0.5rem;">Hacé clic para subir la foto 360°</p>
+          <p style="font-size:0.72rem; color:var(--gris);">JPG o PNG equirectangular — Máx. 20MB</p>
+          <input type="file" id="input360" accept="image/*" style="display:none;" />
+        </div>
+
+        <!-- Preview 360 existente o nueva -->
+        <div id="preview360Wrap" style="display:none; position:relative; margin-top:0.5rem;">
+          <img id="preview360Img" src="" alt="Preview 360" style="width:100%; max-height:180px; object-fit:cover; border:1px solid var(--gris-oscuro);" />
+          <button type="button" id="btn360Quitar" style="position:absolute; top:0.5rem; right:0.5rem; background:rgba(0,0,0,0.7); color:#fff; border:none; width:28px; height:28px; font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>
+          <p style="font-size:0.68rem; color:var(--gris-claro); margin-top:0.4rem;">✓ Foto 360° lista para guardar</p>
+        </div>
+      </div>
+
+      <!-- IMÁGENES -->
       <div style="background:var(--negro-2); border:1px solid var(--gris-oscuro); padding:2rem; margin-bottom:2rem;">
         <h4 style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dorado); margin-bottom:1.5rem;">Imágenes</h4>
         <div class="upload-area" id="uploadArea">
@@ -384,7 +404,7 @@
     window.location.href = 'login.html'
   })
 
-  // Upload area
+  // ── Upload imágenes normales ──────────────────────────────────
   const uploadArea = document.getElementById('uploadArea')
   const inputImagenes = document.getElementById('inputImagenes')
   uploadArea.addEventListener('click', () => inputImagenes.click())
@@ -424,7 +444,42 @@
     previews.appendChild(div)
   }
 
-  // Editar propiedad existente
+  // ── Upload foto 360 ───────────────────────────────────────────
+  const uploadArea360 = document.getElementById('uploadArea360')
+  const input360 = document.getElementById('input360')
+  const preview360Wrap = document.getElementById('preview360Wrap')
+  const preview360Img = document.getElementById('preview360Img')
+  const btn360Quitar = document.getElementById('btn360Quitar')
+
+  let archivo360 = null
+  let tour360ExistenteUrl = null
+
+  uploadArea360.addEventListener('click', () => input360.click())
+
+  input360.addEventListener('change', () => {
+    const f = input360.files[0]
+    if (!f || !f.type.startsWith('image/')) return
+    archivo360 = f
+    tour360ExistenteUrl = null
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      preview360Img.src = e.target.result
+      preview360Wrap.style.display = 'block'
+      uploadArea360.style.display = 'none'
+    }
+    reader.readAsDataURL(f)
+  })
+
+  btn360Quitar.addEventListener('click', () => {
+    archivo360 = null
+    tour360ExistenteUrl = null
+    preview360Img.src = ''
+    preview360Wrap.style.display = 'none'
+    uploadArea360.style.display = 'block'
+    input360.value = ''
+  })
+
+  // ── Editar propiedad existente ────────────────────────────────
   const params = new URLSearchParams(window.location.search)
   const editId = params.get('id')
   let imagenesExistentes = []
@@ -459,6 +514,14 @@
       document.getElementById('destacada').checked = data.destacada || false
       document.getElementById('activa').checked = data.activa !== false
 
+      // Cargar tour 360 existente
+      if (data.tour_360) {
+        tour360ExistenteUrl = data.tour_360
+        preview360Img.src = data.tour_360
+        preview360Wrap.style.display = 'block'
+        uploadArea360.style.display = 'none'
+      }
+
       imagenesExistentes = data.imagenes || []
       const previews = document.getElementById('uploadPreviews')
       imagenesExistentes.forEach((url, i) => {
@@ -476,7 +539,7 @@
     }
   }
 
-  // Guardar
+  // ── Guardar ───────────────────────────────────────────────────
   document.getElementById('formPropiedad').addEventListener('submit', async (e) => {
     e.preventDefault()
     const btn = document.getElementById('btnGuardar')
@@ -484,13 +547,19 @@
     btn.disabled = true
 
     try {
-      // Subir imágenes nuevas
+      // Subir imágenes normales
       const urlsNuevas = []
       for (const archivo of archivosSeleccionados) {
         const url = await subirImagen(archivo, 'propiedades')
         urlsNuevas.push(url)
       }
       const todasImagenes = [...imagenesExistentes, ...urlsNuevas]
+
+      // Subir foto 360 si hay una nueva
+      let tour360Url = tour360ExistenteUrl || null
+      if (archivo360) {
+        tour360Url = await subirImagen(archivo360, 'propiedades/360')
+      }
 
       const datos = {
         titulo: document.getElementById('titulo').value,
@@ -512,6 +581,7 @@
         latitud: document.getElementById('latitud').value ? parseFloat(document.getElementById('latitud').value) : null,
         longitud: document.getElementById('longitud').value ? parseFloat(document.getElementById('longitud').value) : null,
         video_url: document.getElementById('video_url').value || null,
+        tour_360: tour360Url,
         amenidades: [...document.querySelectorAll('.amenidad-check:checked')].map(cb => cb.value),
         destacada: document.getElementById('destacada').checked,
         activa: document.getElementById('activa').checked,
