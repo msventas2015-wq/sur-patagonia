@@ -395,33 +395,28 @@
     const mapaEl = document.getElementById('mapaPropiedades')
     const mapa = L.map(mapaEl).setView([-41.13, -71.31], 9)
 
-    // ── CAMBIO 1: Tiles CartoDB Positron (gris / bajo contraste) ──
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    // ── CAMBIO 1: Tiles CartoDB Voyager (gris con más definición) ──
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 19
     }).addTo(mapa)
 
-    // ── CAMBIO 2: Ícono montaña SVG personalizado ──
+    // Aplicar escala de grises con más contraste vía CSS
+    document.querySelector('#mapaPropiedades').style.filter = 'grayscale(1) contrast(1.15) brightness(1.02)'
+
+    // ── CAMBIO 2: Pin clásico — círculo con PICOS.PNG + punta abajo ──
     const iconoProp = L.divIcon({
-      html: `<div style="
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
-      ">
-        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="18" cy="18" r="18" fill="#1a1714"/>
-          <path d="M8 26L18 10L28 26H8Z" fill="#c9a84c"/>
-          <path d="M14 26L18 18L22 26H14Z" fill="#1a1714" opacity="0.4"/>
-        </svg>
+      html: `<div style="display:flex; flex-direction:column; align-items:center; filter:drop-shadow(0 3px 8px rgba(0,0,0,0.35));">
+        <div style="width:42px; height:42px; border-radius:50%; background:#1a1714; border:2.5px solid #c9a84c; display:flex; align-items:center; justify-content:center;">
+          <img src="assets/PICOS.PNG" style="width:26px; height:auto; display:block;" />
+        </div>
+        <div style="width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-top:13px solid #1a1714; margin-top:-1px;"></div>
       </div>`,
       className: '',
-      iconSize: [36, 36],
-      iconAnchor: [18, 18],
-      popupAnchor: [0, -20]
+      iconSize: [42, 55],
+      iconAnchor: [21, 55],
+      popupAnchor: [0, -58]
     })
 
     // ── CAMBIO 3: SELECT incluye imagenes + popup con foto ──
