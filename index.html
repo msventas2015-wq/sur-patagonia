@@ -1134,6 +1134,30 @@ async function aplicarSiteConfig() {
     if (cfg.img_contacto_bg) { const el = document.getElementById('contacto'); if (el) el.style.background = `linear-gradient(to bottom, rgba(8,8,8,0.88) 0%, rgba(8,8,8,0.92) 100%), url('${cfg.img_contacto_bg}') center/cover no-repeat fixed` }
     if (cfg.img_ia_bg) { const el = document.getElementById('sec-ia-bg'); if (el) el.style.backgroundImage = `url('${cfg.img_ia_bg}')` }
     if (cfg.font_titulos) document.querySelectorAll('.section-title,.av-title,.srv-title,.hero-title').forEach(el => { el.style.fontFamily = `'${cfg.font_titulos}', serif` })
+
+    // ── Encuadre móvil (object-position / background-position en mobile) ──
+    const mobilePosMap = {
+      'img_hero_scroll_1': '.story-slide:nth-child(1)',
+      'img_hero_scroll_2': '.story-slide:nth-child(2)',
+      'img_hero_scroll_3': '.story-slide:nth-child(3)',
+      'img_hero_scroll_4': '.story-slide:nth-child(4)',
+      'img_stats_bg':      '#stats-bg',
+      'img_servicios_bg':  '#sec-servicios',
+      'img_contacto_bg':   '#contacto',
+      'img_acordeon_comprar':  '#bg-comprar',
+      'img_acordeon_alquiler': '#bg-alquilar',
+      'img_acordeon_prop':     '#bg-propiedad',
+    }
+    const mobileRules = []
+    Object.entries(mobilePosMap).forEach(([key, sel]) => {
+      const pos = cfg[key + '_mobile_pos']
+      if (pos) mobileRules.push(`${sel} { background-position: ${pos} !important; }`)
+    })
+    if (mobileRules.length) {
+      const st = document.createElement('style')
+      st.textContent = `@media (max-width: 768px) { ${mobileRules.join(' ')} }`
+      document.head.appendChild(st)
+    }
   } catch(e) { console.warn('site_config no disponible') }
 }
 aplicarSiteConfig()
