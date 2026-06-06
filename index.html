@@ -1289,128 +1289,141 @@ document.getElementById('formContacto').addEventListener('submit', async e => {
 <style>
 #sp-chat-btn {
   position: fixed; bottom: 2rem; right: 2rem; z-index: 9000;
-  width: 58px; height: 58px; border-radius: 50%;
+  width: 54px; height: 54px; border-radius: 50%;
   background: var(--gold); border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 20px rgba(201,168,76,0.4);
+  box-shadow: 0 4px 24px rgba(201,168,76,0.35);
   transition: transform 0.3s, box-shadow 0.3s;
 }
-#sp-chat-btn:hover { transform: scale(1.08); box-shadow: 0 6px 30px rgba(201,168,76,0.5); }
-#sp-chat-btn svg { width: 26px; height: 26px; fill: #080808; }
-#sp-chat-btn .sp-close { display: none; font-size: 1.4rem; color: #080808; font-weight: 300; line-height: 1; }
+#sp-chat-btn:hover { transform: scale(1.06); box-shadow: 0 6px 32px rgba(201,168,76,0.5); }
+#sp-chat-btn svg { width: 24px; height: 24px; fill: #080808; transition: opacity 0.2s; }
+#sp-chat-btn .sp-close { display: none; font-size: 1.2rem; color: #080808; font-weight: 300; line-height: 1; }
 #sp-chat-btn.open svg { display: none; }
 #sp-chat-btn.open .sp-close { display: block; }
 
 #sp-chat-box {
-  position: fixed; bottom: 6.5rem; right: 2rem; z-index: 8999;
-  width: 360px; max-height: 520px;
-  background: #111; border: 1px solid #2a2a2e;
+  position: fixed; bottom: 6rem; right: 2rem; z-index: 8999;
+  width: 350px; max-height: 530px;
+  background: rgba(14,14,14,0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 16px;
   display: flex; flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  transform: translateY(20px) scale(0.97); opacity: 0;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03);
+  transform: translateY(16px) scale(0.96); opacity: 0;
   pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  overflow: hidden;
 }
 #sp-chat-box.open { transform: translateY(0) scale(1); opacity: 1; pointer-events: all; }
 
 .sp-chat-header {
-  padding: 1rem 1.2rem; background: #0d0d0d;
-  border-bottom: 1px solid #2a2a2e;
-  display: flex; align-items: center; gap: 0.8rem;
+  padding: 1rem 1.2rem;
+  background: linear-gradient(135deg, rgba(201,168,76,0.08) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex; align-items: center; gap: 0.85rem;
+  flex-shrink: 0;
 }
-.sp-chat-header-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #c9a84c; flex-shrink: 0;
-  animation: pulse-gold 2s infinite;
-}
-@keyframes pulse-gold {
-  0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+.sp-chat-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, #c9a84c, #9a7a2a);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 0.7rem; font-weight: 700;
+  color: #080808; letter-spacing: 0.05em;
 }
 .sp-chat-header-info { flex: 1; }
-.sp-chat-header-title { font-size: 0.78rem; font-weight: 600; color: #f0ede8; letter-spacing: 0.05em; }
-.sp-chat-header-sub { font-size: 0.62rem; color: #777; margin-top: 0.1rem; }
+.sp-chat-header-title { font-size: 0.78rem; font-weight: 600; color: #f0ede8; letter-spacing: 0.04em; }
+.sp-chat-header-sub { font-size: 0.6rem; color: rgba(201,168,76,0.7); margin-top: 0.15rem; display: flex; align-items: center; gap: 0.4rem; }
+.sp-online-dot { width: 5px; height: 5px; border-radius: 50%; background: #4ade80; display: inline-block; animation: pulse-green 2s infinite; }
+@keyframes pulse-green { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 .sp-chat-msgs {
-  flex: 1; overflow-y: auto; padding: 1rem;
-  display: flex; flex-direction: column; gap: 0.8rem;
+  flex: 1; overflow-y: auto; padding: 1rem 1rem 0.5rem;
+  display: flex; flex-direction: column; gap: 0.7rem;
   scroll-behavior: smooth;
 }
 .sp-chat-msgs::-webkit-scrollbar { width: 3px; }
 .sp-chat-msgs::-webkit-scrollbar-track { background: transparent; }
-.sp-chat-msgs::-webkit-scrollbar-thumb { background: #2a2a2e; }
+.sp-chat-msgs::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 2px; }
 
 .sp-msg {
-  max-width: 88%; font-size: 0.82rem; line-height: 1.6;
-  padding: 0.65rem 0.9rem;
+  max-width: 86%; font-size: 0.81rem; line-height: 1.65;
+  padding: 0.6rem 0.9rem; animation: fadeUp 0.25s ease;
 }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .sp-msg.bot {
-  background: #1a1a1a; color: #f0ede8;
-  border-radius: 0 10px 10px 10px; align-self: flex-start;
-  border-left: 2px solid #c9a84c;
+  background: rgba(255,255,255,0.05); color: #e8e5e0;
+  border-radius: 4px 14px 14px 14px; align-self: flex-start;
 }
 .sp-msg.user {
-  background: #c9a84c; color: #080808;
-  border-radius: 10px 0 10px 10px; align-self: flex-end;
-  font-weight: 500;
+  background: linear-gradient(135deg, #c9a84c, #b8943e);
+  color: #080808; border-radius: 14px 4px 14px 14px;
+  align-self: flex-end; font-weight: 500;
 }
-.sp-msg.bot .sp-typing { display: inline-flex; gap: 4px; align-items: center; }
+.sp-msg.bot .sp-typing { display: inline-flex; gap: 5px; align-items: center; padding: 0.1rem 0; }
 .sp-msg.bot .sp-typing span {
   width: 5px; height: 5px; border-radius: 50%;
-  background: #c9a84c; animation: bounce-dot 1s infinite;
+  background: rgba(201,168,76,0.6); animation: bounce-dot 1.2s infinite;
 }
-.sp-msg.bot .sp-typing span:nth-child(2) { animation-delay: 0.15s; }
-.sp-msg.bot .sp-typing span:nth-child(3) { animation-delay: 0.3s; }
+.sp-msg.bot .sp-typing span:nth-child(2) { animation-delay: 0.18s; }
+.sp-msg.bot .sp-typing span:nth-child(3) { animation-delay: 0.36s; }
 @keyframes bounce-dot { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
 
 .sp-quick-btns {
   display: flex; flex-wrap: wrap; gap: 0.4rem;
-  padding: 0 1rem 0.6rem;
+  padding: 0.4rem 1rem 0.7rem;
 }
 .sp-quick-btn {
-  font-size: 0.72rem; padding: 0.4rem 0.85rem;
-  background: transparent; color: #c9a84c;
-  border: 1px solid rgba(201,168,76,0.4);
-  cursor: pointer; transition: all 0.2s;
-  white-space: nowrap;
+  font-size: 0.7rem; padding: 0.38rem 0.8rem;
+  background: transparent; color: rgba(201,168,76,0.85);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 20px; cursor: pointer; transition: all 0.2s;
+  white-space: nowrap; font-family: 'Montserrat', sans-serif;
 }
-.sp-quick-btn:hover { background: rgba(201,168,76,0.1); border-color: #c9a84c; }
+.sp-quick-btn:hover { background: rgba(201,168,76,0.1); border-color: rgba(201,168,76,0.6); color: #c9a84c; }
 
 .sp-prop-card {
-  background: #1a1a1a; border: 1px solid #2a2a2e;
-  overflow: hidden; cursor: pointer;
-  transition: border-color 0.2s;
-  margin-bottom: 0.4rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px; overflow: hidden; cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+  margin-bottom: 0.3rem; align-self: flex-start; width: 100%;
 }
-.sp-prop-card:hover { border-color: #c9a84c; }
-.sp-prop-card img { width: 100%; height: 90px; object-fit: cover; display: block; }
-.sp-prop-card-body { padding: 0.6rem 0.75rem; }
-.sp-prop-card-tipo { font-size: 0.58rem; color: #c9a84c; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.2rem; }
-.sp-prop-card-titulo { font-size: 0.82rem; color: #f0ede8; font-weight: 400; margin-bottom: 0.2rem; line-height: 1.3; }
-.sp-prop-card-precio { font-size: 0.9rem; color: #e8c97a; font-weight: 300; }
-.sp-prop-card-loc { font-size: 0.65rem; color: #777; margin-top: 0.2rem; }
+.sp-prop-card:hover { border-color: rgba(201,168,76,0.4); transform: translateY(-1px); }
+.sp-prop-card img { width: 100%; height: 85px; object-fit: cover; display: block; }
+.sp-prop-card-body { padding: 0.55rem 0.75rem; }
+.sp-prop-card-tipo { font-size: 0.55rem; color: #c9a84c; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.2rem; }
+.sp-prop-card-titulo { font-size: 0.8rem; color: #f0ede8; font-weight: 400; line-height: 1.3; }
+.sp-prop-card-precio { font-size: 0.88rem; color: #e8c97a; margin-top: 0.2rem; }
+.sp-prop-card-loc { font-size: 0.62rem; color: #666; margin-top: 0.15rem; }
 
 .sp-chat-input {
-  display: flex; border-top: 1px solid #2a2a2e; padding: 0.7rem;
-  gap: 0.5rem; align-items: flex-end;
+  display: flex; border-top: 1px solid rgba(255,255,255,0.05);
+  padding: 0.75rem; gap: 0.5rem; align-items: center;
+  flex-shrink: 0;
 }
 .sp-chat-input input {
-  flex: 1; background: #1a1a1a; border: 1px solid #2a2a2e;
-  color: #f0ede8; padding: 0.55rem 0.85rem;
-  font-family: 'Montserrat', sans-serif; font-size: 0.8rem;
-  outline: none; transition: border-color 0.2s;
+  flex: 1; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px; color: #f0ede8;
+  padding: 0.55rem 1rem;
+  font-family: 'Montserrat', sans-serif; font-size: 0.78rem;
+  outline: none; transition: border-color 0.2s, background 0.2s;
 }
-.sp-chat-input input:focus { border-color: #c9a84c; }
-.sp-chat-input input::placeholder { color: #555; }
+.sp-chat-input input:focus { border-color: rgba(201,168,76,0.4); background: rgba(255,255,255,0.07); }
+.sp-chat-input input::placeholder { color: rgba(255,255,255,0.25); }
 .sp-chat-input button {
   background: #c9a84c; color: #080808; border: none;
-  width: 36px; height: 36px; cursor: pointer;
+  width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1rem; transition: background 0.2s; flex-shrink: 0;
+  font-size: 0.9rem; transition: background 0.2s, transform 0.2s;
+  flex-shrink: 0; font-weight: 700;
 }
-.sp-chat-input button:hover { background: #e8c97a; }
+.sp-chat-input button:hover { background: #e8c97a; transform: scale(1.05); }
 
 @media (max-width: 480px) {
-  #sp-chat-box { width: calc(100vw - 2rem); right: 1rem; bottom: 5.5rem; }
+  #sp-chat-box { width: calc(100vw - 2rem); right: 1rem; bottom: 5rem; }
   #sp-chat-btn { bottom: 1rem; right: 1rem; }
 }
 </style>
@@ -1426,10 +1439,10 @@ document.getElementById('formContacto').addEventListener('submit', async e => {
 <!-- Panel del chat -->
 <div id="sp-chat-box">
   <div class="sp-chat-header">
-    <div class="sp-chat-header-dot"></div>
+    <div class="sp-chat-avatar">SP</div>
     <div class="sp-chat-header-info">
       <div class="sp-chat-header-title">Sur Patagonia</div>
-      <div class="sp-chat-header-sub">Respondemos al instante</div>
+      <div class="sp-chat-header-sub"><span class="sp-online-dot"></span> En línea ahora</div>
     </div>
   </div>
   <div class="sp-chat-msgs" id="spMsgs"></div>
@@ -1641,18 +1654,37 @@ function reiniciar() {
   iniciarChat()
 }
 
+function detectarIntent(text) {
+  const t = text.toLowerCase()
+  const intent = {}
+  // Operación
+  if (/comprar|venta|vender|adquirir/.test(t)) intent.operacion = 'venta'
+  else if (/temporari|vacacion|temporada|turismo|semana|dias/.test(t)) intent.operacion = 'alquiler_temporario'
+  else if (/alquil|arrendar|rentar|permanente|mensual/.test(t)) intent.operacion = 'alquiler'
+  else if (/inverti|desarrollo|loteo|proyecto/.test(t)) intent.operacion = 'desarrollo'
+  // Tipo
+  if (/casa|chalet|vivienda/.test(t)) intent.tipo = 'casa'
+  else if (/terreno|tierra|campo|chacra/.test(t)) intent.tipo = 'terreno'
+  else if (/lote/.test(t)) intent.tipo = 'lote'
+  else if (/depto|departamento|apart/.test(t)) intent.tipo = 'departamento'
+  else if (/local|comercial|negocio/.test(t)) intent.tipo = 'local'
+  else if (/galpon|deposito|galpón/.test(t)) intent.tipo = 'galpon'
+  // Presupuesto
+  const precioMatch = t.match(/(\d[\d.,]*)\s*(mil|k|usd|dolares|pesos)?/)
+  if (precioMatch) {
+    let n = parseInt(precioMatch[1].replace(/[.,]/g, ''))
+    if (/mil|k/.test(precioMatch[2] || '')) n *= 1000
+    if (n > 1000) intent.presupuesto = n
+  }
+  return intent
+}
+
 async function handleInput(text) {
   if (!text.trim()) return
   input.value = ''
   addMsg(text, 'user')
   setQuick([])
 
-  if (state.step === 'presupuesto') {
-    const num = parseInt(text.replace(/\D/g, ''))
-    state.presupuesto = isNaN(num) ? null : num
-    buscarPropiedades()
-    return
-  }
   if (state.step === 'nombre') {
     state.nombre = text
     state.step = 'telefono'
@@ -1679,11 +1711,44 @@ async function handleInput(text) {
     ])
     return
   }
-  // Respuesta genérica
-  await botReply('Entendido. ¿Querés que te contacte nuestro equipo directamente?', 500)
+
+  // Intentar entender el texto libre en cualquier paso temprano
+  const intent = detectarIntent(text)
+  const tieneIntent = intent.operacion || intent.tipo || intent.presupuesto
+
+  if (tieneIntent) {
+    if (intent.operacion) state.operacion = intent.operacion
+    if (intent.tipo) state.tipo = intent.tipo
+    if (intent.presupuesto) state.presupuesto = intent.presupuesto
+
+    if (intent.operacion === 'desarrollo') {
+      mostrarDesarrollos()
+    } else if (state.operacion && !state.tipo && !intent.tipo) {
+      preguntarTipo()
+    } else if (state.operacion && (state.tipo || intent.tipo) && !state.presupuesto && !intent.presupuesto) {
+      preguntarPresupuesto()
+    } else if (state.operacion) {
+      buscarPropiedades()
+    } else {
+      preguntarTipo()
+    }
+    return
+  }
+
+  if (state.step === 'presupuesto') {
+    const num = parseInt(text.replace(/\D/g, ''))
+    state.presupuesto = isNaN(num) ? null : num
+    buscarPropiedades()
+    return
+  }
+
+  // Respuesta genérica con opciones
+  await botReply('Entendido. Para ayudarte mejor, ¿qué estás buscando?', 500)
   setQuick([
-    { label: 'Sí', action: pedirContacto },
-    { label: 'No, gracias', action: () => botReply('¡Cuando quieras, estamos acá! 🙌') },
+    { label: 'Comprar', action: () => { state.operacion = 'venta'; preguntarTipo() } },
+    { label: 'Alquilar', action: () => { state.operacion = 'alquiler'; preguntarTipo() } },
+    { label: 'Temporario', action: () => { state.operacion = 'alquiler_temporario'; preguntarTipo() } },
+    { label: 'Invertir', action: () => { state.operacion = 'desarrollo'; mostrarDesarrollos() } },
   ])
 }
 
