@@ -205,10 +205,13 @@
     .prop-section-head h2.section-title { font-size: clamp(1.8rem, 3.2vw, 2.8rem); margin-top: 0.6rem; }
     .link-ver-todas { font-size: 0.65rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold); font-weight: 500; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; padding-bottom: 3px; border-bottom: 1px solid rgba(201,168,76,0.3); transition: color 0.3s, border-color 0.3s, gap 0.3s; }
     .link-ver-todas:hover { color: var(--gold-light); border-color: var(--gold); gap: 0.9rem; }
-    .prop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 2px; }
-
-    .prop-card { position: relative; overflow: hidden; background: var(--surface); cursor: pointer; aspect-ratio: 4/5; }
-    .prop-card:first-child { aspect-ratio: 4/5; }
+    .prop-carrusel-wrap { position: relative; }
+    .prop-grid { display: flex; gap: 2px; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none; }
+    .prop-grid::-webkit-scrollbar { display: none; }
+    .prop-card { position: relative; overflow: hidden; background: var(--surface); cursor: pointer; aspect-ratio: 4/5; flex: 0 0 360px; }
+    .prop-carrusel-btn { width: 44px; height: 44px; background: var(--bg); border: 1px solid rgba(255,255,255,0.12); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s, border-color 0.2s; font-size: 1.1rem; }
+    .prop-carrusel-btn:hover { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+    .prop-section-actions { display: flex; align-items: center; gap: 1rem; }
     .prop-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94); }
     .prop-card:hover .prop-img { transform: scale(1.06); }
     .prop-placeholder { width: 100%; height: 100%; min-height: 280px; background: linear-gradient(135deg, #111 0%, #181818 100%); display: flex; align-items: center; justify-content: center; color: #222; font-size: 3rem; }
@@ -800,14 +803,20 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
         <div class="eyebrow">En el mercado ahora</div>
         <h2 class="section-title">Propiedades <em>disponibles</em></h2>
       </div>
-      <a href="propiedades.html" class="link-ver-todas">Ver todas <span>→</span></a>
+      <div class="prop-section-actions">
+        <a href="propiedades.html" class="link-ver-todas">Ver todas <span>→</span></a>
+        <button class="prop-carrusel-btn" id="propPrev">‹</button>
+        <button class="prop-carrusel-btn" id="propNext">›</button>
+      </div>
     </div>
+    <div class="prop-carrusel-wrap">
     <div class="prop-grid" id="propGrid">
       <div style="grid-column:1/-1; padding:4rem; text-align:center; color:var(--muted);">
         <div style="width:28px;height:28px;border:1.5px solid var(--stroke);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1rem;"></div>
         Cargando propiedades...
       </div>
     </div>
+    </div><!-- /prop-carrusel-wrap -->
   </div>
 </section>
 
@@ -1301,7 +1310,11 @@ function animNum(id, target) {
   gsap.to(obj, { v:target, duration:2, ease:'power2.out', delay:0.5, onUpdate: () => { el.textContent = Math.round(obj.v) } })
 }
 async function cargarPropiedades() {
-  const { data } = await supabase.from('propiedades').select('*').eq('destacada',true).eq('activa',true).limit(4)
+  const { data } = await supabase.from('propiedades').select('*').eq('activa',true).order('created_at',{ascending:false}).limit(12)
+  // Flechas carrusel
+  const grid = document.getElementById('propGrid')
+  document.getElementById('propPrev').addEventListener('click', () => { grid.scrollBy({ left: -362, behavior: 'smooth' }) })
+  document.getElementById('propNext').addEventListener('click', () => { grid.scrollBy({ left: 362, behavior: 'smooth' }) })
   const grid = document.getElementById('propGrid')
   if (!data||!data.length) { grid.innerHTML=`<div style="grid-column:1/-1;padding:4rem;text-align:center;color:var(--muted);">Las propiedades aparecerán aquí una vez que las cargues desde el panel.</div>`; return }
   grid.innerHTML = data.map((p,i) => {
