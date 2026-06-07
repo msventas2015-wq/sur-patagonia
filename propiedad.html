@@ -545,7 +545,13 @@ import { supabase } from './js/config.js'
 
 // ── Tipografías desde site_config ────────────────────────────
 supabase.from('site_config').select('key, value')
-  .in('key', ['font_titulos_premium', 'font_labels_premium', 'font_cuerpo', 'font_titulos_estandar', 'font_labels_estandar'])
+  .in('key', [
+    'font_titulos_premium', 'font_labels_premium',
+    'font_specs_val_premium', 'font_specs_lbl_premium', 'font_chips_premium',
+    'font_cuerpo',
+    'font_titulos_estandar', 'font_labels_estandar',
+    'font_specs_val_estandar', 'font_specs_lbl_estandar'
+  ])
   .then(({ data }) => {
     if (!data) return
     const cfg = {}
@@ -553,15 +559,30 @@ supabase.from('site_config').select('key, value')
     // Premium: título hero
     if (cfg.font_titulos_premium)
       document.querySelectorAll('.p-hero-titulo').forEach(el => { el.style.fontFamily = `'${cfg.font_titulos_premium}', serif` })
-    // Premium: labels de sección (CARACTERÍSTICAS, COMODIDADES, DESCRIPCIÓN)
+    // Premium: labels de sección (CARACTERÍSTICAS, COMODIDADES + Descripción/Video/Ubicación)
     if (cfg.font_labels_premium)
-      document.querySelectorAll('.p-specs-label, .p-amen-label').forEach(el => { el.style.fontFamily = `'${cfg.font_labels_premium}', sans-serif` })
+      document.querySelectorAll('.p-specs-label, .p-amen-label, #tplPremium .sh').forEach(el => { el.style.fontFamily = `'${cfg.font_labels_premium}', sans-serif` })
+    // Premium: números grandes de specs (6, 4, 700 m²)
+    if (cfg.font_specs_val_premium)
+      document.querySelectorAll('.p-spec-val').forEach(el => { el.style.fontFamily = `'${cfg.font_specs_val_premium}', sans-serif` })
+    // Premium: labels bajo los números (DORM., BAÑOS, etc.)
+    if (cfg.font_specs_lbl_premium)
+      document.querySelectorAll('.p-spec-lbl').forEach(el => { el.style.fontFamily = `'${cfg.font_specs_lbl_premium}', sans-serif` })
+    // Premium: chips de amenidades
+    if (cfg.font_chips_premium)
+      document.querySelectorAll('.p-amen-chip').forEach(el => { el.style.fontFamily = `'${cfg.font_chips_premium}', sans-serif` })
     // Estándar: título
     if (cfg.font_titulos_estandar)
       document.querySelectorAll('.e-titulo').forEach(el => { el.style.fontFamily = `'${cfg.font_titulos_estandar}', sans-serif` })
     // Estándar: labels (Comodidades, Descripción, Ubicación)
     if (cfg.font_labels_estandar)
-      document.querySelectorAll('.sh').forEach(el => { el.style.fontFamily = `'${cfg.font_labels_estandar}', sans-serif` })
+      document.querySelectorAll('#tplEstandar .sh').forEach(el => { el.style.fontFamily = `'${cfg.font_labels_estandar}', sans-serif` })
+    // Estándar: números grandes de specs
+    if (cfg.font_specs_val_estandar)
+      document.querySelectorAll('.spec-val').forEach(el => { el.style.fontFamily = `'${cfg.font_specs_val_estandar}', sans-serif` })
+    // Estándar: labels bajo los números
+    if (cfg.font_specs_lbl_estandar)
+      document.querySelectorAll('.spec-lbl').forEach(el => { el.style.fontFamily = `'${cfg.font_specs_lbl_estandar}', sans-serif` })
     // Ambas: texto descriptivo
     if (cfg.font_cuerpo)
       document.querySelectorAll('.prop-desc').forEach(el => { el.style.fontFamily = `'${cfg.font_cuerpo}', sans-serif` })
