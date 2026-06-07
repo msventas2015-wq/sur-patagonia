@@ -1223,6 +1223,30 @@ function initScroll() {
   }})
   gsap.to('#marquee1', { xPercent:-50, duration:38, ease:'none', repeat:-1 })
   gsap.fromTo('#marquee2', { xPercent:-50 }, { xPercent:0, duration:28, ease:'none', repeat:-1 })
+
+  // ── Overlay oscuro sec-propiedades: oscuro al entrar, claro al llegar ──
+  const secProp = document.getElementById('sec-propiedades')
+  const propDimmer = document.createElement('div')
+  propDimmer.style.cssText = 'position:absolute;inset:0;background:rgba(8,8,8,0.82);pointer-events:none;z-index:5;'
+  secProp.appendChild(propDimmer)
+  gsap.to(propDimmer, {
+    opacity: 0,
+    ease: 'none',
+    scrollTrigger: {
+      trigger: '#sec-propiedades',
+      start: 'top bottom',
+      end: 'top 8%',
+      scrub: 1.5
+    }
+  })
+
+  // ── Scroll de rueda sobre el carrusel mueve las cards horizontalmente ──
+  const propCarruselWrap = document.querySelector('.prop-carrusel-wrap')
+  propCarruselWrap.addEventListener('wheel', function(e) {
+    e.preventDefault()
+    document.getElementById('propGrid').scrollBy({ left: e.deltaY * 1.8, behavior: 'smooth' })
+  }, { passive: false })
+
   cargarStats(); cargarPropiedades(); cargarProyectos()
 }
 window.addEventListener('scroll', () => { document.getElementById('nav').classList.toggle('scrolled', window.scrollY>60) })
