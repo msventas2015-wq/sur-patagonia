@@ -931,6 +931,7 @@ const imagenesConfig = [
   { key: 'img_hero_scroll_4',      label: 'Scroll imagen 4' },
   { key: 'img_stats_bg',           label: 'Fondo — Estadísticas' },
   { key: 'img_servicios_bg',       label: 'Fondo — Nuestros Servicios' },
+  { key: 'img_ia_bg',              label: 'Fondo — Sección IA / Buscador' },
   { key: 'img_contacto_bg',        label: 'Fondo — Contacto' },
   { key: 'img_acordeon_comprar',   label: 'Sección Comprar' },
   { key: 'img_acordeon_alquiler',  label: 'Sección Alquilar' },
@@ -993,7 +994,7 @@ mobGrid.innerHTML = ''
 imagenesConfig.forEach(({ key, label }) => {
   const url = cfg[key] || ''
   if (!url) return
-  const pos = cfg[`mob_${key}`] || '50% 50%'
+  const pos = cfg[`${key}_mobile_pos`] || '50% 50%'
   const [px, py] = pos.split(' ').map(v => parseFloat(v))
   const div = document.createElement('div')
   div.className = 'mob-item'
@@ -1024,7 +1025,7 @@ imagenesConfig.forEach(({ key, label }) => {
 window.guardarFocalPoint = async (key) => {
   const phone = document.getElementById(`mob-${key}`)
   const pos = phone._focal || document.getElementById(`mobval-${key}`).textContent
-  const { error } = await supabase.from('site_config').upsert({ key: `mob_${key}`, value: pos }, { onConflict: 'key' })
+  const { error } = await supabase.from('site_config').upsert({ key: `${key}_mobile_pos`, value: pos, tipo: 'mobile_pos' }, { onConflict: 'key' })
   if (error) mostrarAlerta('Error al guardar encuadre', 'err')
   else mostrarAlerta('✓ Encuadre guardado', 'ok')
 }
@@ -1055,7 +1056,7 @@ window.guardarVideo = async (key, inputId, iframeId) => {
 // ── Opacidad ─────────────────────────────────────────────────
 ;[
   ['overlay_hero',            'sliderHeroOp',   'labelHeroOp'],
-  ['overlay_audiovisual',     'sliderAvOp',     'labelAvOp'],
+  ['overlay_av_flat',         'sliderAvOp',     'labelAvOp'],
   ['overlay_propiedades',     'sliderPropOp',   'labelPropOp'],
   ['overlay_propiedades_bg',  'sliderPropBgOp', 'labelPropBgOp'],
   ['overlay_proyectos',       'sliderProyOp',   'labelProyOp'],
