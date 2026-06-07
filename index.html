@@ -205,7 +205,24 @@
     .prop-section-head h2.section-title { font-size: clamp(1.6rem, 2.8vw, 2.4rem); margin-top: 0.6rem; }
     .link-ver-todas { font-size: 0.65rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold); font-weight: 500; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; padding-bottom: 3px; border-bottom: 1px solid rgba(201,168,76,0.3); transition: color 0.3s, border-color 0.3s, gap 0.3s; }
     .link-ver-todas:hover { color: var(--gold-light); border-color: var(--gold); gap: 0.9rem; }
-    .prop-carrusel-wrap { position: relative; }
+    .prop-carrusel-wrap { position: relative; overflow: hidden; }
+    .prop-carrusel-wrap::before,
+    .prop-carrusel-wrap::after {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 100px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .prop-carrusel-wrap::before {
+      left: 0;
+      background: linear-gradient(to right, var(--bg) 0%, transparent 100%);
+    }
+    .prop-carrusel-wrap::after {
+      right: 0;
+      background: linear-gradient(to left, var(--bg) 0%, transparent 100%);
+    }
     .prop-grid { display: flex; gap: 2px; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none; }
     .prop-grid::-webkit-scrollbar { display: none; }
     .prop-card { position: relative; overflow: hidden; background: var(--surface); cursor: pointer; aspect-ratio: 4/5; flex: 0 0 360px; }
@@ -595,7 +612,7 @@
 </section>
 
 <!-- PROPIEDADES -->
-<section class="section" id="sec-propiedades" style="background:var(--bg); padding-top:7rem; padding-bottom:5rem;">
+<section class="section" id="sec-propiedades" style="background:var(--bg); padding-top:10rem; padding-bottom:9rem;">
   <div style="max-width:1280px; margin:0 auto; padding:0 2rem;">
     <div class="prop-section-head reveal">
       <div>
@@ -1263,7 +1280,7 @@ async function cargarPropiedades() {
       (!p.superficie_cubierta && p.superficie_total) && { val: p.superficie_total + ' m²', lbl: 'Total' }
     ].filter(Boolean)
     const specsHtml = specsItems.length ? `<div class="prop-specs">${specsItems.map(s=>`<span class="prop-spec-item"><strong>${s.val}</strong>${s.lbl}</span>`).join('')}</div>` : ''
-    return `<div class="prop-card reveal" onclick="location.href='propiedad.html?id=${p.id}'" style="transition-delay:${i*.1}s">${img}<div class="prop-overlay"></div><div class="prop-info"><div class="prop-badge ${p.operacion}">${p.operacion==='venta'?'Venta':p.operacion==='alquiler'?'Alquiler':'Temporario'}</div><div class="prop-title">${p.titulo}</div><div class="prop-price">${precio}</div>${specsHtml}</div></div>`
+    return `<div class="prop-card reveal" onclick="window.open('propiedad.html?id=${p.id}','_blank')" style="transition-delay:${i*.1}s">${img}<div class="prop-overlay"></div><div class="prop-info"><div class="prop-badge ${p.operacion}">${p.operacion==='venta'?'Venta':p.operacion==='alquiler'?'Alquiler':'Temporario'}</div><div class="prop-title">${p.titulo}</div><div class="prop-price">${precio}</div>${specsHtml}</div></div>`
   }).join('')
   gsap.utils.toArray('#propGrid .reveal').forEach((el,i) => {
     gsap.to(el, { opacity:1, y:0, duration:0.8, ease:'power3.out', delay:i*.1, scrollTrigger:{ trigger:el, start:'top 90%', once:true } })
