@@ -543,6 +543,25 @@
 <script type="module">
 import { supabase } from './js/config.js'
 
+// ── Tipografías desde site_config ────────────────────────────
+supabase.from('site_config').select('key, value')
+  .in('key', ['font_titulos_premium', 'font_cuerpo'])
+  .then(({ data }) => {
+    if (!data) return
+    const cfg = {}
+    data.forEach(r => cfg[r.key] = r.value)
+    if (cfg.font_titulos_premium) {
+      document.querySelectorAll('.p-hero-titulo, .e-titulo').forEach(el => {
+        el.style.fontFamily = `'${cfg.font_titulos_premium}', serif`
+      })
+    }
+    if (cfg.font_cuerpo) {
+      document.querySelectorAll('.prop-desc').forEach(el => {
+        el.style.fontFamily = `'${cfg.font_cuerpo}', sans-serif`
+      })
+    }
+  })
+
 const AMENIDADES = {
   // ── Servicios básicos ───────────────────────────────────────
   gas_natural:       { label:'Gas natural',            svg:'<path d="M12 2c-4 4-6 8-6 11a6 6 0 0012 0c0-3-2-7-6-11z"/>' },
