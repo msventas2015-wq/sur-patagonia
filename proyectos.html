@@ -352,11 +352,12 @@
 
     // Cargar imagen y opacidad del header desde site_config
     supabase.from('site_config').select('key, value')
-      .in('key', ['img_proyectos_header', 'overlay_proyectos'])
+      .in('key', ['img_proyectos_header', 'overlay_proyectos', 'font_titulos'])
       .then(({ data }) => {
         if (!data) return
         const cfg = {}
         data.forEach(r => cfg[r.key] = r.value)
+        if (cfg.font_titulos) document.querySelectorAll('h1, h2').forEach(el => { el.style.fontFamily = `'${cfg.font_titulos}', sans-serif` })
         const img = cfg['img_proyectos_header']
         const op = parseInt(cfg['overlay_proyectos'] || '70') / 100
         if (img) {

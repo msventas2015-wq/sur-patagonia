@@ -97,22 +97,6 @@
       color: var(--negro);
       border-color: var(--dorado);
     }
-
-    /* ── Popup del mapa ── */
-    .mapa-popup { font-family: 'Montserrat', sans-serif; min-width: 200px; max-width: 240px; }
-    .mapa-popup-img { width: 100%; height: 130px; object-fit: cover; display: block; margin-bottom: 0.7rem; background: #eee; }
-    .mapa-popup-img-ph { width: 100%; height: 130px; background: #f0eeeb; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 0.7rem; }
-    .mapa-popup-tipo { font-size: 0.58rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #c9a84c; margin-bottom: 0.3rem; }
-    .mapa-popup-titulo { font-size: 0.82rem; font-weight: 500; color: #1a1714; margin-bottom: 0.3rem; line-height: 1.3; }
-    .mapa-popup-loc { font-size: 0.7rem; color: #6a6560; margin-bottom: 0.5rem; }
-    .mapa-popup-precio { font-size: 0.9rem; font-weight: 600; color: #1a1714; margin-bottom: 0.8rem; }
-    .mapa-popup-btn { display: block; width: 100%; padding: 0.55rem; background: #1a1714; color: #ffffff !important; font-family: 'Montserrat', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-align: center; text-decoration: none !important; transition: background 0.2s; }
-    .mapa-popup-btn:hover { background: #c9a84c; color: #ffffff !important; }
-
-    /* Ocultar el borde por defecto del popup de Leaflet */
-    .leaflet-popup-content-wrapper { border-radius: 0 !important; padding: 0 !important; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important; }
-    .leaflet-popup-content { margin: 0 !important; }
-    .leaflet-popup-tip-container { display: none; }
   </style>
 </head>
 <body>
@@ -394,36 +378,20 @@
     // ── MAPA CON TODAS LAS PROPIEDADES ────────────────────────
     const mapaEl = document.getElementById('mapaPropiedades')
     const mapa = L.map(mapaEl).setView([-41.13, -71.31], 9)
-
-    // ── OpenStreetMap invertido — fondo oscuro, calles blancas y claras ──
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19
+      attribution: '© OpenStreetMap'
     }).addTo(mapa)
 
-    // Invertir colores: fondo blanco→oscuro, calles oscuras→blancas y visibles
-    const styleEl = document.createElement('style')
-    styleEl.textContent = `#mapaPropiedades .leaflet-tile-pane { filter: invert(1) grayscale(1) contrast(0.85) brightness(1.5); }`
-    document.head.appendChild(styleEl)
-
-    // ── Pin: círculo negro con picos SVG blancos + punta abajo ──
     const iconoProp = L.divIcon({
-      html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.4));">
-        <div style="width:44px;height:44px;border-radius:50%;background:#1a1714;border:2px solid #c9a84c;display:flex;align-items:center;justify-content:center;">
-          <img src="https://surpatagonia.com.ar/assets/pn.png" style="width:28px;height:auto;display:block;filter:invert(1);" />
-        </div>
-        <div style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:13px solid #1a1714;margin-top:-1px;"></div>
-      </div>`,
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:#c9a84c;border:2px solid #fff;box-shadow:0 0 6px rgba(201,168,76,0.8);"></div>`,
       className: '',
-      iconSize: [44, 57],
-      iconAnchor: [22, 57],
-      popupAnchor: [0, -60]
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
     })
 
-    // ── CAMBIO 3: SELECT incluye imagenes + popup con foto ──
     const { data: propsMapa } = await supabase
       .from('propiedades')
-      .select('id, titulo, ubicacion, ciudad, precio, moneda, operacion, tipo, latitud, longitud, imagenes')
+      .select('id, titulo, ubicacion, ciudad, precio, moneda, operacion, latitud, longitud')
       .eq('activa', true)
       .not('latitud', 'is', null)
       .not('longitud', 'is', null)
@@ -431,32 +399,15 @@
     if (propsMapa && propsMapa.length > 0) {
       const bounds = []
       propsMapa.forEach(p => {
-        const precio = p.precio
-          ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
-          : 'Consultar'
-        const imgUrl = p.imagenes && p.imagenes.length > 0 ? p.imagenes[0] : null
-        const imgHtml = imgUrl
-          ? `<img class="mapa-popup-img" src="${imgUrl}" alt="${p.titulo}" />`
-          : `<div class="mapa-popup-img-ph">🏠</div>`
-        const tipoLabel = p.tipo ? p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1) : ''
-        const opLabel = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
-        const locLabel = [p.ubicacion, p.ciudad].filter(Boolean).join(', ')
-
-        const popupHtml = `
-          <div class="mapa-popup">
-            ${imgHtml}
-            <div style="padding: 0 0.9rem 0.9rem;">
-              <div class="mapa-popup-tipo">${tipoLabel} · ${opLabel}</div>
-              <div class="mapa-popup-titulo">${p.titulo}</div>
-              ${locLabel ? `<div class="mapa-popup-loc">📍 ${locLabel}</div>` : ''}
-              <div class="mapa-popup-precio">${precio}</div>
-              <a href="propiedad.html?id=${p.id}" class="mapa-popup-btn">Ver propiedad →</a>
-            </div>
-          </div>`
-
+        const precio = p.precio ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}` : 'Consultar'
         L.marker([p.latitud, p.longitud], { icon: iconoProp })
           .addTo(mapa)
-          .bindPopup(popupHtml, { maxWidth: 240 })
+          .bindPopup(`<div style="font-family:sans-serif;min-width:160px;">
+            <strong style="font-size:0.85rem;">${p.titulo}</strong><br>
+            <span style="font-size:0.75rem;color:#666;">📍 ${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}</span><br>
+            <span style="font-size:0.8rem;color:#c9a84c;font-weight:600;">${precio}</span><br>
+            <a href="propiedad.html?id=${p.id}" style="font-size:0.75rem;color:#c9a84c;">Ver propiedad →</a>
+          </div>`)
         bounds.push([p.latitud, p.longitud])
       })
       mapa.fitBounds(bounds, { padding: [40, 40] })
@@ -464,9 +415,12 @@
 
     // Cargar imágenes y opacidades desde site_config
     supabase.from('site_config').select('key, value')
-      .in('key', ['img_propiedades_header', 'overlay_propiedades', 'img_propiedades_bg', 'overlay_propiedades_bg'])
+      .in('key', ['img_propiedades_header', 'overlay_propiedades', 'img_propiedades_bg', 'overlay_propiedades_bg', 'font_titulos'])
       .then(({ data }) => {
         if (!data) return
+        const cfg = {}
+        data.forEach(r => cfg[r.key] = r.value)
+        if (cfg.font_titulos) document.querySelectorAll('h1, h2').forEach(el => { el.style.fontFamily = `'${cfg.font_titulos}', sans-serif` })
         const cfg = {}
         data.forEach(r => cfg[r.key] = r.value)
 
