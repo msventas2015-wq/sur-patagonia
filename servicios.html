@@ -40,17 +40,6 @@
     img { display: block; max-width: 100%; }
     a { text-decoration: none; color: inherit; }
 
-    /* ── LOADING ── */
-    #loading { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
-    #loading-content { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem; width: 100%; text-align: center; }
-    #loading-picos { width: 110px; opacity: 0; transform: translateY(-18px); mix-blend-mode: screen; display: block; margin: 0 auto; }
-    #loading-title { font-family: 'Montserrat', sans-serif; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.45em; text-transform: uppercase; color: var(--text); display: flex; gap: 0; overflow: hidden; }
-    #loading-title .lc { display: inline-block; opacity: 0; transform: translateY(14px); }
-    #loading-title .ls { display: inline-block; width: 0.45em; }
-    #loading-sub { font-size: 0.52rem; font-weight: 400; letter-spacing: 0.55em; text-transform: uppercase; color: var(--muted); opacity: 0; }
-    #loading-line-wrap { position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: rgba(255,255,255,0.04); }
-    #loading-line { height: 100%; width: 0%; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
-    #loading-wipe { position: absolute; inset: 0; background: var(--bg); transform: translateY(100%); }
 
     /* ── NAV ── */
     #nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1001; display: flex; align-items: center; justify-content: space-between; padding: 0.93rem 3rem; background: rgba(8,8,8,0.6) !important; opacity: 0; pointer-events: none; transition: opacity 0.5s ease, background 0.5s ease, box-shadow 0.5s ease; }
@@ -87,7 +76,8 @@
       height: 65vh;
       min-height: 480px;
       display: flex;
-      align-items: flex-end;
+      align-items: center;
+      justify-content: center;
       overflow: hidden;
     }
     #hero-srv-bg {
@@ -107,7 +97,7 @@
     .hero-srv-content {
       position: relative;
       z-index: 2;
-      padding: 0 3rem 5rem;
+      padding: 0 3rem;
       max-width: 1280px;
       width: 100%;
       margin: 0 auto;
@@ -418,18 +408,6 @@
 
 <div id="cursor"></div>
 
-<!-- LOADING -->
-<div id="loading">
-  <div id="loading-content">
-    <img id="loading-picos" src="picos.png" alt="Sur Patagonia" />
-    <div id="loading-title">
-      <span class="lc">S</span><span class="lc">U</span><span class="lc">R</span><span class="ls"> </span><span class="lc">P</span><span class="lc">A</span><span class="lc">T</span><span class="lc">A</span><span class="lc">G</span><span class="lc">O</span><span class="lc">N</span><span class="lc">I</span><span class="lc">A</span>
-    </div>
-    <div id="loading-sub">Servicios</div>
-  </div>
-  <div id="loading-line-wrap"><div id="loading-line"></div></div>
-  <div id="loading-wipe"></div>
-</div>
 
 <!-- NAV -->
 <nav id="nav">
@@ -934,6 +912,11 @@ async function aplicarSiteConfig() {
     if (cfg.img_acordeon_prop) { const el = document.getElementById('bg-publicar'); if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_prop}')` }
     if (cfg.img_servicios_bg) document.getElementById('sec-servicios').style.backgroundImage = `url('${cfg.img_servicios_bg}')`
     if (cfg.img_servicios_hero) document.getElementById('hero-srv-bg').style.backgroundImage = `url('${cfg.img_servicios_hero}')`
+    // Foto contacto — espejo del index
+    if (cfg.img_contacto_bg) {
+      const el = document.getElementById('contacto')
+      if (el) el.style.background = `linear-gradient(to bottom, rgba(8,8,8,0.88) 0%, rgba(8,8,8,0.92) 100%), url('${cfg.img_contacto_bg}') center/cover no-repeat scroll`
+    }
     // Overlay audiovisual — espejo del index
     const flatEl = document.getElementById('av-overlay-flat')
     if (flatEl && cfg.overlay_av_flat) { const op = parseInt(cfg.overlay_av_flat)/100; flatEl.style.background = `rgba(8,8,8,${op})` }
@@ -953,33 +936,11 @@ aplicarSiteConfig()
 
 gsap.registerPlugin(ScrollTrigger)
 
-/* ── LOADING ── */
-const lineEl = document.getElementById('loading-line')
-const loadingEl = document.getElementById('loading')
-const picosEl = document.getElementById('loading-picos')
-const chars = document.querySelectorAll('#loading-title .lc')
-const subEl = document.getElementById('loading-sub')
-const wipeEl = document.getElementById('loading-wipe')
-const tl = gsap.timeline()
-tl.to(picosEl, { opacity:1, y:0, duration:0.9, ease:'power3.out' }, 0.1)
-  .to(chars, { opacity:1, y:0, duration:0.5, ease:'power2.out', stagger:0.05 }, 0.5)
-  .to(subEl, { opacity:1, duration:0.6, ease:'power2.out' }, 1.3)
-const start = performance.now(), dur = 2200
-function tick(now) {
-  const pct = Math.min(((now-start)/dur)*100, 100)
-  lineEl.style.width = pct+'%'
-  if (pct < 100) { requestAnimationFrame(tick); return }
-  setTimeout(() => {
-    gsap.to(wipeEl, { y:0, duration:0.65, ease:'power3.inOut', onComplete: () => {
-      loadingEl.style.display = 'none'
-      document.getElementById('nav').classList.add('visible')
-      initHero()
-      initReveal()
-      initMarquee()
-    }})
-  }, 200)
-}
-requestAnimationFrame(tick)
+/* ── INICIO DIRECTO (sin loading) ── */
+document.getElementById('nav').classList.add('visible')
+initHero()
+initReveal()
+initMarquee()
 
 /* ── HERO ANIMATION ── */
 function initHero() {
@@ -1042,7 +1003,7 @@ function initMarquee() {
 
 /* ── CURSOR ── */
 const cur = document.getElementById('cursor')
-document.addEventListener('mousemove', e => { gsap.to(cur, { x:e.clientX, y:e.clientY, duration:0.08, ease:'none' }) })
+document.addEventListener('mousemove', e => { gsap.to(cur, { x:e.clientX, y:e.clientY, duration:0.08, ease:'none' }); cur.classList.remove('hidden') })
 document.addEventListener('mouseleave', () => cur.classList.add('hidden'))
 document.querySelectorAll('a, button, [onclick], .ac, .pub-path').forEach(el => {
   el.addEventListener('mouseenter', () => cur.classList.add('big'))
