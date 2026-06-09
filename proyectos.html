@@ -105,7 +105,7 @@
       .servicios-grid { grid-template-columns: 1fr; }
     }
 
-  /* ── NAV igual al index ── */
+  /* ── NAV ── */
   #nav-main { position: fixed; top: 0; left: 0; right: 0; z-index: 1001; display: flex; align-items: center; justify-content: space-between; padding: 0.93rem 3rem; background: rgba(8,8,8,0.95); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 1px 0 rgba(255,255,255,0.04); }
   .nav-logo { display: flex; align-items: center; }
   .nav-logo img { height: 44px; display: block; }
@@ -115,6 +115,25 @@
   .nav-sep { width: 1px; height: 14px; background: rgba(255,255,255,0.1); margin: 0 0.5rem; }
   .nav-cta { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #080808 !important; background: #c9a84c; padding: 0.55rem 1.4rem; margin-left: 0.5rem; transition: background 0.2s; text-decoration: none; display: inline-block; }
   .nav-cta:hover { background: #e8c97a; }
+  /* Hamburger */
+  .nav-burger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; z-index: 1002; }
+  .nav-burger span { display: block; width: 22px; height: 1px; background: #f0ede8; transition: all 0.3s; }
+  .nav-burger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .nav-burger.open span:nth-child(2) { opacity: 0; }
+  .nav-burger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .nav-close-btn { display: none; }
+  .nav-mob-icon { display: none; }
+  @media (max-width: 768px) {
+    #nav-main { padding: 1rem 1.5rem; }
+    .nav-links-main { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(8,8,8,0.97); flex-direction: column; align-items: center; justify-content: center; gap: 2.2rem; z-index: 999; text-align: center; }
+    .nav-links-main.abierto { display: flex; }
+    .nav-link { font-size: 1.1rem; letter-spacing: 0.18em; color: #f0ede8 !important; display: flex; align-items: center; justify-content: center; padding: 0.3rem 1rem; }
+    .nav-sep { display: none; }
+    .nav-cta { margin-top: 0.5rem; padding: 0.9rem 3rem; font-size: 0.75rem; color: #080808 !important; }
+    .nav-burger { display: flex; }
+    .nav-close-btn { display: block; position: absolute; top: 1.2rem; right: 1.5rem; background: none; border: none; color: #f0ede8; font-size: 1.4rem; cursor: pointer; padding: 0.5rem; line-height: 1; z-index: 1000; }
+    .nav-mob-icon { display: inline-block; width: 15px; height: auto; margin-right: 0.7rem; opacity: 0.5; vertical-align: middle; flex-shrink: 0; }
+  }
   </style>
 </head>
 <body>
@@ -123,14 +142,16 @@
   <!-- NAV -->
   <nav id="nav-main">
     <a href="index.html" class="nav-logo"><img src="logohorizontal.png" alt="Sur Patagonia" /></a>
-    <div class="nav-links-main">
-      <a href="index.html" class="nav-link">Inicio</a>
-      <a href="propiedades.html" class="nav-link">Propiedades</a>
-      <a href="proyectos.html" class="nav-link active">Proyectos</a>
-      <a href="servicios.html" class="nav-link">Servicios</a>
+    <div class="nav-links-main" id="navLinks">
+      <button class="nav-close-btn" id="navClose" aria-label="Cerrar menú">✕</button>
+      <a href="index.html" class="nav-link"><img src="picos.png" class="nav-mob-icon" alt="" />Inicio</a>
+      <a href="propiedades.html" class="nav-link"><img src="picos.png" class="nav-mob-icon" alt="" />Propiedades</a>
+      <a href="proyectos.html" class="nav-link active"><img src="picos.png" class="nav-mob-icon" alt="" />Proyectos</a>
+      <a href="servicios.html" class="nav-link"><img src="picos.png" class="nav-mob-icon" alt="" />Servicios</a>
       <div class="nav-sep"></div>
       <a href="index.html#contacto" class="nav-cta">Contacto</a>
     </div>
+    <button class="nav-burger" id="menuBtn" aria-label="Menú"><span></span><span></span><span></span></button>
   </nav>
 
   <!-- HEADER -->
@@ -423,8 +444,15 @@
   <script type="module">
     import { supabase } from './js/config.js'
 
-    const menuBtn = document.getElementById('menuBtn'); const navLinks = document.getElementById('navLinks');
-    if (menuBtn && navLinks) menuBtn.addEventListener('click', () => navLinks.classList.toggle('abierto'))
+    const menuBtn = document.getElementById('menuBtn')
+    const navLinks = document.getElementById('navLinks')
+    const navClose = document.getElementById('navClose')
+    if (menuBtn && navLinks) {
+      menuBtn.addEventListener('click', () => { menuBtn.classList.toggle('open'); navLinks.classList.toggle('abierto') })
+    }
+    if (navClose && navLinks && menuBtn) {
+      navClose.addEventListener('click', () => { menuBtn.classList.remove('open'); navLinks.classList.remove('abierto') })
+    }
 
     async function cargarProyectos() {
       const contenedor = document.getElementById('listaProyectos')
