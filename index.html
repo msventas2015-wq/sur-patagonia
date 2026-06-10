@@ -786,22 +786,7 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
     display: inline-block;
     filter: drop-shadow(0 0 0px rgba(255,255,255,0));
   }
-  /* Luz desde abajo — aparece al hacer hover, no sobre las letras */
-  .ac-titulo em::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 5%;
-    width: 90%;
-    height: 24px;
-    background: radial-gradient(ellipse at center, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 45%, transparent 72%);
-    filter: blur(8px);
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    pointer-events: none;
-  }
-  #acComprar:hover .ac-titulo em::after,
-  #acAlquilar:hover .ac-titulo em::after { opacity: 1; }
+  /* Hover: el halo de contorno se intensifica via JS/GSAP */
 
   /* ══════════════════════════════════════════
      SECCIÓN PUBLICAR — IDENTIDAD VISUAL
@@ -816,7 +801,7 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
   .pub-top-sub { font-size: 0.68rem; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(201,168,76,0.9); font-weight: 600; margin-bottom: 1.4rem; }
   .pub-col-titulo { font-family: 'Montserrat', sans-serif; font-size: clamp(3rem, 5vw, 5.5rem); font-weight: 200; color: #f5f3ef; line-height: 1; margin-bottom: 1.2rem; letter-spacing: -0.03em; }
   .pub-col-titulo em { color: var(--gold); font-style: normal; font-weight: 200; }
-  .pub-top-desc { font-size: 0.78rem; color: rgba(240,237,232,0.45); line-height: 1.85; max-width: 360px; }
+  .pub-top-desc { font-size: 0.92rem; color: rgba(240,237,232,0.45); line-height: 1.85; max-width: 360px; }
 
   /* ── Separador horizontal ── */
   .pub-sep { position: relative; z-index: 3; display: flex; align-items: center; gap: 2rem; padding: 3rem 4.5rem; }
@@ -1016,7 +1001,7 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
   <div class="pub-top">
     <p class="pub-top-sub">¿Tenés una propiedad o un desarrollo?</p>
     <div class="pub-col-titulo"><em>Publicá</em> con nosotros.</div>
-    <p class="pub-top-desc">Tenemos una solución para cada caso.</p>
+    <p class="pub-top-desc">Ofrecemos estrategias de comunicación.</p>
 
     <!-- Fork bifurcación visual -->
     <div class="pub-fork">
@@ -1834,6 +1819,19 @@ function initScroll() {
     .fromTo('#acAlquilar .ac-titulo em', { filter: HALO_OFF }, { filter: HALO_ON, ease: 'none', duration: 0.13 }, 0.18)
     .to('#acAlquilar .ac-titulo em',     { filter: HALO_ON,  ease: 'none', duration: 0.52 }, 0.31)
     .to('#acAlquilar .ac-titulo em',     { filter: HALO_OFF, ease: 'none', duration: 0.17 }, 0.83)
+
+  // ── Hover halo intensificado (contorno) en Comprar / Alquilar ──
+  const HALO_HOVER = 'drop-shadow(0 0 60px rgba(255,255,255,1)) drop-shadow(0 0 120px rgba(255,255,255,0.65)) drop-shadow(0 0 200px rgba(255,255,255,0.28))'
+  ;['acComprar','acAlquilar'].forEach(id => {
+    const em = document.querySelector('#' + id + ' .ac-titulo em')
+    if (!em) return
+    document.getElementById(id).addEventListener('mouseenter', () => {
+      gsap.to(em, { filter: HALO_HOVER, duration: 0.35, ease: 'power2.out', overwrite: 'auto' })
+    })
+    document.getElementById(id).addEventListener('mouseleave', () => {
+      gsap.to(em, { filter: HALO_OFF, duration: 0.5, ease: 'power2.in', overwrite: 'auto' })
+    })
+  })
 
   // ── Overlay oscuro sec-propiedades: oscuro al entrar, claro al llegar ──
   const secProp = document.getElementById('sec-propiedades')
