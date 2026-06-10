@@ -777,6 +777,27 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
   .ac:hover .ac-overlay { background: linear-gradient(to bottom, rgba(5,3,1,0.88) 0%, rgba(5,3,1,0.65) 40%, rgba(5,3,1,0.2) 75%, rgba(5,3,1,0.05) 100%); }
   .ac-mark, .ac-titulo, .ac-sub, .ac .btn-primary { position: relative; z-index: 3 !important; }
 
+  /* Estado inicial para stagger GSAP */
+  #acComprar, #acAlquilar { opacity: 0; transform: translateY(40px); }
+
+  /* Efecto neon sutil bajo el título */
+  .ac-titulo em { position: relative; display: inline-block; }
+  .ac-titulo em::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(201,168,76,0.9) 0%, rgba(201,168,76,0.2) 100%);
+    box-shadow: 0 0 6px rgba(201,168,76,0.55), 0 0 18px rgba(201,168,76,0.18);
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: opacity 0.8s ease 0.55s, transform 0.8s cubic-bezier(0.4,0,0.2,1) 0.55s;
+  }
+  #acComprar.neon-active .ac-titulo em::after,
+  #acAlquilar.neon-active .ac-titulo em::after { opacity: 1; transform: scaleX(1); }
+
   /* ══════════════════════════════════════════
      SECCIÓN PUBLICAR — IDENTIDAD VISUAL
   ══════════════════════════════════════════ */
@@ -948,7 +969,7 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
   }
 </style>
 <div class="acceso-cols">
-  <div class="ac reveal" onclick="location.href='propiedades.html?op=venta'" style="cursor:pointer;">
+  <div class="ac" id="acComprar" onclick="location.href='propiedades.html?op=venta'" style="cursor:pointer;">
     <div class="ac-bg" id="bg-comprar" style="background-image: url('assets/DJI_0269.jpg');"></div>
     <div class="ac-overlay"></div>
     <div class="ac-mark"></div>
@@ -962,7 +983,7 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
     </div>
     <span class="btn-primary" style="margin-top:auto;align-self:flex-start;">Ver propiedades →</span>
   </div>
-  <div class="ac reveal" onclick="location.href='propiedades.html?op=alquiler'" style="cursor:pointer;">
+  <div class="ac" id="acAlquilar" onclick="location.href='propiedades.html?op=alquiler'" style="cursor:pointer;">
     <div class="ac-bg" id="bg-alquilar" style="background-image: url('assets/127.jpg');"></div>
     <div class="ac-overlay"></div>
     <div class="ac-mark"></div>
@@ -1687,6 +1708,13 @@ function initScroll() {
   gsap.utils.toArray('.reveal').forEach((el,i) => {
     gsap.to(el, { opacity:1, y:0, duration:0.9, ease:'power3.out', delay:i%3*0.07, scrollTrigger:{ trigger:el, start:'top 88%', once:true } })
   })
+  // Stagger Comprar → Alquilar (con neon)
+  ScrollTrigger.create({ trigger:'.acceso-cols', start:'top 80%', once:true, onEnter: () => {
+    gsap.to('#acComprar', { opacity:1, y:0, duration:1.1, ease:'power3.out', delay:0,
+      onComplete: () => document.getElementById('acComprar').classList.add('neon-active') })
+    gsap.to('#acAlquilar', { opacity:1, y:0, duration:1.1, ease:'power3.out', delay:0.28,
+      onComplete: () => document.getElementById('acAlquilar').classList.add('neon-active') })
+  }})
   gsap.utils.toArray('.reveal-left').forEach(el => {
     gsap.to(el, { opacity:1, x:0, duration:1, ease:'power3.out', scrollTrigger:{ trigger:el, start:'top 85%', once:true } })
   })
