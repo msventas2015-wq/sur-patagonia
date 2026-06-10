@@ -894,6 +894,9 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
   .pub-sep-dir-label { font-size: 0.5rem; letter-spacing: 0.38em; text-transform: uppercase; font-weight: 600; color: rgba(201,168,76,0.55); }
   .pub-sep-arrow-svg { width: 26px; height: 8px; flex-shrink: 0; overflow: visible; }
 
+  /* ── Dot viajero fork ── */
+  #fork-dot { filter: drop-shadow(0 0 3px rgba(255,255,255,1)) drop-shadow(0 0 8px rgba(255,255,255,0.7)) drop-shadow(0 0 16px rgba(255,255,255,0.3)); }
+
   /* ── Fork visual — ancho completo para alinear con columnas ── */
   .pub-fork { flex: 1; margin-left: -4.5rem; margin-right: -4.5rem; display: flex; align-items: flex-start; pointer-events: none; padding-top: 2rem; }
   .pub-fork svg { width: 100%; height: auto; display: block; }
@@ -1047,6 +1050,8 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
         <!-- Etiquetas -->
         <text x="225" y="204" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="8.5" letter-spacing="5" fill="rgba(201,168,76,0.65)" font-weight="600">PROPIEDADES</text>
         <text x="675" y="204" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="8.5" letter-spacing="5" fill="rgba(201,168,76,0.65)" font-weight="600">DESARROLLOS</text>
+        <!-- Punto viajero -->
+        <circle id="fork-dot" cx="450" cy="2" r="2.5" fill="rgba(255,255,255,0.92)" opacity="0"/>
       </svg>
     </div>
   </div>
@@ -1832,6 +1837,44 @@ function initScroll() {
     .to('#acAlquilar .ac-titulo em',     { filter: HALO_ON,  ease: 'none', duration: 0.52 }, 0.31)
     .to('#acAlquilar .ac-titulo em',     { filter: HALO_OFF, ease: 'none', duration: 0.17 }, 0.83)
 
+
+  // ── Punto viajero por el fork ──
+  const forkDot = document.getElementById('fork-dot')
+  if (forkDot) {
+    const D = (cx, cy, dur, ease) => ({ attr: { cx, cy }, duration: dur, ease: ease || 'power1.inOut' })
+    const dotTl = gsap.timeline({ repeat: -1, repeatDelay: 1.2, defaults: { ease: 'power1.inOut' } })
+    dotTl
+      // Aparece en el stem superior
+      .set(forkDot, { attr: { cx: 450, cy: 2 }, opacity: 0 })
+      .to(forkDot, { opacity: 1, duration: 0.25 })
+      // Baja por el stem al nodo central
+      .to(forkDot, D(450, 44, 0.45))
+      // Vira hacia la izquierda → casa
+      .to(forkDot, D(225, 44, 0.55))
+      // Baja al pico de la casa
+      .to(forkDot, D(225, 124, 0.38))
+      // Pulso sutil en destino
+      .to(forkDot, { opacity: 0.3, duration: 0.22, ease: 'power2.inOut' })
+      .to(forkDot, { opacity: 1,   duration: 0.22, ease: 'power2.inOut' })
+      // Sube de vuelta al nodo
+      .to(forkDot, D(225, 44, 0.38))
+      // Cruza al nodo central
+      .to(forkDot, D(450, 44, 0.55))
+      // Vira hacia la derecha → desarrollo
+      .to(forkDot, D(675, 44, 0.55))
+      // Baja al tope del loteo
+      .to(forkDot, D(675, 123, 0.38))
+      // Pulso sutil en destino
+      .to(forkDot, { opacity: 0.3, duration: 0.22, ease: 'power2.inOut' })
+      .to(forkDot, { opacity: 1,   duration: 0.22, ease: 'power2.inOut' })
+      // Sube de vuelta al nodo
+      .to(forkDot, D(675, 44, 0.38))
+      // Vuelve al nodo central
+      .to(forkDot, D(450, 44, 0.55))
+      // Sube por el stem y desaparece
+      .to(forkDot, D(450, 2, 0.38))
+      .to(forkDot, { opacity: 0, duration: 0.2 })
+  }
 
   // ── Overlay oscuro sec-propiedades: oscuro al entrar, claro al llegar ──
   const secProp = document.getElementById('sec-propiedades')
