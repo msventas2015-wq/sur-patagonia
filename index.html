@@ -780,10 +780,18 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
   /* Estado inicial para stagger GSAP */
   #acComprar, #acAlquilar { opacity: 0; transform: translateY(40px); }
 
-  /* Halo blanco — GSAP scrub maneja el estado, no CSS transition */
+  /* Halo blanco — GSAP scrub maneja filter, CSS hover agrega text-shadow encima */
   .ac-titulo em {
     display: inline-block;
     filter: drop-shadow(0 0 0px rgba(255,255,255,0));
+    transition: text-shadow 0.35s ease;
+  }
+  #acComprar:hover .ac-titulo em,
+  #acAlquilar:hover .ac-titulo em {
+    text-shadow:
+      0 0 12px rgba(255,255,255,1),
+      0 0 30px rgba(255,255,255,0.7),
+      0 0 60px rgba(255,255,255,0.35);
   }
 
   /* ══════════════════════════════════════════
@@ -1757,36 +1765,26 @@ function initScroll() {
   gsap.to('#marquee1', { xPercent:-50, duration:38, ease:'none', repeat:-1 })
   gsap.fromTo('#marquee2', { xPercent:-50 }, { xPercent:0, duration:28, ease:'none', repeat:-1 })
 
-  // ── Halo blanco scrub: Comprar → Alquilar, se prende y apaga con el scroll ──
+  // ── Halo blanco scrub: Comprar primero, Alquilar después, ambos apagan juntos al salir ──
+  const HALO_ON  = 'drop-shadow(0 0 40px rgba(255,255,255,1)) drop-shadow(0 0 80px rgba(255,255,255,0.5)) drop-shadow(0 0 120px rgba(255,255,255,0.2))'
+  const HALO_OFF = 'drop-shadow(0 0 0px rgba(255,255,255,0))'
   const haloTl = gsap.timeline({
     scrollTrigger: {
       trigger: '.acceso-cols',
-      start: 'top 90%',
-      end: 'bottom 8%',
+      start: 'top 92%',    // empieza a entrar
+      end: 'bottom 4%',    // se apaga solo cuando casi sale por arriba
       scrub: 2
     }
   })
-  // Comprar: entra primero (posición 0 → pico 0.3 → apaga 0.62)
+  // Comprar: prende 0→0.13 | brilla 0.13→0.83 | apaga 0.83→1.0
   haloTl
-    .fromTo('#acComprar .ac-titulo em',
-      { filter: 'drop-shadow(0 0 0px rgba(255,255,255,0)) drop-shadow(0 0 0px rgba(255,255,255,0))' },
-      { filter: 'drop-shadow(0 0 28px rgba(255,255,255,0.9)) drop-shadow(0 0 60px rgba(255,255,255,0.35))', ease: 'none', duration: 0.3 },
-      0
-    )
-    .to('#acComprar .ac-titulo em',
-      { filter: 'drop-shadow(0 0 0px rgba(255,255,255,0)) drop-shadow(0 0 0px rgba(255,255,255,0))', ease: 'none', duration: 0.32 },
-      0.3
-    )
-  // Alquilar: entra después (posición 0.22 → pico 0.55 → apaga 0.88)
-    .fromTo('#acAlquilar .ac-titulo em',
-      { filter: 'drop-shadow(0 0 0px rgba(255,255,255,0)) drop-shadow(0 0 0px rgba(255,255,255,0))' },
-      { filter: 'drop-shadow(0 0 28px rgba(255,255,255,0.9)) drop-shadow(0 0 60px rgba(255,255,255,0.35))', ease: 'none', duration: 0.3 },
-      0.22
-    )
-    .to('#acAlquilar .ac-titulo em',
-      { filter: 'drop-shadow(0 0 0px rgba(255,255,255,0)) drop-shadow(0 0 0px rgba(255,255,255,0))', ease: 'none', duration: 0.33 },
-      0.55
-    )
+    .fromTo('#acComprar .ac-titulo em', { filter: HALO_OFF }, { filter: HALO_ON, ease: 'none', duration: 0.13 }, 0)
+    .to('#acComprar .ac-titulo em',     { filter: HALO_ON,  ease: 'none', duration: 0.70 }, 0.13)
+    .to('#acComprar .ac-titulo em',     { filter: HALO_OFF, ease: 'none', duration: 0.17 }, 0.83)
+  // Alquilar: prende 0.18→0.31 | brilla 0.31→0.83 | apaga 0.83→1.0 (misma salida que Comprar)
+    .fromTo('#acAlquilar .ac-titulo em', { filter: HALO_OFF }, { filter: HALO_ON, ease: 'none', duration: 0.13 }, 0.18)
+    .to('#acAlquilar .ac-titulo em',     { filter: HALO_ON,  ease: 'none', duration: 0.52 }, 0.31)
+    .to('#acAlquilar .ac-titulo em',     { filter: HALO_OFF, ease: 'none', duration: 0.17 }, 0.83)
 
   // ── Overlay oscuro sec-propiedades: oscuro al entrar, claro al llegar ──
   const secProp = document.getElementById('sec-propiedades')
