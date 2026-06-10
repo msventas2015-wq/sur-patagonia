@@ -780,19 +780,28 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
   /* Estado inicial para stagger GSAP */
   #acComprar, #acAlquilar { opacity: 0; transform: translateY(40px); }
 
-  /* Halo blanco — GSAP scrub maneja filter, CSS hover agrega text-shadow encima */
+  /* Halo blanco — GSAP scrub maneja filter */
   .ac-titulo em {
+    position: relative;
     display: inline-block;
     filter: drop-shadow(0 0 0px rgba(255,255,255,0));
-    transition: text-shadow 0.35s ease;
   }
-  #acComprar:hover .ac-titulo em,
-  #acAlquilar:hover .ac-titulo em {
-    text-shadow:
-      0 0 12px rgba(255,255,255,0.62),
-      0 0 30px rgba(255,255,255,0.42),
-      0 0 60px rgba(255,255,255,0.2);
+  /* Luz desde abajo — aparece al hacer hover, no sobre las letras */
+  .ac-titulo em::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 5%;
+    width: 90%;
+    height: 24px;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 45%, transparent 72%);
+    filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
   }
+  #acComprar:hover .ac-titulo em::after,
+  #acAlquilar:hover .ac-titulo em::after { opacity: 1; }
 
   /* ══════════════════════════════════════════
      SECCIÓN PUBLICAR — IDENTIDAD VISUAL
