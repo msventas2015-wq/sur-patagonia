@@ -417,6 +417,36 @@
   })
   inputImagenes.addEventListener('change', () => agregarArchivos(inputImagenes.files))
 
+  // ── YouTube: extraer y normalizar ID ──────────────────────────
+  function extraerYtId(input) {
+    if (!input) return null
+    const s = input.trim()
+    // Solo el ID (11 caracteres)
+    if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s
+    // URL completa (watch, youtu.be, embed, shorts)
+    const m = s.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/))([a-zA-Z0-9_-]{11})/)
+    return m ? m[1] : null
+  }
+  const videoInput = document.getElementById('video_url')
+  const videoHint = videoInput.nextElementSibling
+  videoInput.addEventListener('blur', function() {
+    const val = this.value.trim()
+    if (!val) return
+    const id = extraerYtId(val)
+    if (id) {
+      this.value = id
+      videoHint.textContent = '✓ ID de video: ' + id
+      videoHint.style.color = 'var(--dorado)'
+    } else {
+      videoHint.textContent = '⚠ URL no reconocida. Usá el formato youtube.com/watch?v=ID o solo el ID de 11 caracteres.'
+      videoHint.style.color = '#e07070'
+    }
+  })
+  videoInput.addEventListener('focus', function() {
+    videoHint.textContent = 'Pegá la URL completa de YouTube o solo el ID del video.'
+    videoHint.style.color = ''
+  })
+
   let archivosSeleccionados = []
   const MAX_IMAGENES = 20
 
@@ -613,7 +643,7 @@
         apto_credito: document.getElementById('apto_credito').checked,
         latitud: (() => { const v = parseFloat(document.getElementById('latitud').value); return (!isNaN(v) && v >= -90 && v <= 90) ? v : null })(),
         longitud: (() => { const v = parseFloat(document.getElementById('longitud').value); return (!isNaN(v) && v >= -180 && v <= 180) ? v : null })(),
-        video_url: document.getElementById('video_url').value || null,
+        video_url: extraerYtId(document.getElementById('video_url').value) || null,
         tour_360: tour360Url,
         amenidades: [...document.querySelectorAll('.amenidad-check:checked')].map(cb => cb.value),
         destacada: document.getElementById('destacada').checked,
@@ -637,8 +667,13 @@
         setTimeout(() => window.location.href = 'propiedades.html', 1500)
       }
     } catch (err) {
-      document.getElementById('alerta').innerHTML =
-        `<div class="alerta alerta-error">Error: ${err.message}</div>`
+      const alertaEl = document.getElementById('alerta')
+      alertaEl.innerHTML = ''
+      const div = document.createElement('div')
+      div.className = 'alerta alerta-error'
+      div.textContent = 'Error: ' + (err.message || 'Error desconocido')
+      alertaEl.appendChild(div)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
     btn.textContent = 'Guardar propiedad'
