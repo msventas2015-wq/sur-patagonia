@@ -903,6 +903,8 @@ const PALETAS = {
   arena:    { '--gold':'#8a6030', '--gold2':'#c09050', '--bg':'#f5f0e8', '--surface':'#e8e0d0', '--text':'#1a1714', '--muted':'#7a7268', '--line':'rgba(0,0,0,0.1)' },
   grafito:  { '--gold':'#c9a84c', '--gold2':'#e2c87a', '--bg':'#1c1c1c', '--surface':'#2a2a2a', '--text':'#f0ede8', '--muted':'#888880', '--line':'rgba(255,255,255,0.09)' },
   plata:    { '--gold':'#a8bfc8', '--gold2':'#c8dce6', '--bg':'#2e3238', '--surface':'#3a3f46', '--text':'#edf0f2', '--muted':'#8a9298', '--line':'rgba(255,255,255,0.09)' },
+  patagonia:{ '--gold':'#c9a84c', '--gold2':'#e8c97a', '--bg':'#f2f0ed', '--surface':'#e8e5e0', '--text':'#1a1714', '--muted':'#6a6560', '--line':'rgba(0,0,0,0.09)' },
+  blanco:   { '--gold':'#c9a84c', '--gold2':'#e8c97a', '--bg':'#fafafa', '--surface':'#efefef', '--text':'#1a1a1a', '--muted':'#737373', '--line':'rgba(0,0,0,0.09)' },
 }
 const FUENTES_TITULO = {
   cormorant:   "'Cormorant Garamond', serif",
@@ -1013,6 +1015,15 @@ function applyTema(tema) {
   for (const [k, v] of Object.entries(pal)) root.style.setProperty(k, v)
   root.style.setProperty('--font-serif', FUENTES_TITULO[t.titulo] || FUENTES_TITULO.cormorant)
   root.style.setProperty('--font-sans',  FUENTES_CUERPO[t.cuerpo]  || FUENTES_CUERPO.montserrat)
+  // Overlays adaptativos según el color de fondo
+  const bgHex = (pal['--bg'] || '#080808').replace('#', '')
+  const r = parseInt(bgHex.slice(0,2), 16)
+  const g = parseInt(bgHex.slice(2,4), 16)
+  const b = parseInt(bgHex.slice(4,6), 16)
+  const rgb = `${r},${g},${b}`
+  root.style.setProperty('--overlay-hero', `linear-gradient(to bottom, rgba(${rgb},0.2) 0%, rgba(${rgb},0.05) 35%, rgba(${rgb},0.65) 70%, rgba(${rgb},0.96) 100%)`)
+  root.style.setProperty('--overlay-nav',  `rgba(${rgb},0.93)`)
+  root.style.setProperty('--overlay-atm',  `linear-gradient(to bottom, rgba(${rgb},0.4) 0%, rgba(${rgb},0.2) 45%, rgba(${rgb},0.78) 100%)`)
 }
 
 // ── Init ─────────────────────────────────────────────────────────────
