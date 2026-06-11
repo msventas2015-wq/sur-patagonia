@@ -466,19 +466,43 @@
       opacity: 0;
       pointer-events: none;
     }
+    .color-ref-row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.25rem;
+    }
+    .color-ref-label {
+      font-size: 0.58rem;
+      color: var(--gris-claro);
+      opacity: 0.6;
+      letter-spacing: 0.06em;
+    }
+    .color-ref-swatch {
+      width: 12px; height: 12px;
+      border-radius: 2px;
+      border: 1px solid rgba(255,255,255,0.12);
+      flex-shrink: 0;
+    }
+    .color-ref-hex {
+      font-size: 0.6rem;
+      font-family: 'Courier New', monospace;
+      color: var(--gris-claro);
+      opacity: 0.7;
+      flex: 1;
+    }
     .color-reset-btn {
       background: none;
       border: none;
       color: var(--gris-claro);
-      font-size: 0.6rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      font-size: 0.75rem;
       cursor: pointer;
       padding: 0;
-      text-align: right;
       font-family: 'Montserrat', sans-serif;
+      opacity: 0.6;
+      line-height: 1;
     }
-    .color-reset-btn:hover { color: var(--dorado); }
+    .color-reset-btn:hover { color: var(--dorado); opacity: 1; }
 
     /* Chips de referencia de paleta */
     .paleta-ref-chip {
@@ -1041,7 +1065,12 @@
                   oninput="actualizarColorCustom('titulo', this.value)"
                   onchange="actualizarColorCustom('titulo', this.value)">
               </div>
-              <button class="color-reset-btn" onclick="resetColorCustom('titulo')">↺ Restablecer</button>
+              <div class="color-ref-row">
+                <span class="color-ref-label">Paleta:</span>
+                <div class="color-ref-swatch" id="ref-swatch-titulo"></div>
+                <span class="color-ref-hex" id="ref-hex-titulo"></span>
+                <button class="color-reset-btn" onclick="resetColorCustom('titulo')">↺</button>
+              </div>
             </div>
 
             <div class="color-custom-item">
@@ -1053,7 +1082,12 @@
                   oninput="actualizarColorCustom('acento', this.value)"
                   onchange="actualizarColorCustom('acento', this.value)">
               </div>
-              <button class="color-reset-btn" onclick="resetColorCustom('acento')">↺ Restablecer</button>
+              <div class="color-ref-row">
+                <span class="color-ref-label">Paleta:</span>
+                <div class="color-ref-swatch" id="ref-swatch-acento"></div>
+                <span class="color-ref-hex" id="ref-hex-acento"></span>
+                <button class="color-reset-btn" onclick="resetColorCustom('acento')">↺</button>
+              </div>
             </div>
 
             <div class="color-custom-item">
@@ -1065,7 +1099,12 @@
                   oninput="actualizarColorCustom('texto', this.value)"
                   onchange="actualizarColorCustom('texto', this.value)">
               </div>
-              <button class="color-reset-btn" onclick="resetColorCustom('texto')">↺ Restablecer</button>
+              <div class="color-ref-row">
+                <span class="color-ref-label">Paleta:</span>
+                <div class="color-ref-swatch" id="ref-swatch-texto"></div>
+                <span class="color-ref-hex" id="ref-hex-texto"></span>
+                <button class="color-reset-btn" onclick="resetColorCustom('texto')">↺</button>
+              </div>
             </div>
 
           </div>
@@ -1670,6 +1709,38 @@ ALTER TABLE proyectos
     huemules: { titulo: '#29231d', acento: '#d76f3f', texto: '#7a6e62' },
   }
 
+  // 4 colores de referencia por paleta: fondo, acento, título, texto
+  const PALETAS_REF = {
+    clasico:  [{ n:'Fondo',    c:'#080808' }, { n:'Acento',  c:'#c9a84c' }, { n:'Título',  c:'#f0ede8' }, { n:'Texto',   c:'#888880' }],
+    grafito:  [{ n:'Fondo',    c:'#1c1c1c' }, { n:'Acento',  c:'#c9a84c' }, { n:'Título',  c:'#f0ede8' }, { n:'Texto',   c:'#888880' }],
+    bosque:   [{ n:'Fondo',    c:'#050a05' }, { n:'Acento',  c:'#7a9e6b' }, { n:'Título',  c:'#e8ede8' }, { n:'Texto',   c:'#7a8878' }],
+    lago:     [{ n:'Fondo',    c:'#04080e' }, { n:'Acento',  c:'#4a8fa8' }, { n:'Título',  c:'#e8ecf0' }, { n:'Texto',   c:'#6a7e8a' }],
+    plata:    [{ n:'Fondo',    c:'#2e3238' }, { n:'Acento',  c:'#a8bfc8' }, { n:'Título',  c:'#edf0f2' }, { n:'Texto',   c:'#8a9298' }],
+    andes:    [{ n:'Fondo',    c:'#0d0805' }, { n:'Acento',  c:'#b87340' }, { n:'Título',  c:'#f0ece8' }, { n:'Texto',   c:'#8a7060' }],
+    nieve:    [{ n:'Fondo',    c:'#06080a' }, { n:'Acento',  c:'#a8bfc8' }, { n:'Título',  c:'#e8ecf0' }, { n:'Texto',   c:'#7a8a92' }],
+    vino:     [{ n:'Fondo',    c:'#0a0508' }, { n:'Acento',  c:'#9a4a6a' }, { n:'Título',  c:'#f0e8ec' }, { n:'Texto',   c:'#7a6070' }],
+    tierra:   [{ n:'Fondo',    c:'#0d0906' }, { n:'Acento',  c:'#c87850' }, { n:'Título',  c:'#f0ede8' }, { n:'Texto',   c:'#8a7060' }],
+    arena:    [{ n:'Fondo',    c:'#f5f0e8' }, { n:'Acento',  c:'#8a6030' }, { n:'Título',  c:'#1a1714' }, { n:'Texto',   c:'#7a7268' }],
+    patagonia:[{ n:'Fondo',    c:'#f2f0ed' }, { n:'Acento',  c:'#c9a84c' }, { n:'Título',  c:'#1a1714' }, { n:'Texto',   c:'#6a6560' }],
+    blanco:   [{ n:'Fondo',    c:'#fafafa' }, { n:'Acento',  c:'#262626' }, { n:'Título',  c:'#262626' }, { n:'Texto',   c:'#8e8e8e' }],
+    huemules: [{ n:'Fondo',    c:'#fafaf8' }, { n:'Acento',  c:'#d76f3f' }, { n:'Título',  c:'#29231d' }, { n:'Texto',   c:'#7a6e62' }],
+  }
+
+  function renderReferenciaPaleta(paleta) {
+    const contenedor = document.getElementById('paleta-referencia')
+    if (!contenedor) return
+    const colores = PALETAS_REF[paleta] || PALETAS_REF.clasico
+    contenedor.innerHTML = colores.map(col => `
+      <div class="paleta-ref-chip">
+        <div class="paleta-ref-swatch" style="background:${col.c};"></div>
+        <div class="paleta-ref-info">
+          <span class="paleta-ref-nombre">${col.n}</span>
+          <span class="paleta-ref-hex">${col.c}</span>
+        </div>
+      </div>
+    `).join('')
+  }
+
   function setPicker(tipo, hex) {
     const swatch = document.getElementById('swatch-' + tipo)
     const hexEl  = document.getElementById('hex-' + tipo)
@@ -1681,11 +1752,24 @@ ALTER TABLE proyectos
     if (hidden) hidden.value = hex
   }
 
+  function setRef(tipo, hex) {
+    const refSwatch = document.getElementById('ref-swatch-' + tipo)
+    const refHex    = document.getElementById('ref-hex-' + tipo)
+    if (refSwatch) refSwatch.style.background = hex
+    if (refHex)    refHex.textContent = hex
+  }
+
   function actualizarColoresPorPaleta(paleta) {
     const def = PALETAS_DEFAULTS[paleta] || PALETAS_DEFAULTS.clasico
+    // Actualizar pickers (valor actual)
     setPicker('titulo', def.titulo)
     setPicker('acento', def.acento)
     setPicker('texto',  def.texto)
+    // Actualizar referencias fijas de paleta (no se tocan al cambiar picker)
+    setRef('titulo', def.titulo)
+    setRef('acento', def.acento)
+    setRef('texto',  def.texto)
+    renderReferenciaPaleta(paleta)
   }
 
   function actualizarColorCustom(tipo, hex) {
@@ -2151,9 +2235,14 @@ ALTER TABLE proyectos
         c.classList.toggle('activo', c.dataset.fuente === t.cuerpo))
       // Restaurar colores personalizados (o cargar defaults de la paleta)
       const def = PALETAS_DEFAULTS[t.paleta] || PALETAS_DEFAULTS.clasico
-      setPicker('titulo', t.colorTitulo || def.titulo)
+      setPicker('titulo', t.colorTitulo  || def.titulo)
       setPicker('acento', t.colorAccento || def.acento)
-      setPicker('texto',  t.colorTexto  || def.texto)
+      setPicker('texto',  t.colorTexto   || def.texto)
+      // Refs siempre muestran el valor de paleta, no el custom
+      setRef('titulo', def.titulo)
+      setRef('acento', def.acento)
+      setRef('texto',  def.texto)
+      renderReferenciaPaleta(t.paleta)
     }
     // Fotos ya guardadas
     if (p.foto_portada) {
