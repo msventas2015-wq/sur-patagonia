@@ -19,7 +19,7 @@ export async function optimizarImagen(archivo, opciones = {}) {
   const {
     maxAncho = 1920,   // px máximo en el lado más largo
     maxAlto  = 1920,
-    calidad  = 0.85,   // 0–1, 0.85 = excelente calidad / peso óptimo
+    calidad  = 0.92,   // 0–1, 0.92 = alta calidad con buen peso
   } = opciones
 
   return new Promise((resolve, reject) => {
@@ -37,11 +37,40 @@ export async function optimizarImagen(archivo, opciones = {}) {
         h = Math.round(h * ratio)
       }
 
+      // Downscale en múltiples pasos si la reducción es >50% en cualquier eje
+      // (evita el blur que produce el canvas al escalar en un solo paso)
+      let srcW = img.naturalWidth
+      let srcH = img.naturalHeight
+      let currentImg = img
+
       const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+
+      while (srcW > w * 2 || srcH > h * 2) {
+        const stepW = Math.max(Math.round(srcW / 2), w)
+        const stepH = Math.max(Math.round(srcH / 2), h)
+        canvas.width  = stepW
+        canvas.height = stepH
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(currentImg, 0, 0, stepW, stepH)
+        // Reusar canvas como fuente del siguiente paso
+        const stepCanvas = document.createElement('canvas')
+        stepCanvas.width  = stepW
+        stepCanvas.height = stepH
+        stepCanvas.getContext('2d').drawImage(canvas, 0, 0)
+        currentImg = stepCanvas
+        srcW = stepW
+        srcH = stepH
+      }
+
       canvas.width  = w
       canvas.height = h
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(img, 0, 0, w, h)
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(currentImg, 0, 0, w, h)
 
       canvas.toBlob(blob => {
         if (!blob) { reject(new Error('No se pudo convertir la imagen')); return }
@@ -63,7 +92,7 @@ export async function subirImagen(archivo, carpeta = 'propiedades') {
   const archivoOptimizado = await optimizarImagen(archivo, {
     maxAncho: es360 ? 4096 : 1920,
     maxAlto:  es360 ? 2048 : 1920,
-    calidad:  0.85,
+    calidad:  0.92,
   })
 
   const nombre = `${carpeta}/${Date.now()}_${archivoOptimizado.name.replace(/\s/g, '_')}`
