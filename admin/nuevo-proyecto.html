@@ -1152,11 +1152,27 @@
               </div>
             </div>
 
+            <div class="color-custom-item">
+              <span class="color-custom-label">Cuerpo / Párrafos</span>
+              <div class="color-pick-wrap" id="wrap-cuerpo" onclick="abrirColorPicker('cuerpo')" style="cursor:pointer;">
+                <div class="color-pick-swatch" id="swatch-cuerpo"></div>
+                <span class="color-pick-hex" id="hex-cuerpo">#888880</span>
+                <span style="font-size:0.7rem;color:var(--gris-claro);margin-left:auto;">✎</span>
+              </div>
+              <div class="color-ref-row">
+                <span class="color-ref-label">Paleta:</span>
+                <div class="color-ref-swatch" id="ref-swatch-cuerpo"></div>
+                <span class="color-ref-hex" id="ref-hex-cuerpo"></span>
+                <button class="color-reset-btn" onclick="resetColorCustom('cuerpo')">↺</button>
+              </div>
+            </div>
+
           </div>
           <!-- hidden inputs que se incluyen en buildTema -->
           <input type="hidden" id="color-titulo-val">
           <input type="hidden" id="color-acento-val">
           <input type="hidden" id="color-texto-val">
+          <input type="hidden" id="color-cuerpo-val">
         </div>
 
         <!-- ── Tipografía de títulos ───────────────── -->
@@ -1739,19 +1755,19 @@ ALTER TABLE proyectos
 
   // Defaults de color por paleta: { titulo, acento, texto }
   const PALETAS_DEFAULTS = {
-    clasico:  { titulo: '#f0ede8', acento: '#c9a84c', texto: '#888880' },
-    grafito:  { titulo: '#f0ede8', acento: '#c9a84c', texto: '#888880' },
-    bosque:   { titulo: '#e8ede8', acento: '#7a9e6b', texto: '#7a8878' },
-    lago:     { titulo: '#e8ecf0', acento: '#4a8fa8', texto: '#6a7e8a' },
-    plata:    { titulo: '#edf0f2', acento: '#a8bfc8', texto: '#8a9298' },
-    andes:    { titulo: '#f0ece8', acento: '#b87340', texto: '#8a7060' },
-    nieve:    { titulo: '#e8ecf0', acento: '#a8bfc8', texto: '#7a8a92' },
-    vino:     { titulo: '#f0e8ec', acento: '#9a4a6a', texto: '#7a6070' },
-    tierra:   { titulo: '#f0ede8', acento: '#c87850', texto: '#8a7060' },
-    arena:    { titulo: '#1a1714', acento: '#8a6030', texto: '#7a7268' },
-    patagonia:{ titulo: '#1a1714', acento: '#c9a84c', texto: '#6a6560' },
-    blanco:   { titulo: '#262626', acento: '#262626', texto: '#8e8e8e' },
-    huemules: { titulo: '#29231d', acento: '#d76f3f', texto: '#7a6e62' },
+    clasico:  { titulo: '#f0ede8', acento: '#c9a84c', texto: '#888880', cuerpo: '#888880' },
+    grafito:  { titulo: '#f0ede8', acento: '#c9a84c', texto: '#888880', cuerpo: '#888880' },
+    bosque:   { titulo: '#e8ede8', acento: '#7a9e6b', texto: '#7a8878', cuerpo: '#7a8878' },
+    lago:     { titulo: '#e8ecf0', acento: '#4a8fa8', texto: '#6a7e8a', cuerpo: '#6a7e8a' },
+    plata:    { titulo: '#edf0f2', acento: '#a8bfc8', texto: '#8a9298', cuerpo: '#8a9298' },
+    andes:    { titulo: '#f0ece8', acento: '#b87340', texto: '#8a7060', cuerpo: '#8a7060' },
+    nieve:    { titulo: '#e8ecf0', acento: '#a8bfc8', texto: '#7a8a92', cuerpo: '#7a8a92' },
+    vino:     { titulo: '#f0e8ec', acento: '#9a4a6a', texto: '#7a6070', cuerpo: '#7a6070' },
+    tierra:   { titulo: '#f0ede8', acento: '#c87850', texto: '#8a7060', cuerpo: '#8a7060' },
+    arena:    { titulo: '#1a1714', acento: '#8a6030', texto: '#7a7268', cuerpo: '#7a7268' },
+    patagonia:{ titulo: '#1a1714', acento: '#c9a84c', texto: '#6a6560', cuerpo: '#6a6560' },
+    blanco:   { titulo: '#262626', acento: '#262626', texto: '#8e8e8e', cuerpo: '#8e8e8e' },
+    huemules: { titulo: '#29231d', acento: '#d76f3f', texto: '#7a6e62', cuerpo: '#7a6e62' },
   }
 
   // 4 colores de referencia por paleta: fondo, acento, título, texto
@@ -1808,7 +1824,7 @@ ALTER TABLE proyectos
   // Abrir diálogo para un slot
   window.abrirColorPicker = (tipo) => {
     _cpTipo = tipo
-    const nombres = { titulo: 'Título principal', acento: 'Acento / Dorado', texto: 'Texto / Subtítulo' }
+    const nombres = { titulo: 'Título principal', acento: 'Acento / Dorado', texto: 'Texto / Subtítulo', cuerpo: 'Cuerpo / Párrafos' }
     const hexActual = document.getElementById('color-' + tipo + '-val').value || '#000000'
     document.getElementById('cpDialogTitle').textContent = nombres[tipo] || tipo
     document.getElementById('cpNative').value = hexActual
@@ -1852,9 +1868,11 @@ ALTER TABLE proyectos
     setPicker('titulo', def.titulo)
     setPicker('acento', def.acento)
     setPicker('texto',  def.texto)
+    setPicker('cuerpo', def.cuerpo)
     setRef('titulo', def.titulo)
     setRef('acento', def.acento)
     setRef('texto',  def.texto)
+    setRef('cuerpo', def.cuerpo)
     renderReferenciaPaleta(paleta)
   }
 
@@ -2207,6 +2225,7 @@ ALTER TABLE proyectos
           colorTitulo: document.getElementById('color-titulo-val').value || '',
           colorAccento: document.getElementById('color-acento-val').value || '',
           colorTexto:  document.getElementById('color-texto-val').value  || '',
+          colorCuerpo: document.getElementById('color-cuerpo-val').value || '',
         }),
         foto_portada: v('foto_portada'), fotos: fotosArr,
         foto_atmosfera: v('foto_atmosfera') || null,
@@ -2319,10 +2338,12 @@ ALTER TABLE proyectos
       setPicker('titulo', t.colorTitulo  || def.titulo)
       setPicker('acento', t.colorAccento || def.acento)
       setPicker('texto',  t.colorTexto   || def.texto)
+      setPicker('cuerpo', t.colorCuerpo  || def.cuerpo)
       // Refs siempre muestran el valor de paleta, no el custom
       setRef('titulo', def.titulo)
       setRef('acento', def.acento)
       setRef('texto',  def.texto)
+      setRef('cuerpo', def.cuerpo)
       renderReferenciaPaleta(t.paleta)
     }
     // Fotos ya guardadas
