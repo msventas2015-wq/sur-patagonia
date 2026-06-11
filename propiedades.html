@@ -3,738 +3,150 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Propiedades — Sur Patagonia</title>
-  <link rel="stylesheet" href="css/estilos.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&family=DM+Serif+Display:ital@0;1&family=Raleway:wght@200;300;400&family=Josefin+Sans:wght@200;300;400&family=Lora:ital,wght@0,400;1,400&family=Nunito+Sans:wght@300;400&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Outfit:wght@200;300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    body { cursor: none; }
-    #cur { position:fixed; z-index:9999; pointer-events:none; width:7px; height:7px; border-radius:50%; background:var(--dorado); transform:translate(-50%,-50%); transition:width .3s,height .3s,background .3s,border .3s; will-change:transform; }
-    #cur.big { width:40px; height:40px; background:transparent; border:1px solid rgba(201,168,76,0.6); }
-    a,button,[onclick],select,input,label { cursor: none; }
-  
-/* ── Popup del mapa ── */
-    .mapa-popup { font-family: 'Montserrat', sans-serif; min-width: 200px; max-width: 240px; }
-    .mapa-popup-img { width: 100%; height: 130px; object-fit: cover; display: block; margin-bottom: 0.7rem; background: #eee; }
-    .mapa-popup-img-ph { width: 100%; height: 130px; background: #f0eeeb; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 0.7rem; }
-    .mapa-popup-tipo { font-size: 0.58rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #c9a84c; margin-bottom: 0.3rem; }
-    .mapa-popup-titulo { font-size: 0.82rem; font-weight: 500; color: #1a1714; margin-bottom: 0.3rem; line-height: 1.3; }
-    .mapa-popup-loc { font-size: 0.7rem; color: #6a6560; margin-bottom: 0.5rem; }
-    .mapa-popup-precio { font-size: 0.9rem; font-weight: 600; color: #1a1714; margin-bottom: 0.8rem; }
-    .mapa-popup-btn { display: block; width: 100%; padding: 0.55rem; background: #1a1714; color: #ffffff !important; font-family: 'Montserrat', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-align: center; text-decoration: none !important; transition: background 0.2s; }
-    .mapa-popup-btn:hover { background: #c9a84c; color: #ffffff !important; }
-
-    /* Ocultar el borde por defecto del popup de Leaflet */
-    .leaflet-popup-content-wrapper { border-radius: 0 !important; padding: 0 !important; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important; }
-    .leaflet-popup-content { margin: 0 !important; }
-    .leaflet-popup-tip-container { display: none; }
-  
-</style>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    /* Fondo completo de la página */
-    #page-bg {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
-      opacity: 0;
-      transition: opacity 0.5s ease;
-      pointer-events: none;
-    }
-    #page-bg-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      background: rgba(9,9,9,0.85);
-      pointer-events: none;
-    }
-    nav, .page-header, .seccion, footer { position: relative; z-index: 1; }
-    .page-header {
-      padding: 10rem 0 5rem;
-      background:
-        linear-gradient(to bottom, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.85) 60%, rgba(8,8,8,1) 100%),
-        var(--header-bg, linear-gradient(135deg, #0d0d0d 0%, #111 100%));
-      background-size: cover;
-      background-position: center;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      position: relative;
-    }
-    .page-header h1 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(3rem, 6vw, 5.5rem);
-      font-weight: 300; letter-spacing: -0.01em;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-    }
-    .breadcrumb {
-      font-size: 0.72rem;
-      color: var(--gris-claro);
-      letter-spacing: 0.08em;
-      margin-bottom: 1rem;
-    }
-    .breadcrumb a { color: var(--dorado); }
-    .resultados-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-    .resultados-count {
-      font-size: 0.8rem;
-      color: var(--gris-claro);
-    }
-    .resultados-count span { color: var(--dorado); font-weight: 600; }
-    .ordenar-select {
-      background: var(--negro-3);
-      border: 1px solid var(--gris-oscuro);
-      color: var(--blanco);
-      padding: 0.5rem 1rem;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 0.78rem;
-      outline: none;
-      cursor: pointer;
-    }
-    .paginacion {
-      display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-top: 3rem;
-    }
-    .pag-btn {
-      padding: 0.5rem 1rem;
-      background: var(--negro-3);
-      border: 1px solid var(--gris-oscuro);
-      color: var(--gris-claro);
-      cursor: pointer;
-      font-size: 0.8rem;
-      transition: all 0.2s;
-    }
-    .pag-btn:hover, .pag-btn.activo {
-      background: var(--dorado);
-      color: var(--negro);
-      border-color: var(--dorado);
-    }
-
-  /* ── NAV ── */
-  #nav-main { position: fixed; top: 0; left: 0; right: 0; z-index: 1001; display: flex; align-items: center; justify-content: space-between; padding: 0.93rem 3rem; background: rgba(8,8,8,0.95); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 1px 0 rgba(255,255,255,0.04); }
-  .nav-logo { display: flex; align-items: center; }
-  .nav-logo img { height: 44px; display: block; }
-  .nav-links-main { display: flex; align-items: center; gap: 0.2rem; }
-  .nav-link { font-size: 0.68rem; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(240,237,232,0.55); padding: 0.5rem 1rem; transition: color 0.2s; text-decoration: none; }
-  .nav-link:hover, .nav-link.active { color: #f0ede8; }
-  .nav-sep { width: 1px; height: 14px; background: rgba(255,255,255,0.1); margin: 0 0.5rem; }
-  .nav-cta { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #080808 !important; background: #c9a84c; padding: 0.55rem 1.4rem; margin-left: 0.5rem; transition: background 0.2s; text-decoration: none; display: inline-block; }
-  .nav-cta:hover { background: #e8c97a; }
-  /* Hamburger */
-  .nav-burger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; z-index: 1002; }
-  .nav-burger span { display: block; width: 22px; height: 1px; background: #f0ede8; transition: all 0.3s; }
-  .nav-burger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
-  .nav-burger.open span:nth-child(2) { opacity: 0; }
-  .nav-burger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
-  .nav-close-btn { display: none; }
-  .nav-mob-header-logo { display: none; }
-  @media (max-width: 768px) {
-    #nav-main { padding: 1rem 1.5rem; }
-    .nav-links-main { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(8,8,8,0.97); flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 12vh; padding-top: 12dvh; gap: 1.5rem; z-index: 999; text-align: center; }
-    .nav-links-main.abierto { display: flex; }
-    .nav-link { font-size: 1.1rem; letter-spacing: 0.18em; color: #f0ede8 !important; display: flex; align-items: center; justify-content: center; padding: 0.3rem 1rem; }
-    .nav-sep { display: none; }
-    .nav-cta { margin-top: 0.5rem; padding: 0.9rem 3rem; font-size: 0.75rem; color: #080808 !important; }
-    .nav-burger { display: flex; }
-    .nav-close-btn { display: block; position: absolute; top: 1.2rem; right: 1.5rem; background: none; border: none; color: #f0ede8; font-size: 1.4rem; cursor: pointer; padding: 0.5rem; line-height: 1; z-index: 1000; }
-    .nav-mob-header-logo { display: block; width: 108px; height: auto; margin-bottom: 0.5rem; opacity: 0.82; }
-  }
-  </style>
+  <title>Propiedades — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
 </head>
 <body>
-<div id="cur"></div>
-<div id="page-bg"></div>
-<div id="page-bg-overlay"></div>
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="nueva-propiedad.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nueva propiedad
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="nuevo-proyecto.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nuevo proyecto
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+            <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+        Apariencia
+      </a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Generar PDF
+      </a>
+            <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
+      <a href="../index.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
 
-  <!-- NAV -->
-  <nav id="nav-main">
-    <a href="index.html" class="nav-logo"><picture><source srcset="logohorizontal.webp" type="image/webp"><img src="logohorizontal.png" alt="Sur Patagonia"></picture></a>
-    <div class="nav-links-main" id="navLinks">
-      <button class="nav-close-btn" id="navClose" aria-label="Cerrar menú">✕</button>
-      <picture><source srcset="picos.webp" type="image/webp"><img src="picos.png" class="nav-mob-header-logo" alt="Sur Patagonia"></picture>
-      <a href="index.html" class="nav-link">Inicio</a>
-      <a href="propiedades.html" class="nav-link active">Propiedades</a>
-      <a href="proyectos.html" class="nav-link">Proyectos</a>
-      <a href="servicios.html" class="nav-link">Servicios</a>
-      <div class="nav-sep"></div>
-      <a href="index.html#contacto" class="nav-cta">Contacto</a>
-    </div>
-    <button class="nav-burger" id="menuBtn" aria-label="Menú"><span></span><span></span><span></span></button>
-  </nav>
-
-  <!-- PAGE HEADER -->
-  <div class="page-header">
-    <div class="contenedor">
-      <p class="breadcrumb"><a href="index.html">Inicio</a> / Propiedades</p>
-      <h1>Propiedades</h1>
-      <p style="color:var(--gris-claro); margin-top:0.5rem;">Encontrá la propiedad ideal en la Patagonia argentina</p>
-    </div>
-  </div>
-
-  <!-- CONTENIDO -->
-  <div class="seccion">
-    <div class="contenedor">
-      <div class="layout-propiedades">
-
-        <!-- SIDEBAR FILTROS -->
-        <aside class="filtros-sidebar">
-          <h4 style="margin-bottom:1.5rem; font-family:'Montserrat'; font-weight:600; font-size:0.75rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--blanco);">Filtrar</h4>
-
-          <div class="filtro-grupo">
-            <p class="filtro-titulo">Operación</p>
-            <div class="filtro-opciones">
-              <label class="filtro-opcion"><input type="checkbox" value="venta" class="filtro-op" /> Venta</label>
-              <label class="filtro-opcion"><input type="checkbox" value="alquiler" class="filtro-op" /> Alquiler</label>
-              <label class="filtro-opcion"><input type="checkbox" value="alquiler_temporario" class="filtro-op" /> Temporario</label>
-            </div>
-          </div>
-
-          <div class="filtro-grupo">
-            <p class="filtro-titulo">Tipo de propiedad</p>
-            <div class="filtro-opciones">
-              <label class="filtro-opcion"><input type="checkbox" value="casa" class="filtro-tipo" /> Casa</label>
-              <label class="filtro-opcion"><input type="checkbox" value="departamento" class="filtro-tipo" /> Departamento</label>
-              <label class="filtro-opcion"><input type="checkbox" value="terreno" class="filtro-tipo" /> Terreno</label>
-              <label class="filtro-opcion"><input type="checkbox" value="lote" class="filtro-tipo" /> Lote</label>
-              <label class="filtro-opcion"><input type="checkbox" value="local" class="filtro-tipo" /> Local comercial</label>
-              <label class="filtro-opcion"><input type="checkbox" value="oficina" class="filtro-tipo" /> Oficina</label>
-              <label class="filtro-opcion"><input type="checkbox" value="galpon" class="filtro-tipo" /> Galpón / Depósito</label>
-            </div>
-          </div>
-
-          <div class="filtro-grupo">
-            <p class="filtro-titulo">Precio (USD)</p>
-            <div class="rango-precio">
-              <input type="number" id="precioMin" placeholder="Mín" />
-              <input type="number" id="precioMax" placeholder="Máx" />
-            </div>
-          </div>
-
-          <div class="filtro-grupo">
-            <p class="filtro-titulo">Dormitorios mínimo</p>
-            <div class="filtro-opciones">
-              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="" class="filtro-dorm" checked /> Todos</label>
-              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="1" class="filtro-dorm" /> 1+</label>
-              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="2" class="filtro-dorm" /> 2+</label>
-              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="3" class="filtro-dorm" /> 3+</label>
-              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="4" class="filtro-dorm" /> 4+</label>
-            </div>
-          </div>
-
-          <button class="btn btn-dorado" id="btnAplicarFiltros" style="width:100%; margin-top:0.5rem;">Aplicar filtros</button>
-          <button class="btn btn-outline" id="btnLimpiarFiltros" style="width:100%; margin-top:0.5rem;">Limpiar</button>
-        </aside>
-
-        <!-- LISTADO -->
-        <div>
-          <div class="resultados-header">
-            <p class="resultados-count"><span id="totalResultados">—</span> propiedades encontradas</p>
-            <select class="ordenar-select" id="ordenar">
-              <option value="created_at_desc">Más recientes</option>
-              <option value="precio_asc">Precio: menor a mayor</option>
-              <option value="precio_desc">Precio: mayor a menor</option>
-            </select>
-          </div>
-          <div class="grid-propiedades" id="listadoPropiedades">
-            <div class="estado-cargando" style="grid-column:1/-1">
-              <div class="spinner"></div>
-              <p>Cargando propiedades...</p>
-            </div>
-          </div>
-          <div class="paginacion" id="paginacion"></div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- MAPA DE PROPIEDADES -->
-  <div class="seccion" style="background:var(--negro-2); border-top:1px solid var(--gris-oscuro); position:relative; z-index:1; isolation:isolate;">
-    <div class="contenedor">
-      <h3 style="font-family:'Cormorant Garamond',serif; font-weight:300; font-size:2rem; margin-bottom:0.5rem;">Mapa de <em style="color:var(--dorado); font-style:italic;">propiedades</em></h3>
-      <p style="font-size:0.8rem; color:var(--gris-claro); margin-bottom:1.5rem;">Todas las propiedades disponibles en el mapa. Hacé clic en cada punto para ver más detalles.</p>
-      <div id="mapaPropiedades" style="height:480px; border:1px solid var(--gris-oscuro);"></div>
-    </div>
-  </div>
-
-  <style>
-    /* ─── CONTACTO + FOOTER COMPLETO ─── */
-    #contacto-nuevo { background: linear-gradient(to bottom, rgba(8,8,8,0.88) 0%, rgba(8,8,8,0.92) 100%), url('assets/17.webp') center/cover no-repeat scroll; border-top: 1px solid #2a2a2e; padding: 8rem 2rem; position: relative; z-index: 2; isolation: isolate; }
-    footer.footer-new { position: relative; z-index: 2; }
-    .cnt-inner { max-width: 1280px; margin: 0 auto; }
-    .cnt-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 6rem; align-items: start; }
-    .cnt-eyebrow { display: flex; align-items: center; gap: 1rem; font-size: 0.65rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; color: #c9a84c; margin-bottom: 1.2rem; }
-    .cnt-eyebrow::before { content: ''; display: block; width: 30px; height: 1px; background: #c9a84c; }
-    .cnt-title { font-family: 'Montserrat', sans-serif; font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 200; line-height: 1.05; letter-spacing: -0.02em; color: #f0ede8; margin-bottom: 2rem; }
-    .cnt-title em { font-style: normal; color: #c9a84c; }
-    .cnt-desc { color: #777; font-size: 0.85rem; line-height: 1.9; margin-bottom: 2rem; }
-    .cnt-dato { display: flex; align-items: center; gap: 1rem; font-size: 0.78rem; color: #777; margin-bottom: 0.8rem; }
-    .cnt-dato-icon { color: #c9a84c; }
-    .cnt-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
-    .cnt-row.full { grid-template-columns: 1fr; }
-    .cnt-field { display: flex; flex-direction: column; gap: 0.4rem; }
-    .cnt-field label { font-size: 0.6rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: #777; }
-    .cnt-field input, .cnt-field textarea { background: rgba(255,255,255,0.03); border: 1px solid #2a2a2e; color: #f0ede8; padding: 0.8rem 1rem; font-family: 'Montserrat', sans-serif; font-size: 0.82rem; font-weight: 300; outline: none; transition: border-color 0.2s; resize: vertical; }
-    .cnt-field input:focus, .cnt-field textarea:focus { border-color: #c9a84c; }
-    .cnt-submit { width: 100%; margin-top: 0.5rem; background: #c9a84c; color: #080808; padding: 0.95rem; font-family: 'Montserrat', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; border: none; cursor: pointer; transition: background 0.3s; }
-    .cnt-submit:hover { background: #e8c97a; }
-    .cnt-alerta { padding: 0.8rem 1rem; margin-bottom: 1rem; font-size: 0.8rem; }
-    .cnt-alerta.ok { background: rgba(39,174,96,0.08); border-left: 3px solid #27ae60; color: #27ae60; }
-    .cnt-alerta.err { background: rgba(192,57,43,0.08); border-left: 3px solid #c0392b; color: #c0392b; }
-    footer.footer-new { background: #080808; border-top: 1px solid #2a2a2e; padding: 3rem 0 2rem; overflow: hidden; }
-    .mq-wrap { overflow: hidden; margin-bottom: 3rem; display: flex; flex-direction: column; }
-    .mq-row { border-top: 1px solid #2a2a2e; padding: 0.9rem 0; overflow: hidden; }
-    .mq-row:last-child { border-bottom: 1px solid #2a2a2e; }
-    @keyframes mqScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-    .mq-track { display: flex; width: max-content; white-space: nowrap; align-items: center; animation: mqScroll 30s linear infinite; }
-    .mq-row:last-child .mq-track { animation-duration: 22s; }
-    .mq-row:first-child .mq-text { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; font-size: clamp(2rem, 4vw, 3.5rem); color: rgba(240,237,232,0.1); padding: 0 2.5rem; line-height: 1; }
-    .mq-row:first-child .mq-text em { font-style: normal; color: rgba(201,168,76,0.3); }
-    .mq-row:last-child .mq-text { font-family: 'Montserrat', sans-serif; font-weight: 500; font-size: 0.62rem; letter-spacing: 0.35em; text-transform: uppercase; color: rgba(240,237,232,0.14); padding: 0 3rem; }
-    .mq-row:last-child .mq-text em { font-style: normal; color: rgba(201,168,76,0.35); }
-    .mq-sep { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: #c9a84c; opacity: 0.25; margin: 0 1.5rem; vertical-align: middle; }
-    .ft-inner { max-width: 1280px; margin: 0 auto; padding: 0 2rem; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 4rem; margin-bottom: 3rem; }
-    .ft-logo { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 300; letter-spacing: 0.08em; margin-bottom: 1rem; color: #f0ede8; }
-    .ft-logo span { color: #c9a84c; }
-    .ft-desc { font-size: 0.8rem; color: #777; line-height: 1.9; }
-    .ft-col h5 { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #c9a84c; margin-bottom: 1.2rem; }
-    .ft-links { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
-    .ft-links a { font-size: 0.8rem; color: #777; text-decoration: none; transition: color 0.2s; }
-    .ft-links a:hover { color: #f0ede8; }
-    .ft-bottom { max-width: 1280px; margin: 0 auto; padding: 1.5rem 2rem 0; border-top: 1px solid #2a2a2e; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.7rem; color: #777; }
-    @media (max-width: 900px) { .cnt-grid { grid-template-columns: 1fr; gap: 3rem; } .ft-inner { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 768px) { .cnt-row { grid-template-columns: 1fr; } .ft-inner { grid-template-columns: 1fr; gap: 2rem; } }
-  </style>
-
-  <!-- CONTACTO -->
-  <section id="contacto-nuevo">
-    <div class="cnt-inner">
-      <div class="cnt-grid">
-        <div>
-          <div class="cnt-eyebrow">Escribinos</div>
-          <h2 class="cnt-title">Estamos<br><em>para ayudarte</em></h2>
-          <p class="cnt-desc">Ya sea que estés buscando tu próxima propiedad o querés desarrollar un proyecto en la Patagonia, nuestro equipo está listo.</p>
-          <div class="cnt-dato"><span class="cnt-dato-icon">📍</span> El Bolsón, Río Negro, Argentina</div>
-          <div class="cnt-dato"><span class="cnt-dato-icon">📞</span> +54 9 294 400 0000</div>
-          <div class="cnt-dato"><span class="cnt-dato-icon">✉️</span> info@surpatagonia.com.ar</div>
-        </div>
-        <div>
-          <div id="alertaContactoNew"></div>
-          <form id="formContactoNew">
-            <div class="cnt-row">
-              <div class="cnt-field"><label>Nombre</label><input type="text" id="cnNombre" placeholder="Tu nombre" required /></div>
-              <div class="cnt-field"><label>Email</label><input type="email" id="cnEmail" placeholder="tu@email.com" required /></div>
-            </div>
-            <div class="cnt-row">
-              <div class="cnt-field"><label>Teléfono</label><input type="tel" id="cnTelefono" placeholder="+54 9 ..." /></div>
-            </div>
-            <div class="cnt-row full">
-              <div class="cnt-field"><label>Mensaje</label><textarea id="cnMensaje" rows="5" placeholder="¿En qué te podemos ayudar?" required></textarea></div>
-            </div>
-            <button type="submit" class="cnt-submit">Enviar mensaje</button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- FOOTER COMPLETO -->
-  <footer class="footer-new">
-    <div class="mq-wrap">
-      <div class="mq-row">
-        <div class="mq-track">
-          <span class="mq-text">Sur Patagonia <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">Propiedades &amp; Desarrollos <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">El Bolsón, Patagonia <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">Sur Patagonia <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">Propiedades &amp; Desarrollos <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">El Bolsón, Patagonia <em>·</em></span><span class="mq-sep"></span>
-        </div>
-      </div>
-      <div class="mq-row">
-        <div class="mq-track">
-          <span class="mq-text">PROPIEDADES <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">PROYECTOS <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">SERVICIOS <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">AUDIOVISUAL <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">PROPIEDADES <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">PROYECTOS <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">SERVICIOS <em>·</em></span><span class="mq-sep"></span>
-          <span class="mq-text">AUDIOVISUAL <em>·</em></span><span class="mq-sep"></span>
-        </div>
-      </div>
-    </div>
-    <div class="ft-inner">
+  <main class="admin-main">
+    <div class="admin-header">
       <div>
-        <div class="ft-logo">Sur <span>Patagonia</span></div>
-        <p class="ft-desc">Propiedades y desarrollos exclusivos en los paisajes más extraordinarios de la Patagonia argentina.</p>
+        <h2 style="font-weight:300;">Propiedades</h2>
+        <p style="font-size:0.78rem; color:var(--gris-claro);">Gestioná todas las propiedades del sitio</p>
       </div>
-      <div class="ft-col">
-        <h5>Navegación</h5>
-        <ul class="ft-links">
-          <li><a href="index.html">Inicio</a></li>
-          <li><a href="propiedades.html">Propiedades</a></li>
-          <li><a href="proyectos.html">Proyectos</a></li>
-          <li><a href="servicios.html">Servicios</a></li>
-          <li><a href="#contacto-nuevo">Contacto</a></li>
-          <li><a href="admin/login.html">Admin</a></li>
-        </ul>
-      </div>
-      <div class="ft-col">
-        <h5>Contacto</h5>
-        <ul class="ft-links">
-          <li><a href="#">El Bolsón, Río Negro</a></li>
-          <li><a href="#">Argentina</a></li>
-          <li><a href="#">contacto@surpatagonia.com.ar</a></li>
-        </ul>
-      </div>
+      <a href="nueva-propiedad.html" class="btn btn-dorado">+ Nueva propiedad</a>
     </div>
-    <div class="ft-bottom">
-      <div style="display:flex;justify-content:space-between;width:100%;">
-        <span>© 2025 Sur Patagonia. Todos los derechos reservados.</span>
-        <span style="color:#c9a84c;">Patagonia, Argentina</span>
-      </div>
-      <div style="font-size:0.62rem;">
-        Mariana Ayelén García — Martillera y Corredora Pública Mat. 271-RP-18 F°350 T°II &nbsp;·&nbsp;
-        La disponibilidad y los precios publicados están sujetos a posibles modificaciones sin previo aviso.
-      </div>
+    <div id="alerta"></div>
+    <div style="overflow-x:auto;">
+      <table class="admin-tabla">
+        <thead>
+          <tr>
+            <th>Imagen</th>
+            <th>Título</th>
+            <th>Tipo</th>
+            <th>Operación</th>
+            <th>Ciudad</th>
+            <th>Precio</th>
+            <th>Destacada</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaPropiedades">
+          <tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--gris-claro);">Cargando...</td></tr>
+        </tbody>
+      </table>
     </div>
-  </footer>
+  </main>
+</div>
 
-  <script type="module">
-    import { supabase as sbContact } from './js/config.js'
-    // Foto contacto — espejo del index via site_config
-    try {
-      const { data: cfgRows } = await sbContact.from('site_config').select('key, value').eq('key', 'img_contacto_bg')
-      const imgBg = cfgRows?.[0]?.value
-      if (imgBg) {
-        const el = document.getElementById('contacto-nuevo')
-        if (el) el.style.background = `linear-gradient(to bottom, rgba(8,8,8,0.88) 0%, rgba(8,8,8,0.92) 100%), url('${imgBg}') center/cover no-repeat scroll`
-      }
-    } catch(e) {}
-    document.getElementById('formContactoNew').addEventListener('submit', async function(e) {
-      e.preventDefault()
-      const alerta = document.getElementById('alertaContactoNew')
-      const btn = this.querySelector('.cnt-submit')
-      btn.textContent = 'Enviando...'
-      btn.disabled = true
-      try {
-        const { error } = await sbContact.from('consultas').insert([{
-          nombre: document.getElementById('cnNombre').value,
-          email: document.getElementById('cnEmail').value,
-          telefono: document.getElementById('cnTelefono').value,
-          mensaje: document.getElementById('cnMensaje').value,
-          origen: 'propiedades'
-        }])
-        if (error) throw error
-        alerta.innerHTML = '<div class="cnt-alerta ok">¡Mensaje enviado! Te respondemos a la brevedad.</div>'
-        this.reset()
-      } catch(err) {
-        alerta.innerHTML = '<div class="cnt-alerta err">Error al enviar. Escribinos a info@surpatagonia.com.ar</div>'
-      } finally {
-        btn.textContent = 'Enviar mensaje'
-        btn.disabled = false
-      }
-    })
-  </script>
+<script type="module">
+  import { supabase } from '../js/config.js'
 
-  <script type="module">
-    import { supabase } from './js/config.js'
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) window.location.href = 'login.html'
 
-    const POR_PAGINA = 9
-    let paginaActual = 1
-    let totalPropiedades = 0
+  document.getElementById('btnLogout').addEventListener('click', async (e) => {
+    e.preventDefault()
+    await supabase.auth.signOut()
+    window.location.href = 'login.html'
+  })
 
-    // Nav mobile
-    const menuBtn = document.getElementById('menuBtn')
-    const navLinks = document.getElementById('navLinks')
-    const navClose = document.getElementById('navClose')
-    if (menuBtn && navLinks) {
-      menuBtn.addEventListener('click', () => { menuBtn.classList.toggle('open'); navLinks.classList.toggle('abierto') })
-    }
-    if (navClose && navLinks && menuBtn) {
-      navClose.addEventListener('click', () => { menuBtn.classList.remove('open'); navLinks.classList.remove('abierto') })
-    }
-
-    // Leer params de URL al cargar
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get('op')) {
-      document.querySelectorAll('.filtro-op').forEach(cb => {
-        if (cb.value === urlParams.get('op')) cb.checked = true
-      })
-    }
-    if (urlParams.get('tipo')) {
-      document.querySelectorAll('.filtro-tipo').forEach(cb => {
-        if (cb.value === urlParams.get('tipo')) cb.checked = true
-      })
-    }
-    if (urlParams.get('precioMax')) {
-      document.getElementById('precioMax').value = urlParams.get('precioMax')
-    }
-
-    async function cargarPropiedades() {
-      const contenedor = document.getElementById('listadoPropiedades')
-      contenedor.innerHTML = `<div class="estado-cargando" style="grid-column:1/-1"><div class="spinner"></div><p>Cargando...</p></div>`
-
-      // Filtros
-      const ops = [...document.querySelectorAll('.filtro-op:checked')].map(c => c.value)
-      const tipos = [...document.querySelectorAll('.filtro-tipo:checked')].map(c => c.value)
-      const dormMin = document.querySelector('.filtro-dorm:checked')?.value
-      const precioMin = document.getElementById('precioMin').value
-      const precioMaxVal = document.getElementById('precioMax').value
-
-      // Validar rango de precios
-      if (precioMin && precioMaxVal && parseFloat(precioMin) > parseFloat(precioMaxVal)) {
-        contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--rojo)">El precio mínimo no puede ser mayor que el máximo.</p></div>`
-        return
-      }
-
-      // Ordenar
-      const ordenarVal = document.getElementById('ordenar').value
-      const [ordenCol, ordenDir] = ordenarVal.split('_').reduce((acc, v, i, arr) => {
-        if (i === arr.length - 1) return [arr.slice(0, -1).join('_'), v]
-        return acc
-      }, ['created_at', 'desc'])
-
-      let query = supabase.from('propiedades').select(
-        'id, titulo, tipo, operacion, precio, moneda, ubicacion, ciudad, dormitorios, banos, superficie_cubierta, superficie_total, imagenes, destacada',
-        { count: 'exact' }
-      ).eq('activa', true)
-
-      if (ops.length > 0) query = query.in('operacion', ops)
-      if (tipos.length > 0) query = query.in('tipo', tipos)
-      if (dormMin) query = query.gte('dormitorios', parseInt(dormMin))
-      if (precioMin) query = query.gte('precio', parseFloat(precioMin))
-      if (precioMaxVal) query = query.lte('precio', parseFloat(precioMaxVal))
-
-      query = query.order(ordenCol, { ascending: ordenDir === 'asc' })
-      query = query.range((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA - 1)
-
-      const { data, error, count } = await query
-
-      totalPropiedades = count || 0
-      document.getElementById('totalResultados').textContent = totalPropiedades
-
-      if (error) {
-        contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--rojo)">Error al cargar propiedades.</p></div>`
-        return
-      }
-
-      if (!data || data.length === 0) {
-        contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--gris-claro)">No se encontraron propiedades con esos filtros.</p></div>`
-        renderPaginacion()
-        return
-      }
-
-      contenedor.innerHTML = data.map(renderCard).join('')
-      renderPaginacion()
-    }
-
-    function renderPaginacion() {
-      const total = Math.ceil(totalPropiedades / POR_PAGINA)
-      const pag = document.getElementById('paginacion')
-      if (total <= 1) { pag.innerHTML = ''; return }
-      let html = ''
-      if (paginaActual > 1) html += `<button class="pag-btn" data-p="${paginaActual - 1}">‹ Anterior</button>`
-      for (let i = 1; i <= total; i++) {
-        html += `<button class="pag-btn${i === paginaActual ? ' activo' : ''}" data-p="${i}">${i}</button>`
-      }
-      if (paginaActual < total) html += `<button class="pag-btn" data-p="${paginaActual + 1}">Siguiente ›</button>`
-      pag.innerHTML = html
-      pag.querySelectorAll('.pag-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          paginaActual = parseInt(btn.dataset.p)
-          window.scrollTo({ top: 0, behavior: 'smooth' })
-          cargarPropiedades()
-        })
-      })
-    }
-
-    // Escapar caracteres HTML para evitar XSS con datos de base de datos
-    function esc(str) {
-      if (!str) return ''
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
-    }
-
-    function renderCard(p) {
-      const img = p.imagenes && p.imagenes.length > 0
-        ? `<img src="${esc(p.imagenes[0])}" alt="${esc(p.titulo)}" loading="lazy" />`
-        : `<div class="card-imagen-placeholder">🏠</div>`
-      const precio = p.precio
-        ? `${esc(p.moneda || 'USD')} ${Number(p.precio).toLocaleString('es-AR')}`
-        : 'Consultar'
-      const opLabel = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
-      const ubicacion = [p.ubicacion, p.ciudad].filter(Boolean).map(esc).join(', ')
-      return `
-        <div class="card-propiedad" onclick="window.open('propiedad.html?id=${p.id}','_blank')">
-          <div class="card-imagen">
-            ${img}
-            <div class="card-badge badge-${esc(p.operacion)}">${opLabel}</div>
-            ${p.destacada ? '<div class="badge-destacada">★</div>' : ''}
-          </div>
-          <div class="card-cuerpo">
-            <p class="card-tipo">${esc(p.tipo)}</p>
-            <h3 class="card-titulo">${esc(p.titulo)}</h3>
-            <p class="card-ubicacion">📍 ${ubicacion}</p>
-            <div class="card-precio">${precio} <span>${p.operacion !== 'venta' ? '/ mes' : ''}</span></div>
-            <div class="card-detalles">
-              ${p.dormitorios ? `<div class="card-detalle"><strong>${p.dormitorios}</strong>Dorm.</div>` : ''}
-              ${p.banos ? `<div class="card-detalle"><strong>${p.banos}</strong>Baños</div>` : ''}
-              ${p.superficie_cubierta ? `<div class="card-detalle"><strong>${esc(p.superficie_cubierta)}</strong>m² cub.</div>` : ''}
-              ${p.superficie_total ? `<div class="card-detalle"><strong>${esc(p.superficie_total)}</strong>m² tot.</div>` : ''}
-            </div>
-          </div>
-        </div>`
-    }
-
-    // Eventos filtros
-    document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
-      paginaActual = 1
-      cargarPropiedades()
-    })
-
-    document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
-      document.querySelectorAll('.filtro-op, .filtro-tipo').forEach(c => c.checked = false)
-      document.querySelector('.filtro-dorm[value=""]').checked = true
-      document.getElementById('precioMin').value = ''
-      document.getElementById('precioMax').value = ''
-      paginaActual = 1
-      cargarPropiedades()
-    })
-
-    document.getElementById('ordenar').addEventListener('change', () => {
-      paginaActual = 1
-      cargarPropiedades()
-    })
-
-    cargarPropiedades()
-
-    // ── MAPA CON TODAS LAS PROPIEDADES ────────────────────────
-    const mapaEl = document.getElementById('mapaPropiedades')
-    const mapa = L.map(mapaEl).setView([-41.13, -71.31], 9)
-
-    // ── OpenStreetMap invertido — fondo oscuro, calles blancas y claras ──
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19
-    }).addTo(mapa)
-
-    // Invertir colores: fondo blanco→oscuro, calles oscuras→blancas y visibles
-    const styleEl = document.createElement('style')
-    styleEl.textContent = `#mapaPropiedades .leaflet-tile-pane { filter: invert(1) grayscale(1) contrast(0.85) brightness(1.5); }`
-    document.head.appendChild(styleEl)
-
-    // ── Pin: círculo negro con picos SVG blancos + punta abajo ──
-    const iconoProp = L.divIcon({
-      html: `<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.4));">
-        <div style="width:44px;height:44px;border-radius:50%;background:#1a1714;border:2px solid #c9a84c;display:flex;align-items:center;justify-content:center;">
-          <img src="https://surpatagonia.com.ar/assets/pn.png" style="width:28px;height:auto;display:block;filter:invert(1);" />
-        </div>
-        <div style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:13px solid #1a1714;margin-top:-1px;"></div>
-      </div>`,
-      className: '',
-      iconSize: [44, 57],
-      iconAnchor: [22, 57],
-      popupAnchor: [0, -60]
-    })
-
-    // ── CAMBIO 3: SELECT incluye imagenes + popup con foto ──
-    const { data: propsMapa } = await supabase
+  async function cargar() {
+    const { data } = await supabase
       .from('propiedades')
-      .select('id, titulo, ubicacion, ciudad, precio, moneda, operacion, tipo, latitud, longitud, imagenes')
-      .eq('activa', true)
-      .not('latitud', 'is', null)
-      .not('longitud', 'is', null)
+      .select('*')
+      .order('created_at', { ascending: false })
 
-    if (propsMapa && propsMapa.length > 0) {
-      const bounds = []
-      propsMapa.forEach(p => {
-        const precio = p.precio
-          ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
-          : 'Consultar'
-        const imgUrl = p.imagenes && p.imagenes.length > 0 ? p.imagenes[0] : null
-        const imgHtml = imgUrl
-          ? `<img class="mapa-popup-img" src="${imgUrl}" alt="${p.titulo}" />`
-          : `<div class="mapa-popup-img-ph">🏠</div>`
-        const tipoLabel = p.tipo ? p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1) : ''
-        const opLabel = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
-        const locLabel = [p.ubicacion, p.ciudad].filter(Boolean).join(', ')
-
-        const popupHtml = `
-          <div class="mapa-popup">
-            ${imgHtml}
-            <div style="padding: 0 0.9rem 0.9rem;">
-              <div class="mapa-popup-tipo">${tipoLabel} · ${opLabel}</div>
-              <div class="mapa-popup-titulo">${p.titulo}</div>
-              ${locLabel ? `<div class="mapa-popup-loc">📍 ${locLabel}</div>` : ''}
-              <div class="mapa-popup-precio">${precio}</div>
-              <a href="propiedad.html?id=${p.id}" class="mapa-popup-btn">Ver propiedad →</a>
-            </div>
-          </div>`
-
-        L.marker([p.latitud, p.longitud], { icon: iconoProp })
-          .addTo(mapa)
-          .bindPopup(popupHtml, { maxWidth: 240 })
-        bounds.push([p.latitud, p.longitud])
-      })
-      mapa.fitBounds(bounds, { padding: [40, 40] })
+    const tbody = document.getElementById('tablaPropiedades')
+    if (!data || data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--gris-claro);">No hay propiedades. <a href="nueva-propiedad.html" style="color:var(--dorado)">Crear primera</a></td></tr>`
+      return
     }
 
-    // Cargar imágenes y opacidades desde site_config
-    supabase.from('site_config').select('key, value')
-      .in('key', ['img_propiedades_header', 'overlay_propiedades', 'img_propiedades_bg', 'overlay_propiedades_bg', 'font_titulos'])
-      .then(({ data }) => {
-        if (!data) {
-          document.querySelectorAll('.page-header h1').forEach(el => el.style.opacity = '1')
-          return
-        }
-        const cfg = {}
-        data.forEach(r => cfg[r.key] = r.value)
-        if (cfg.font_titulos) document.querySelectorAll('h1, h2').forEach(el => { el.style.fontFamily = `'${cfg.font_titulos}', sans-serif` })
-        document.querySelectorAll('.page-header h1').forEach(el => el.style.opacity = '1')
+    tbody.innerHTML = data.map(p => `
+      <tr>
+        <td>${p.imagenes && p.imagenes[0] ? `<img src="${p.imagenes[0]}" alt="" />` : '—'}</td>
+        <td style="color:var(--blanco); font-weight:400;">${p.titulo}</td>
+        <td>${p.tipo || '—'}</td>
+        <td>${p.operacion || '—'}</td>
+        <td>${p.ciudad || '—'}</td>
+        <td>${p.precio ? (p.moneda || 'USD') + ' ' + Number(p.precio).toLocaleString() : 'Consultar'}</td>
+        <td><span class="badge-activo ${p.destacada ? 'si' : 'no'}">${p.destacada ? 'Sí' : 'No'}</span></td>
+        <td><span class="badge-activo ${p.activa ? 'si' : 'no'}">${p.activa ? 'Activa' : 'Inactiva'}</span></td>
+        <td>
+          <div class="acciones-tabla">
+            <button class="btn-accion btn-editar" data-id="${p.id}">Editar</button>
+            <button class="btn-accion btn-eliminar" data-id="${p.id}" data-activa="${p.activa}">${p.activa ? 'Desactivar' : 'Activar'}</button>
+          </div>
+        </td>
+      </tr>`).join('')
 
-        // Header
-        const imgHeader = cfg['img_propiedades_header']
-        const opHeader = parseInt(cfg['overlay_propiedades'] || '70') / 100
-        if (imgHeader) {
-          document.querySelector('.page-header').style.backgroundImage =
-            `linear-gradient(to bottom, rgba(8,8,8,${Math.min(opHeader+0.1,1)}) 0%, rgba(8,8,8,${opHeader}) 60%, rgba(8,8,8,1) 100%), url('${imgHeader}')`
-          document.querySelector('.page-header').style.backgroundSize = 'cover'
-          document.querySelector('.page-header').style.backgroundPosition = 'center'
-        }
+    tbody.querySelectorAll('.btn-editar').forEach(btn => {
+      btn.addEventListener('click', () => window.location.href = `nueva-propiedad.html?id=${btn.dataset.id}`)
+    })
 
-        // Fondo completo de página
-        const imgBg = cfg['img_propiedades_bg']
-        const opBg = parseInt(cfg['overlay_propiedades_bg'] || '85') / 100
-        if (imgBg) {
-          const bg = document.getElementById('page-bg')
-          const overlay = document.getElementById('page-bg-overlay')
-          bg.style.backgroundImage = `url('${imgBg}')`
-          bg.style.opacity = '1'
-          overlay.style.background = `rgba(9,9,9,${opBg})`
-        }
+    tbody.querySelectorAll('.btn-eliminar').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const activar = btn.dataset.activa === 'false'
+        if (!confirm(`¿${activar ? 'Activar' : 'Desactivar'} esta propiedad?`)) return
+        await supabase.from('propiedades').update({ activa: activar }).eq('id', btn.dataset.id)
+        cargar()
       })
-  </script>
-  <script>
-    const cur = document.getElementById('cur')
-    document.addEventListener('mousemove', e => {
-      cur.style.left = e.clientX + 'px'
-      cur.style.top  = e.clientY + 'px'
     })
-    document.addEventListener('mouseleave', () => cur.style.opacity = '0')
-    document.addEventListener('mouseenter', () => cur.style.opacity = '1')
-    document.querySelectorAll('a,button,[onclick],select,input,label').forEach(el => {
-      el.addEventListener('mouseenter', () => cur.classList.add('big'))
-      el.addEventListener('mouseleave', () => cur.classList.remove('big'))
-    })
-  </script>
+  }
+
+  cargar()
+</script>
 </body>
 </html>

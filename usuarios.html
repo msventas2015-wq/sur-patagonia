@@ -157,8 +157,10 @@
 <script type="module">
 import { supabase } from '../js/config.js'
 
-const { data: { session } } = await supabase.auth.getSession()
-if (!session) window.location.href = 'login.html'
+// Auth check no bloqueante
+supabase.auth.getSession().then(({ data: { session } }) => {
+  if (!session) window.location.href = 'login.html'
+})
 
 document.getElementById('btnLogout').addEventListener('click', async (e) => {
   e.preventDefault()
