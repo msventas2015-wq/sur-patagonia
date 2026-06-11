@@ -587,7 +587,7 @@
     .avanzado-panel.open { display: block; }
     .av-fila {
       display: grid;
-      grid-template-columns: 1.4rem 1fr auto auto;
+      grid-template-columns: 1.4rem 1fr 1fr auto;
       align-items: center;
       gap: 0.6rem;
       padding: 0.5rem 0.8rem;
@@ -613,30 +613,44 @@
       font-size: 0.65rem;
       color: var(--texto);
     }
-    .av-color-btn {
-      width: 26px; height: 26px;
-      border-radius: 3px;
-      border: 1px solid var(--borde);
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: border-color 0.2s;
+    .av-color-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
       background: var(--superficie);
-      position: relative;
+      border: 1px solid var(--borde);
+      border-radius: 4px;
+      padding: 0.28rem 0.5rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      min-width: 0;
+      overflow: hidden;
     }
-    .av-color-btn:hover { border-color: var(--dorado); }
-    .av-color-btn.personalizado::after {
-      content: '✎';
-      position: absolute;
-      bottom: -2px;
-      right: -2px;
-      font-size: 0.5rem;
-      background: var(--dorado);
-      color: #000;
-      border-radius: 2px;
-      width: 9px; height: 9px;
-      display: flex; align-items: center; justify-content: center;
-      line-height: 1;
+    .av-color-wrap:hover { border-color: var(--dorado); }
+    .av-color-wrap.personalizado { border-color: var(--dorado); }
+    .av-color-swatch {
+      width: 16px; height: 16px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.15);
+      flex-shrink: 0;
     }
+    .av-color-hex {
+      font-size: 0.6rem;
+      font-family: 'Courier New', monospace;
+      color: var(--texto);
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .av-color-edit {
+      font-size: 0.6rem;
+      color: var(--gris-claro);
+      opacity: 0.6;
+      flex-shrink: 0;
+    }
+    .av-color-wrap.personalizado .av-color-edit { color: var(--dorado); opacity: 1; }
     .av-size-group {
       display: flex;
       gap: 2px;
@@ -658,7 +672,7 @@
     .av-size-btn.activo { background: var(--dorado); border-color: var(--dorado); color: #000; font-weight: 600; }
     @media (max-width: 700px) {
       .av-fila { grid-template-columns: 1.2rem 1fr; }
-      .av-color-btn, .av-size-group { display: none; }
+      .av-color-wrap, .av-size-group { display: none; }
     }
 
     /* Chips de referencia de paleta */
@@ -1965,7 +1979,11 @@ ALTER TABLE proyectos
 
   window.cpApply = () => {
     const hex = document.getElementById('cpNative').value
-    if (_cpTipo) setPicker(_cpTipo, hex)
+    if (_cpTipo) {
+      setPicker(_cpTipo, hex)
+      // Refrescar panel avanzado para actualizar colores heredados
+      if (document.getElementById('avanzadoPanel').classList.contains('open')) renderAvanzado()
+    }
     if (_elPickerTipo) setElColor(_elPickerTipo, hex)
     document.getElementById('cpDialog').classList.remove('open')
     _cpTipo = null
@@ -2004,35 +2022,46 @@ ALTER TABLE proyectos
 
   // ── Personalización avanzada por elemento ──────────────────────────
   const ELEMENTOS = [
-    { id: 'hero-eyebrow',  label: 'Eyebrow',     seccion: 'Hero' },
-    { id: 'hero-titulo',   label: 'Título',       seccion: 'Hero' },
-    { id: 'hero-tagline',  label: 'Tagline',      seccion: 'Hero' },
-    { id: 'pres-eyebrow',  label: 'Eyebrow',      seccion: 'Presentación' },
-    { id: 'pres-titulo',   label: 'Título',       seccion: 'Presentación' },
-    { id: 'pres-desc',     label: 'Descripción',  seccion: 'Presentación' },
-    { id: 'plano-eyebrow', label: 'Eyebrow',      seccion: 'Plano' },
-    { id: 'plano-titulo',  label: 'Título',       seccion: 'Plano' },
-    { id: 'disp-eyebrow',  label: 'Eyebrow',      seccion: 'Disponibilidad' },
-    { id: 'disp-titulo',   label: 'Título',       seccion: 'Disponibilidad' },
-    { id: 'gal-eyebrow',   label: 'Eyebrow',      seccion: 'Galería' },
-    { id: 'gal-titulo',    label: 'Título',       seccion: 'Galería' },
-    { id: 'cta-eyebrow',   label: 'Eyebrow',      seccion: 'Contacto' },
-    { id: 'cta-titulo',    label: 'Título',       seccion: 'Contacto' },
-    { id: 'cta-sub',       label: 'Subtexto',     seccion: 'Contacto' },
+    { id: 'hero-eyebrow',  label: 'Eyebrow',     seccion: 'Hero',           slot: 'acento' },
+    { id: 'hero-titulo',   label: 'Título',       seccion: 'Hero',           slot: 'titulo' },
+    { id: 'hero-tagline',  label: 'Tagline',      seccion: 'Hero',           slot: 'texto'  },
+    { id: 'pres-eyebrow',  label: 'Eyebrow',      seccion: 'Presentación',   slot: 'acento' },
+    { id: 'pres-titulo',   label: 'Título',       seccion: 'Presentación',   slot: 'titulo' },
+    { id: 'pres-desc',     label: 'Descripción',  seccion: 'Presentación',   slot: 'cuerpo' },
+    { id: 'plano-eyebrow', label: 'Eyebrow',      seccion: 'Plano',          slot: 'acento' },
+    { id: 'plano-titulo',  label: 'Título',       seccion: 'Plano',          slot: 'titulo' },
+    { id: 'disp-eyebrow',  label: 'Eyebrow',      seccion: 'Disponibilidad', slot: 'acento' },
+    { id: 'disp-titulo',   label: 'Título',       seccion: 'Disponibilidad', slot: 'titulo' },
+    { id: 'gal-eyebrow',   label: 'Eyebrow',      seccion: 'Galería',        slot: 'acento' },
+    { id: 'gal-titulo',    label: 'Título',       seccion: 'Galería',        slot: 'titulo' },
+    { id: 'cta-eyebrow',   label: 'Eyebrow',      seccion: 'Contacto',       slot: 'acento' },
+    { id: 'cta-titulo',    label: 'Título',       seccion: 'Contacto',       slot: 'titulo' },
+    { id: 'cta-sub',       label: 'Subtexto',     seccion: 'Contacto',       slot: 'texto'  },
   ]
 
   // Estado en memoria: { [elId]: { color: '#xxx', size: 'm' } }
   let _elementosState = {}
 
+  function getSlotColor(slot) {
+    const map = {
+      titulo: 'color-titulo-val',
+      acento: 'color-acento-val',
+      texto:  'color-texto-val',
+      cuerpo: 'color-cuerpo-val',
+    }
+    return document.getElementById(map[slot])?.value || '#888888'
+  }
+
   function renderAvanzado() {
     const panel = document.getElementById('avanzadoPanel')
     if (!panel) return
     panel.innerHTML = ELEMENTOS.map((el, i) => {
-      const cfg = _elementosState[el.id] || {}
-      const color = cfg.color || ''
-      const size  = cfg.size  || 'm'
-      const swatchBg = color ? `background:${color};` : 'background:var(--superficie);'
-      const personalizado = color ? 'personalizado' : ''
+      const cfg        = _elementosState[el.id] || {}
+      const customColor = cfg.color || ''
+      const size        = cfg.size  || 'm'
+      const inheritedColor = getSlotColor(el.slot)
+      const displayColor   = customColor || inheritedColor
+      const isCustom       = !!customColor
       return `
       <div class="av-fila" id="av-row-${el.id}">
         <span class="av-num">${i + 1}</span>
@@ -2040,10 +2069,12 @@ ALTER TABLE proyectos
           <span class="av-seccion">${el.seccion}</span>
           <span class="av-label">${el.label}</span>
         </div>
-        <button type="button" class="av-color-btn ${personalizado}" id="av-swatch-${el.id}"
-          style="${swatchBg}"
+        <button type="button" class="av-color-wrap${isCustom ? ' personalizado' : ''}"
           onclick="abrirElPicker('${el.id}')"
-          title="Color personalizado${color ? ': ' + color : ' (heredado)'}">
+          title="${isCustom ? 'Color personalizado: ' + customColor : 'Heredado del slot ' + el.slot}">
+          <div class="av-color-swatch" style="background:${displayColor};"></div>
+          <span class="av-color-hex">${displayColor.toUpperCase()}</span>
+          <span class="av-color-edit">✎</span>
         </button>
         <div class="av-size-group">
           ${['xs','s','m','l','xl'].map(sz => `
@@ -2126,6 +2157,7 @@ ALTER TABLE proyectos
       card.classList.add('activo')
       document.getElementById('paleta-val').value = card.dataset.paleta
       actualizarColoresPorPaleta(card.dataset.paleta)
+      if (document.getElementById('avanzadoPanel').classList.contains('open')) renderAvanzado()
     })
   })
   // Inicializar pickers con la paleta activa al cargar
