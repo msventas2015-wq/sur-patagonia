@@ -1218,15 +1218,21 @@ CREATE TABLE IF NOT EXISTS proyectos (
   monto_reserva   numeric,
   comision_pct    numeric,
   condiciones_venta text,
+  tipo_propiedad  text,
+  financiacion    text,
   financiacion_banco text DEFAULT 'no',
   ajuste_precios  text DEFAULT 'ninguno',
 
   -- Media
   foto_portada    text,
   fotos           text[] DEFAULT '{}',
+  foto_atmosfera  text,
+  foto_fondo      text,
+  opacidad_fondo  integer DEFAULT 7,
   video_url       text,
   masterplan_url  text,
   brochure_url    text,
+  tema            text,   -- JSON: {"paleta":"clasico","titulo":"cormorant","cuerpo":"montserrat"}
 
   -- Desarrollador (privado)
   dev_empresa     text,
@@ -1283,7 +1289,19 @@ CREATE POLICY "lotes_publicos" ON lotes
 -- IMPORTANTE: para el admin necesitás autenticación con service_role
 -- o deshabilitar RLS temporalmente para desarrollo:
 -- ALTER TABLE proyectos DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE lotes DISABLE ROW LEVEL SECURITY;</pre>
+-- ALTER TABLE lotes DISABLE ROW LEVEL SECURITY;
+
+-- ══════════════════════════════════════════════════════════════════
+-- SI LA TABLA YA EXISTE: ejecutá solo este bloque para agregar
+-- las columnas de diseño visual y otros campos nuevos
+-- ══════════════════════════════════════════════════════════════════
+ALTER TABLE proyectos
+  ADD COLUMN IF NOT EXISTS tema            text,
+  ADD COLUMN IF NOT EXISTS foto_atmosfera  text,
+  ADD COLUMN IF NOT EXISTS foto_fondo      text,
+  ADD COLUMN IF NOT EXISTS opacidad_fondo  integer DEFAULT 7,
+  ADD COLUMN IF NOT EXISTS tipo_propiedad  text,
+  ADD COLUMN IF NOT EXISTS financiacion    text;</pre>
     <div style="margin-top:1rem;display:flex;gap:0.8rem;">
       <button class="btn-primario" onclick="copiarSQL()">Copiar SQL</button>
       <button class="btn-secundario" onclick="document.getElementById('modalSQL').classList.remove('open')">Cerrar</button>
