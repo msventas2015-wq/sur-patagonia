@@ -899,11 +899,6 @@ const slug = new URLSearchParams(location.search).get('slug')
   || location.pathname.replace(/^\//, '').split('/')[0] || null
 let allLotes = []
 
-// Aplicar tema cacheado inmediatamente para evitar flash en el loading
-if (slug) {
-  const temaCache = localStorage.getItem('tema_' + slug)
-  if (temaCache) applyTema(temaCache)
-}
 
 const SERVICIOS = {
   agua_corriente: { label:'Agua corriente', svg:'<path d="M12 2C6 8 4 12 4 15a8 8 0 0016 0c0-3-2-7-8-13z"/>' },
@@ -1079,6 +1074,12 @@ async function init() {
 
   // Mostrar slug mientras carga
   $('loadingNombre').textContent = slug.replace(/-/g, ' ')
+
+  // Aplicar tema cacheado para que el loading ya aparezca con los colores correctos
+  try {
+    const temaCache = localStorage.getItem('tema_' + slug)
+    if (temaCache) applyTema(temaCache)
+  } catch(e) {}
 
   const { data: p } = await supabase
     .from('proyectos').select('*').eq('slug', slug).single()
