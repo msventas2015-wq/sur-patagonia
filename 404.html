@@ -899,6 +899,12 @@ const slug = new URLSearchParams(location.search).get('slug')
   || location.pathname.replace(/^\//, '').split('/')[0] || null
 let allLotes = []
 
+// Aplicar tema cacheado inmediatamente para evitar flash en el loading
+if (slug) {
+  const temaCache = localStorage.getItem('tema_' + slug)
+  if (temaCache) applyTema(temaCache)
+}
+
 const SERVICIOS = {
   agua_corriente: { label:'Agua corriente', svg:'<path d="M12 2C6 8 4 12 4 15a8 8 0 0016 0c0-3-2-7-8-13z"/>' },
   luz_electrica:  { label:'Luz eléctrica',  svg:'<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>' },
@@ -1086,6 +1092,8 @@ async function init() {
   if (!p) { $('loading').classList.add('fade'); return }
 
   applyTema(p.tema)
+  // Guardar tema en cache para la próxima visita (evita flash en el loading)
+  if (slug && p.tema) localStorage.setItem('tema_' + slug, p.tema)
 
   // Fondo de textura dinámico desde Supabase
   if (p.foto_fondo) {
