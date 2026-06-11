@@ -491,6 +491,12 @@
       const precioMin = document.getElementById('precioMin').value
       const precioMaxVal = document.getElementById('precioMax').value
 
+      // Validar rango de precios
+      if (precioMin && precioMaxVal && parseFloat(precioMin) > parseFloat(precioMaxVal)) {
+        contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--rojo)">El precio mínimo no puede ser mayor que el máximo.</p></div>`
+        return
+      }
+
       // Ordenar
       const ordenarVal = document.getElementById('ordenar').value
       const [ordenCol, ordenDir] = ordenarVal.split('_').reduce((acc, v, i, arr) => {
@@ -498,7 +504,10 @@
         return acc
       }, ['created_at', 'desc'])
 
-      let query = supabase.from('propiedades').select('*', { count: 'exact' }).eq('activa', true)
+      let query = supabase.from('propiedades').select(
+        'id, titulo, tipo, operacion, precio, moneda, ubicacion, ciudad, dormitorios, banos, superficie_cubierta, superficie_total, imagenes, destacada',
+        { count: 'exact' }
+      ).eq('activa', true)
 
       if (ops.length > 0) query = query.in('operacion', ops)
       if (tipos.length > 0) query = query.in('tipo', tipos)
@@ -549,30 +558,38 @@
       })
     }
 
+    // Escapar caracteres HTML para evitar XSS con datos de base de datos
+    function esc(str) {
+      if (!str) return ''
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+    }
+
     function renderCard(p) {
       const img = p.imagenes && p.imagenes.length > 0
-        ? `<img src="${p.imagenes[0]}" alt="${p.titulo}" loading="lazy" />`
+        ? `<img src="${esc(p.imagenes[0])}" alt="${esc(p.titulo)}" loading="lazy" />`
         : `<div class="card-imagen-placeholder">🏠</div>`
       const precio = p.precio
-        ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
+        ? `${esc(p.moneda || 'USD')} ${Number(p.precio).toLocaleString('es-AR')}`
         : 'Consultar'
+      const opLabel = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
+      const ubicacion = [p.ubicacion, p.ciudad].filter(Boolean).map(esc).join(', ')
       return `
         <div class="card-propiedad" onclick="window.open('propiedad.html?id=${p.id}','_blank')">
           <div class="card-imagen">
             ${img}
-            <div class="card-badge badge-${p.operacion}">${p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'}</div>
+            <div class="card-badge badge-${esc(p.operacion)}">${opLabel}</div>
             ${p.destacada ? '<div class="badge-destacada">★</div>' : ''}
           </div>
           <div class="card-cuerpo">
-            <p class="card-tipo">${p.tipo || ''}</p>
-            <h3 class="card-titulo">${p.titulo}</h3>
-            <p class="card-ubicacion">📍 ${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}</p>
+            <p class="card-tipo">${esc(p.tipo)}</p>
+            <h3 class="card-titulo">${esc(p.titulo)}</h3>
+            <p class="card-ubicacion">📍 ${ubicacion}</p>
             <div class="card-precio">${precio} <span>${p.operacion !== 'venta' ? '/ mes' : ''}</span></div>
             <div class="card-detalles">
               ${p.dormitorios ? `<div class="card-detalle"><strong>${p.dormitorios}</strong>Dorm.</div>` : ''}
               ${p.banos ? `<div class="card-detalle"><strong>${p.banos}</strong>Baños</div>` : ''}
-              ${p.superficie_cubierta ? `<div class="card-detalle"><strong>${p.superficie_cubierta}</strong>m² cub.</div>` : ''}
-              ${p.superficie_total ? `<div class="card-detalle"><strong>${p.superficie_total}</strong>m² tot.</div>` : ''}
+              ${p.superficie_cubierta ? `<div class="card-detalle"><strong>${esc(p.superficie_cubierta)}</strong>m² cub.</div>` : ''}
+              ${p.superficie_total ? `<div class="card-detalle"><strong>${esc(p.superficie_total)}</strong>m² tot.</div>` : ''}
             </div>
           </div>
         </div>`
