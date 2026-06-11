@@ -329,13 +329,29 @@
       cursor: zoom-out;
     }
     #lightbox.open { display: flex; }
-    #lightbox img { max-width: 96vw; max-height: 94vh; object-fit: contain; }
+    #lightbox img { max-width: 88vw; max-height: 90vh; object-fit: contain; cursor: default; }
     .lb-close {
       position: absolute; top: 1.5rem; right: 2rem;
       font-size: 1.4rem; color: var(--muted); cursor: pointer;
       background: none; border: none; transition: color 0.2s;
     }
     .lb-close:hover { color: var(--gold); }
+    .lb-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,255,255,0.5); font-size: 2.2rem; line-height: 1;
+      padding: 1rem 1.4rem; transition: color 0.2s;
+      user-select: none;
+    }
+    .lb-nav:hover { color: #fff; }
+    .lb-prev { left: 0; }
+    .lb-next { right: 0; }
+    .lb-counter {
+      position: absolute; bottom: 1.4rem; left: 50%; transform: translateX(-50%);
+      font-size: 0.65rem; letter-spacing: 0.2em; color: rgba(255,255,255,0.35);
+      font-family: 'Montserrat', sans-serif;
+    }
+    .lb-nav.hidden { opacity: 0; pointer-events: none; }
 
     /* ══ DISPONIBILIDAD ════════════════════════════════════════════════ */
     #disponibilidad { padding: 7rem 5vw; border-top: 1px solid var(--line); }
@@ -668,7 +684,10 @@
 <!-- LIGHTBOX -->
 <div id="lightbox" onclick="if(event.target===this)closeLightbox()">
   <button class="lb-close" onclick="closeLightbox()">✕</button>
+  <button class="lb-nav lb-prev" id="lbPrev" onclick="lbNavigate(-1)">&#8592;</button>
   <img id="lbImg" src="" alt="" />
+  <button class="lb-nav lb-next" id="lbNext" onclick="lbNavigate(1)">&#8594;</button>
+  <div class="lb-counter" id="lbCounter"></div>
 </div>
 
 <!-- NAV -->
@@ -781,7 +800,7 @@
 <section id="galeria" style="display:none;">
   <div class="gal-head" id="galHead">
     <p class="gal-eyebrow">Fotografía del proyecto</p>
-    <h2 class="gal-titulo">El <em>paisaje</em></h2>
+    <h2 class="gal-titulo">Nuestro <em>entorno</em></h2>
   </div>
   <div class="gal-grid" id="galeriaGrid"></div>
 </section>
@@ -1249,12 +1268,16 @@ function renderMapa(p) {
 }
 
 // ── Galería ───────────────────────────────────────────────────────────
+let _lbFotos = []
+let _lbIndex = 0
+
 function renderGaleria(p) {
   const fotos = p.fotos || []
   if (!fotos.length) return
+  _lbFotos = fotos
   document.getElementById('galeria').style.display = 'block'
-  $('galeriaGrid').innerHTML = fotos.map(url =>
-    `<div class="gal-item" onclick="openLightbox('${url}')">
+  $('galeriaGrid').innerHTML = fotos.map((url, i) =>
+    `<div class="gal-item" onclick="openLightbox(${i})">
       <img src="${url}" alt="" loading="lazy" />
     </div>`
   ).join('')
@@ -1299,8 +1322,25 @@ function renderContacto(p) {
 }
 
 // ── Lightbox ──────────────────────────────────────────────────────────
-window.openLightbox = src => {
-  $('lbImg').src = src
+function lbShow(index) {
+  _lbIndex = index
+  const fotos = _lbFotos
+  $('lbImg').src = fotos[index]
+  $('lbCounter').textContent = `${index + 1} / ${fotos.length}`
+  $('lbPrev').classList.toggle('hidden', index === 0)
+  $('lbNext').classList.toggle('hidden', index === fotos.length - 1)
+}
+
+window.openLightbox = (indexOrSrc) => {
+  if (typeof indexOrSrc === 'number') {
+    lbShow(indexOrSrc)
+  } else {
+    // fallback para el plano (se llama con src directo, sin galería)
+    $('lbImg').src = indexOrSrc
+    $('lbCounter').textContent = ''
+    $('lbPrev').classList.add('hidden')
+    $('lbNext').classList.add('hidden')
+  }
   $('lightbox').classList.add('open')
   document.body.style.overflow = 'hidden'
 }
@@ -1308,7 +1348,16 @@ window.closeLightbox = () => {
   $('lightbox').classList.remove('open')
   document.body.style.overflow = ''
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox() })
+window.lbNavigate = dir => {
+  const next = _lbIndex + dir
+  if (next >= 0 && next < _lbFotos.length) lbShow(next)
+}
+document.addEventListener('keydown', e => {
+  if (!$('lightbox').classList.contains('open')) return
+  if (e.key === 'Escape')     closeLightbox()
+  if (e.key === 'ArrowLeft')  lbNavigate(-1)
+  if (e.key === 'ArrowRight') lbNavigate(1)
+})
 
 // ── Nav scroll ────────────────────────────────────────────────────────
 window.addEventListener('scroll', () =>
