@@ -903,6 +903,8 @@ const PALETAS = {
   arena:    { '--gold':'#8a6030', '--gold2':'#c09050', '--bg':'#f5f0e8', '--surface':'#e8e0d0', '--text':'#1a1714', '--muted':'#7a7268', '--line':'rgba(0,0,0,0.1)' },
   grafito:  { '--gold':'#c9a84c', '--gold2':'#e2c87a', '--bg':'#1c1c1c', '--surface':'#2a2a2a', '--text':'#f0ede8', '--muted':'#888880', '--line':'rgba(255,255,255,0.09)' },
   plata:    { '--gold':'#a8bfc8', '--gold2':'#c8dce6', '--bg':'#2e3238', '--surface':'#3a3f46', '--text':'#edf0f2', '--muted':'#8a9298', '--line':'rgba(255,255,255,0.09)' },
+  patagonia:{ '--gold':'#c9a84c', '--gold2':'#e8c97a', '--bg':'#f2f0ed', '--surface':'#e8e5e0', '--text':'#1a1714', '--muted':'#6a6560', '--line':'rgba(0,0,0,0.09)' },
+  instagram:{ '--gold':'#c9a84c', '--gold2':'#e8c97a', '--bg':'#fafafa', '--surface':'#efefef', '--text':'#1a1a1a', '--muted':'#737373', '--line':'rgba(0,0,0,0.09)' },
 }
 const FUENTES_TITULO = {
   cormorant:   "'Cormorant Garamond', serif",
@@ -1022,49 +1024,61 @@ async function init() {
   // Mostrar slug mientras carga
   $('loadingNombre').textContent = slug.replace(/-/g, ' ')
 
-  const { data: p } = await supabase
-    .from('proyectos').select('*').eq('slug', slug).single()
+  try {
+    const { data: p, error: errP } = await supabase
+      .from('proyectos').select('*').eq('slug', slug).single()
 
-  // Actualizar loading y nav con nombre real
-  if (p?.nombre) {
+    if (errP || !p) {
+      console.warn('Proyecto no encontrado o error Supabase:', errP?.message)
+      return
+    }
+
+    // Actualizar loading y nav con nombre real
     $('loadingNombre').textContent = p.nombre
     $('navBrandNombre').textContent = p.nombre
+
+    applyTema(p.tema)
+
+    // Fondo de textura dinámico desde Supabase
+    if (p.foto_fondo) {
+      const root = document.documentElement
+      // Sanitizar URL para evitar inyección CSS
+      const urlSegura = p.foto_fondo.replace(/['"\\]/g, '')
+      root.style.setProperty('--bg-foto', `url('${urlSegura}')`)
+      root.style.setProperty('--bg-opacidad', ((p.opacidad_fondo || 7) / 100).toFixed(2))
+    }
+
+    document.title = `${p.nombre} — Sur Patagonia`
+
+    const { data: lotes, error: errLotes } = await supabase
+      .from('lotes').select('*').eq('proyecto_id', p.id).order('numero')
+    if (errLotes) console.warn('Error al cargar lotes:', errLotes.message)
+    // Normalizar estados a minúsculas para que los filtros funcionen sin importar cómo se cargaron
+    allLotes = (lotes || []).map(l => ({ ...l, estado: (l.estado || '').toLowerCase().trim() }))
+
+    // Guardar datos globalmente para el brochure PDF
+    window._proyectoData = p
+    window._lotesData = allLotes
+    window._galeria = p.fotos || []
+
+    renderHero(p)
+    renderAtmosfera(p)
+    renderPres(p)
+    renderPlano(p)
+    renderDisponibilidad(allLotes)
+    renderGaleria(p)
+    renderInfo(p)
+    renderMapa(p)
+    renderContacto(p)
+
+    setTimeout(() => initAnimations(), 100)
+
+  } catch(err) {
+    console.error('Error al inicializar proyecto:', err)
+  } finally {
+    // El loading siempre desaparece, sin importar qué pasó
+    setTimeout(() => $('loading').classList.add('fade'), 400)
   }
-
-  if (!p) { $('loading').classList.add('fade'); return }
-
-  applyTema(p.tema)
-
-  // Fondo de textura dinámico desde Supabase
-  if (p.foto_fondo) {
-    const root = document.documentElement
-    root.style.setProperty('--bg-foto', `url('${p.foto_fondo}')`)
-    root.style.setProperty('--bg-opacidad', ((p.opacidad_fondo || 7) / 100).toFixed(2))
-  }
-
-  document.title = `${p.nombre} — Sur Patagonia`
-
-  const { data: lotes } = await supabase
-    .from('lotes').select('*').eq('proyecto_id', p.id).order('numero')
-  allLotes = lotes || []
-
-  // Guardar datos globalmente para el brochure PDF
-  window._proyectoData = p
-  window._lotesData = allLotes
-  window._galeria = p.fotos || []
-
-  renderHero(p)
-  renderAtmosfera(p)
-  renderPres(p)
-  renderPlano(p)
-  renderDisponibilidad(allLotes)
-  renderGaleria(p)
-  renderInfo(p)
-  renderMapa(p)
-  renderContacto(p)
-
-  setTimeout(() => $('loading').classList.add('fade'), 400)
-  setTimeout(() => initAnimations(), 100)
 }
 
 // ── Hero ─────────────────────────────────────────────────────────────
@@ -1097,7 +1111,7 @@ function renderHero(p) {
 
 // ── Presentación ─────────────────────────────────────────────────────
 function renderPres(p) {
-  $('presTitulo').innerHTML = `<em>${p.nombre}</em>`
+  const emPres = document.createElement('em'); emPres.textContent = p.nombre; $('presTitulo').replaceChildren(emPres)
   $('presDesc').textContent = p.descripcion || ''
 
   const loc = [p.ciudad, p.provincia?.replace(/_/g,' ')].filter(Boolean).join(', ')
@@ -1220,7 +1234,7 @@ function renderMapa(p) {
   if (!p.latitud || !p.longitud) return
   const lat = p.latitud, lng = p.longitud
   const loc = [p.ciudad, p.provincia?.replace(/_/g,' ')].filter(Boolean).join(', ')
-  $('ubicTitulo').innerHTML = `<em>${loc || p.nombre}</em>`
+  const emUbic = document.createElement('em'); emUbic.textContent = loc || p.nombre; $('ubicTitulo').replaceChildren(emUbic)
   $('ubicDesc').textContent = p.descripcion_ubicacion
     || `${p.nombre} se encuentra en ${loc || 'la Patagonia Argentina'}, en un entorno natural privilegiado.`
   $('ubicMapa').innerHTML = `<iframe src="https://maps.google.com/maps?q=${lat},${lng}&hl=es&z=14&output=embed&iwloc=B" allowfullscreen loading="lazy"></iframe><div class="ubic-overlay"></div>`
@@ -1666,7 +1680,7 @@ window.generarBrochure = async function() {
     sp(0)
 
     // Guardar
-    const fname = (p.nombre||'proyecto').toLowerCase().replace(/\s+/g,'-')+'-brochure.pdf'
+    const fname = (p.nombre||'proyecto').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-brochure.pdf'
     doc.save(fname)
 
   } catch(err) {
