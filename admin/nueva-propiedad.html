@@ -418,27 +418,39 @@
   inputImagenes.addEventListener('change', () => agregarArchivos(inputImagenes.files))
 
   let archivosSeleccionados = []
+  const MAX_IMAGENES = 20
 
   function agregarArchivos(files) {
+    const totalActual = imagenesExistentes.length + archivosSeleccionados.length
+    let agregados = 0
     for (const f of files) {
       if (!f.type.startsWith('image/')) continue
+      if (totalActual + agregados >= MAX_IMAGENES) {
+        alert(`Límite de ${MAX_IMAGENES} imágenes por propiedad.`)
+        break
+      }
+      // Evitar duplicados por nombre + tamaño + fecha de modificación
+      const yaExiste = archivosSeleccionados.some(a => a.name === f.name && a.size === f.size && a.lastModified === f.lastModified)
+      if (yaExiste) continue
       archivosSeleccionados.push(f)
+      agregados++
       const reader = new FileReader()
-      reader.onload = (e) => agregarPreview(e.target.result, archivosSeleccionados.length - 1)
+      // Capturar referencia directa al objeto File (no índice) para evitar bug al eliminar
+      reader.onload = ((archivo) => (e) => agregarPreview(e.target.result, archivo))(f)
       reader.readAsDataURL(f)
     }
   }
 
-  function agregarPreview(src, idx) {
+  function agregarPreview(src, archivo) {
     const previews = document.getElementById('uploadPreviews')
     const div = document.createElement('div')
     div.className = 'upload-preview'
-    div.dataset.idx = idx
     div.innerHTML = `
       <img src="${src}" alt="preview" />
-      <button type="button" class="upload-preview-del" data-idx="${idx}">×</button>`
+      <button type="button" class="upload-preview-del">×</button>`
     div.querySelector('.upload-preview-del').addEventListener('click', () => {
-      archivosSeleccionados.splice(idx, 1)
+      // Eliminar por referencia directa al objeto, no por índice
+      archivosSeleccionados = archivosSeleccionados.filter(a => a !== archivo)
       div.remove()
     })
     previews.appendChild(div)
@@ -542,6 +554,27 @@
   // ── Guardar ───────────────────────────────────────────────────
   document.getElementById('formPropiedad').addEventListener('submit', async (e) => {
     e.preventDefault()
+
+    // Validar coordenadas si se ingresaron
+    const latVal = document.getElementById('latitud').value
+    const lngVal = document.getElementById('longitud').value
+    if (latVal !== '') {
+      const lat = parseFloat(latVal)
+      if (isNaN(lat) || lat < -90 || lat > 90) {
+        document.getElementById('alerta').innerHTML = '<div class="alerta alerta-error">Latitud inválida. Debe estar entre -90 y 90.</div>'
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+    }
+    if (lngVal !== '') {
+      const lng = parseFloat(lngVal)
+      if (isNaN(lng) || lng < -180 || lng > 180) {
+        document.getElementById('alerta').innerHTML = '<div class="alerta alerta-error">Longitud inválida. Debe estar entre -180 y 180.</div>'
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+    }
+
     const btn = document.getElementById('btnGuardar')
     btn.textContent = 'Guardando...'
     btn.disabled = true
@@ -578,8 +611,8 @@
         antiguedad: document.getElementById('antiguedad').value || null,
         condicion: document.getElementById('condicion').value || null,
         apto_credito: document.getElementById('apto_credito').checked,
-        latitud: document.getElementById('latitud').value ? parseFloat(document.getElementById('latitud').value) : null,
-        longitud: document.getElementById('longitud').value ? parseFloat(document.getElementById('longitud').value) : null,
+        latitud: (() => { const v = parseFloat(document.getElementById('latitud').value); return (!isNaN(v) && v >= -90 && v <= 90) ? v : null })(),
+        longitud: (() => { const v = parseFloat(document.getElementById('longitud').value); return (!isNaN(v) && v >= -180 && v <= 180) ? v : null })(),
         video_url: document.getElementById('video_url').value || null,
         tour_360: tour360Url,
         amenidades: [...document.querySelectorAll('.amenidad-check:checked')].map(cb => cb.value),
