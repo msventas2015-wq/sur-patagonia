@@ -167,7 +167,7 @@
     #hero { position: relative; height: 100vh; min-height: 600px; display: flex; align-items: center; overflow: hidden; }
     #hero-video-wrap { position: absolute; inset: 0; overflow: hidden; }
     #yt-bg { position: absolute; top: 50%; left: 50%; width: 100vw; height: 56.25vw; min-height: 100vh; min-width: 177.78vh; transform: translate(-50%, -50%); pointer-events: none; }
-    #yt-bg iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; pointer-events: none; }
+    #yt-bg iframe, #yt-player, #yt-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; pointer-events: none; }
     .hero-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(8,8,8,0.6) 0%, rgba(8,8,8,0) 20%), linear-gradient(to bottom, rgba(8,8,8,0) 40%, rgba(8,8,8,0.6) 70%, rgba(8,8,8,1) 100%); }
     .hero-content { position: relative; z-index: 2; padding: 0 2rem; max-width: 1280px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; }
     .hero-eyebrow { font-size: 0.6rem; font-weight: 400; letter-spacing: 0.45em; text-transform: uppercase; color: rgba(201,168,76,0.8); margin-bottom: 2.5rem; opacity: 0; }
@@ -629,7 +629,7 @@
 <section id="hero">
   <div id="hero-video-wrap">
     <div id="yt-bg">
-      <iframe src="https://www.youtube.com/embed/VMkGpUK7E2Q?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=VMkGpUK7E2Q&playsinline=1&iv_load_policy=3&disablekb=1" allow="autoplay; encrypted-media" allowfullscreen title="Sur Patagonia"></iframe>
+      <div id="yt-player"></div>
     </div>
   </div>
   <div class="hero-overlay"></div>
@@ -1672,7 +1672,7 @@ async function aplicarSiteConfig() {
     const slides = document.querySelectorAll('.story-slide')
     scrollKeys.forEach((key, i) => { if (cfg[key] && slides[i]) slides[i].style.backgroundImage = `url('${cfg[key]}')` })
     const ytParams = '?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&disablekb=1'
-    if (cfg.video_hero) { const f = document.querySelector('#yt-bg iframe'); if (f) f.src = `https://www.youtube.com/embed/${cfg.video_hero}${ytParams}&playlist=${cfg.video_hero}` }
+    if (cfg.video_hero) { window._ytHeroVideoId = cfg.video_hero; /* IFrame API player will use this on init */ }
     if (cfg.video_audiovisual) { const f = document.querySelector('#av-yt-bg iframe'); if (f) f.src = `https://www.youtube.com/embed/${cfg.video_audiovisual}${ytParams}&playlist=${cfg.video_audiovisual}` }
     if (cfg.overlay_hero) { const op = parseInt(cfg.overlay_hero)/100; const el = document.querySelector('.hero-overlay'); if (el) el.style.background = `linear-gradient(to bottom, rgba(8,8,8,${Math.min(op+0.2,1)}) 0%, rgba(8,8,8,0) 20%), linear-gradient(to bottom, rgba(8,8,8,0) 40%, rgba(8,8,8,${op}) 70%, rgba(8,8,8,1) 100%)` }
     const flatEl = document.getElementById('av-overlay-flat')
@@ -2480,6 +2480,49 @@ sendBtn.addEventListener('click', () => handleInput(input.value))
 input.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(input.value) })
 </script>
 <!-- ── FIN CHAT IA ──────────────────────────────────────────────── -->
+
+<!-- ── YouTube IFrame API (iOS autoplay fix) ─────────────────────── -->
+<script>
+(function() {
+  var tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  var first = document.getElementsByTagName('script')[0];
+  first.parentNode.insertBefore(tag, first);
+})();
+
+window.onYouTubeIframeAPIReady = function() {
+  var videoId = window._ytHeroVideoId || 'VMkGpUK7E2Q';
+  var player = new YT.Player('yt-player', {
+    videoId: videoId,
+    playerVars: {
+      autoplay: 1,
+      mute: 1,
+      loop: 1,
+      controls: 0,
+      showinfo: 0,
+      rel: 0,
+      modestbranding: 1,
+      playlist: videoId,
+      playsinline: 1,
+      iv_load_policy: 3,
+      disablekb: 1
+    },
+    events: {
+      onReady: function(e) {
+        e.target.mute();
+        e.target.playVideo();
+      },
+      onStateChange: function(e) {
+        // If video ends or pauses unexpectedly, restart
+        if (e.data === YT.PlayerState.ENDED || e.data === YT.PlayerState.PAUSED) {
+          e.target.playVideo();
+        }
+      }
+    }
+  });
+};
+</script>
+<!-- ── FIN YouTube IFrame API ──────────────────────────────────────── -->
 
 </body>
 </html>
