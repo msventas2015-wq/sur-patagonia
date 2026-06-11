@@ -555,6 +555,112 @@
     }
     .color-reset-btn:hover { color: var(--dorado); opacity: 1; }
 
+    /* ── Panel personalización avanzada ───────────────────── */
+    .avanzado-toggle {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--borde);
+      border-radius: 4px;
+      padding: 0.65rem 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      color: var(--gris-claro);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-family: 'Montserrat', sans-serif;
+      transition: border-color 0.2s, color 0.2s;
+      margin-top: 0.8rem;
+    }
+    .avanzado-toggle:hover { border-color: var(--dorado); color: var(--dorado); }
+    .avanzado-toggle .av-arrow { font-size: 0.7rem; transition: transform 0.2s; }
+    .avanzado-toggle.open .av-arrow { transform: rotate(180deg); }
+    .avanzado-panel {
+      display: none;
+      margin-top: 0.5rem;
+      border: 1px solid var(--borde);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .avanzado-panel.open { display: block; }
+    .av-fila {
+      display: grid;
+      grid-template-columns: 1.4rem 1fr auto auto;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 0.8rem;
+      border-bottom: 1px solid var(--borde);
+    }
+    .av-fila:last-child { border-bottom: none; }
+    .av-num {
+      font-size: 0.6rem;
+      color: var(--gris-claro);
+      opacity: 0.4;
+      text-align: right;
+      font-family: 'Courier New', monospace;
+    }
+    .av-info { display: flex; flex-direction: column; gap: 0.1rem; }
+    .av-seccion {
+      font-size: 0.52rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      opacity: 0.5;
+    }
+    .av-label {
+      font-size: 0.65rem;
+      color: var(--texto);
+    }
+    .av-color-btn {
+      width: 26px; height: 26px;
+      border-radius: 3px;
+      border: 1px solid var(--borde);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.2s;
+      background: var(--superficie);
+      position: relative;
+    }
+    .av-color-btn:hover { border-color: var(--dorado); }
+    .av-color-btn.personalizado::after {
+      content: '✎';
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      font-size: 0.5rem;
+      background: var(--dorado);
+      color: #000;
+      border-radius: 2px;
+      width: 9px; height: 9px;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .av-size-group {
+      display: flex;
+      gap: 2px;
+    }
+    .av-size-btn {
+      background: none;
+      border: 1px solid var(--borde);
+      color: var(--gris-claro);
+      font-size: 0.52rem;
+      letter-spacing: 0.05em;
+      padding: 0.22rem 0.35rem;
+      cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
+      border-radius: 2px;
+      transition: all 0.15s;
+      line-height: 1;
+    }
+    .av-size-btn:hover { border-color: var(--dorado); color: var(--dorado); }
+    .av-size-btn.activo { background: var(--dorado); border-color: var(--dorado); color: #000; font-weight: 600; }
+    @media (max-width: 700px) {
+      .av-fila { grid-template-columns: 1.2rem 1fr; }
+      .av-color-btn, .av-size-group { display: none; }
+    }
+
     /* Chips de referencia de paleta */
     .paleta-ref-chip {
       display: flex;
@@ -1173,6 +1279,15 @@
           <input type="hidden" id="color-acento-val">
           <input type="hidden" id="color-texto-val">
           <input type="hidden" id="color-cuerpo-val">
+
+          <!-- Personalización avanzada por elemento -->
+          <button type="button" class="avanzado-toggle" id="avanzadoToggle" onclick="toggleAvanzado()">
+            <span>Personalización avanzada por elemento</span>
+            <span class="av-arrow">▾</span>
+          </button>
+          <div class="avanzado-panel" id="avanzadoPanel">
+            <!-- generado por JS -->
+          </div>
         </div>
 
         <!-- ── Tipografía de títulos ───────────────── -->
@@ -1803,7 +1918,8 @@ ALTER TABLE proyectos
   }
 
   // ── Diálogo picker ─────────────────────────────────────
-  let _cpTipo = null   // qué slot estamos editando ('titulo'|'acento'|'texto')
+  let _cpTipo = null      // slot global ('titulo'|'acento'|'texto'|'cuerpo')
+  let _elPickerTipo = null // elemento individual ('hero-titulo', etc.)
 
   function setPicker(tipo, hex) {
     const swatch = document.getElementById('swatch-' + tipo)
@@ -1849,13 +1965,16 @@ ALTER TABLE proyectos
   window.cpApply = () => {
     const hex = document.getElementById('cpNative').value
     if (_cpTipo) setPicker(_cpTipo, hex)
+    if (_elPickerTipo) setElColor(_elPickerTipo, hex)
     document.getElementById('cpDialog').classList.remove('open')
     _cpTipo = null
+    _elPickerTipo = null
   }
 
   window.cpCancel = () => {
     document.getElementById('cpDialog').classList.remove('open')
     _cpTipo = null
+    _elPickerTipo = null
   }
 
   // Cerrar con Escape
@@ -1880,6 +1999,104 @@ ALTER TABLE proyectos
     const paletaActual = document.getElementById('paleta-val').value || 'clasico'
     const def = PALETAS_DEFAULTS[paletaActual] || PALETAS_DEFAULTS.clasico
     setPicker(tipo, def[tipo] || '#f0ede8')
+  }
+
+  // ── Personalización avanzada por elemento ──────────────────────────
+  const ELEMENTOS = [
+    { id: 'hero-eyebrow',  label: 'Eyebrow',     seccion: 'Hero' },
+    { id: 'hero-titulo',   label: 'Título',       seccion: 'Hero' },
+    { id: 'hero-tagline',  label: 'Tagline',      seccion: 'Hero' },
+    { id: 'pres-eyebrow',  label: 'Eyebrow',      seccion: 'Presentación' },
+    { id: 'pres-titulo',   label: 'Título',       seccion: 'Presentación' },
+    { id: 'pres-desc',     label: 'Descripción',  seccion: 'Presentación' },
+    { id: 'plano-eyebrow', label: 'Eyebrow',      seccion: 'Plano' },
+    { id: 'plano-titulo',  label: 'Título',       seccion: 'Plano' },
+    { id: 'disp-eyebrow',  label: 'Eyebrow',      seccion: 'Disponibilidad' },
+    { id: 'disp-titulo',   label: 'Título',       seccion: 'Disponibilidad' },
+    { id: 'gal-eyebrow',   label: 'Eyebrow',      seccion: 'Galería' },
+    { id: 'gal-titulo',    label: 'Título',       seccion: 'Galería' },
+    { id: 'cta-eyebrow',   label: 'Eyebrow',      seccion: 'Contacto' },
+    { id: 'cta-titulo',    label: 'Título',       seccion: 'Contacto' },
+    { id: 'cta-sub',       label: 'Subtexto',     seccion: 'Contacto' },
+  ]
+
+  // Estado en memoria: { [elId]: { color: '#xxx', size: 'm' } }
+  let _elementosState = {}
+
+  function renderAvanzado() {
+    const panel = document.getElementById('avanzadoPanel')
+    if (!panel) return
+    panel.innerHTML = ELEMENTOS.map((el, i) => {
+      const cfg = _elementosState[el.id] || {}
+      const color = cfg.color || ''
+      const size  = cfg.size  || 'm'
+      const swatchBg = color ? `background:${color};` : 'background:var(--superficie);'
+      const personalizado = color ? 'personalizado' : ''
+      return `
+      <div class="av-fila" id="av-row-${el.id}">
+        <span class="av-num">${i + 1}</span>
+        <div class="av-info">
+          <span class="av-seccion">${el.seccion}</span>
+          <span class="av-label">${el.label}</span>
+        </div>
+        <button type="button" class="av-color-btn ${personalizado}" id="av-swatch-${el.id}"
+          style="${swatchBg}"
+          onclick="abrirElPicker('${el.id}')"
+          title="Color personalizado${color ? ': ' + color : ' (heredado)'}">
+        </button>
+        <div class="av-size-group">
+          ${['xs','s','m','l','xl'].map(sz => `
+          <button type="button" class="av-size-btn${size === sz ? ' activo' : ''}"
+            onclick="setElSize('${el.id}','${sz}')">${sz.toUpperCase()}</button>
+          `).join('')}
+        </div>
+      </div>`
+    }).join('')
+  }
+
+  window.toggleAvanzado = () => {
+    const btn   = document.getElementById('avanzadoToggle')
+    const panel = document.getElementById('avanzadoPanel')
+    const isOpen = panel.classList.toggle('open')
+    btn.classList.toggle('open', isOpen)
+    if (isOpen) renderAvanzado()
+  }
+
+  window.abrirElPicker = (elId) => {
+    _cpTipo = null
+    _elPickerTipo = elId
+    const cfg = _elementosState[elId] || {}
+    const hexActual = cfg.color || '#888888'
+    document.getElementById('cpDialogTitle').textContent = (() => {
+      const el = ELEMENTOS.find(e => e.id === elId)
+      return el ? `${el.seccion} — ${el.label}` : elId
+    })()
+    document.getElementById('cpNative').value = hexActual
+    document.getElementById('cpHexInput').value = hexActual.toUpperCase()
+    document.getElementById('cpPreview').style.background = hexActual
+    document.getElementById('cpDialog').classList.add('open')
+  }
+
+  window.setElColor = (elId, hex) => {
+    if (!_elementosState[elId]) _elementosState[elId] = {}
+    _elementosState[elId].color = hex
+    renderAvanzado()
+  }
+
+  window.resetElColor = (elId) => {
+    if (_elementosState[elId]) delete _elementosState[elId].color
+    if (_elementosState[elId] && !_elementosState[elId].color && _elementosState[elId].size === 'm') {
+      delete _elementosState[elId]
+    }
+    renderAvanzado()
+  }
+
+  window.setElSize = (elId, sz) => {
+    if (!_elementosState[elId]) _elementosState[elId] = {}
+    _elementosState[elId].size = sz
+    // Si queda en m sin color, limpiar
+    if (sz === 'm' && !_elementosState[elId].color) delete _elementosState[elId]
+    renderAvanzado()
   }
 
   function activarModo(modo) {
@@ -2226,6 +2443,7 @@ ALTER TABLE proyectos
           colorAccento: document.getElementById('color-acento-val').value || '',
           colorTexto:  document.getElementById('color-texto-val').value  || '',
           colorCuerpo: document.getElementById('color-cuerpo-val').value || '',
+          elementos: Object.keys(_elementosState).length ? _elementosState : undefined,
         }),
         foto_portada: v('foto_portada'), fotos: fotosArr,
         foto_atmosfera: v('foto_atmosfera') || null,
@@ -2345,6 +2563,8 @@ ALTER TABLE proyectos
       setRef('texto',  def.texto)
       setRef('cuerpo', def.cuerpo)
       renderReferenciaPaleta(t.paleta)
+      // Restaurar overrides por elemento
+      _elementosState = (t.elementos && typeof t.elementos === 'object') ? JSON.parse(JSON.stringify(t.elementos)) : {}
     }
     // Fotos ya guardadas
     if (p.foto_portada) {
