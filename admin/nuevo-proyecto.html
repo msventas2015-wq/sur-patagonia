@@ -415,6 +415,60 @@
     }
     .btn-secundario:hover { border-color: var(--dorado); color: var(--dorado); }
 
+    /* ── Diálogo picker de color ──────────────────────── */
+    #cpDialog {
+      display: none; position: fixed; inset: 0; z-index: 9000;
+      background: rgba(0,0,0,0.6); align-items: center; justify-content: center;
+    }
+    #cpDialog.open { display: flex; }
+    .cp-panel {
+      background: #1c1c1c; border: 1px solid #333;
+      border-radius: 8px; padding: 1.4rem; width: 280px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .cp-panel-title {
+      font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--dorado); margin-bottom: 1.2rem; font-weight: 600;
+    }
+    .cp-native-wrap {
+      display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
+    }
+    #cpNative {
+      width: 64px; height: 64px; border: none; border-radius: 6px;
+      cursor: pointer; padding: 0; background: none;
+      flex-shrink: 0;
+    }
+    .cp-right { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+    .cp-preview {
+      height: 32px; border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .cp-hex-input {
+      width: 100%; background: #111; border: 1px solid #333;
+      color: #f0ede8; border-radius: 4px; padding: 0.4rem 0.6rem;
+      font-size: 0.78rem; font-family: 'Courier New', monospace;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      box-sizing: border-box;
+    }
+    .cp-hex-input:focus { outline: none; border-color: var(--dorado); }
+    .cp-actions {
+      display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;
+    }
+    .cp-btn-cancel {
+      background: none; border: 1px solid #444; color: var(--gris-claro);
+      padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;
+      font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .cp-btn-cancel:hover { border-color: #666; }
+    .cp-btn-apply {
+      background: var(--dorado); border: none; color: #0a0a0a;
+      padding: 0.5rem 1.2rem; border-radius: 4px; cursor: pointer;
+      font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+      font-weight: 700; font-family: 'Montserrat', sans-serif;
+    }
+    .cp-btn-apply:hover { background: #e2c87a; }
+
     /* ── Panel colores personalizados ─────────────────── */
     .color-custom-grid {
       display: grid;
@@ -434,6 +488,7 @@
       color: var(--gris-claro);
     }
     .color-pick-wrap {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -443,6 +498,7 @@
       padding: 0.35rem 0.5rem;
       cursor: pointer;
       transition: border-color 0.2s;
+      overflow: hidden;
     }
     .color-pick-wrap:hover { border-color: var(--dorado); }
     .color-pick-swatch {
@@ -460,12 +516,7 @@
       flex: 1;
       pointer-events: none;
     }
-    .color-pick-input {
-      position: absolute;
-      width: 0; height: 0;
-      opacity: 0;
-      pointer-events: none;
-    }
+    /* (color-pick-input reemplazado por cpDialog) */
     .color-ref-row {
       display: flex;
       align-items: center;
@@ -1058,12 +1109,10 @@
 
             <div class="color-custom-item">
               <span class="color-custom-label">Título principal</span>
-              <div class="color-pick-wrap" id="wrap-titulo" onclick="document.getElementById('cp-titulo').click()">
+              <div class="color-pick-wrap" id="wrap-titulo" onclick="abrirColorPicker('titulo')" style="cursor:pointer;">
                 <div class="color-pick-swatch" id="swatch-titulo"></div>
                 <span class="color-pick-hex" id="hex-titulo">#f0ede8</span>
-                <input class="color-pick-input" type="color" id="cp-titulo"
-                  oninput="actualizarColorCustom('titulo', this.value)"
-                  onchange="actualizarColorCustom('titulo', this.value)">
+                <span style="font-size:0.7rem;color:var(--gris-claro);margin-left:auto;">✎</span>
               </div>
               <div class="color-ref-row">
                 <span class="color-ref-label">Paleta:</span>
@@ -1075,12 +1124,10 @@
 
             <div class="color-custom-item">
               <span class="color-custom-label">Acento / Dorado</span>
-              <div class="color-pick-wrap" id="wrap-acento" onclick="document.getElementById('cp-acento').click()">
+              <div class="color-pick-wrap" id="wrap-acento" onclick="abrirColorPicker('acento')" style="cursor:pointer;">
                 <div class="color-pick-swatch" id="swatch-acento"></div>
                 <span class="color-pick-hex" id="hex-acento">#c9a84c</span>
-                <input class="color-pick-input" type="color" id="cp-acento"
-                  oninput="actualizarColorCustom('acento', this.value)"
-                  onchange="actualizarColorCustom('acento', this.value)">
+                <span style="font-size:0.7rem;color:var(--gris-claro);margin-left:auto;">✎</span>
               </div>
               <div class="color-ref-row">
                 <span class="color-ref-label">Paleta:</span>
@@ -1092,12 +1139,10 @@
 
             <div class="color-custom-item">
               <span class="color-custom-label">Texto / Subtítulo</span>
-              <div class="color-pick-wrap" id="wrap-texto" onclick="document.getElementById('cp-texto').click()">
+              <div class="color-pick-wrap" id="wrap-texto" onclick="abrirColorPicker('texto')" style="cursor:pointer;">
                 <div class="color-pick-swatch" id="swatch-texto"></div>
                 <span class="color-pick-hex" id="hex-texto">#888880</span>
-                <input class="color-pick-input" type="color" id="cp-texto"
-                  oninput="actualizarColorCustom('texto', this.value)"
-                  onchange="actualizarColorCustom('texto', this.value)">
+                <span style="font-size:0.7rem;color:var(--gris-claro);margin-left:auto;">✎</span>
               </div>
               <div class="color-ref-row">
                 <span class="color-ref-label">Paleta:</span>
@@ -1741,14 +1786,15 @@ ALTER TABLE proyectos
     `).join('')
   }
 
+  // ── Diálogo picker ─────────────────────────────────────
+  let _cpTipo = null   // qué slot estamos editando ('titulo'|'acento'|'texto')
+
   function setPicker(tipo, hex) {
     const swatch = document.getElementById('swatch-' + tipo)
     const hexEl  = document.getElementById('hex-' + tipo)
-    const picker = document.getElementById('cp-' + tipo)
     const hidden = document.getElementById('color-' + tipo + '-val')
     if (swatch) swatch.style.background = hex
     if (hexEl)  hexEl.textContent = hex
-    if (picker) picker.value = hex
     if (hidden) hidden.value = hex
   }
 
@@ -1759,28 +1805,63 @@ ALTER TABLE proyectos
     if (refHex)    refHex.textContent = hex
   }
 
+  // Abrir diálogo para un slot
+  window.abrirColorPicker = (tipo) => {
+    _cpTipo = tipo
+    const nombres = { titulo: 'Título principal', acento: 'Acento / Dorado', texto: 'Texto / Subtítulo' }
+    const hexActual = document.getElementById('color-' + tipo + '-val').value || '#000000'
+    document.getElementById('cpDialogTitle').textContent = nombres[tipo] || tipo
+    document.getElementById('cpNative').value = hexActual
+    document.getElementById('cpHexInput').value = hexActual.toUpperCase()
+    document.getElementById('cpPreview').style.background = hexActual
+    document.getElementById('cpDialog').classList.add('open')
+  }
+
+  window.cpSyncFromNative = (hex) => {
+    document.getElementById('cpHexInput').value = hex.toUpperCase()
+    document.getElementById('cpPreview').style.background = hex
+  }
+
+  window.cpSyncFromHex = (val) => {
+    const hex = val.startsWith('#') ? val : '#' + val
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      document.getElementById('cpNative').value = hex
+      document.getElementById('cpPreview').style.background = hex
+    }
+  }
+
+  window.cpApply = () => {
+    const hex = document.getElementById('cpNative').value
+    if (_cpTipo) setPicker(_cpTipo, hex)
+    document.getElementById('cpDialog').classList.remove('open')
+    _cpTipo = null
+  }
+
+  window.cpCancel = () => {
+    document.getElementById('cpDialog').classList.remove('open')
+    _cpTipo = null
+  }
+
+  // Cerrar con Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('cpDialog').classList.contains('open')) cpCancel()
+  })
+
   function actualizarColoresPorPaleta(paleta) {
     const def = PALETAS_DEFAULTS[paleta] || PALETAS_DEFAULTS.clasico
-    // Actualizar pickers (valor actual)
     setPicker('titulo', def.titulo)
     setPicker('acento', def.acento)
     setPicker('texto',  def.texto)
-    // Actualizar referencias fijas de paleta (no se tocan al cambiar picker)
     setRef('titulo', def.titulo)
     setRef('acento', def.acento)
     setRef('texto',  def.texto)
     renderReferenciaPaleta(paleta)
   }
 
-  function actualizarColorCustom(tipo, hex) {
-    setPicker(tipo, hex)
-  }
-
   function resetColorCustom(tipo) {
     const paletaActual = document.getElementById('paleta-val').value || 'clasico'
     const def = PALETAS_DEFAULTS[paletaActual] || PALETAS_DEFAULTS.clasico
-    const valor = def[tipo] || '#f0ede8'
-    setPicker(tipo, valor)
+    setPicker(tipo, def[tipo] || '#f0ede8')
   }
 
   function activarModo(modo) {
@@ -2343,5 +2424,27 @@ ALTER TABLE proyectos
   // init
   actualizarResumen()
 </script>
+
+<!-- ── Diálogo picker de color ───────────────────────── -->
+<div id="cpDialog">
+  <div class="cp-panel">
+    <p class="cp-panel-title" id="cpDialogTitle">Elegir color</p>
+    <div class="cp-native-wrap">
+      <input type="color" id="cpNative"
+        oninput="cpSyncFromNative(this.value)"
+        onchange="cpSyncFromNative(this.value)">
+      <div class="cp-right">
+        <div class="cp-preview" id="cpPreview"></div>
+        <input type="text" class="cp-hex-input" id="cpHexInput"
+          maxlength="7" placeholder="#000000"
+          oninput="cpSyncFromHex(this.value)">
+      </div>
+    </div>
+    <div class="cp-actions">
+      <button class="cp-btn-cancel" onclick="cpCancel()">Cancelar</button>
+      <button class="cp-btn-apply" onclick="cpApply()">Aplicar ✓</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
