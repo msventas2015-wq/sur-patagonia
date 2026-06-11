@@ -1334,7 +1334,7 @@ CREATE POLICY "lotes_publicos" ON lotes
 </div>
 
 <script type="module">
-  import { supabase, optimizarImagen } from "../js/config.js"
+  import { supabase } from '../js/config.js'
   window._sb = supabase
 
   // ── Auth check ─────────────────────────────────────────
@@ -1422,16 +1422,9 @@ CREATE POLICY "lotes_publicos" ON lotes
 
   // ── Upload a Supabase Storage ──────────────────────────
   async function uploadFile(file, carpeta) {
-    // Auto-optimizar imágenes antes de subir (saltar PDFs)
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-    const fileToUpload = isPdf ? file : await optimizarImagen(file, {
-      maxAncho: carpeta.includes('masterplan') ? 4096 : 1920,
-      maxAlto:  carpeta.includes('masterplan') ? 4096 : 1920,
-      calidad: 0.85
-    })
-    const ext  = isPdf ? file.name.split('.').pop().toLowerCase() : 'webp'
+    const ext  = file.name.split('.').pop().toLowerCase()
     const path = `${carpeta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const { error } = await supabase.storage.from('imagenes').upload(path, fileToUpload, { upsert: true })
+    const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
     if (error) throw new Error(error.message)
     const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
     return data.publicUrl
