@@ -5,9 +5,176 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Consultas — Sur Patagonia Admin</title>
   <link rel="stylesheet" href="../css/estilos.css" />
+  <style>
+    /* ── Stats cards ─────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1.2rem 1.4rem;
+    }
+    .stat-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      margin-bottom: 0.4rem;
+    }
+    .stat-valor {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      font-weight: 300;
+      color: var(--blanco);
+      line-height: 1;
+    }
+    .stat-valor small { font-size: 0.9rem; color: var(--gris-claro); }
+    .stat-extra { font-size: 0.7rem; color: var(--dorado); margin-top: 0.3rem; }
+
+    /* ── Charts ──────────────────────────────────────── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+    .chart-box {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1.2rem 1.4rem;
+      min-height: 240px;
+    }
+    .chart-box h4 {
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      font-weight: 600;
+      margin-bottom: 0.8rem;
+    }
+    .chart-box canvas { max-height: 200px; }
+
+    /* ── Filtros ─────────────────────────────────────── */
+    .filtros-bar {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1rem 1.2rem;
+      display: grid;
+      grid-template-columns: 1.2fr 1.2fr 0.9fr 1fr 1fr 1.3fr auto;
+      gap: 0.7rem;
+      align-items: end;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 1100px) { .filtros-bar { grid-template-columns: 1fr 1fr 1fr; } }
+    .filtro-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+    .filtros-bar .admin-input { padding: 0.45rem 0.6rem; font-size: 0.78rem; }
+    .btn-limpiar {
+      background: none;
+      border: 1px solid var(--gris-oscuro);
+      color: var(--gris-claro);
+      padding: 0.5rem 0.9rem;
+      cursor: pointer;
+      font-size: 0.72rem;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .btn-limpiar:hover { border-color: var(--dorado); color: var(--dorado); }
+
+    /* ── Cards de consulta ───────────────────────────── */
+    .lead-card {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      border-left: 3px solid transparent;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 0.8rem;
+      transition: border-color .2s;
+    }
+    .lead-card.no-leida { border-left-color: var(--dorado); }
+    .lead-card:hover { border-color: rgba(215,111,63,.35); }
+
+    .lead-top {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.6rem;
+    }
+    .lead-nombre { font-size: 1rem; font-weight: 500; color: var(--blanco); }
+    .lead-fecha { font-size: 0.72rem; color: var(--gris-claro); }
+    .lead-top .spacer { flex: 1; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.18rem 0.6rem;
+      border-radius: 2px;
+      font-size: 0.64rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-canal    { background: rgba(215,111,63,.14);  color: var(--dorado); }
+    .badge-directo  { background: rgba(150,150,150,.12); color: var(--gris-claro); }
+    .badge-qr       { background: rgba(80,200,120,.14);  color: #50c878; }
+    .badge-link     { background: rgba(100,149,237,.14); color: #6495ed; }
+    .badge-proyecto { background: rgba(255,255,255,.07); color: var(--blanco); font-weight: 400; text-transform: none; letter-spacing: 0.02em; }
+
+    .lead-mensaje {
+      font-size: 0.85rem;
+      color: var(--blanco);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--negro-3);
+      border: 1px solid var(--gris-oscuro);
+      padding: 0.7rem 0.9rem;
+      margin: 0.6rem 0;
+    }
+    .lead-contacto {
+      display: flex;
+      gap: 1.4rem;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+      align-items: center;
+    }
+    .lead-contacto a { color: var(--dorado); text-decoration: none; }
+    .lead-contacto a:hover { text-decoration: underline; }
+
+    .estado-select {
+      background: var(--negro-3);
+      border: 1px solid var(--gris-oscuro);
+      color: var(--blanco);
+      font-size: 0.7rem;
+      padding: 0.3rem 0.5rem;
+      cursor: pointer;
+    }
+    .estado-select.est-nueva       { color: var(--dorado);     border-color: rgba(215,111,63,.4); }
+    .estado-select.est-contactado  { color: #6495ed; border-color: rgba(100,149,237,.4); }
+    .estado-select.est-cerrado     { color: #50c878; border-color: rgba(80,200,120,.4); }
+    .estado-select.est-descartado  { color: var(--gris-claro); }
+
+    .empty-state { text-align: center; padding: 4rem; color: var(--gris-claro); font-size: 0.85rem; }
+    .resultados-info { font-size: 0.72rem; color: var(--gris-claro); margin-bottom: 0.8rem; }
+  </style>
 </head>
 <body>
 <div class="admin-layout">
+
+  <!-- SIDEBAR -->
   <aside class="admin-sidebar">
     <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
     <nav class="admin-nav">
@@ -19,35 +186,31 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
         Propiedades
       </a>
-      <a href="nueva-propiedad.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Nueva propiedad
-      </a>
       <a href="proyectos.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
         Proyectos
-      </a>
-      <a href="nuevo-proyecto.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Nuevo proyecto
       </a>
       <a href="contactos.html" class="admin-nav-item activo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         Consultas
       </a>
-            <a href="apariencia.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+      <a href="canales.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Canales
+      </a>
+      <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
+      <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
         Apariencia
       </a>
       <a href="generador-pdf.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         Generar PDF
       </a>
-            <a href="usuarios.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-        Usuarios
-      </a>
-      <a href="../index.html" class="admin-nav-item">
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
         Ver sitio
       </a>
@@ -58,82 +221,402 @@
     </nav>
   </aside>
 
+  <!-- MAIN -->
   <main class="admin-main">
     <div class="admin-header">
       <div>
-        <h2 style="font-weight:300;">Consultas recibidas</h2>
-        <p style="font-size:0.78rem; color:var(--gris-claro);">Mensajes de clientes interesados</p>
+        <h2 style="font-weight:300; margin-bottom:0.2rem;">Consultas</h2>
+        <p style="font-size:0.78rem; color:var(--gris-claro);">Todas las consultas recibidas, con su canal de origen y proyecto</p>
+      </div>
+      <button class="btn-secondary" id="btnExport">⬇ Exportar CSV</button>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Consultas (período)</div>
+        <div class="stat-valor" id="statTotal">—</div>
+        <div class="stat-extra" id="statNuevas"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Por canales</div>
+        <div class="stat-valor" id="statCanales">—</div>
+        <div class="stat-extra" id="statVias"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Directas</div>
+        <div class="stat-valor" id="statDirectas">—</div>
+        <div class="stat-extra"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Canal top</div>
+        <div class="stat-valor" id="statTopCanal" style="font-size:1.15rem; padding-top:0.4rem;">—</div>
+        <div class="stat-extra" id="statTopCanalN"></div>
       </div>
     </div>
-    <div style="overflow-x:auto;">
-      <table class="admin-tabla">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Email</th>
-            <th>Teléfono</th>
-            <th>Mensaje</th>
-            <th>Propiedad</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody id="tablaContactos">
-          <tr><td colspan="8" style="text-align:center;padding:3rem;color:var(--gris-claro);">Cargando...</td></tr>
-        </tbody>
-      </table>
+
+    <!-- CHARTS -->
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h4>Consultas por canal</h4>
+        <canvas id="chartCanales"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4>Evolución diaria</h4>
+        <canvas id="chartDias"></canvas>
+      </div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="filtros-bar">
+      <div>
+        <label class="filtro-label">Canal</label>
+        <select id="fCanal" class="admin-input"><option value="">Todos</option></select>
+      </div>
+      <div>
+        <label class="filtro-label">Proyecto / Propiedad</label>
+        <select id="fProyecto" class="admin-input"><option value="">Todos</option></select>
+      </div>
+      <div>
+        <label class="filtro-label">Origen</label>
+        <select id="fOrigen" class="admin-input">
+          <option value="">Todos</option>
+          <option value="qr">QR físico</option>
+          <option value="link">Link directo</option>
+          <option value="directo">Sin canal (directo)</option>
+        </select>
+      </div>
+      <div>
+        <label class="filtro-label">Desde</label>
+        <input type="date" id="fDesde" class="admin-input" />
+      </div>
+      <div>
+        <label class="filtro-label">Hasta</label>
+        <input type="date" id="fHasta" class="admin-input" />
+      </div>
+      <div>
+        <label class="filtro-label">Buscar</label>
+        <input type="text" id="fBuscar" class="admin-input" placeholder="Nombre, email, mensaje…" />
+      </div>
+      <button class="btn-limpiar" id="btnLimpiar">✕ Limpiar</button>
+    </div>
+
+    <!-- LISTA -->
+    <div class="resultados-info" id="resultadosInfo"></div>
+    <div id="listaLeads">
+      <div class="empty-state">Cargando consultas…</div>
     </div>
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script type="module">
-  import { supabase } from '../js/config.js'
+import { supabase } from '../js/config.js'
 
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) window.location.href = 'login.html'
+// ── Auth ──────────────────────────────────────────────────
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
 
-  document.getElementById('btnLogout').addEventListener('click', async (e) => {
-    e.preventDefault()
-    await supabase.auth.signOut()
-    window.location.href = 'login.html'
-  })
+document.getElementById('btnLogout').addEventListener('click', async e => {
+  e.preventDefault()
+  await supabase.auth.signOut()
+  window.location.href = 'login.html'
+})
 
-  async function cargar() {
-    const { data } = await supabase
-      .from('contactos')
-      .select('*, propiedades(titulo)')
-      .order('created_at', { ascending: false })
+// ── Helpers ───────────────────────────────────────────────
+const $ = id => document.getElementById(id)
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+const toSlug = str => String(str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-')
 
-    const tbody = document.getElementById('tablaContactos')
-    if (!data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:3rem;color:var(--gris-claro);">Sin consultas aún.</td></tr>'
-      return
-    }
+const ESTADOS = {
+  nueva:      'Nueva',
+  contactado: 'Contactado',
+  cerrado:    'Cerrado',
+  descartado: 'Descartado',
+}
 
-    tbody.innerHTML = data.map(c => `
-      <tr style="${!c.leido ? 'background:rgba(201,168,76,0.04);' : ''}">
-        <td style="color:var(--blanco); font-weight:${!c.leido ? '500' : '300'}">${c.nombre}</td>
-        <td><a href="mailto:${c.email}" style="color:var(--dorado);">${c.email}</a></td>
-        <td>${c.telefono || '—'}</td>
-        <td style="max-width:300px; white-space:pre-wrap; word-break:break-word; font-size:0.8rem;">${c.mensaje || '—'}</td>
-        <td style="font-size:0.8rem;">${c.propiedades?.titulo || '—'}</td>
-        <td style="white-space:nowrap;">${new Date(c.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}</td>
-        <td><span class="badge-activo ${c.leido ? 'si' : 'no'}">${c.leido ? 'Leído' : 'Nuevo'}</span></td>
-        <td>
-          ${!c.leido ? `<button class="btn-accion btn-editar" data-id="${c.id}">Marcar leído</button>` : ''}
-        </td>
-      </tr>`).join('')
+// ── Datos ─────────────────────────────────────────────────
+let _leads = []          // contactos enriquecidos
+let _chartCanales = null
+let _chartDias = null
 
-    tbody.querySelectorAll('.btn-editar').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await supabase.from('contactos').update({ leido: true }).eq('id', btn.dataset.id)
-        cargar()
-      })
-    })
+async function cargarTodo() {
+  const [rLeads, rCanales, rRefs, rProy] = await Promise.all([
+    supabase.from('contactos').select('*, propiedades(titulo)').order('created_at', { ascending: false }),
+    supabase.from('canales').select('id, nombre, codigo, tipo'),
+    supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug'),
+    supabase.from('proyectos').select('nombre, slug').then(r => r.error
+      ? supabase.from('proyectos').select('nombre')
+      : r),
+  ])
+
+  if (rLeads.error) {
+    $('listaLeads').innerHTML = `<div class="empty-state">Error al cargar consultas: ${esc(rLeads.error.message)}<br>Verificá tu sesión y permisos (rol admin).</div>`
+    return
   }
 
-  cargar()
+  // Mapa canal_id → nombre
+  const canalPorId = {}
+  ;(rCanales.data || []).forEach(c => { canalPorId[c.id] = c.nombre })
+
+  // Mapa codigo de referencia → canal
+  const canalPorRef = {}
+  ;(rRefs.data || []).forEach(r => { canalPorRef[r.codigo] = canalPorId[r.canal_id] || null })
+
+  // Fallback: si el ref no está en referencias, probar prefijo de código de canal
+  const canales = rCanales.data || []
+
+  // Mapa slug de proyecto → nombre
+  const proyPorSlug = {}
+  ;(rProy.data || []).forEach(p => { proyPorSlug[p.slug || toSlug(p.nombre)] = p.nombre })
+
+  // Enriquecer leads
+  _leads = (rLeads.data || []).map(c => {
+    let canalNombre = null
+    if (c.canal_ref) {
+      canalNombre = canalPorRef[c.canal_ref]
+        || (canales.find(k => c.canal_ref === k.codigo || c.canal_ref.startsWith(k.codigo + '-'))?.nombre)
+        || c.canal_ref   // último recurso: mostrar el código
+    }
+    const proyecto = c.proyecto_slug
+      ? (proyPorSlug[c.proyecto_slug] || c.proyecto_slug)
+      : (c.propiedades?.titulo || null)
+    const origen = c.canal_ref ? (c.canal_via === 'qr' ? 'qr' : 'link') : 'directo'
+    return { ...c, _canal: canalNombre, _proyecto: proyecto, _origen: origen, _estado: c.estado || 'nueva' }
+  })
+
+  poblarFiltros()
+  render()
+}
+
+// ── Filtros ───────────────────────────────────────────────
+function poblarFiltros() {
+  const canales = [...new Set(_leads.filter(l => l._canal).map(l => l._canal))].sort()
+  $('fCanal').innerHTML = '<option value="">Todos</option><option value="__directo__">— Solo directas —</option>'
+    + canales.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
+
+  const proyectos = [...new Set(_leads.filter(l => l._proyecto).map(l => l._proyecto))].sort()
+  $('fProyecto').innerHTML = '<option value="">Todos</option>'
+    + proyectos.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')
+}
+
+function filtrar() {
+  const fc = $('fCanal').value
+  const fp = $('fProyecto').value
+  const fo = $('fOrigen').value
+  const fd = $('fDesde').value ? new Date($('fDesde').value + 'T00:00:00') : null
+  const fh = $('fHasta').value ? new Date($('fHasta').value + 'T23:59:59') : null
+  const fb = $('fBuscar').value.trim().toLowerCase()
+
+  return _leads.filter(l => {
+    if (fc === '__directo__' && l._canal) return false
+    if (fc && fc !== '__directo__' && l._canal !== fc) return false
+    if (fp && l._proyecto !== fp) return false
+    if (fo && l._origen !== fo) return false
+    const fecha = new Date(l.created_at)
+    if (fd && fecha < fd) return false
+    if (fh && fecha > fh) return false
+    if (fb) {
+      const blob = `${l.nombre || ''} ${l.email || ''} ${l.telefono || ''} ${l.mensaje || ''}`.toLowerCase()
+      if (!blob.includes(fb)) return false
+    }
+    return true
+  })
+}
+
+;['fCanal','fProyecto','fOrigen','fDesde','fHasta'].forEach(id => $(id).addEventListener('change', render))
+$('fBuscar').addEventListener('input', () => { clearTimeout(window._bt); window._bt = setTimeout(render, 250) })
+$('btnLimpiar').addEventListener('click', () => {
+  ;['fCanal','fProyecto','fOrigen','fDesde','fHasta','fBuscar'].forEach(id => $(id).value = '')
+  render()
+})
+
+// ── Render ────────────────────────────────────────────────
+function render() {
+  const rows = filtrar()
+  renderStats(rows)
+  renderCharts(rows)
+  renderLista(rows)
+}
+
+function renderStats(rows) {
+  const deCanales = rows.filter(l => l._canal)
+  const nuevas    = rows.filter(l => l._estado === 'nueva')
+  const porQR     = rows.filter(l => l._origen === 'qr').length
+  const porLink   = rows.filter(l => l._origen === 'link').length
+
+  $('statTotal').textContent    = rows.length
+  $('statNuevas').textContent   = nuevas.length ? `${nuevas.length} sin atender` : ''
+  $('statCanales').textContent  = deCanales.length
+  $('statVias').textContent     = deCanales.length ? `${porQR} por QR · ${porLink} por link` : ''
+  $('statDirectas').textContent = rows.length - deCanales.length
+
+  const cuenta = {}
+  deCanales.forEach(l => { cuenta[l._canal] = (cuenta[l._canal] || 0) + 1 })
+  const top = Object.entries(cuenta).sort((a,b) => b[1] - a[1])[0]
+  $('statTopCanal').textContent  = top ? top[0] : '—'
+  $('statTopCanalN').textContent = top ? `${top[1]} consulta${top[1] === 1 ? '' : 's'}` : ''
+}
+
+function renderCharts(rows) {
+  const DORADO = '#d76f3f', GRIS = '#8a8a82', LINEA = 'rgba(255,255,255,0.06)'
+  Chart.defaults.color = GRIS
+  Chart.defaults.font.size = 10
+
+  // Por canal (top 8 + Directo)
+  const cuenta = {}
+  rows.forEach(l => { const k = l._canal || 'Directo'; cuenta[k] = (cuenta[k] || 0) + 1 })
+  const entradas = Object.entries(cuenta).sort((a,b) => b[1] - a[1]).slice(0, 8)
+
+  if (_chartCanales) _chartCanales.destroy()
+  _chartCanales = new Chart($('chartCanales'), {
+    type: 'bar',
+    data: {
+      labels: entradas.map(e => e[0]),
+      datasets: [{
+        data: entradas.map(e => e[1]),
+        backgroundColor: entradas.map(e => e[0] === 'Directo' ? 'rgba(150,150,150,.45)' : 'rgba(215,111,63,.65)'),
+        borderWidth: 0,
+        barThickness: 18,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: LINEA }, ticks: { precision: 0 } },
+        y: { grid: { display: false } },
+      },
+      maintainAspectRatio: false,
+    }
+  })
+
+  // Evolución diaria (rango de los datos filtrados, máx 60 días)
+  const porDia = {}
+  rows.forEach(l => {
+    const d = new Date(l.created_at).toISOString().slice(0, 10)
+    porDia[d] = (porDia[d] || 0) + 1
+  })
+  const dias = []
+  if (rows.length) {
+    const fechas = Object.keys(porDia).sort()
+    const fin    = new Date(fechas[fechas.length - 1] + 'T12:00:00')
+    let inicio   = new Date(fechas[0] + 'T12:00:00')
+    const maxIni = new Date(fin); maxIni.setDate(maxIni.getDate() - 59)
+    if (inicio < maxIni) inicio = maxIni
+    for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+      dias.push(d.toISOString().slice(0, 10))
+    }
+  }
+
+  if (_chartDias) _chartDias.destroy()
+  _chartDias = new Chart($('chartDias'), {
+    type: 'line',
+    data: {
+      labels: dias.map(d => d.slice(8,10) + '/' + d.slice(5,7)),
+      datasets: [{
+        data: dias.map(d => porDia[d] || 0),
+        borderColor: DORADO,
+        backgroundColor: 'rgba(215,111,63,.12)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 2,
+        borderWidth: 1.5,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
+        y: { grid: { color: LINEA }, ticks: { precision: 0 }, beginAtZero: true },
+      },
+      maintainAspectRatio: false,
+    }
+  })
+}
+
+function renderLista(rows) {
+  $('resultadosInfo').textContent = `${rows.length} consulta${rows.length === 1 ? '' : 's'}${rows.length !== _leads.length ? ` (de ${_leads.length} en total)` : ''}`
+
+  if (!rows.length) {
+    $('listaLeads').innerHTML = '<div class="empty-state">No hay consultas con estos filtros.</div>'
+    return
+  }
+
+  $('listaLeads').innerHTML = rows.map(l => {
+    const fecha = new Date(l.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    const telDigits = (l.telefono || '').replace(/[^\d]/g, '')
+    const origenBadge = l._origen === 'qr'
+      ? '<span class="badge badge-qr">▣ QR físico</span>'
+      : l._origen === 'link'
+        ? '<span class="badge badge-link">🔗 Link directo</span>'
+        : '<span class="badge badge-directo">Directo</span>'
+    const canalBadge = l._canal
+      ? `<span class="badge badge-canal">${esc(l._canal)}</span>`
+      : ''
+    const proyectoBadge = l._proyecto
+      ? `<span class="badge badge-proyecto">📁 ${esc(l._proyecto)}</span>`
+      : ''
+    const refChip = (l.canal_ref && l._canal !== l.canal_ref)
+      ? `<span style="font-family:monospace; font-size:0.62rem; color:var(--gris-claro);">${esc(l.canal_ref)}</span>`
+      : ''
+    const est = l._estado
+
+    return `
+    <div class="lead-card ${est === 'nueva' ? 'no-leida' : ''}">
+      <div class="lead-top">
+        <span class="lead-nombre">${esc(l.nombre) || '—'}</span>
+        ${canalBadge} ${origenBadge} ${proyectoBadge} ${refChip}
+        <span class="spacer"></span>
+        <span class="lead-fecha">${fecha}</span>
+        <select class="estado-select est-${esc(est)}" data-id="${l.id}">
+          ${Object.entries(ESTADOS).map(([v, t]) => `<option value="${v}" ${v === est ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      ${l.mensaje ? `<div class="lead-mensaje">${esc(l.mensaje)}</div>` : ''}
+      <div class="lead-contacto">
+        ${l.email ? `<span>✉ <a href="mailto:${esc(l.email)}">${esc(l.email)}</a></span>` : ''}
+        ${l.telefono ? `<span>✆ <a href="https://wa.me/${esc(telDigits)}" target="_blank" rel="noopener">${esc(l.telefono)}</a></span>` : ''}
+      </div>
+    </div>`
+  }).join('')
+
+  // Listeners de estado
+  document.querySelectorAll('.estado-select').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const id = sel.dataset.id
+      const v  = sel.value
+      const { error } = await supabase.from('contactos').update({ estado: v, leido: v !== 'nueva' }).eq('id', id)
+      if (error) { alert('No se pudo actualizar: ' + error.message); return }
+      const lead = _leads.find(x => String(x.id) === String(id))
+      if (lead) { lead._estado = v; lead.estado = v; lead.leido = v !== 'nueva' }
+      render()
+    })
+  })
+}
+
+// ── Export CSV ────────────────────────────────────────────
+$('btnExport').addEventListener('click', () => {
+  const rows = filtrar()
+  const head = ['Fecha','Nombre','Email','Teléfono','Mensaje','Proyecto/Propiedad','Canal','Código ref','Origen','Estado']
+  const csvRow = arr => arr.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')
+  const lineas = rows.map(l => csvRow([
+    new Date(l.created_at).toLocaleString('es-AR'),
+    l.nombre, l.email, l.telefono, l.mensaje,
+    l._proyecto || '', l._canal || 'Directo', l.canal_ref || '',
+    l._origen === 'qr' ? 'QR físico' : l._origen === 'link' ? 'Link directo' : 'Directo',
+    ESTADOS[l._estado] || l._estado,
+  ]))
+  const csv = '﻿' + csvRow(head) + '\n' + lineas.join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `consultas-sur-patagonia-${new Date().toISOString().slice(0,10)}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
+})
+
+cargarTodo()
 </script>
 </body>
 </html>
