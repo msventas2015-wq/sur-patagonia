@@ -187,9 +187,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
 
 const supabase = createClient(
   'https://wajkfydxutptcvvfwrvq.supabase.co',
@@ -205,6 +205,9 @@ const TIPO_LABEL = {
   'campaña':    'Campaña',
   evento:       'Evento'
 }
+
+// Escape HTML para prevenir XSS al renderizar datos
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -225,7 +228,11 @@ async function cargarCanales() {
 
   const tbody = document.getElementById('tbodyCanales')
 
-  if (error || !data?.length) {
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar canales: ${esc(error.message)}<br>Verificá tu sesión y permisos (rol admin).</div></td></tr>`
+    return
+  }
+  if (!data?.length) {
     tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">No hay canales creados aún.<br><a href="nuevo-canal.html" style="color:var(--dorado)">Crear el primero →</a></div></td></tr>`
     return
   }
@@ -236,13 +243,13 @@ async function cargarCanales() {
     const activo      = esActivo(c.tipo)
     const qrBtn       = activo
       ? `<a href="nuevo-canal.html?id=${c.id}" class="btn-icon" style="text-decoration:none;">Ver referencias</a>`
-      : `<button class="btn-icon" data-id="${c.id}" data-codigo="${c.codigo}" data-nombre="${encodeURIComponent(c.nombre)}" data-tipo="${c.tipo}" data-destino="${encodeURIComponent(c.destino||'/')}" onclick="verQRBtn(this)">QR / Link</button>`
+      : `<button class="btn-icon" data-id="${c.id}" data-codigo="${esc(c.codigo)}" data-nombre="${encodeURIComponent(c.nombre)}" data-tipo="${esc(c.tipo)}" data-destino="${encodeURIComponent(c.destino||'/')}" onclick="verQRBtn(this)">QR / Link</button>`
     return `
     <tr>
-      <td style="font-weight:500;">${c.nombre}</td>
-      <td><span class="tipo-badge tipo-${c.tipo}">${TIPO_LABEL[c.tipo] || c.tipo}</span></td>
-      <td><span class="codigo-chip">${c.codigo}</span></td>
-      <td style="color:var(--gris-claro); font-size:0.75rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.destino || '/'}</td>
+      <td style="font-weight:500;">${esc(c.nombre)}</td>
+      <td><span class="tipo-badge tipo-${esc(c.tipo)}">${TIPO_LABEL[c.tipo] || esc(c.tipo)}</span></td>
+      <td><span class="codigo-chip">${esc(c.codigo)}</span></td>
+      <td style="color:var(--gris-claro); font-size:0.75rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c.destino || '/')}</td>
       <td>
         <span class="estado-dot ${c.activo ? 'activo' : 'inactivo'}"></span>
         <span style="font-size:0.75rem; color:var(--gris-claro);">${c.activo ? 'Activo' : 'Inactivo'}</span>
@@ -283,7 +290,7 @@ window.verQR = (codigo, nombre, tipo, destino) => {
 
   QRCode.toCanvas(document.getElementById('qrCanvas'), linkQR, {
     width: 240, margin: 2,
-    color: { dark: '#ffffff', light: '#1a1a1a' }
+    color: { dark: '#1a1a1a', light: '#ffffff' }
   })
   document.getElementById('modalQR').classList.add('open')
 }

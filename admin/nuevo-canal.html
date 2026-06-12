@@ -357,9 +357,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
 
 const supabase = createClient(
   'https://wajkfydxutptcvvfwrvq.supabase.co',
@@ -411,6 +411,9 @@ function toSlug(str) {
 function esActivo(tipo) {
   return tipo === 'inmobiliaria' || tipo === 'particular'
 }
+
+// Escape HTML para prevenir XSS al renderizar datos
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 
 // ── Tipo change ───────────────────────────────────────────
 window.onTipoChange = function() {
@@ -584,8 +587,8 @@ async function cargarReferencias() {
   lista.innerHTML = data.map(r => `
     <div class="ref-row">
       <div>
-        <div class="ref-nombre">${r.nombre}</div>
-        <span class="ref-codigo">${r.codigo}</span>
+        <div class="ref-nombre">${esc(r.nombre)}</div>
+        <span class="ref-codigo">${esc(r.codigo)}</span>
       </div>
       <button class="btn-ref" onclick="verQR('${r.codigo}','${encodeURIComponent(r.nombre)}','${encodeURIComponent(r.destino || '/')}')">QR / Link</button>
       <button class="btn-ref" onclick="toggleRefActivo('${r.id}', ${r.activo})" style="color:${r.activo ? '' : 'var(--gris-claro)'}">
@@ -654,7 +657,7 @@ window.verQR = (codigo, nombreEnc, destinoEnc) => {
 
   QRCode.toCanvas(document.getElementById('qrCanvas'), linkQR, {
     width: 220, margin: 2,
-    color: { dark: '#ffffff', light: '#1a1a1a' }
+    color: { dark: '#1a1a1a', light: '#ffffff' }
   })
   document.getElementById('modalQR').classList.add('open')
 }
@@ -763,10 +766,11 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
         destino, activo: true,
       })
     } else {
-      await supabase.from('referencias').update({ destino, nombre }).eq('canal_id', _canalId)
+      // Actualizar también el código para que la referencia siga coincidiendo con el QR
+      await supabase.from('referencias').update({ destino, nombre, codigo }).eq('canal_id', _canalId)
     }
     // Mostrar QR del canal pasivo
-    verQR(codigo, nombre, destino)
+    verQR(codigo, encodeURIComponent(nombre), encodeURIComponent(destino))
   } else {
     // Canal activo: mostrar sección de referencias
     document.getElementById('seccionReferencias').style.display = ''
