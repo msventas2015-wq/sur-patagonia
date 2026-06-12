@@ -241,7 +241,7 @@
           <label class="admin-label">Tipo de destino</label>
           <select id="tipoDestino" class="admin-input" onchange="actualizarDestinoPreview()">
             <option value="home">Home del sitio</option>
-            <option value="proyecto">Proyecto específico</option>
+            <option value="proyecto">Proyecto o propiedad específica</option>
             <option value="custom">URL personalizada</option>
           </select>
         </div>
@@ -284,23 +284,16 @@
     <!-- ── 4. ACCESO AL PANEL (solo canales activos) ──── -->
     <div class="form-seccion" id="seccionAcceso">
       <h3>Acceso al panel del agente <span class="tipo-tag tag-activo">Canal activo</span></h3>
-      <div class="form-row">
-        <div>
-          <label class="admin-label">Email del agente (para su login)</label>
-          <input type="email" id="emailAgente" class="admin-input" placeholder="agente@ejemplo.com" />
-          <div class="hint">El email que usará para ingresar al panel.</div>
+      <div class="form-row-1">
+        <label class="admin-label">Usuario asignado</label>
+        <select id="userId" class="admin-input">
+          <option value="">Sin usuario asignado</option>
+        </select>
+        <div class="hint">
+          El agente seleccionado podrá ingresar al portal y ver sus leads.
+          Si no aparece en la lista, primero crealo desde
+          <a href="usuarios.html" style="color:var(--dorado);">Usuarios</a>.
         </div>
-        <div>
-          <label class="admin-label">User ID de Supabase</label>
-          <input type="text" id="userId" class="admin-input" placeholder="Pegar UUID del usuario" />
-          <div class="hint">Después de crear el usuario en Auth, pegá su UUID acá.</div>
-        </div>
-      </div>
-      <div class="user-info-box">
-        <strong>¿Cómo crear el acceso?</strong><br>
-        1. Guardá el canal primero.<br>
-        2. Ir a <a href="usuarios.html" style="color:var(--dorado);">Usuarios → Crear nuevo usuario</a>, elegir rol "Agente" y seleccionar este canal.<br>
-        3. El sistema vincula el usuario automáticamente. El UUID aparecerá acá al recargar la página.
       </div>
     </div>
 
@@ -390,6 +383,23 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
   window.location.href = 'login.html'
 })
 
+// ── Cargar agentes para el selector ──────────────────────
+async function cargarAgentes(selectedId) {
+  const { data: usuarios } = await supabase.rpc('admin_listar_usuarios')
+  const sel = document.getElementById('userId')
+  sel.innerHTML = '<option value="">Sin usuario asignado</option>'
+  if (usuarios) {
+    usuarios
+      .filter(u => u.rol === 'agente')
+      .forEach(u => {
+        const opt = document.createElement('option')
+        opt.value = u.id
+        opt.textContent = u.email
+        if (selectedId && u.id === selectedId) opt.selected = true
+        sel.appendChild(opt)
+      })
+  }
+}
 // ── Helpers ───────────────────────────────────────────────
 function toSlug(str) {
   return str.toLowerCase()
@@ -450,39 +460,94 @@ window.actualizarDestinoPreview = function() {
 function getDestinoUrl() {
   const tipo = document.getElementById('tipoDestino').value
   if (tipo === 'proyecto') {
-    const slug = document.getElementById('destinoProyecto').value
-    return slug ? `/${slug}` : '/'
+    // el valor ya es la URL completa (ej: /aldea-los-huemules o /propiedades/casa-bariloche)
+    const dest = document.getElementById('destinoProyecto').value
+    return dest || '/'
   }
   if (tipo === 'custom') return document.getElementById('destinoCustom').value || '/'
   return '/'
 }
 
-// ── Cargar proyectos ──────────────────────────────────────
-async function cargarProyectos() {
-  const { data } = await supabase.from('proyectos').select('id, nombre, slug').eq('activo', true).order('nombre')
-  _proyectos = data || []
+// ── Cargar destinos disponibles (proyectos + propiedades) ─
+async function cargarDestinos() {
+  // Cargar proyectos (tabla usa "titulo", sin slug — lo derivamos)
+  const [{ data: dproy }, { data: dprop }] = await Promise.all([
+    supabase.from('proyectos').select('id, titulo').eq('activo', true).order('titulo'),
+    supabase.from('propiedades').select('id, titulo, slug').eq('activa', true).order('titulo'),
+  ])
 
-  // Selector de destino (pasivos)
+  const proyectos = (dproy || []).map(p => ({
+    tipo:    'proyecto',
+    nombre:  p.titulo,
+    slug:    toSlug(p.titulo),
+    destino: `/${toSlug(p.titulo)}`,
+  }))
+
+  const propiedades = (dprop || []).map(p => ({
+    tipo:    'propiedad',
+    nombre:  p.titulo,
+    slug:    p.slug || toSlug(p.titulo),
+    destino: `/propiedades/${p.slug || toSlug(p.titulo)}`,
+  }))
+
+  _proyectos = [...proyectos, ...propiedades]  // para compatibilidad
+
+  // ── Helper: agrega optgroup con opciones ──────────────────
+  function agregarGrupo(sel, label, items, fnValue, fnLabel) {
+    if (!items.length) return
+    const grp = document.createElement('optgroup')
+    grp.label = label
+    items.forEach(item => {
+      const o = document.createElement('option')
+      o.value       = fnValue(item)
+      o.textContent = fnLabel(item)
+      grp.appendChild(o)
+    })
+    sel.appendChild(grp)
+  }
+
+  // ── Selector de destino (canales PASIVOS) ─────────────────
   const selDest = document.getElementById('destinoProyecto')
-  selDest.innerHTML = '<option value="">Seleccionar proyecto…</option>'
-  _proyectos.forEach(p => {
-    const o = document.createElement('option')
-    o.value = p.slug || p.id
-    o.textContent = p.nombre
-    selDest.appendChild(o)
-  })
+  selDest.innerHTML = '<option value="">— Seleccionar destino —</option>'
 
-  // Selector de referencias (activos)
+  const generalesDest = [
+    { label: 'Inicio (surpatagonia.com.ar)', value: '/' },
+    { label: 'Listado de propiedades',       value: '/propiedades' },
+    { label: 'Listado de proyectos',         value: '/proyectos' },
+  ]
+  const grpG = document.createElement('optgroup')
+  grpG.label = '🌐 Páginas generales'
+  generalesDest.forEach(g => {
+    const o = document.createElement('option')
+    o.value = g.value; o.textContent = g.label
+    grpG.appendChild(o)
+  })
+  selDest.appendChild(grpG)
+  agregarGrupo(selDest, '📁 Proyectos',   proyectos,   p => p.destino, p => p.nombre)
+  agregarGrupo(selDest, '🏠 Propiedades', propiedades, p => p.destino, p => p.nombre)
+
+  // ── Selector de referencias (canales ACTIVOS) ─────────────
   const selRef = document.getElementById('refProyecto')
-  selRef.innerHTML = '<option value="">Seleccionar proyecto…</option>'
-  _proyectos.forEach(p => {
-    const o = document.createElement('option')
-    o.value = JSON.stringify({ slug: p.slug || p.id, nombre: p.nombre })
-    o.textContent = p.nombre
-    selRef.appendChild(o)
-  })
+  selRef.innerHTML = '<option value="">— Seleccionar destino —</option>'
 
-  // Auto-completar nombre de referencia al elegir proyecto
+  const grpGR = document.createElement('optgroup')
+  grpGR.label = '🌐 Páginas generales'
+  const generalesRef = [
+    { label: 'Inicio (surpatagonia.com.ar)', destino: '/',             slug: 'home' },
+    { label: 'Listado de propiedades',       destino: '/propiedades',  slug: 'propiedades' },
+    { label: 'Listado de proyectos',         destino: '/proyectos',    slug: 'proyectos' },
+  ]
+  generalesRef.forEach(g => {
+    const o = document.createElement('option')
+    o.value = JSON.stringify({ tipo: 'general', slug: g.slug, nombre: g.label, destino: g.destino })
+    o.textContent = g.label
+    grpGR.appendChild(o)
+  })
+  selRef.appendChild(grpGR)
+  agregarGrupo(selRef, '📁 Proyectos',   proyectos,   p => JSON.stringify(p), p => p.nombre)
+  agregarGrupo(selRef, '🏠 Propiedades', propiedades, p => JSON.stringify(p), p => p.nombre)
+
+  // Auto-completar nombre al elegir destino
   selRef.addEventListener('change', function() {
     if (!this.value) return
     const { nombre } = JSON.parse(this.value)
@@ -492,7 +557,7 @@ async function cargarProyectos() {
 
   actualizarDestinoPreview()
 }
-cargarProyectos()
+cargarDestinos()
 
 // ── REFERENCIAS ───────────────────────────────────────────
 async function cargarReferencias() {
@@ -515,7 +580,7 @@ async function cargarReferencias() {
         <div class="ref-nombre">${r.nombre}</div>
         <span class="ref-codigo">${r.codigo}</span>
       </div>
-      <button class="btn-ref" onclick="verQR('${r.codigo}','${r.nombre}','${r.destino}')">QR / Link</button>
+      <button class="btn-ref" onclick="verQR('${r.codigo}','${encodeURIComponent(r.nombre)}','${encodeURIComponent(r.destino || '/')}')">QR / Link</button>
       <button class="btn-ref" onclick="toggleRefActivo('${r.id}', ${r.activo})" style="color:${r.activo ? '' : 'var(--gris-claro)'}">
         ${r.activo ? 'Activo' : 'Inactivo'}
       </button>
@@ -527,18 +592,20 @@ async function cargarReferencias() {
 window.agregarReferencia = async function() {
   const selVal = document.getElementById('refProyecto').value
   const nombre = document.getElementById('refNombre').value.trim()
-  if (!selVal || !nombre) { alert('Seleccioná un proyecto y poné un nombre.'); return }
+  if (!selVal || !nombre) { alert('Seleccioná un destino y poné un nombre.'); return }
 
-  const { slug } = JSON.parse(selVal)
+  const { tipo, slug, destino } = JSON.parse(selVal)
   const codigoCanal = document.getElementById('codigo').value
   const codigo = `${codigoCanal}-${toSlug(slug)}`
-  const destino = `/${slug}`
+
+  // proyecto_slug: guardamos el slug del proyecto o propiedad para rastreo
+  const proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
 
   const { error } = await supabase.from('referencias').insert({
     canal_id: _canalId,
     nombre,
     codigo,
-    proyecto_slug: slug,
+    proyecto_slug,
     destino,
     activo: true,
   })
@@ -566,7 +633,9 @@ window.toggleRefActivo = async (id, actual) => {
 }
 
 // ── Modal QR ──────────────────────────────────────────────
-window.verQR = (codigo, nombre, destino) => {
+window.verQR = (codigo, nombreEnc, destinoEnc) => {
+  const nombre  = decodeURIComponent(nombreEnc)
+  const destino = decodeURIComponent(destinoEnc)
   const linkQR      = `${BASE_URL}/r/${codigo}`
   const linkDirecto = `${BASE_URL}${destino}?ref=${codigo}`
 
@@ -618,8 +687,8 @@ if (editId) {
     document.getElementById('email').value    = c.email    || ''
     document.getElementById('telefono').value = c.telefono || ''
     document.getElementById('notas').value    = c.notas    || ''
-    document.getElementById('userId').value   = c.user_id  || ''
     document.getElementById('slugPreview').textContent = c.codigo || '—'
+    cargarAgentes(c.user_id || null)
 
     onTipoChange()
 
@@ -628,7 +697,7 @@ if (editId) {
       if (dest === '/') document.getElementById('tipoDestino').value = 'home'
       else if (!dest.includes('?')) {
         document.getElementById('tipoDestino').value = 'proyecto'
-        setTimeout(() => { document.getElementById('destinoProyecto').value = dest.slice(1) }, 600)
+        setTimeout(() => { document.getElementById('destinoProyecto').value = dest }, 600)
       } else {
         document.getElementById('tipoDestino').value = 'custom'
         document.getElementById('destinoCustom').value = dest
@@ -641,6 +710,7 @@ if (editId) {
     }
   }
 } else {
+  cargarAgentes()
   onTipoChange()
 }
 
