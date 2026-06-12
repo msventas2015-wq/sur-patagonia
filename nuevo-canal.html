@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nuevo Canal — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <style>
+    .form-seccion {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1.8rem;
+      margin-bottom: 1.5rem;
+    }
+    .form-seccion h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: var(--dorado);
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+    }
+    .form-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .form-row-1 { margin-bottom: 1rem; }
+    @media (max-width: 700px) { .form-row { grid-template-columns: 1fr; } }
+
+    .hint { font-size: 0.72rem; color: var(--gris-claro); margin-top: 0.3rem; }
+    .slug-preview { font-size: 0.72rem; color: var(--gris-claro); margin-top: 0.3rem; font-family: monospace; }
+    .slug-preview span { color: var(--dorado); }
+
+    /* ── REFERENCIAS ─────────────────────────────────── */
+    .ref-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.8rem;
+      border: 1px solid var(--gris-oscuro);
+      margin-bottom: 0.6rem;
+      background: var(--negro-3);
+    }
+    .ref-nombre { font-size: 0.85rem; font-weight: 500; }
+    .ref-codigo {
+      font-family: monospace;
+      font-size: 0.72rem;
+      color: var(--dorado);
+      background: var(--negro-2);
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      display: block;
+      margin-top: 0.2rem;
+    }
+    .btn-ref {
+      background: none;
+      border: 1px solid var(--gris-oscuro);
+      color: var(--gris-claro);
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      font-size: 0.72rem;
+      white-space: nowrap;
+      transition: all .2s;
+    }
+    .btn-ref:hover { border-color: var(--dorado); color: var(--dorado); }
+    .btn-ref.danger:hover { border-color: #e05; color: #e05; }
+
+    .ref-add-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 0.8rem;
+      align-items: flex-end;
+      padding: 1rem;
+      border: 1px dashed var(--gris-oscuro);
+      margin-top: 1rem;
+    }
+    .ref-empty {
+      text-align: center;
+      padding: 2rem;
+      color: var(--gris-claro);
+      font-size: 0.8rem;
+      border: 1px dashed var(--gris-oscuro);
+      margin-bottom: 0.8rem;
+    }
+
+    /* ── QR modal inline ─────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.75);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-qr {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 2rem;
+      width: 360px;
+      text-align: center;
+      position: relative;
+    }
+    .modal-qr h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; margin-bottom: 0.3rem; }
+    .modal-qr p  { font-size: 0.75rem; color: var(--gris-claro); margin-bottom: 1.5rem; }
+    .modal-link-box {
+      background: var(--negro-3);
+      border: 1px solid var(--gris-oscuro);
+      padding: 0.6rem 0.8rem;
+      font-family: monospace;
+      font-size: 0.72rem;
+      color: var(--dorado);
+      word-break: break-all;
+      margin-bottom: 0.5rem;
+      text-align: left;
+    }
+    .modal-link-label { font-size: 0.65rem; color: var(--gris-claro); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 0.2rem; }
+    .modal-actions { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+    .modal-close { position: absolute; top: 0.8rem; right: 0.8rem; background: none; border: none; color: var(--gris-claro); cursor: pointer; font-size: 1.1rem; }
+
+    .user-info-box {
+      background: rgba(215,111,63,.08);
+      border: 1px solid rgba(215,111,63,.2);
+      padding: 1rem;
+      font-size: 0.78rem;
+      color: var(--gris-claro);
+      margin-top: 1rem;
+      line-height: 1.7;
+    }
+    .user-info-box strong { color: var(--dorado); }
+
+    .tipo-tag {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-radius: 2px;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+    .tag-activo   { background: rgba(80,200,120,.15); color: #50c878; }
+    .tag-pasivo   { background: rgba(150,150,150,.15); color: var(--gris-claro); }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+      <a href="canales.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Canales
+      </a>
+      <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        Apariencia
+      </a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+    <div class="admin-header">
+      <div>
+        <h2 style="font-weight:300; margin-bottom:0.2rem;" id="pageTitle">Nuevo canal</h2>
+        <p style="font-size:0.78rem; color:var(--gris-claro);">
+          <a href="canales.html" style="color:var(--gris-claro);">Canales</a> / <span id="breadcrumb">Nuevo</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- ── 1. INFORMACIÓN BÁSICA ──────────────────────── -->
+    <div class="form-seccion">
+      <h3>Información básica</h3>
+      <div class="form-row">
+        <div>
+          <label class="admin-label">Nombre del canal *</label>
+          <input type="text" id="nombre" class="admin-input" placeholder="Ej: Inmobiliaria Radatil" />
+          <div class="slug-preview">Código: <span id="slugPreview">—</span></div>
+        </div>
+        <div>
+          <label class="admin-label">Tipo *</label>
+          <select id="tipo" class="admin-input" onchange="onTipoChange()">
+            <option value="inmobiliaria">Inmobiliaria</option>
+            <option value="particular">Vendedor particular</option>
+            <option value="punto_venta">Punto de venta</option>
+            <option value="campaña">Campaña digital</option>
+            <option value="evento">Evento</option>
+          </select>
+          <div class="hint" id="tipoHint">Canal activo — puede vender múltiples proyectos con links independientes.</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="admin-label">Código único</label>
+          <input type="text" id="codigo" class="admin-input" placeholder="Se genera automáticamente" />
+          <div class="hint">Solo letras minúsculas, números y guiones.</div>
+        </div>
+        <div style="display:flex; align-items:flex-start; padding-top:1.8rem;">
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem;">
+            <input type="checkbox" id="activo" checked style="accent-color:var(--dorado);"> Canal activo
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 2. DESTINO (solo canales pasivos) ──────────── -->
+    <div class="form-seccion" id="seccionDestino">
+      <h3>Destino del QR <span class="tipo-tag tag-pasivo">Canal pasivo</span></h3>
+      <p style="font-size:0.78rem; color:var(--gris-claro); margin-bottom:1rem;">
+        A dónde lleva el QR cuando alguien lo escanea. Podés cambiarlo en cualquier momento sin reimprimir.
+      </p>
+      <div class="form-row">
+        <div>
+          <label class="admin-label">Tipo de destino</label>
+          <select id="tipoDestino" class="admin-input" onchange="actualizarDestinoPreview()">
+            <option value="home">Home del sitio</option>
+            <option value="proyecto">Proyecto específico</option>
+            <option value="custom">URL personalizada</option>
+          </select>
+        </div>
+        <div id="destinoProyectoWrap">
+          <label class="admin-label">Proyecto</label>
+          <select id="destinoProyecto" class="admin-input" onchange="actualizarDestinoPreview()">
+            <option value="">Cargando proyectos…</option>
+          </select>
+        </div>
+        <div id="destinoCustomWrap" style="display:none;">
+          <label class="admin-label">URL personalizada</label>
+          <input type="text" id="destinoCustom" class="admin-input" placeholder="Ej: /propiedades" oninput="actualizarDestinoPreview()" />
+        </div>
+      </div>
+      <div class="hint" id="destinoPreview">El QR llevará a: <strong>surpatagonia.com.ar/</strong></div>
+    </div>
+
+    <!-- ── 3. CONTACTO Y NOTIFICACIONES ──────────────── -->
+    <div class="form-seccion">
+      <h3>Contacto y notificaciones</h3>
+      <p style="font-size:0.78rem; color:var(--gris-claro); margin-bottom:1rem;">
+        Cuando llegue un lead por este canal, se notificará a estos contactos.
+      </p>
+      <div class="form-row">
+        <div>
+          <label class="admin-label">Email</label>
+          <input type="email" id="email" class="admin-input" placeholder="agente@ejemplo.com" />
+        </div>
+        <div>
+          <label class="admin-label">Teléfono / WhatsApp</label>
+          <input type="tel" id="telefono" class="admin-input" placeholder="+54 299 000-0000" />
+        </div>
+      </div>
+      <div class="form-row-1">
+        <label class="admin-label">Notas internas</label>
+        <textarea id="notas" class="admin-input" rows="2" placeholder="Arreglo comercial, condiciones…" style="resize:vertical;"></textarea>
+      </div>
+    </div>
+
+    <!-- ── 4. ACCESO AL PANEL (solo canales activos) ──── -->
+    <div class="form-seccion" id="seccionAcceso">
+      <h3>Acceso al panel del agente <span class="tipo-tag tag-activo">Canal activo</span></h3>
+      <div class="form-row">
+        <div>
+          <label class="admin-label">Email del agente (para su login)</label>
+          <input type="email" id="emailAgente" class="admin-input" placeholder="agente@ejemplo.com" />
+          <div class="hint">El email que usará para ingresar al panel.</div>
+        </div>
+        <div>
+          <label class="admin-label">User ID de Supabase</label>
+          <input type="text" id="userId" class="admin-input" placeholder="Pegar UUID del usuario" />
+          <div class="hint">Después de crear el usuario en Auth, pegá su UUID acá.</div>
+        </div>
+      </div>
+      <div class="user-info-box">
+        <strong>¿Cómo crear el acceso?</strong><br>
+        1. Guardá el canal primero.<br>
+        2. Ir a <strong>Supabase → Authentication → Users → Add User</strong>.<br>
+        3. Crear el usuario. En User Metadata agregar: <code>{"rol": "agente"}</code><br>
+        4. Copiar el UUID y pegarlo en el campo de arriba → guardar nuevamente.
+      </div>
+    </div>
+
+    <!-- ── 5. REFERENCIAS (activos, post-guardado) ────── -->
+    <div class="form-seccion" id="seccionReferencias" style="display:none;">
+      <h3>Links y QRs por proyecto <span class="tipo-tag tag-activo">Canal activo</span></h3>
+      <p style="font-size:0.78rem; color:var(--gris-claro); margin-bottom:1.2rem;">
+        Cada referencia es un link/QR independiente apuntando a un proyecto. El agente usa el link del proyecto que está promocionando.
+      </p>
+
+      <div id="listaReferencias">
+        <div class="ref-empty">Guardá el canal para empezar a agregar referencias.</div>
+      </div>
+
+      <!-- Formulario para agregar referencia -->
+      <div class="ref-add-form" id="refAddForm" style="display:none;">
+        <div>
+          <label class="admin-label">Proyecto</label>
+          <select id="refProyecto" class="admin-input">
+            <option value="">Seleccionar proyecto…</option>
+          </select>
+        </div>
+        <div>
+          <label class="admin-label">Nombre de referencia</label>
+          <input type="text" id="refNombre" class="admin-input" placeholder="Ej: Radatil → Huemules" />
+        </div>
+        <button class="btn-primary" onclick="agregarReferencia()" style="white-space:nowrap;">+ Agregar</button>
+      </div>
+    </div>
+
+    <!-- ── ACCIONES ───────────────────────────────────── -->
+    <div style="display:flex; gap:1rem; justify-content:flex-end; padding-bottom:3rem;">
+      <a href="canales.html" class="btn-secondary">Cancelar</a>
+      <button class="btn-primary" id="btnGuardar">Guardar canal</button>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL QR -->
+<div class="modal-overlay" id="modalQR">
+  <div class="modal-qr">
+    <button class="modal-close" onclick="cerrarModal()">✕</button>
+    <h3 id="modalNombre">—</h3>
+    <p id="modalSub">—</p>
+    <canvas id="qrCanvas"></canvas>
+    <div class="modal-link-box">
+      <span class="modal-link-label">Link de QR (físico / impresión)</span>
+      <span id="modalLinkQR">—</span>
+    </div>
+    <div class="modal-link-box">
+      <span class="modal-link-label">Link directo (Instagram, WhatsApp, email)</span>
+      <span id="modalLinkDirecto">—</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="descargarQR()">⬇ Descargar QR</button>
+      <button class="btn-secondary" onclick="copiarLink('modalLinkQR')">Copiar link QR</button>
+      <button class="btn-secondary" onclick="copiarLink('modalLinkDirecto')">Copiar link directo</button>
+      <button class="btn-secondary" onclick="cerrarModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+const supabase = createClient(
+  'https://wajkfydxutptcvvfwrvq.supabase.co',
+  'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
+)
+
+const BASE_URL = 'https://surpatagonia.com.ar'
+const params   = new URLSearchParams(location.search)
+const editId   = params.get('id')
+
+let _canalId   = editId || null
+let _proyectos = []
+
+// ── Auth ──────────────────────────────────────────────────
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
+
+document.getElementById('btnLogout').addEventListener('click', async e => {
+  e.preventDefault()
+  await supabase.auth.signOut()
+  window.location.href = 'login.html'
+})
+
+// ── Helpers ───────────────────────────────────────────────
+function toSlug(str) {
+  return str.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim().replace(/\s+/g, '-')
+}
+
+function esActivo(tipo) {
+  return tipo === 'inmobiliaria' || tipo === 'particular'
+}
+
+// ── Tipo change ───────────────────────────────────────────
+window.onTipoChange = function() {
+  const tipo   = document.getElementById('tipo').value
+  const activo = esActivo(tipo)
+
+  document.getElementById('seccionDestino').style.display  = activo ? 'none' : ''
+  document.getElementById('seccionAcceso').style.display   = activo ? ''     : 'none'
+
+  const hints = {
+    inmobiliaria: 'Canal activo — puede vender múltiples proyectos con links independientes.',
+    particular:   'Canal activo — vendedor individual con links por proyecto.',
+    punto_venta:  'Canal pasivo — un QR fijo, sin panel de acceso.',
+    'campaña':    'Canal pasivo — link de seguimiento para campaña digital.',
+    evento:       'Canal pasivo — tracking temporal para un evento.',
+  }
+  document.getElementById('tipoHint').textContent = hints[tipo] || ''
+
+  if (_canalId) {
+    document.getElementById('seccionReferencias').style.display = activo ? '' : 'none'
+  }
+}
+
+// ── Slug automático ───────────────────────────────────────
+document.getElementById('nombre').addEventListener('input', function() {
+  if (!editId) {
+    const slug = toSlug(this.value)
+    document.getElementById('codigo').value        = slug
+    document.getElementById('slugPreview').textContent = slug || '—'
+  }
+})
+document.getElementById('codigo').addEventListener('input', function() {
+  this.value = toSlug(this.value)
+  document.getElementById('slugPreview').textContent = this.value || '—'
+})
+
+// ── Destino preview (pasivos) ─────────────────────────────
+window.actualizarDestinoPreview = function() {
+  const tipo = document.getElementById('tipoDestino').value
+  document.getElementById('destinoProyectoWrap').style.display = tipo === 'proyecto' ? '' : 'none'
+  document.getElementById('destinoCustomWrap').style.display   = tipo === 'custom'   ? '' : 'none'
+  const dest = getDestinoUrl()
+  document.getElementById('destinoPreview').innerHTML =
+    `El QR llevará a: <strong>surpatagonia.com.ar${dest}</strong>`
+}
+
+function getDestinoUrl() {
+  const tipo = document.getElementById('tipoDestino').value
+  if (tipo === 'proyecto') {
+    const slug = document.getElementById('destinoProyecto').value
+    return slug ? `/${slug}` : '/'
+  }
+  if (tipo === 'custom') return document.getElementById('destinoCustom').value || '/'
+  return '/'
+}
+
+// ── Cargar proyectos ──────────────────────────────────────
+async function cargarProyectos() {
+  const { data } = await supabase.from('proyectos').select('id, nombre, slug').eq('activo', true).order('nombre')
+  _proyectos = data || []
+
+  // Selector de destino (pasivos)
+  const selDest = document.getElementById('destinoProyecto')
+  selDest.innerHTML = '<option value="">Seleccionar proyecto…</option>'
+  _proyectos.forEach(p => {
+    const o = document.createElement('option')
+    o.value = p.slug || p.id
+    o.textContent = p.nombre
+    selDest.appendChild(o)
+  })
+
+  // Selector de referencias (activos)
+  const selRef = document.getElementById('refProyecto')
+  selRef.innerHTML = '<option value="">Seleccionar proyecto…</option>'
+  _proyectos.forEach(p => {
+    const o = document.createElement('option')
+    o.value = JSON.stringify({ slug: p.slug || p.id, nombre: p.nombre })
+    o.textContent = p.nombre
+    selRef.appendChild(o)
+  })
+
+  // Auto-completar nombre de referencia al elegir proyecto
+  selRef.addEventListener('change', function() {
+    if (!this.value) return
+    const { nombre } = JSON.parse(this.value)
+    const canalNombre = document.getElementById('nombre').value
+    document.getElementById('refNombre').value = canalNombre ? `${canalNombre} → ${nombre}` : nombre
+  })
+
+  actualizarDestinoPreview()
+}
+cargarProyectos()
+
+// ── REFERENCIAS ───────────────────────────────────────────
+async function cargarReferencias() {
+  if (!_canalId) return
+  const { data } = await supabase
+    .from('referencias')
+    .select('*')
+    .eq('canal_id', _canalId)
+    .order('created_at', { ascending: false })
+
+  const lista = document.getElementById('listaReferencias')
+  if (!data?.length) {
+    lista.innerHTML = '<div class="ref-empty">Sin referencias aún. Agregá una abajo.</div>'
+    return
+  }
+
+  lista.innerHTML = data.map(r => `
+    <div class="ref-row">
+      <div>
+        <div class="ref-nombre">${r.nombre}</div>
+        <span class="ref-codigo">${r.codigo}</span>
+      </div>
+      <button class="btn-ref" onclick="verQR('${r.codigo}','${r.nombre}','${r.destino}')">QR / Link</button>
+      <button class="btn-ref" onclick="toggleRefActivo('${r.id}', ${r.activo})" style="color:${r.activo ? '' : 'var(--gris-claro)'}">
+        ${r.activo ? 'Activo' : 'Inactivo'}
+      </button>
+      <button class="btn-ref danger" onclick="eliminarReferencia('${r.id}')">✕</button>
+    </div>
+  `).join('')
+}
+
+window.agregarReferencia = async function() {
+  const selVal = document.getElementById('refProyecto').value
+  const nombre = document.getElementById('refNombre').value.trim()
+  if (!selVal || !nombre) { alert('Seleccioná un proyecto y poné un nombre.'); return }
+
+  const { slug } = JSON.parse(selVal)
+  const codigoCanal = document.getElementById('codigo').value
+  const codigo = `${codigoCanal}-${toSlug(slug)}`
+  const destino = `/${slug}`
+
+  const { error } = await supabase.from('referencias').insert({
+    canal_id: _canalId,
+    nombre,
+    codigo,
+    proyecto_slug: slug,
+    destino,
+    activo: true,
+  })
+
+  if (error) {
+    if (error.code === '23505') alert('Ya existe una referencia con ese código. Cambiá el nombre del proyecto o el código del canal.')
+    else alert('Error: ' + error.message)
+    return
+  }
+
+  document.getElementById('refProyecto').value = ''
+  document.getElementById('refNombre').value   = ''
+  cargarReferencias()
+}
+
+window.eliminarReferencia = async (id) => {
+  if (!confirm('¿Eliminar esta referencia? Los leads anteriores no se borran.')) return
+  await supabase.from('referencias').delete().eq('id', id)
+  cargarReferencias()
+}
+
+window.toggleRefActivo = async (id, actual) => {
+  await supabase.from('referencias').update({ activo: !actual }).eq('id', id)
+  cargarReferencias()
+}
+
+// ── Modal QR ──────────────────────────────────────────────
+window.verQR = (codigo, nombre, destino) => {
+  const linkQR      = `${BASE_URL}/r/${codigo}`
+  const linkDirecto = `${BASE_URL}${destino}?ref=${codigo}`
+
+  document.getElementById('modalNombre').textContent    = nombre
+  document.getElementById('modalSub').textContent       = codigo
+  document.getElementById('modalLinkQR').textContent    = linkQR
+  document.getElementById('modalLinkDirecto').textContent = linkDirecto
+
+  QRCode.toCanvas(document.getElementById('qrCanvas'), linkQR, {
+    width: 220, margin: 2,
+    color: { dark: '#ffffff', light: '#1a1a1a' }
+  })
+  document.getElementById('modalQR').classList.add('open')
+}
+
+window.cerrarModal = () => document.getElementById('modalQR').classList.remove('open')
+document.getElementById('modalQR').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModal() })
+
+window.descargarQR = () => {
+  const canvas = document.getElementById('qrCanvas')
+  const nombre = document.getElementById('modalNombre').textContent
+  const a = document.createElement('a')
+  a.download = `qr-${toSlug(nombre)}.png`
+  a.href = canvas.toDataURL('image/png')
+  a.click()
+}
+
+window.copiarLink = (id) => {
+  const el = document.getElementById(id)
+  navigator.clipboard.writeText(el.textContent)
+  const orig = el.style.color
+  el.style.color = '#50c878'
+  setTimeout(() => el.style.color = orig, 1500)
+}
+
+// ── Cargar canal para edición ─────────────────────────────
+if (editId) {
+  document.getElementById('pageTitle').textContent  = 'Editar canal'
+  document.getElementById('breadcrumb').textContent = 'Editar'
+  document.getElementById('btnGuardar').textContent = 'Guardar cambios'
+
+  const { data: c } = await supabase.from('canales').select('*').eq('id', editId).single()
+  if (c) {
+    _canalId = c.id
+    document.getElementById('nombre').value   = c.nombre   || ''
+    document.getElementById('codigo').value   = c.codigo   || ''
+    document.getElementById('tipo').value     = c.tipo     || 'particular'
+    document.getElementById('activo').checked = c.activo   ?? true
+    document.getElementById('email').value    = c.email    || ''
+    document.getElementById('telefono').value = c.telefono || ''
+    document.getElementById('notas').value    = c.notas    || ''
+    document.getElementById('userId').value   = c.user_id  || ''
+    document.getElementById('slugPreview').textContent = c.codigo || '—'
+
+    onTipoChange()
+
+    if (!esActivo(c.tipo)) {
+      const dest = c.destino || '/'
+      if (dest === '/') document.getElementById('tipoDestino').value = 'home'
+      else if (!dest.includes('?')) {
+        document.getElementById('tipoDestino').value = 'proyecto'
+        setTimeout(() => { document.getElementById('destinoProyecto').value = dest.replace('/', '') }, 600)
+      } else {
+        document.getElementById('tipoDestino').value = 'custom'
+        document.getElementById('destinoCustom').value = dest
+      }
+      actualizarDestinoPreview()
+    } else {
+      document.getElementById('seccionReferencias').style.display = ''
+      document.getElementById('refAddForm').style.display = ''
+      cargarReferencias()
+    }
+  }
+} else {
+  onTipoChange()
+}
+
+// ── Guardar canal ─────────────────────────────────────────
+document.getElementById('btnGuardar').addEventListener('click', async () => {
+  const nombre = document.getElementById('nombre').value.trim()
+  const codigo = document.getElementById('codigo').value.trim()
+  if (!nombre || !codigo) { alert('El nombre y el código son obligatorios.'); return }
+
+  const tipo     = document.getElementById('tipo').value
+  const activo_v = esActivo(tipo)
+  const destino  = activo_v ? '/' : getDestinoUrl()
+  const userId   = document.getElementById('userId').value.trim() || null
+
+  const payload = {
+    nombre, codigo, tipo,
+    activo:   document.getElementById('activo').checked,
+    email:    document.getElementById('email').value.trim()    || null,
+    telefono: document.getElementById('telefono').value.trim() || null,
+    notas:    document.getElementById('notas').value.trim()    || null,
+    destino,
+    user_id:  userId,
+  }
+
+  let data, error
+  if (editId) {
+    ;({ data, error } = await supabase.from('canales').update(payload).eq('id', editId).select().single())
+  } else {
+    ;({ data, error } = await supabase.from('canales').insert(payload).select().single())
+  }
+
+  if (error) { alert('Error al guardar: ' + error.message); return }
+
+  _canalId = data.id
+
+  // Para canales pasivos: crear/actualizar la referencia única automáticamente
+  if (!activo_v) {
+    const refExistente = await supabase.from('referencias').select('id').eq('canal_id', _canalId).maybeSingle()
+    if (!refExistente.data) {
+      await supabase.from('referencias').insert({
+        canal_id: _canalId, nombre, codigo, proyecto_slug: null,
+        destino, activo: true,
+      })
+    } else {
+      await supabase.from('referencias').update({ destino, nombre }).eq('canal_id', _canalId)
+    }
+    // Mostrar QR del canal pasivo
+    verQR(codigo, nombre, destino)
+  } else {
+    // Canal activo: mostrar sección de referencias
+    document.getElementById('seccionReferencias').style.display = ''
+    document.getElementById('refAddForm').style.display = ''
+    cargarReferencias()
+    document.getElementById('seccionReferencias').scrollIntoView({ behavior: 'smooth' })
+  }
+
+  if (!editId) history.replaceState({}, '', `?id=${_canalId}`)
+  document.getElementById('btnGuardar').textContent = '✓ Guardado'
+  setTimeout(() => {
+    document.getElementById('btnGuardar').textContent = editId ? 'Guardar cambios' : 'Guardar canal'
+  }, 2000)
+})
+
+</script>
+</body>
+</html>
