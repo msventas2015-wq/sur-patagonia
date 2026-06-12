@@ -12,6 +12,39 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 // URL pública del bucket de imágenes
 export const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/imagenes/`
 
+// ── Sistema de referidos (canales de venta) ──────────────────
+// Captura ?ref= del URL y lo persiste 30 días en localStorage.
+// Así la atribución sobrevive aunque el visitante navegue por el
+// sitio o vuelva días después por otra vía.
+const REF_KEY  = 'sp_ref'
+const REF_DIAS = 30
+const REF_RE   = /^[a-z0-9-]{2,80}$/
+
+;(function capturarRef() {
+  try {
+    const ref = new URLSearchParams(location.search).get('ref')
+    if (ref && REF_RE.test(ref)) {
+      localStorage.setItem(REF_KEY, JSON.stringify({ ref, ts: Date.now() }))
+    }
+  } catch (e) { /* localStorage bloqueado: seguimos sin persistencia */ }
+})()
+
+// Devuelve el código de referido vigente (URL primero, después localStorage), o null.
+export function getRef() {
+  try {
+    const urlRef = new URLSearchParams(location.search).get('ref')
+    if (urlRef && REF_RE.test(urlRef)) return urlRef
+    const raw = localStorage.getItem(REF_KEY)
+    if (!raw) return null
+    const { ref, ts } = JSON.parse(raw)
+    if (!ref || !REF_RE.test(ref) || Date.now() - ts > REF_DIAS * 86400000) {
+      localStorage.removeItem(REF_KEY)
+      return null
+    }
+    return ref
+  } catch (e) { return null }
+}
+
 // ── Auto-optimizador de imágenes ──────────────────────────────
 // Convierte cualquier imagen a WebP, redimensiona si supera el máximo,
 // y mantiene la mejor calidad posible para web.
