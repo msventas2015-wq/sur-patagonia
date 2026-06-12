@@ -549,7 +549,7 @@
 </footer>
 
 <script type="module">
-import { supabase } from './js/config.js'
+import { supabase, getRef, getRefVia } from './js/config.js'
 
 // ── Tipografías desde site_config ────────────────────────────
 supabase.from('site_config').select('key, value')
@@ -832,7 +832,9 @@ function initForm(formId, alertaId, propId, tituloPropiedad) {
       email:    document.getElementById(prefix+'Email').value,
       telefono: document.getElementById(prefix+'Telefono').value,
       mensaje:  document.getElementById(prefix+'Mensaje').value,
-      propiedad_id: propId
+      propiedad_id: propId,
+      canal_ref: getRef(),
+      canal_via: getRefVia()
     })
     const al = document.getElementById(alertaId)
     al.innerHTML = error
@@ -929,7 +931,7 @@ function renderEstandar(p) {
   }
 
   // WhatsApp
-  const msg = encodeURIComponent(`Hola Mariana, me interesa la propiedad "${p.titulo}".\n${window.location.href}`)
+  const msg = encodeURIComponent(`Hola Mariana, me interesa la propiedad "${p.titulo}".${getRef() ? ` (ref: ${getRef()})` : ''}\n${window.location.href}`)
   document.getElementById('eBtnWsp').href = `https://wa.me/5492944400000?text=${msg}`
   document.getElementById('eBtnCompartir').href = `https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad:\n*${p.titulo}*\n${window.location.href}`)}`
 
@@ -944,7 +946,9 @@ function renderEstandar(p) {
       email: document.getElementById('eEmail').value,
       telefono: document.getElementById('eTelefono').value,
       mensaje: document.getElementById('eMensaje').value,
-      propiedad_id: p.id
+      propiedad_id: p.id,
+      canal_ref: getRef(),
+      canal_via: getRefVia()
     })
     document.getElementById('eAlerta').innerHTML = error
       ? `<div class="alerta alerta-err">Error. Intentá de nuevo.</div>`
@@ -1029,7 +1033,7 @@ async function renderPremium(p) {
   }
 
   // WhatsApp
-  const msg = encodeURIComponent(`Hola Mariana, me interesa la propiedad "${p.titulo}".\n${window.location.href}`)
+  const msg = encodeURIComponent(`Hola Mariana, me interesa la propiedad "${p.titulo}".${getRef() ? ` (ref: ${getRef()})` : ''}\n${window.location.href}`)
   document.getElementById('pBtnWsp').href = `https://wa.me/5492944400000?text=${msg}`
   document.getElementById('pBtnCompartir').href = `https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad:\n*${p.titulo}*\n${window.location.href}`)}`
 
@@ -1056,7 +1060,9 @@ async function renderPremium(p) {
       email: document.getElementById('pEmail').value,
       telefono: document.getElementById('pTelefono').value,
       mensaje: document.getElementById('pMensaje').value,
-      propiedad_id: p.id
+      propiedad_id: p.id,
+      canal_ref: getRef(),
+      canal_via: getRefVia()
     })
     document.getElementById('pAlerta').innerHTML = error
       ? `<div class="alerta alerta-err">Error. Intentá de nuevo.</div>`

@@ -893,7 +893,7 @@
 <script type="module">
 // Ruta ABSOLUTA: esta página se sirve en cualquier profundidad de URL
 // (/aldea-los-huemules, /r/codigo, etc.) y una ruta relativa rompería en /r/
-import { supabase, getRef } from '/js/config.js'
+import { supabase, getRef, getRefVia } from '/js/config.js'
 
 // ── Redirect de QRs: /r/{codigo} ──────────────────────────────────────
 // Los QRs impresos apuntan a surpatagonia.com.ar/r/{codigo}. Como esta
@@ -910,7 +910,7 @@ if (_rMatch) {
   if (_r && _r.activo) {
     const _dest = _r.destino || '/'
     const _sep  = _dest.includes('?') ? '&' : '?'
-    location.replace(`${_dest}${_sep}ref=${encodeURIComponent(_r.codigo)}`)
+    location.replace(`${_dest}${_sep}ref=${encodeURIComponent(_r.codigo)}&via=qr`)
   } else {
     location.replace('/')
   }
@@ -1395,6 +1395,7 @@ function renderContacto(p) {
       mensaje: `[${nombre}] ${$('fMsg').value}`,
       proyecto_slug: slug,
       canal_ref: getRef(),
+      canal_via: getRefVia(),
       fecha: new Date().toISOString(),
     })
     const m = $('fMsg2')
