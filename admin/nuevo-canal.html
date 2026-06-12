@@ -487,14 +487,14 @@ async function cargarDestinos() {
     tipo:    'proyecto',
     nombre:  p.nombre,
     slug:    p.slug || toSlug(p.nombre),
-    destino: `/${p.slug || toSlug(p.nombre)}`,
+    destino: `/proyecto-mini.html?slug=${p.slug || toSlug(p.nombre)}`,
   }))
 
   const propiedades = (dprop || []).map(p => ({
     tipo:    'propiedad',
     nombre:  p.titulo,
     slug:    p.slug || toSlug(p.titulo),
-    destino: `/propiedades/${p.slug || toSlug(p.titulo)}`,
+    destino: `/propiedad.html?id=${p.id}`,
   }))
 
   _proyectos = [...proyectos, ...propiedades]  // para compatibilidad
@@ -644,7 +644,8 @@ window.verQR = (codigo, nombreEnc, destinoEnc) => {
   const nombre  = decodeURIComponent(nombreEnc)
   const destino = decodeURIComponent(destinoEnc)
   const linkQR      = `${BASE_URL}/r/${codigo}`
-  const linkDirecto = `${BASE_URL}${destino}?ref=${codigo}`
+  const sep         = destino.includes('?') ? '&' : '?'
+  const linkDirecto = `${BASE_URL}${destino}${sep}ref=${codigo}`
 
   document.getElementById('modalNombre').textContent    = nombre
   document.getElementById('modalSub').textContent       = codigo
