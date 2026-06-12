@@ -302,6 +302,18 @@
       </div>
     </div>
 
+    <!-- MAPA TERRITORIAL -->
+    <div class="chart-card" style="margin-bottom:0.9rem;">
+      <h4>Mapa territorial
+        <span style="font-weight:400; letter-spacing:0; text-transform:none;">● canal (tamaño = consultas) · ◇ proyecto · líneas = flujo origen → destino</span>
+      </h4>
+      <div id="mapaWrap" style="position:relative; display:flex; justify-content:center;">
+        <svg id="mapaSvg" viewBox="0 0 500 980" style="height:540px; max-width:100%;"></svg>
+        <div id="mapaTip" style="position:absolute; pointer-events:none; background:#0d0c0b; border:1px solid var(--card-border); border-radius:8px; padding:0.45rem 0.7rem; font-size:0.68rem; color:var(--blanco); opacity:0; transition:opacity .15s; z-index:10; white-space:nowrap;"></div>
+      </div>
+      <div id="mapaNota" style="font-size:0.64rem; color:var(--gris-claro); text-align:center; margin-top:0.5rem;"></div>
+    </div>
+
     <!-- POR CANAL / PROYECTO / QR -->
     <div class="charts-grid2">
       <div class="chart-card">
@@ -329,6 +341,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
 
@@ -351,14 +364,18 @@ const PALETA  = ['#d76f3f','#6495ed','#50c878','#b464dc','#ffc832','#4ad0c4','#e
 let _leads = []
 let _seriesActivas = new Set()   // nombres de canal activos en el comparador ('__total__', '__directo__', o nombre)
 let _charts = {}
+let _metaCanal = {}              // nombre de canal → { ciudad, provincia, lat, lng }
+let _proyGeo = {}                // nombre de proyecto → { lat, lng }
+let _mapProj = null              // proyección geográfica (cuando carga el geojson)
 
 // ── Carga de datos ────────────────────────────────────────
 async function cargarTodo() {
   const [rLeads, rCanales, rRefs, rProy] = await Promise.all([
     supabase.from('contactos').select('*, propiedades(titulo)').order('created_at', { ascending: false }),
-    supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia'),
+    supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, latitud, longitud'),
     supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug'),
-    supabase.from('proyectos').select('nombre, slug').then(r => r.error ? supabase.from('proyectos').select('nombre') : r),
+    supabase.from('proyectos').select('nombre, slug, latitud, longitud')
+      .then(r => r.error ? supabase.from('proyectos').select('nombre, slug').then(r2 => r2.error ? supabase.from('proyectos').select('nombre') : r2) : r),
   ])
 
   if (rLeads.error) {
@@ -367,10 +384,18 @@ async function cargarTodo() {
   }
 
   const canalPorId = {}
-  const metaCanal  = {}   // nombre de canal → { ciudad, provincia }
+  const metaCanal  = {}   // nombre de canal → { ciudad, provincia, lat, lng }
   ;(rCanales.data || []).forEach(c => {
     canalPorId[c.id] = c.nombre
-    metaCanal[c.nombre] = { ciudad: c.ciudad || null, provincia: c.provincia || null }
+    metaCanal[c.nombre] = { ciudad: c.ciudad || null, provincia: c.provincia || null,
+                            lat: c.latitud ?? null, lng: c.longitud ?? null }
+  })
+  _metaCanal = metaCanal
+
+  // Coordenadas de proyectos (destinos) para el mapa
+  _proyGeo = {}
+  ;(rProy.data || []).forEach(p => {
+    if (p.latitud != null && p.longitud != null) _proyGeo[p.nombre] = { lat: p.latitud, lng: p.longitud }
   })
   const canalPorRef = {}
   const refNombre   = {}
@@ -516,7 +541,120 @@ function render() {
   renderEvolucion()
   renderOrigen(rows)
   renderBarras(rows)
+  renderMapa(rows)
   renderLista(rows)
+}
+
+// ── MAPA TERRITORIAL ──────────────────────────────────────
+// Argentina con proyección real. Canales = círculos (tamaño según
+// consultas filtradas), proyectos = rombos, flujos = líneas curvas
+// canal → proyecto con grosor según cantidad de consultas.
+const MAPA_W = 500, MAPA_H = 980
+
+d3.json('https://simplemaps.com/static/svg/country/ar/admin1/ar.json')
+  .catch(() => d3.json('https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/argentina-states.geojson'))
+  .then(geojson => {
+    _mapProj = d3.geoMercator().fitSize([MAPA_W, MAPA_H], geojson)
+    const pathGen = d3.geoPath().projection(_mapProj)
+    const svg = d3.select('#mapaSvg')
+    const gProv = svg.append('g').attr('id', 'gProv')
+    geojson.features.forEach(f => {
+      gProv.append('path')
+        .attr('d', pathGen(f))
+        .attr('fill', '#1d1b18')
+        .attr('stroke', 'rgba(255,255,255,0.08)')
+        .attr('stroke-width', 0.6)
+    })
+    svg.append('g').attr('id', 'gFlujos')
+    svg.append('g').attr('id', 'gProy')
+    svg.append('g').attr('id', 'gCanales')
+    if (_leads.length) renderMapa(filtrar())
+  })
+  .catch(() => { $('mapaNota').textContent = 'No se pudo cargar el mapa (sin conexión al servicio de mapas).' })
+
+function tipMapa(html, evt) {
+  const tip = $('mapaTip')
+  if (!html) { tip.style.opacity = 0; return }
+  tip.innerHTML = html
+  const wrap = $('mapaWrap').getBoundingClientRect()
+  tip.style.left = (evt.clientX - wrap.left + 14) + 'px'
+  tip.style.top  = (evt.clientY - wrap.top - 10) + 'px'
+  tip.style.opacity = 1
+}
+
+function renderMapa(rows) {
+  if (!_mapProj) return
+  const gF = d3.select('#gFlujos'), gP = d3.select('#gProy'), gC = d3.select('#gCanales')
+  gF.selectAll('*').remove(); gP.selectAll('*').remove(); gC.selectAll('*').remove()
+
+  // Consultas por canal y por proyecto (sobre los datos filtrados)
+  const porCanal = {}, porProy = {}, flujos = {}
+  rows.forEach(l => {
+    if (l._canal)    porCanal[l._canal] = (porCanal[l._canal] || 0) + 1
+    if (l._proyecto) porProy[l._proyecto] = (porProy[l._proyecto] || 0) + 1
+    if (l._canal && l._proyecto) {
+      const mc = _metaCanal[l._canal], mp = _proyGeo[l._proyecto]
+      if (mc?.lat != null && mp) {
+        const k = l._canal + '→' + l._proyecto
+        flujos[k] = flujos[k] ? { ...flujos[k], n: flujos[k].n + 1 } : { c: l._canal, p: l._proyecto, n: 1 }
+      }
+    }
+  })
+
+  // Flujos canal → proyecto
+  Object.values(flujos).forEach(f => {
+    const mc = _metaCanal[f.c], mp = _proyGeo[f.p]
+    const [x1, y1] = _mapProj([mc.lng, mc.lat])
+    const [x2, y2] = _mapProj([mp.lng, mp.lat])
+    const mx = (x1 + x2) / 2 + (y2 - y1) * 0.18
+    const my = (y1 + y2) / 2 - (x2 - x1) * 0.18
+    gF.append('path')
+      .attr('d', `M${x1},${y1} Q${mx},${my} ${x2},${y2}`)
+      .attr('fill', 'none')
+      .attr('stroke', '#d76f3f')
+      .attr('stroke-opacity', 0.45)
+      .attr('stroke-width', Math.min(1 + f.n * 0.8, 5))
+      .attr('stroke-linecap', 'round')
+      .style('cursor', 'default')
+      .on('mousemove', evt => tipMapa(`<b>${f.c}</b> → ${f.p}<br>${f.n} consulta${f.n === 1 ? '' : 's'}`, evt))
+      .on('mouseleave', () => tipMapa(null))
+  })
+
+  // Proyectos (rombos verdes)
+  Object.entries(_proyGeo).forEach(([nombre, geo]) => {
+    const [x, y] = _mapProj([geo.lng, geo.lat])
+    const n = porProy[nombre] || 0
+    gP.append('rect')
+      .attr('x', -5).attr('y', -5).attr('width', 10).attr('height', 10)
+      .attr('transform', `translate(${x},${y}) rotate(45)`)
+      .attr('fill', 'rgba(80,200,120,0.25)')
+      .attr('stroke', '#50c878')
+      .attr('stroke-width', 1.6)
+      .style('cursor', 'default')
+      .on('mousemove', evt => tipMapa(`◇ <b>${nombre}</b><br>${n} consulta${n === 1 ? '' : 's'} recibida${n === 1 ? '' : 's'}`, evt))
+      .on('mouseleave', () => tipMapa(null))
+  })
+
+  // Canales (círculos dorados, tamaño según consultas)
+  let sinCoords = []
+  Object.entries(_metaCanal).forEach(([nombre, m]) => {
+    const n = porCanal[nombre] || 0
+    if (m.lat == null || m.lng == null) { if (n > 0 || true) sinCoords.push(nombre); return }
+    const [x, y] = _mapProj([m.lng, m.lat])
+    const r = n > 0 ? Math.min(5 + Math.sqrt(n) * 3.5, 17) : 3.5
+    gC.append('circle')
+      .attr('cx', x).attr('cy', y).attr('r', r)
+      .attr('fill', n > 0 ? 'rgba(215,111,63,0.8)' : 'rgba(150,150,150,0.5)')
+      .attr('stroke', 'rgba(255,255,255,0.55)')
+      .attr('stroke-width', 1)
+      .style('cursor', 'default')
+      .on('mousemove', evt => tipMapa(`● <b>${nombre}</b>${m.ciudad ? '<br>📍 ' + m.ciudad + (m.provincia ? ', ' + m.provincia : '') : ''}<br>${n} consulta${n === 1 ? '' : 's'} generada${n === 1 ? '' : 's'}`, evt))
+      .on('mouseleave', () => tipMapa(null))
+  })
+
+  $('mapaNota').textContent = sinCoords.length
+    ? `Sin coordenadas (no aparecen en el mapa): ${sinCoords.join(', ')} — cargalas en Canales → Editar → Ubicación.`
+    : ''
 }
 
 // ── KPIs (con delta vs período anterior) ──────────────────
