@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Portal — Sur Patagonia</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <style>
+    /* ── Layout ───────────────────────────────────────────── */
+    .portal-wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 1.5rem 4rem;
+    }
+
+    /* ── Header ───────────────────────────────────────────── */
+    .portal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem 1.5rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+      margin-bottom: 2.5rem;
+    }
+    .portal-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+    }
+    .portal-logo span { color: var(--dorado); }
+    .portal-canal-nombre {
+      font-size: 0.78rem;
+      color: var(--gris-claro);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Secciones ────────────────────────────────────────── */
+    .seccion {
+      margin-bottom: 3rem;
+    }
+    .seccion-titulo {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--dorado);
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid var(--gris-oscuro);
+    }
+
+    /* ── Canal info ───────────────────────────────────────── */
+    .canal-info {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      align-items: center;
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1.2rem 1.5rem;
+    }
+    .canal-info-item { display: flex; flex-direction: column; gap: 0.2rem; }
+    .canal-info-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+    }
+    .canal-info-valor { font-size: 0.88rem; }
+
+    .tipo-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 2px;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+    .tipo-inmobiliaria  { background: rgba(100,149,237,.15); color: #6495ed; }
+    .tipo-particular    { background: rgba(215,111,63,.15);  color: var(--dorado); }
+    .tipo-punto_venta   { background: rgba(80,200,120,.15);  color: #50c878; }
+    .tipo-campaña       { background: rgba(180,100,220,.15); color: #b464dc; }
+    .tipo-evento        { background: rgba(255,200,50,.15);  color: #ffc832; }
+
+    .codigo-chip {
+      font-family: monospace;
+      font-size: 0.8rem;
+      background: var(--negro-3);
+      color: var(--dorado);
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+    }
+    .estado-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      margin-right: 0.4rem;
+      vertical-align: middle;
+    }
+    .activo   { background: #50c878; }
+    .inactivo { background: #888; }
+
+    /* ── Referencias / QRs ────────────────────────────────── */
+    .refs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1.2rem;
+    }
+    .ref-card {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+      text-align: center;
+    }
+    .ref-card-nombre {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .ref-card-proyecto {
+      font-size: 0.72rem;
+      color: var(--gris-claro);
+      font-family: monospace;
+    }
+    .ref-card canvas {
+      display: block;
+      margin: 0 auto;
+    }
+    .ref-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      width: 100%;
+    }
+    .btn-ref {
+      background: none;
+      border: 1px solid var(--gris-oscuro);
+      color: var(--gris-claro);
+      padding: 0.35rem 0.8rem;
+      cursor: pointer;
+      font-size: 0.72rem;
+      transition: all .2s;
+      width: 100%;
+      text-align: center;
+    }
+    .btn-ref:hover { border-color: var(--dorado); color: var(--dorado); }
+    .btn-ref.primary { border-color: var(--dorado); color: var(--dorado); }
+
+    /* ── Tabla de leads ───────────────────────────────────── */
+    .tabla-leads th {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gris-claro);
+    }
+    .tabla-leads td {
+      font-size: 0.82rem;
+      vertical-align: middle;
+      padding: 0.8rem 1rem;
+    }
+    .tabla-leads tr:hover td { background: rgba(255,255,255,.03); }
+
+    .lead-nombre { font-weight: 500; }
+    .lead-fecha { font-size: 0.75rem; color: var(--gris-claro); }
+    .ref-chip {
+      font-family: monospace;
+      font-size: 0.72rem;
+      background: var(--negro-3);
+      color: #6495ed;
+      padding: 0.1rem 0.45rem;
+      border-radius: 3px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--gris-claro);
+      font-size: 0.85rem;
+    }
+
+    .contador {
+      font-size: 0.72rem;
+      color: var(--gris-claro);
+      margin-left: 0.6rem;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    @media (max-width: 600px) {
+      .portal-header { flex-direction: column; gap: 0.8rem; text-align: center; }
+      .canal-info { flex-direction: column; gap: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="portal-header">
+    <div class="portal-logo">SUR <span>PATAGONIA</span></div>
+    <div class="portal-canal-nombre" id="headerCanal">Cargando…</div>
+    <button class="btn-secondary" id="btnLogout" style="padding:0.4rem 1rem; font-size:0.75rem;">Salir</button>
+  </header>
+
+  <div class="portal-wrap">
+
+    <!-- ── MI CANAL ─────────────────────────────────────── -->
+    <section class="seccion" id="secCanal">
+      <div class="seccion-titulo">Mi canal</div>
+      <div id="canalInfo"><div class="empty-state">Cargando…</div></div>
+    </section>
+
+    <!-- ── MIS REFERENCIAS ──────────────────────────────── -->
+    <section class="seccion" id="secRefs">
+      <div class="seccion-titulo">
+        Mis QRs y links
+        <span class="contador" id="contRefs"></span>
+      </div>
+      <div id="refsGrid"><div class="empty-state">Cargando…</div></div>
+    </section>
+
+    <!-- ── MIS CONSULTAS ────────────────────────────────── -->
+    <section class="seccion" id="secLeads">
+      <div class="seccion-titulo">
+        Mis consultas
+        <span class="contador" id="contLeads"></span>
+      </div>
+      <div class="tabla-wrapper">
+        <table class="tabla-admin tabla-leads" style="width:100%;">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Proyecto</th>
+              <th>Referencia</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyLeads">
+            <tr><td colspan="4"><div class="empty-state">Cargando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+const supabase = createClient(
+  'https://wajkfydxutptcvvfwrvq.supabase.co',
+  'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
+)
+
+const BASE_URL = 'https://surpatagonia.com.ar'
+
+const TIPO_LABEL = {
+  inmobiliaria: 'Inmobiliaria',
+  particular:   'Particular',
+  punto_venta:  'Punto de venta',
+  'campaña':    'Campaña',
+  evento:       'Evento'
+}
+
+// ── Auth guard ─────────────────────────────────────────
+const { data: { user } } = await supabase.auth.getUser()
+if (!user) { window.location.href = '../admin/login.html'; throw new Error('no session') }
+
+const rol = user.user_metadata?.rol
+if (rol === 'admin') { window.location.href = '../admin/dashboard.html'; throw new Error('admin') }
+if (rol !== 'agente') { window.location.href = '../admin/login.html'; throw new Error('sin rol') }
+
+document.getElementById('btnLogout').addEventListener('click', async () => {
+  await supabase.auth.signOut()
+  window.location.href = '../admin/login.html'
+})
+
+// ── Cargar canal del agente ────────────────────────────
+const { data: canal } = await supabase
+  .from('canales')
+  .select('*')
+  .eq('user_id', user.id)
+  .maybeSingle()
+
+if (!canal) {
+  document.getElementById('headerCanal').textContent = 'Sin canal asignado'
+  document.getElementById('canalInfo').innerHTML =
+    `<div class="empty-state">Todavía no tenés un canal asignado.<br>Contactá a Sur Patagonia para activar tu acceso.</div>`
+  document.getElementById('refsGrid').innerHTML =
+    `<div class="empty-state">—</div>`
+  document.getElementById('tbodyLeads').innerHTML =
+    `<tr><td colspan="4"><div class="empty-state">—</div></td></tr>`
+  throw new Error('no canal')
+}
+
+// Header
+document.getElementById('headerCanal').textContent = canal.nombre
+
+// Info del canal
+document.getElementById('canalInfo').innerHTML = `
+  <div class="canal-info">
+    <div class="canal-info-item">
+      <span class="canal-info-label">Canal</span>
+      <span class="canal-info-valor">${canal.nombre}</span>
+    </div>
+    <div class="canal-info-item">
+      <span class="canal-info-label">Tipo</span>
+      <span class="tipo-badge tipo-${canal.tipo}">${TIPO_LABEL[canal.tipo] || canal.tipo}</span>
+    </div>
+    <div class="canal-info-item">
+      <span class="canal-info-label">Código</span>
+      <span class="codigo-chip">${canal.codigo}</span>
+    </div>
+    <div class="canal-info-item">
+      <span class="canal-info-label">Estado</span>
+      <span>
+        <span class="estado-dot ${canal.activo ? 'activo' : 'inactivo'}"></span>
+        <span style="font-size:0.82rem;">${canal.activo ? 'Activo' : 'Inactivo'}</span>
+      </span>
+    </div>
+  </div>`
+
+// ── Cargar referencias ─────────────────────────────────
+const { data: refs } = await supabase
+  .from('referencias')
+  .select('*')
+  .eq('canal_id', canal.id)
+  .eq('activo', true)
+  .order('created_at')
+
+const refsGrid = document.getElementById('refsGrid')
+
+if (!refs?.length) {
+  refsGrid.innerHTML = `<div class="empty-state">Todavía no hay QRs generados para tu canal.<br>Pedile a Sur Patagonia que los configure.</div>`
+  document.getElementById('contRefs').textContent = ''
+} else {
+  document.getElementById('contRefs').textContent = `(${refs.length})`
+
+  refsGrid.innerHTML = `<div class="refs-grid">${
+    refs.map((r, i) => {
+      const linkQR     = `${BASE_URL}/r/${r.codigo}`
+      const dest       = r.destino || '/'
+      const linkDir    = `${BASE_URL}${dest.startsWith('/') ? '' : '/'}${dest}?ref=${r.codigo}`
+      return `
+      <div class="ref-card">
+        <div class="ref-card-nombre">${r.nombre}</div>
+        ${r.proyecto_slug ? `<div class="ref-card-proyecto">${r.proyecto_slug}</div>` : ''}
+        <canvas id="qr-${i}" width="160" height="160"></canvas>
+        <div class="ref-btns">
+          <button class="btn-ref primary" onclick="descargarQR('qr-${i}','${encodeURIComponent(r.nombre)}')">⬇ Descargar QR</button>
+          <button class="btn-ref" onclick="copiarTexto('${linkQR}', this)">Copiar link QR</button>
+          <button class="btn-ref" onclick="copiarTexto('${linkDir}', this)">Copiar link directo</button>
+        </div>
+      </div>`
+    }).join('')
+  }</div>`
+
+  // Generar QRs
+  refs.forEach((r, i) => {
+    const linkQR = `${BASE_URL}/r/${r.codigo}`
+    const canvas = document.getElementById(`qr-${i}`)
+    if (canvas) {
+      QRCode.toCanvas(canvas, linkQR, {
+        width: 160, margin: 2,
+        color: { dark: '#ffffff', light: '#1a1a1a' }
+      })
+    }
+  })
+}
+
+// ── Cargar leads ───────────────────────────────────────
+const { data: leads } = await supabase
+  .from('contactos')
+  .select('nombre, proyecto_slug, canal_ref, created_at')
+  .not('canal_ref', 'is', null)
+  .order('created_at', { ascending: false })
+
+const tbody = document.getElementById('tbodyLeads')
+
+if (!leads?.length) {
+  tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Todavía no tenés consultas.<br>Compartí tus QRs o links para empezar a recibir leads.</div></td></tr>`
+  document.getElementById('contLeads').textContent = ''
+} else {
+  document.getElementById('contLeads').textContent = `(${leads.length})`
+
+  tbody.innerHTML = leads.map(l => {
+    const fecha = new Date(l.created_at).toLocaleDateString('es-AR', {
+      day: '2-digit', month: 'short', year: 'numeric'
+    })
+    const proyecto = l.proyecto_slug
+      ? `<span style="font-family:monospace; font-size:0.78rem;">${l.proyecto_slug}</span>`
+      : `<span style="color:var(--gris-claro);">—</span>`
+
+    return `
+    <tr>
+      <td class="lead-nombre">${l.nombre || '—'}</td>
+      <td>${proyecto}</td>
+      <td><span class="ref-chip">${l.canal_ref}</span></td>
+      <td class="lead-fecha">${fecha}</td>
+    </tr>`
+  }).join('')
+}
+
+// ── Helpers ────────────────────────────────────────────
+window.descargarQR = (canvasId, nombre) => {
+  const canvas = document.getElementById(canvasId)
+  if (!canvas) return
+  const a = document.createElement('a')
+  a.download = `qr-${decodeURIComponent(nombre).toLowerCase().replace(/\s+/g,'-')}.png`
+  a.href = canvas.toDataURL('image/png')
+  a.click()
+}
+
+window.copiarTexto = (texto, btn) => {
+  navigator.clipboard.writeText(texto).then(() => {
+    const orig = btn.textContent
+    btn.textContent = '✓ Copiado'
+    btn.style.borderColor = '#50c878'
+    btn.style.color = '#50c878'
+    setTimeout(() => {
+      btn.textContent = orig
+      btn.style.borderColor = ''
+      btn.style.color = ''
+    }, 1800)
+  })
+}
+
+</script>
+</body>
+</html>
