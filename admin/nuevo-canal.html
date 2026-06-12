@@ -470,17 +470,24 @@ function getDestinoUrl() {
 
 // ── Cargar destinos disponibles (proyectos + propiedades) ─
 async function cargarDestinos() {
-  // Cargar proyectos (tabla usa "titulo", sin slug — lo derivamos)
-  const [{ data: dproy }, { data: dprop }] = await Promise.all([
-    supabase.from('proyectos').select('id, titulo').eq('activo', true).order('titulo'),
-    supabase.from('propiedades').select('id, titulo, slug').eq('activa', true).order('titulo'),
-  ])
+  // Proyectos: intentamos con slug (disponible después de correr el SQL de slugs)
+  // Si la columna no existe aún, caemos al select sin slug y lo derivamos del título
+  let dproy = null
+  const resConSlug = await supabase.from('proyectos').select('id, titulo, slug').eq('activo', true).order('titulo')
+  if (!resConSlug.error) {
+    dproy = resConSlug.data
+  } else {
+    const resSinSlug = await supabase.from('proyectos').select('id, titulo').eq('activo', true).order('titulo')
+    dproy = resSinSlug.data
+  }
+
+  const { data: dprop } = await supabase.from('propiedades').select('id, titulo, slug').eq('activa', true).order('titulo')
 
   const proyectos = (dproy || []).map(p => ({
     tipo:    'proyecto',
     nombre:  p.titulo,
-    slug:    toSlug(p.titulo),
-    destino: `/${toSlug(p.titulo)}`,
+    slug:    p.slug || toSlug(p.titulo),
+    destino: `/${p.slug || toSlug(p.titulo)}`,
   }))
 
   const propiedades = (dprop || []).map(p => ({
