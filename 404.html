@@ -891,7 +891,29 @@
 </footer>
 
 <script type="module">
-import { supabase } from './js/config.js'
+import { supabase, getRef } from './js/config.js'
+
+// ── Redirect de QRs: /r/{codigo} ──────────────────────────────────────
+// Los QRs impresos apuntan a surpatagonia.com.ar/r/{codigo}. Como esta
+// página es el fallback universal de Cloudflare, resolvemos acá:
+// buscamos la referencia y redirigimos a su destino con ?ref=.
+const _rMatch = location.pathname.match(/^\/r\/([a-z0-9-]{2,80})\/?$/)
+if (_rMatch) {
+  document.documentElement.style.visibility = 'hidden'
+  const { data: _r } = await supabase
+    .from('referencias')
+    .select('codigo, destino, activo')
+    .eq('codigo', _rMatch[1])
+    .maybeSingle()
+  if (_r && _r.activo) {
+    const _dest = _r.destino || '/'
+    const _sep  = _dest.includes('?') ? '&' : '?'
+    location.replace(`${_dest}${_sep}ref=${encodeURIComponent(_r.codigo)}`)
+  } else {
+    location.replace('/')
+  }
+  throw new Error('redirect ref') // corta la ejecución del resto del módulo
+}
 
 // ── Utils ─────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id)
@@ -1349,7 +1371,10 @@ const SUR_EMAIL = 'info@surpatagonia.com.ar' // ← reemplazá con tu email real
 
 function renderContacto(p) {
   const nombre = p.nombre || 'el proyecto'
-  const msg = encodeURIComponent(`Hola, me interesa ${nombre}. ¿Podemos hablar?`)
+  // Si el visitante vino por un canal, el ref viaja también en el mensaje
+  // de WhatsApp para no perder la atribución por esa vía.
+  const _ref = getRef()
+  const msg = encodeURIComponent(`Hola, me interesa ${nombre}. ¿Podemos hablar?${_ref ? ` (ref: ${_ref})` : ''}`)
   const wspUrl = `https://wa.me/${SUR_WSP}?text=${msg}`
   $('btnWsp').href = wspUrl
   $('btnWsp').style.display = 'inline-flex'
@@ -1367,6 +1392,7 @@ function renderContacto(p) {
       email: $('fEmail').value,
       mensaje: `[${nombre}] ${$('fMsg').value}`,
       proyecto_slug: slug,
+      canal_ref: getRef(),
       fecha: new Date().toISOString(),
     })
     const m = $('fMsg2')
