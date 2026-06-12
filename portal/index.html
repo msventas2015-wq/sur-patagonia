@@ -249,9 +249,9 @@
 
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
 
 const supabase = createClient(
   'https://wajkfydxutptcvvfwrvq.supabase.co',
@@ -267,6 +267,9 @@ const TIPO_LABEL = {
   'campaña':    'Campaña',
   evento:       'Evento'
 }
+
+// Escape HTML para prevenir XSS (los leads vienen del formulario público)
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 
 // ── Auth guard ─────────────────────────────────────────
 const { data: { user } } = await supabase.auth.getUser()
@@ -307,15 +310,15 @@ document.getElementById('canalInfo').innerHTML = `
   <div class="canal-info">
     <div class="canal-info-item">
       <span class="canal-info-label">Canal</span>
-      <span class="canal-info-valor">${canal.nombre}</span>
+      <span class="canal-info-valor">${esc(canal.nombre)}</span>
     </div>
     <div class="canal-info-item">
       <span class="canal-info-label">Tipo</span>
-      <span class="tipo-badge tipo-${canal.tipo}">${TIPO_LABEL[canal.tipo] || canal.tipo}</span>
+      <span class="tipo-badge tipo-${esc(canal.tipo)}">${TIPO_LABEL[canal.tipo] || esc(canal.tipo)}</span>
     </div>
     <div class="canal-info-item">
       <span class="canal-info-label">Código</span>
-      <span class="codigo-chip">${canal.codigo}</span>
+      <span class="codigo-chip">${esc(canal.codigo)}</span>
     </div>
     <div class="canal-info-item">
       <span class="canal-info-label">Estado</span>
@@ -350,8 +353,8 @@ if (!refs?.length) {
       const linkDir    = `${BASE_URL}${dest.startsWith('/') ? '' : '/'}${dest}${sep}ref=${r.codigo}`
       return `
       <div class="ref-card">
-        <div class="ref-card-nombre">${r.nombre}</div>
-        ${r.proyecto_slug ? `<div class="ref-card-proyecto">${r.proyecto_slug}</div>` : ''}
+        <div class="ref-card-nombre">${esc(r.nombre)}</div>
+        ${r.proyecto_slug ? `<div class="ref-card-proyecto">${esc(r.proyecto_slug)}</div>` : ''}
         <canvas id="qr-${i}" width="160" height="160"></canvas>
         <div class="ref-btns">
           <button class="btn-ref primary" onclick="descargarQR('qr-${i}','${encodeURIComponent(r.nombre)}')">⬇ Descargar QR</button>
@@ -369,7 +372,7 @@ if (!refs?.length) {
     if (canvas) {
       QRCode.toCanvas(canvas, linkQR, {
         width: 160, margin: 2,
-        color: { dark: '#ffffff', light: '#1a1a1a' }
+        color: { dark: '#1a1a1a', light: '#ffffff' }
       })
     }
   })
@@ -395,14 +398,14 @@ if (!leads?.length) {
       day: '2-digit', month: 'short', year: 'numeric'
     })
     const proyecto = l.proyecto_slug
-      ? `<span style="font-family:monospace; font-size:0.78rem;">${l.proyecto_slug}</span>`
+      ? `<span style="font-family:monospace; font-size:0.78rem;">${esc(l.proyecto_slug)}</span>`
       : `<span style="color:var(--gris-claro);">—</span>`
 
     return `
     <tr>
-      <td class="lead-nombre">${l.nombre || '—'}</td>
+      <td class="lead-nombre">${esc(l.nombre) || '—'}</td>
       <td>${proyecto}</td>
-      <td><span class="ref-chip">${l.canal_ref}</span></td>
+      <td><span class="ref-chip">${esc(l.canal_ref)}</span></td>
       <td class="lead-fecha">${fecha}</td>
     </tr>`
   }).join('')
