@@ -277,32 +277,38 @@ async function cargarUsuarios() {
   const canalPorUsuario = {}
   if (canales) canales.forEach(c => { if (c.user_id) canalPorUsuario[c.user_id] = c })
 
-  const rolBadge = (rol) => {
-    if (rol === 'admin')  return `<span class="rol-badge rol-admin">Admin</span>`
-    if (rol === 'agente') return `<span class="rol-badge rol-agente">Agente</span>`
-    return `<span class="rol-badge rol-sin">Sin rol</span>`
-  }
+  const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+  const myId = session.user.id
 
   tbody.innerHTML = usuarios.map(u => {
     const canal = canalPorUsuario[u.id]
     const canalHtml = canal
-      ? `<span class="canal-link">${canal.nombre}<br>${canal.codigo}</span>`
+      ? `<span class="canal-link">${esc(canal.nombre)}<br>${esc(canal.codigo)}</span>`
       : `<span style="color:var(--gris-claro); font-size:0.75rem;">—</span>`
+    const rolActual = (u.rol === 'admin' || u.rol === 'agente') ? u.rol : ''
 
     return `
     <tr>
-      <td>${u.email}</td>
-      <td>${rolBadge(u.rol)}</td>
+      <td>${esc(u.email)}${u.id === myId ? ' <span style="font-size:0.65rem; color:var(--dorado);">(vos)</span>' : ''}</td>
+      <td>
+        <select class="admin-input" style="padding:0.3rem 0.5rem; font-size:0.75rem; width:auto;"
+                onchange="cambiarRol('${u.id}', this, '${esc(u.email)}')">
+          <option value="" ${rolActual === '' ? 'selected' : ''} disabled>Sin rol</option>
+          <option value="agente" ${rolActual === 'agente' ? 'selected' : ''}>Agente</option>
+          <option value="admin"  ${rolActual === 'admin'  ? 'selected' : ''}>Admin</option>
+        </select>
+      </td>
       <td>${canalHtml}</td>
       <td>
         <span class="estado-dot ${u.desactivado ? 'inactivo' : 'activo'}"></span>
         <span style="font-size:0.75rem; color:var(--gris-claro);">${u.desactivado ? 'Inactivo' : 'Activo'}</span>
       </td>
       <td>
-        <button class="btn-tbl" onclick="resetPassword('${u.email}')">Reset contraseña</button>
+        <button class="btn-tbl" onclick="resetPassword('${esc(u.email)}')">Reset contraseña</button>
         <button class="btn-tbl ${u.desactivado ? '' : 'danger'}" onclick="toggleUsuario('${u.id}', ${u.desactivado})">
           ${u.desactivado ? 'Activar' : 'Desactivar'}
         </button>
+        ${u.id !== myId ? `<button class="btn-tbl danger" onclick="eliminarUsuario('${u.id}', '${esc(u.email)}')">Eliminar</button>` : ''}
       </td>
     </tr>`
   }).join('')
@@ -360,6 +366,46 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
   btn.disabled = false
   btn.textContent = 'Crear usuario'
 })
+
+// ── Cambiar rol ───────────────────────────────────────────
+window.cambiarRol = async (id, sel, email) => {
+  const nuevoRol = sel.value
+  if (!nuevoRol) return
+
+  if (id === session.user.id && nuevoRol !== 'admin') {
+    alert('No podés quitarte el rol admin a vos mismo: perderías el acceso al panel.')
+    cargarUsuarios()
+    return
+  }
+  if (!confirm(`¿Cambiar el rol de ${email} a "${nuevoRol}"?`)) {
+    cargarUsuarios()
+    return
+  }
+
+  const { error } = await supabase.rpc('admin_set_user_rol', { p_user_id: id, p_rol: nuevoRol })
+  if (error) { alert('Error: ' + error.message); cargarUsuarios(); return }
+
+  alert(`✓ Rol actualizado. ${email} tiene que cerrar sesión y volver a entrar para que aplique.`)
+  cargarUsuarios()
+}
+
+// ── Eliminar usuario ──────────────────────────────────────
+window.eliminarUsuario = async (id, email) => {
+  if (!confirm(`¿Eliminar definitivamente al usuario ${email}?\n\nEsta acción no se puede deshacer. Su canal y sus leads NO se borran, solo quedan sin usuario asignado.`)) return
+
+  const { error } = await supabase.rpc('admin_eliminar_usuario', { p_user_id: id })
+  if (error) {
+    if (error.message.includes('admin_eliminar_usuario')) {
+      alert('Falta correr el SQL: usuarios_admin_eliminar.sql en Supabase (SQL Editor).')
+    } else {
+      alert('Error: ' + error.message)
+    }
+    return
+  }
+  alert(`✓ Usuario ${email} eliminado.`)
+  cargarUsuarios()
+  cargarCanales()
+}
 
 // ── Toggle activo ─────────────────────────────────────────
 window.toggleUsuario = async (id, desactivado) => {
