@@ -22,9 +22,12 @@ const REF_RE   = /^[a-z0-9-]{2,80}$/
 
 ;(function capturarRef() {
   try {
-    const ref = new URLSearchParams(location.search).get('ref')
+    const p   = new URLSearchParams(location.search)
+    const ref = p.get('ref')
     if (ref && REF_RE.test(ref)) {
-      localStorage.setItem(REF_KEY, JSON.stringify({ ref, ts: Date.now() }))
+      // via: 'qr' si vino por redirect /r/ (QR físico), 'link' si vino por link directo
+      const via = p.get('via') === 'qr' ? 'qr' : 'link'
+      localStorage.setItem(REF_KEY, JSON.stringify({ ref, via, ts: Date.now() }))
     }
   } catch (e) { /* localStorage bloqueado: seguimos sin persistencia */ }
 })()
@@ -42,6 +45,20 @@ export function getRef() {
       return null
     }
     return ref
+  } catch (e) { return null }
+}
+
+// Devuelve cómo llegó el referido: 'qr', 'link', o null si no hay ref vigente.
+export function getRefVia() {
+  try {
+    const p      = new URLSearchParams(location.search)
+    const urlRef = p.get('ref')
+    if (urlRef && REF_RE.test(urlRef)) return p.get('via') === 'qr' ? 'qr' : 'link'
+    const raw = localStorage.getItem(REF_KEY)
+    if (!raw) return null
+    const { ref, via, ts } = JSON.parse(raw)
+    if (!ref || !REF_RE.test(ref) || Date.now() - ts > REF_DIAS * 86400000) return null
+    return via || 'link'
   } catch (e) { return null }
 }
 
