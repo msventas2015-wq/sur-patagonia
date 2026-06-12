@@ -26,10 +26,11 @@
       --font-serif: 'Cormorant Garamond', serif;
       --font-sans:  'Montserrat', sans-serif;
       /* Overlays adaptativos — applyTema() los recalcula según la paleta */
-      /* Velo del hero: oscuro MUY sutil. Atmósfera: sin degradé. */
-      --overlay-hero: linear-gradient(to bottom, rgba(8,8,8,0.12) 0%, rgba(8,8,8,0.03) 35%, rgba(8,8,8,0.22) 70%, rgba(8,8,8,0.42) 100%);
+      /* Velos FIJOS oscuros (idénticos a la miniweb). Nunca se recolorean
+         con la paleta: eso lavaba de blanco el video con paletas claras. */
+      --overlay-hero: linear-gradient(to bottom, rgba(8,8,8,0.2) 0%, rgba(8,8,8,0.05) 35%, rgba(8,8,8,0.6) 70%, rgba(8,8,8,0.95) 100%);
       --overlay-nav:  rgba(8,8,8,0.92);
-      --overlay-atm:  none;
+      --overlay-atm:  linear-gradient(to bottom, rgba(8,8,8,0.4) 0%, rgba(8,8,8,0.2) 45%, rgba(8,8,8,0.75) 100%);
     }
     /* Las paletas y fuentes se aplican vía JS inline style en :root — no necesitamos clases CSS */
     html { scroll-behavior: smooth; }
@@ -858,6 +859,24 @@
 
 <script type="module">
 import { supabase, getRef, getRefVia } from './js/config.js'
+
+// ── REDIRECT A LA MINIWEB REAL ────────────────────────────────────────
+// Esta página quedó como template viejo. La miniweb oficial de cada
+// proyecto es /{slug} (404.html), con la personalización completa.
+// Para que nunca haya dos versiones visuales del mismo proyecto,
+// cualquier visita acá redirige a la miniweb, conservando ref y via.
+{
+  const _p    = new URLSearchParams(location.search)
+  const _slug = _p.get('slug')
+  if (_slug && /^[a-z0-9-]+$/.test(_slug)) {
+    document.documentElement.style.visibility = 'hidden'
+    const _keep = new URLSearchParams()
+    if (_p.get('ref')) _keep.set('ref', _p.get('ref'))
+    if (_p.get('via')) _keep.set('via', _p.get('via'))
+    location.replace(`/${_slug}${_keep.toString() ? '?' + _keep.toString() : ''}`)
+    throw new Error('redirect a miniweb')
+  }
+}
 
 // ── Utils ─────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id)
