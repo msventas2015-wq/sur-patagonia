@@ -68,7 +68,7 @@
       display: grid; grid-template-columns: 2fr 1fr; gap: 0.9rem; margin-bottom: 0.9rem;
     }
     .charts-grid2 {
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.9rem; margin-bottom: 1.4rem;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.9rem; margin-bottom: 1.4rem;
     }
     @media (max-width: 1100px) { .charts-grid, .charts-grid2 { grid-template-columns: 1fr; } }
     .chart-card {
@@ -99,7 +99,7 @@
     .filtros-bar {
       background: var(--card-bg); border: 1px solid var(--card-border);
       border-radius: var(--card-radius); padding: 0.9rem 1.1rem;
-      display: grid; grid-template-columns: 1.2fr 1.2fr 0.9fr 1fr 1fr 1.3fr auto;
+      display: grid; grid-template-columns: 1.1fr 1.1fr 0.9fr 0.85fr 0.95fr 0.95fr 1.2fr auto;
       gap: 0.6rem; align-items: end; margin-bottom: 1.2rem;
       position: sticky; top: 0.5rem; z-index: 50;
       backdrop-filter: blur(10px);
@@ -262,6 +262,10 @@
         <select id="fProyecto" class="admin-input"><option value="">Todos</option></select>
       </div>
       <div>
+        <label class="filtro-label">Ciudad origen</label>
+        <select id="fCiudad" class="admin-input"><option value="">Todas</option></select>
+      </div>
+      <div>
         <label class="filtro-label">Origen</label>
         <select id="fOrigen" class="admin-input">
           <option value="">Todos</option>
@@ -312,6 +316,10 @@
         <h4>Por QR / referencia</h4>
         <div class="chart-wrap s"><canvas id="chRefs"></canvas></div>
       </div>
+      <div class="chart-card">
+        <h4>Por ciudad de origen</h4>
+        <div class="chart-wrap s"><canvas id="chCiudades"></canvas></div>
+      </div>
     </div>
 
     <!-- LISTA -->
@@ -348,7 +356,7 @@ let _charts = {}
 async function cargarTodo() {
   const [rLeads, rCanales, rRefs, rProy] = await Promise.all([
     supabase.from('contactos').select('*, propiedades(titulo)').order('created_at', { ascending: false }),
-    supabase.from('canales').select('id, nombre, codigo, tipo'),
+    supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia'),
     supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug'),
     supabase.from('proyectos').select('nombre, slug').then(r => r.error ? supabase.from('proyectos').select('nombre') : r),
   ])
@@ -359,7 +367,11 @@ async function cargarTodo() {
   }
 
   const canalPorId = {}
-  ;(rCanales.data || []).forEach(c => { canalPorId[c.id] = c.nombre })
+  const metaCanal  = {}   // nombre de canal → { ciudad, provincia }
+  ;(rCanales.data || []).forEach(c => {
+    canalPorId[c.id] = c.nombre
+    metaCanal[c.nombre] = { ciudad: c.ciudad || null, provincia: c.provincia || null }
+  })
   const canalPorRef = {}
   const refNombre   = {}
   ;(rRefs.data || []).forEach(r => {
@@ -381,7 +393,10 @@ async function cargarTodo() {
       ? (proyPorSlug[c.proyecto_slug] || c.proyecto_slug)
       : (c.propiedades?.titulo || null)
     const origen = c.canal_ref ? (c.canal_via === 'qr' ? 'qr' : 'link') : 'directo'
-    return { ...c, _canal: canalNombre, _proyecto: proyecto, _origen: origen, _estado: c.estado || 'nueva', _refNombre: refNombre[c.canal_ref] || c.canal_ref }
+    const meta   = canalNombre ? (metaCanal[canalNombre] || {}) : {}
+    return { ...c, _canal: canalNombre, _proyecto: proyecto, _origen: origen, _estado: c.estado || 'nueva',
+             _refNombre: refNombre[c.canal_ref] || c.canal_ref,
+             _ciudad: meta.ciudad || null, _provincia: meta.provincia || null }
   })
 
   poblarFiltros()
@@ -397,6 +412,9 @@ function poblarFiltros() {
   const proyectos = [...new Set(_leads.filter(l => l._proyecto).map(l => l._proyecto))].sort()
   $('fProyecto').innerHTML = '<option value="">Todos</option>'
     + proyectos.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')
+  const ciudades = [...new Set(_leads.filter(l => l._ciudad).map(l => l._ciudad))].sort()
+  $('fCiudad').innerHTML = '<option value="">Todas</option>'
+    + ciudades.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
 }
 
 function filtrosFecha() {
@@ -409,6 +427,7 @@ function filtrar(base = _leads, conFechas = true) {
   const fc = $('fCanal').value
   const fp = $('fProyecto').value
   const fo = $('fOrigen').value
+  const fci = $('fCiudad').value
   const { fd, fh } = filtrosFecha()
   const fb = $('fBuscar').value.trim().toLowerCase()
   return base.filter(l => {
@@ -416,6 +435,7 @@ function filtrar(base = _leads, conFechas = true) {
     if (fc && fc !== '__directo__' && l._canal !== fc) return false
     if (fp && l._proyecto !== fp) return false
     if (fo && l._origen !== fo) return false
+    if (fci && l._ciudad !== fci) return false
     if (conFechas) {
       const f = new Date(l.created_at)
       if (fd && f < fd) return false
@@ -429,10 +449,10 @@ function filtrar(base = _leads, conFechas = true) {
   })
 }
 
-;['fCanal','fProyecto','fOrigen','fDesde','fHasta'].forEach(id => $(id).addEventListener('change', render))
+;['fCanal','fProyecto','fOrigen','fCiudad','fDesde','fHasta'].forEach(id => $(id).addEventListener('change', render))
 $('fBuscar').addEventListener('input', () => { clearTimeout(window._bt); window._bt = setTimeout(render, 250) })
 $('btnLimpiar').addEventListener('click', () => {
-  ;['fCanal','fProyecto','fOrigen','fDesde','fHasta','fBuscar'].forEach(id => $(id).value = '')
+  ;['fCanal','fProyecto','fOrigen','fCiudad','fDesde','fHasta','fBuscar'].forEach(id => $(id).value = '')
   document.querySelectorAll('.rango-btn').forEach(b => b.classList.toggle('activo', b.dataset.dias === '0'))
   render()
 })
@@ -661,6 +681,20 @@ function renderBarras(rows) {
     if (!porRef[l.canal_ref]) porRef[l.canal_ref] = { qr: 0, link: 0 }
     porRef[l.canal_ref][l._origen === 'qr' ? 'qr' : 'link']++
   })
+  // Por ciudad de origen (la ciudad del canal que generó la consulta)
+  const cuentaCiu = {}
+  rows.forEach(l => {
+    if (!l._canal) return
+    const k = l._ciudad || 'Sin ubicación'
+    cuentaCiu[k] = (cuentaCiu[k] || 0) + 1
+  })
+  const eCiu = Object.entries(cuentaCiu).sort((a,b) => b[1]-a[1]).slice(0, 8)
+  nuevoChart('chCiudades', { type:'bar',
+    data: { labels: eCiu.map(e=>e[0]), datasets: [{ data: eCiu.map(e=>e[1]),
+      backgroundColor: eCiu.map(e => e[0]==='Sin ubicación' ? 'rgba(150,150,150,.4)' : 'rgba(180,100,220,.7)'),
+      borderRadius: 5, barThickness: 16 }] },
+    options: barOpts })
+
   const eR = Object.entries(porRef).sort((a,b) => (b[1].qr+b[1].link)-(a[1].qr+a[1].link)).slice(0, 8)
   nuevoChart('chRefs', { type:'bar',
     data: {
@@ -688,6 +722,7 @@ function renderLista(rows) {
       : l._origen === 'link' ? '<span class="badge badge-link">🔗 Link</span>'
       : '<span class="badge badge-directo">Directo</span>'
     const canalBadge = l._canal ? `<span class="badge badge-canal">${esc(l._canal)}</span>` : ''
+    const ciudadBadge = l._ciudad ? `<span class="badge badge-directo">📍 ${esc(l._ciudad)}</span>` : ''
     const proyectoBadge = l._proyecto ? `<span class="badge badge-proyecto">📁 ${esc(l._proyecto)}</span>` : ''
     const refChip = (l.canal_ref && l._canal !== l.canal_ref) ? `<span class="ref-mono">${esc(l.canal_ref)}</span>` : ''
     const est = l._estado
@@ -695,7 +730,7 @@ function renderLista(rows) {
     <div class="lead-card ${est === 'nueva' ? 'no-leida' : ''}">
       <div class="lead-top">
         <span class="lead-nombre">${esc(l.nombre) || '—'}</span>
-        ${canalBadge} ${origenBadge} ${proyectoBadge} ${refChip}
+        ${canalBadge} ${ciudadBadge} ${origenBadge} ${proyectoBadge} ${refChip}
         <span class="spacer"></span>
         <span class="lead-fecha">${fecha}</span>
         <select class="estado-select est-${esc(est)}" data-id="${l.id}">
@@ -725,12 +760,12 @@ function renderLista(rows) {
 // ── Export CSV ────────────────────────────────────────────
 $('btnExport').addEventListener('click', () => {
   const rows = filtrar()
-  const head = ['Fecha','Nombre','Email','Teléfono','Mensaje','Proyecto/Propiedad','Canal','Código ref','Origen','Estado']
+  const head = ['Fecha','Nombre','Email','Teléfono','Mensaje','Proyecto/Propiedad','Canal','Ciudad','Provincia','Código ref','Origen','Estado']
   const csvRow = arr => arr.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')
   const lineas = rows.map(l => csvRow([
     new Date(l.created_at).toLocaleString('es-AR'),
     l.nombre, l.email, l.telefono, l.mensaje,
-    l._proyecto || '', l._canal || 'Directo', l.canal_ref || '',
+    l._proyecto || '', l._canal || 'Directo', l._ciudad || '', l._provincia || '', l.canal_ref || '',
     l._origen === 'qr' ? 'QR físico' : l._origen === 'link' ? 'Link directo' : 'Directo',
     ESTADOS[l._estado] || l._estado,
   ]))

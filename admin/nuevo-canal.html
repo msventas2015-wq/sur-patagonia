@@ -259,6 +259,39 @@
       <div class="hint" id="destinoPreview">El QR llevará a: <strong>surpatagonia.com.ar/</strong></div>
     </div>
 
+    <!-- ── UBICACIÓN ──────────────────────────────────── -->
+    <div class="form-seccion">
+      <h3>Ubicación</h3>
+      <p style="font-size:0.78rem; color:var(--gris-claro); margin-bottom:1rem;">
+        Dónde está este canal. Permite analizar de qué ciudad viene cada consulta y ubicarlo en los mapas.
+      </p>
+      <div class="form-row">
+        <div>
+          <label class="admin-label">Ciudad</label>
+          <input type="text" id="ciudad" class="admin-input" placeholder="Ej: San Martín de los Andes" />
+        </div>
+        <div>
+          <label class="admin-label">Provincia</label>
+          <select id="provincia" class="admin-input">
+            <option value="">— Seleccionar —</option>
+            <option>Buenos Aires</option><option>CABA</option><option>Catamarca</option>
+            <option>Chaco</option><option>Chubut</option><option>Córdoba</option>
+            <option>Corrientes</option><option>Entre Ríos</option><option>Formosa</option>
+            <option>Jujuy</option><option>La Pampa</option><option>La Rioja</option>
+            <option>Mendoza</option><option>Misiones</option><option>Neuquén</option>
+            <option>Río Negro</option><option>Salta</option><option>San Juan</option>
+            <option>San Luis</option><option>Santa Cruz</option><option>Santa Fe</option>
+            <option>Santiago del Estero</option><option>Tierra del Fuego</option><option>Tucumán</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-1">
+        <label class="admin-label">Coordenadas (lat, lng)</label>
+        <input type="text" id="coords" class="admin-input" placeholder="Ej: -40.1572, -71.3534" />
+        <div class="hint">En Google Maps: clic derecho sobre el punto → tocá las coordenadas para copiarlas → pegalas acá tal cual.</div>
+      </div>
+    </div>
+
     <!-- ── 3. CONTACTO Y NOTIFICACIONES ──────────────── -->
     <div class="form-seccion">
       <h3>Contacto y notificaciones</h3>
@@ -700,6 +733,11 @@ if (editId) {
     document.getElementById('email').value    = c.email    || ''
     document.getElementById('telefono').value = c.telefono || ''
     document.getElementById('notas').value    = c.notas    || ''
+    document.getElementById('ciudad').value    = c.ciudad    || ''
+    document.getElementById('provincia').value = c.provincia || ''
+    if (c.latitud != null && c.longitud != null) {
+      document.getElementById('coords').value = `${c.latitud}, ${c.longitud}`
+    }
     document.getElementById('slugPreview').textContent = c.codigo || '—'
     cargarAgentes(c.user_id || null)
 
@@ -738,12 +776,24 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const destino  = activo_v ? '/' : getDestinoUrl()
   const userId   = document.getElementById('userId').value.trim() || null
 
+  // Coordenadas: acepta el formato que copia Google Maps ("lat, lng")
+  let latitud = null, longitud = null
+  const coordsTxt = document.getElementById('coords').value.trim()
+  if (coordsTxt) {
+    const m = coordsTxt.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/)
+    if (m) { latitud = parseFloat(m[1]); longitud = parseFloat(m[2]) }
+    else { alert('Las coordenadas no tienen formato válido. Ejemplo: -40.1572, -71.3534'); return }
+  }
+
   const payload = {
     nombre, codigo, tipo,
     activo:   document.getElementById('activo').checked,
     email:    document.getElementById('email').value.trim()    || null,
     telefono: document.getElementById('telefono').value.trim() || null,
     notas:    document.getElementById('notas').value.trim()    || null,
+    ciudad:    document.getElementById('ciudad').value.trim()   || null,
+    provincia: document.getElementById('provincia').value      || null,
+    latitud, longitud,
     destino,
     user_id:  userId,
   }
