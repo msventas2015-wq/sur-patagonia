@@ -856,7 +856,7 @@
 </footer>
 
 <script type="module">
-import { supabase } from './js/config.js'
+import { supabase, getRef } from './js/config.js'
 
 // ── Utils ─────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id)
@@ -903,7 +903,8 @@ const PALETAS = {
   plata:    { '--gold':'#a8bfc8', '--gold2':'#c8dce6', '--bg':'#2e3238', '--surface':'#3a3f46', '--text':'#edf0f2', '--muted':'#8a9298', '--line':'rgba(255,255,255,0.09)' },
   patagonia:{ '--gold':'#c9a84c', '--gold2':'#e8c97a', '--bg':'#f2f0ed', '--surface':'#e8e5e0', '--text':'#1a1714', '--muted':'#6a6560', '--line':'rgba(0,0,0,0.09)' },
   instagram:{ '--gold':'#c9a84c', '--gold2':'#e8c97a', '--bg':'#fafafa', '--surface':'#efefef', '--text':'#1a1a1a', '--muted':'#737373', '--line':'rgba(0,0,0,0.09)' },
-  blanco:   { '--gold':'#c9a84c', '--gold2':'#e8c97a', '--bg':'#fafafa', '--surface':'#efefef', '--text':'#1a1a1a', '--muted':'#737373', '--line':'rgba(0,0,0,0.09)' },
+  blanco:   { '--gold':'#262626', '--gold2':'#555555', '--bg':'#fafafa', '--surface':'#ffffff', '--text':'#262626', '--muted':'#8e8e8e', '--line':'#dbdbdb' },
+  huemules: { '--gold':'#d76f3f', '--gold2':'#928c58', '--bg':'#fafaf8', '--surface':'#ede8df', '--text':'#29231d', '--muted':'#7a6e62', '--line':'rgba(41,35,29,0.1)' },
 }
 const FUENTES_TITULO = {
   cormorant:   "'Cormorant Garamond', serif",
@@ -1272,7 +1273,8 @@ const SUR_EMAIL = 'info@surpatagonia.com.ar' // ← reemplazá con tu email real
 
 function renderContacto(p) {
   const nombre = p.nombre || 'el proyecto'
-  const msg = encodeURIComponent(`Hola, me interesa ${nombre}. ¿Podemos hablar?`)
+  const _ref = getRef()
+  const msg = encodeURIComponent(`Hola, me interesa ${nombre}. ¿Podemos hablar?${_ref ? ` (ref: ${_ref})` : ''}`)
   const wspUrl = `https://wa.me/${SUR_WSP}?text=${msg}`
   $('btnWsp').href = wspUrl
   $('btnWsp').style.display = 'inline-flex'
@@ -1290,6 +1292,7 @@ function renderContacto(p) {
       email: $('fEmail').value,
       mensaje: `[${nombre}] ${$('fMsg').value}`,
       proyecto_slug: slug,
+      canal_ref: getRef(),
       fecha: new Date().toISOString(),
     })
     const m = $('fMsg2')
