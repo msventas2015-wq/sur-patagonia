@@ -185,6 +185,11 @@
     .estado-select.est-nueva { color: var(--blanco); border-color: rgba(215,111,63,.45); }
     .empty-state { text-align: center; padding: 4rem; color: var(--gris-claro); font-size: 0.85rem; }
     .ref-mono { font-family: monospace; font-size: 0.62rem; color: var(--gris-claro); text-transform: none; letter-spacing: 0; }
+    .lc-source-link {
+      color: var(--gris-claro); text-decoration: none; transition: color .15s;
+      display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+    .lc-source-link:hover { color: var(--blanco); text-decoration: underline; }
     /* Mapa: provincias con hover cálido estilo Sur Patagonia */
     .prov-path { transition: fill .25s; cursor: default; }
     .prov-path:hover { fill: #271b10; filter: drop-shadow(0 0 6px rgba(215,111,63,0.45)); }
@@ -447,7 +452,7 @@ let _lstOrigen = '', _lstCanal = '', _lstRef = '', _lstEstado = '', _lstOrden = 
 // ── Carga de datos ────────────────────────────────────────
 async function cargarTodo() {
   const [rLeads, rCanales, rRefs, rProy] = await Promise.all([
-    supabase.from('contactos').select('*, propiedades(titulo)').order('created_at', { ascending: false }),
+    supabase.from('contactos').select('*, propiedades(id, titulo)').order('created_at', { ascending: false }),
     supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, latitud, longitud'),
     supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug'),
     supabase.from('proyectos').select('nombre, slug, latitud, longitud')
@@ -495,9 +500,17 @@ async function cargarTodo() {
       : (c.propiedades?.titulo || null)
     const origen = c.canal_ref ? (c.canal_via === 'qr' ? 'qr' : 'link') : 'directo'
     const meta   = canalNombre ? (metaCanal[canalNombre] || {}) : {}
+    // Tipo de fuente de la consulta para íconos y links diferenciados
+    const _sourceType = c.proyecto_slug ? 'proyecto'
+      : c.propiedades?.titulo         ? 'propiedad'
+      : 'general'
+    const _sourceId = c.proyecto_slug
+      ? c.proyecto_slug
+      : (c.propiedades?.id ?? null)
     return { ...c, _canal: canalNombre, _proyecto: proyecto, _origen: origen, _estado: c.estado || 'nueva',
              _refNombre: refNombre[c.canal_ref] || c.canal_ref,
-             _ciudad: meta.ciudad || null, _provincia: meta.provincia || null }
+             _ciudad: meta.ciudad || null, _provincia: meta.provincia || null,
+             _sourceType, _sourceId }
   })
 
   buildColorMap()
@@ -1012,13 +1025,23 @@ function renderLista(rows) {
     const om = ORIGEN_META[l._origen] || ORIGEN_META.directo
     const est = l._estado
     const canalColor = l._canal ? (_colorMap[l._canal] || '#9aa0a6') : null
+    // Fuente de la consulta: ícono + link diferenciado por tipo
+    const SOURCE_ICON = { propiedad: '🏡', proyecto: '🏢', general: '🌐' }
+    const sourceIcon = SOURCE_ICON[l._sourceType] || '🌐'
+    const sourceLabel = l._proyecto ? esc(l._proyecto) : (l._sourceType === 'general' ? 'Home' : 'Sin nombre')
+    const sourceHref = l._sourceType === 'propiedad' && l._sourceId
+      ? `../propiedad?id=${encodeURIComponent(l._sourceId)}`
+      : l._sourceType === 'proyecto' && l._sourceId
+      ? `../proyecto-mini.html?slug=${encodeURIComponent(l._sourceId)}`
+      : '../index.html'
+    const sourcePart = `<a class="lc-source-link" href="${esc(sourceHref)}" target="_blank" rel="noopener">${sourceIcon} ${sourceLabel}</a>`
     const meta = [
       l._canal
         ? `<span class="canal-tag" style="--ch:${canalColor}"><span class="od" style="background:${canalColor}; margin-right:0.3rem;"></span>${esc(l._canal)}</span>`
         : '',
       l._ciudad   ? `<span>📍 ${esc(l._ciudad)}</span>` : '',
       `<span><span class="od" style="background:${om.dot}"></span>${om.label}</span>`,
-      `<span>🏠 ${l._proyecto ? esc(l._proyecto) : 'General'}</span>`,
+      sourcePart,
       (l.canal_ref && l._canal !== l.canal_ref) ? `<span class="ref-mono">${esc(l.canal_ref)}</span>` : '',
     ].filter(Boolean).join('')
     return `
