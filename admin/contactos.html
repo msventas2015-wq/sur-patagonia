@@ -84,16 +84,24 @@
     .chart-wrap.s { height: 200px; }
 
     /* Chips de comparación de canales */
-    .chips { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+    .chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
     .chip {
-      display: inline-flex; align-items: center; gap: 0.35rem;
+      display: inline-flex; align-items: center; gap: 0.4rem;
       background: none; border: 1px solid var(--card-border); color: var(--gris-claro);
-      padding: 0.28rem 0.7rem; border-radius: 999px; font-size: 0.68rem; font-weight: 500;
+      padding: 0.32rem 0.9rem; border-radius: 999px; font-size: 0.68rem; font-weight: 500;
       cursor: pointer; transition: all .15s;
     }
-    .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ch, #888); opacity: 0.35; }
+    .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ch, #888); opacity: 0.6; }
     .chip.on { border-color: var(--ch, #888); color: var(--blanco); background: rgba(255,255,255,0.03); }
     .chip.on .dot { opacity: 1; }
+
+    /* Pill de canal en lead cards */
+    .canal-tag {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      border: 1px solid var(--ch, rgba(255,255,255,0.15));
+      padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 600;
+      color: var(--blanco); letter-spacing: 0.04em;
+    }
 
     /* ── Filtros ─────────────────────────────────────── */
     .filtros-bar {
@@ -152,11 +160,11 @@
     .lc-right { display: flex; align-items: center; gap: 0.9rem; }
     .lc-fecha { font-size: 0.7rem; color: var(--gris-claro); }
     .lc-meta {
-      display: flex; gap: 0.4rem 1.1rem; flex-wrap: wrap; align-items: center;
-      margin-top: 0.55rem; font-size: 0.66rem; letter-spacing: 0.05em;
+      display: flex; gap: 0.5rem 1.8rem; flex-wrap: wrap; align-items: center;
+      margin-top: 0.7rem; font-size: 0.66rem; letter-spacing: 0.06em;
       text-transform: uppercase; color: var(--gris-claro); font-weight: 500;
     }
-    .lc-meta .od { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 0.35rem; vertical-align: middle; }
+    .lc-meta .od { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 0.4rem; vertical-align: middle; }
     .lc-msg {
       font-size: 0.9rem; color: #d9d6d0; line-height: 1.75;
       white-space: pre-wrap; word-break: break-word;
@@ -423,7 +431,11 @@ const dia = d => new Date(d).toISOString().slice(0, 10)
 const ESTADOS = { nueva: 'Nueva', contactado: 'Contactado', cerrado: 'Cerrado', descartado: 'Descartado' }
 const PALETA  = ['#d76f3f','#6495ed','#50c878','#b464dc','#ffc832','#4ad0c4','#e05c5c','#9aa0a6']
 
+// Paleta exclusiva para canales: sin #6495ed (azul=link) ni #50c878 (verde=QR)
+const CANAL_PALETA = ['#d76f3f','#b464dc','#ffc832','#e05c5c','#4ad0c4','#f0a050','#a78bfa','#fb7185','#38d9a9','#ffa94d']
+
 let _leads = []
+let _colorMap = {}               // canal nombre → color asignado (determinístico)
 let _seriesActivas = new Set()   // nombres de canal activos en el comparador ('__total__', '__directo__', o nombre)
 let _charts = {}
 let _metaCanal = {}              // nombre de canal → { ciudad, provincia, lat, lng, tipo }
@@ -488,6 +500,7 @@ async function cargarTodo() {
              _ciudad: meta.ciudad || null, _provincia: meta.provincia || null }
   })
 
+  buildColorMap()
   poblarFiltros()
   initSeries()
   render()
@@ -580,18 +593,28 @@ function initSeries() {
   _seriesActivas = new Set(['__total__', ...topCanales(3)])
 }
 
-function colorSerie(key, i) {
+// Asigna un color fijo a cada canal (orden alfabético, paleta sin azul/verde)
+function buildColorMap() {
+  const canales = [...new Set(_leads.filter(l => l._canal).map(l => l._canal))].sort()
+  _colorMap = {}
+  canales.forEach((c, i) => { _colorMap[c] = CANAL_PALETA[i % CANAL_PALETA.length] })
+}
+
+function colorSerie(key) {
   if (key === '__total__')   return '#f0ede8'
   if (key === '__directo__') return '#9aa0a6'
-  return PALETA[i % PALETA.length]
+  return _colorMap[key] || '#9aa0a6'
 }
 
 function renderChips() {
   const keys = ['__total__', '__directo__', ...topCanales(8)]
-  $('chipsSeries').innerHTML = keys.map((k, i) => {
+  $('chipsSeries').innerHTML = keys.map(k => {
     const label = k === '__total__' ? 'Total' : k === '__directo__' ? 'Directas' : k
-    const col = colorSerie(k, i - 2 < 0 ? 0 : i - 2)
-    return `<button class="chip ${_seriesActivas.has(k) ? 'on' : ''}" style="--ch:${col}" data-k="${esc(k)}">
+    const col = colorSerie(k)
+    const isOn = _seriesActivas.has(k)
+    // Borde siempre visible: al 30% de opacidad cuando inactivo, pleno cuando activo
+    const borderStyle = isOn ? '' : `border-color:${col}4d;`
+    return `<button class="chip ${isOn ? 'on' : ''}" style="--ch:${col}; ${borderStyle}" data-k="${esc(k)}">
       <span class="dot"></span>${esc(label)}</button>`
   }).join('')
   $('chipsSeries').querySelectorAll('.chip').forEach(ch => {
@@ -846,8 +869,7 @@ function renderEvolucion() {
   const chipKeys = ['__total__', '__directo__', ...topCanales(8)]
 
   const datasets = keys.filter(k => chipKeys.includes(k)).map(k => {
-    const idx = Math.max(chipKeys.indexOf(k) - 2, 0)
-    const col = colorSerie(k, idx)
+    const col = colorSerie(k)
     const porDia = {}
     base.forEach(l => {
       const match = k === '__total__' ? true : k === '__directo__' ? !l._canal : l._canal === k
@@ -989,11 +1011,14 @@ function renderLista(rows) {
     const telDigits = (l.telefono || '').replace(/[^\d]/g, '')
     const om = ORIGEN_META[l._origen] || ORIGEN_META.directo
     const est = l._estado
+    const canalColor = l._canal ? (_colorMap[l._canal] || '#9aa0a6') : null
     const meta = [
-      l._canal    ? `<span>${esc(l._canal)}</span>` : '',
+      l._canal
+        ? `<span class="canal-tag" style="--ch:${canalColor}"><span class="od" style="background:${canalColor}; margin-right:0.3rem;"></span>${esc(l._canal)}</span>`
+        : '',
       l._ciudad   ? `<span>📍 ${esc(l._ciudad)}</span>` : '',
       `<span><span class="od" style="background:${om.dot}"></span>${om.label}</span>`,
-      l._proyecto ? `<span>${esc(l._proyecto)}</span>` : '',
+      `<span>🏠 ${l._proyecto ? esc(l._proyecto) : 'General'}</span>`,
       (l.canal_ref && l._canal !== l.canal_ref) ? `<span class="ref-mono">${esc(l.canal_ref)}</span>` : '',
     ].filter(Boolean).join('')
     return `
