@@ -5,59 +5,74 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Usuarios — Sur Patagonia Admin</title>
   <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
+    :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; }
+    .admin-main { font-family:'Inter',system-ui,sans-serif; }
+
     .usr-form {
-      background: var(--negro-2);
-      border: 1px solid var(--gris-oscuro);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
       padding: 2rem;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
     .usr-form-title {
-      font-size: 0.65rem;
-      font-weight: 600;
-      letter-spacing: 0.25em;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: var(--dorado);
+      color: var(--gris-claro);
       margin-bottom: 1.5rem;
       padding-bottom: 1rem;
-      border-bottom: 1px solid var(--gris-oscuro);
+      border-bottom: 1px solid var(--card-border);
     }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
     .form-row-1 { margin-bottom: 1rem; }
     @media (max-width:700px) { .form-row { grid-template-columns: 1fr; } }
 
     .f-group { display: flex; flex-direction: column; gap: 0.4rem; }
-    .f-group label { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris-claro); }
+    .f-group label { font-size: 0.65rem; font-weight:600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gris-claro); }
+    input, select { border-radius: 8px !important; font-family:'Inter',sans-serif; background:rgba(255,255,255,0.04) !important; border:1px solid rgba(255,255,255,0.1) !important; }
+    input:focus, select:focus { outline:none; border-color:var(--dorado) !important; }
+    .btn, .btn-dorado { border-radius:8px !important; font-family:'Inter',sans-serif !important; font-weight:600 !important; }
 
-    .alerta { padding: 0.8rem 1rem; font-size: 0.75rem; margin-bottom: 1.2rem; display: none; }
-    .alerta-ok  { background: rgba(39,174,96,.08);  border-left: 3px solid #27ae60; color: #27ae60; }
-    .alerta-err { background: rgba(192,57,43,.08); border-left: 3px solid #c0392b; color: #c0392b; }
+    .alerta { padding: 0.8rem 1rem; font-size: 0.75rem; margin-bottom: 1.2rem; display: none; border-radius: 8px; }
+    .alerta-ok  { background: rgba(39,174,96,.08);  border: 1px solid rgba(39,174,96,.2); color: #5ec98a; }
+    .alerta-err { background: rgba(192,57,43,.08); border: 1px solid rgba(192,57,43,.2); color: #e07070; }
 
     /* Lista de usuarios */
+    .usr-lista-wrap {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      padding: 1.5rem 2rem 2rem;
+    }
     .usr-lista-titulo {
-      font-size: 0.65rem;
-      font-weight: 600;
-      letter-spacing: 0.25em;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: var(--dorado);
+      color: var(--gris-claro);
       margin-bottom: 1.2rem;
       padding-bottom: 0.8rem;
-      border-bottom: 1px solid var(--gris-oscuro);
+      border-bottom: 1px solid var(--card-border);
     }
     .tabla-usuarios th { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gris-claro); }
     .tabla-usuarios td { font-size: 0.82rem; vertical-align: middle; padding: 0.8rem 1rem; }
-    .tabla-usuarios tr:hover td { background: rgba(255,255,255,.03); }
+    .tabla-usuarios tr:hover td { background: rgba(215,111,63,.04); }
 
     .rol-badge {
       display: inline-block;
-      padding: 0.15rem 0.55rem;
-      border-radius: 2px;
-      font-size: 0.65rem;
+      padding: 0.18rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.6rem;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 600;
+      letter-spacing: 0.06em;
+      font-weight: 700;
     }
-    .rol-admin  { background: rgba(215,111,63,.15); color: var(--dorado); }
+    .rol-admin  { background: rgba(215,111,63,.15); color: var(--accent); }
     .rol-agente { background: rgba(100,149,237,.15); color: #6495ed; }
     .rol-sin    { background: rgba(150,150,150,.1);  color: var(--gris-claro); }
 
@@ -67,7 +82,7 @@
 
     .btn-tbl {
       background: none;
-      border: 1px solid var(--gris-oscuro);
+      border: 1px solid var(--card-border);
       color: var(--gris-claro);
       padding: 0.25rem 0.6rem;
       cursor: pointer;
@@ -186,22 +201,24 @@
     </div>
 
     <!-- ── LISTA DE USUARIOS ──────────────────────────── -->
-    <div class="usr-lista-titulo">Usuarios activos</div>
-    <div class="tabla-wrapper">
-      <table class="tabla-admin tabla-usuarios" style="width:100%;">
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>Rol</th>
-            <th>Canal</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyUsuarios">
-          <tr><td colspan="5"><div class="empty-state">Cargando usuarios…</div></td></tr>
-        </tbody>
-      </table>
+    <div class="usr-lista-wrap">
+      <div class="usr-lista-titulo">Usuarios activos</div>
+      <div style="overflow-x:auto;">
+        <table class="tabla-admin tabla-usuarios" style="width:100%;">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Canal</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyUsuarios">
+            <tr><td colspan="5"><div class="empty-state">Cargando usuarios…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
   </main>
