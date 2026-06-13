@@ -61,27 +61,38 @@
     .sec-link { font-size: 0.7rem; color: var(--accent); text-decoration: none; font-weight: 600; }
     .sec-link:hover { text-decoration: underline; }
 
-    /* Últimas consultas — filas card */
+    /* Últimas consultas — cards estilo contactos */
     .mini-lead {
-      background: var(--card-bg); border: 1px solid var(--card-border); border-left: 3px solid transparent;
-      border-radius: 12px; padding: 0.8rem 1.1rem; margin-bottom: 0.5rem;
-      display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
-      transition: border-color .18s; text-decoration: none;
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 1.2rem 1.5rem; margin-bottom: 0.7rem;
+      transition: border-color .2s; text-decoration: none; display: block;
     }
-    .mini-lead:hover { border-color: rgba(215,111,63,.3); }
-    .mini-lead.nueva { border-left-color: var(--accent); }
-    .ml-nombre { font-size: 0.85rem; font-weight: 600; color: var(--blanco); min-width: 120px; }
-    .ml-msg { font-size: 0.75rem; color: var(--gris-claro); flex: 1; min-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mini-lead:hover { border-color: rgba(255,255,255,0.16); }
+    .ml-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .ml-id { display: flex; align-items: center; gap: 0.6rem; }
+    .ml-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blanco); flex-shrink: 0; opacity: 0.7; }
+    .ml-nombre { font-size: 0.95rem; font-weight: 600; color: var(--blanco); letter-spacing: -0.01em; }
     .ml-fecha { font-size: 0.68rem; color: var(--gris-claro); }
-    .badge {
-      display: inline-flex; align-items: center; padding: 0.16rem 0.55rem; border-radius: 999px;
-      font-size: 0.58rem; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap;
+    .ml-meta {
+      display: flex; gap: 0.4rem 0.6rem; flex-wrap: wrap; align-items: center;
+      margin-top: 0.55rem;
     }
-    .badge-canal   { background: rgba(215,111,63,.13);  color: var(--accent); }
-    .badge-qr      { background: rgba(80,200,120,.13);  color: var(--c-verde); }
-    .badge-link    { background: rgba(100,149,237,.13); color: var(--c-azul); }
-    .badge-directo { background: rgba(150,150,150,.12); color: var(--gris-claro); }
-    .badge-nueva   { background: rgba(215,111,63,.13);  color: var(--accent); }
+    .ml-msg {
+      font-size: 0.82rem; color: #b8b5af; line-height: 1.65;
+      margin-top: 0.75rem;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.28rem 0.75rem; border-radius: 999px;
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.03em; white-space: nowrap;
+    }
+    .badge-canal   { background: rgba(201,168,76,.13);  color: #c9a84c; border: 1px solid rgba(201,168,76,.2); }
+    .badge-qr      { background: rgba(80,200,120,.12);  color: #5ec98a; border: 1px solid rgba(80,200,120,.2); }
+    .badge-link    { background: rgba(100,149,237,.12); color: #7aa8ed; border: 1px solid rgba(100,149,237,.2); }
+    .badge-directo { background: rgba(150,150,150,.1);  color: #888; border: 1px solid rgba(255,255,255,.08); }
+    .badge-nueva   { background: rgba(255,255,255,.08); color: var(--blanco); border: 1px solid rgba(255,255,255,.18); }
 
     /* Propiedades recientes */
     .props-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.8rem; padding-bottom: 2rem; }
@@ -349,19 +360,30 @@ async function cargar() {
     ? '<div class="empty-state">Sin consultas todavía.</div>'
     : ult.map(l => {
         const canal = canalDe(l)
-        const origen = l.canal_ref
-          ? (l.canal_via === 'qr' ? '<span class="badge badge-qr">▣ QR</span>' : '<span class="badge badge-link">🔗 Link</span>')
-          : '<span class="badge badge-directo">Directo</span>'
-        const fecha = new Date(l.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
         const esNueva = (l.estado || 'nueva') === 'nueva'
+        const fecha = new Date(l.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
+        const origenBadge = l.canal_ref
+          ? (l.canal_via === 'qr'
+              ? '<span class="badge badge-qr">▣ QR</span>'
+              : '<span class="badge badge-link">🔗 Link</span>')
+          : '<span class="badge badge-directo">Directo</span>'
+        const proyecto = l.propiedades?.titulo || l.proyecto_slug || ''
         return `
-        <a href="contactos.html" class="mini-lead ${esNueva ? 'nueva' : ''}">
-          <span class="ml-nombre">${esc(l.nombre) || '—'}</span>
-          ${canal ? `<span class="badge badge-canal">${esc(canal)}</span>` : ''}
-          ${origen}
-          ${esNueva ? '<span class="badge badge-nueva">Nueva</span>' : ''}
-          <span class="ml-msg">${esc(l.mensaje || '')}</span>
-          <span class="ml-fecha">${fecha}</span>
+        <a href="contactos.html" class="mini-lead">
+          <div class="ml-head">
+            <div class="ml-id">
+              ${esNueva ? '<span class="ml-dot"></span>' : ''}
+              <span class="ml-nombre">${esc(l.nombre) || '—'}</span>
+              ${esNueva ? '<span class="badge badge-nueva">Nueva</span>' : ''}
+            </div>
+            <span class="ml-fecha">${fecha}</span>
+          </div>
+          <div class="ml-meta">
+            ${canal ? `<span class="badge badge-canal">${esc(canal)}</span>` : ''}
+            ${origenBadge}
+            ${proyecto ? `<span>· ${esc(proyecto)}</span>` : ''}
+          </div>
+          ${l.mensaje ? `<div class="ml-msg">${esc(l.mensaje)}</div>` : ''}
         </a>`
       }).join('')
 
