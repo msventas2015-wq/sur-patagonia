@@ -342,7 +342,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
 
@@ -560,13 +560,19 @@ async function cargarGeoArgentina() {
     () => d3.json('https://simplemaps.com/static/svg/country/ar/admin1/ar.json'),
     async () => {
       const world = await d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-      const arg = topojson.feature(world, world.objects.countries).features
-        .find(f => (f.properties?.name || '') === 'Argentina')
+      const feats = topojson.feature(world, world.objects.countries).features
+      // Argentina = código ISO numérico 32 en el atlas mundial (el nombre puede no venir)
+      const arg = feats.find(f => String(f.id) === '32' || String(f.id) === '032'
+        || (f.properties?.name || '') === 'Argentina')
+      if (!arg) throw new Error('Argentina no encontrada en el atlas')
       return { type: 'FeatureCollection', features: [arg] }
     },
   ]
   for (const fn of intentos) {
-    try { const g = await fn(); if (g?.features?.length && g.features[0]) return g } catch (e) {}
+    try {
+      const g = await fn()
+      if (g?.features?.length && g.features[0]) return g
+    } catch (e) { console.warn('[mapa] fuente falló:', e?.message || e) }
   }
   throw new Error('sin fuente de mapa')
 }
