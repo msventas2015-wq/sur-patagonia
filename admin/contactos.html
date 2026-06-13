@@ -380,6 +380,7 @@
           <button data-v="link">Link</button>
           <button data-v="directo">Directas</button>
         </div>
+        <select id="lstCanal" class="admin-input slim"><option value="">Todos los canales</option></select>
         <select id="lstRef" class="admin-input slim"><option value="">Todos los QRs</option></select>
         <select id="lstEstado" class="admin-input slim">
           <option value="">Todos los estados</option>
@@ -429,7 +430,7 @@ let _metaCanal = {}              // nombre de canal → { ciudad, provincia, lat
 let _proyGeo = {}                // nombre de proyecto → { lat, lng }
 let _mapProj = null              // proyección geográfica (cuando carga el geojson)
 // Filtros y orden propios de la LISTA (encima de los filtros globales)
-let _lstOrigen = '', _lstRef = '', _lstEstado = '', _lstOrden = 'recientes'
+let _lstOrigen = '', _lstCanal = '', _lstRef = '', _lstEstado = '', _lstOrden = 'recientes'
 
 // ── Carga de datos ────────────────────────────────────────
 async function cargarTodo() {
@@ -507,6 +508,8 @@ function poblarFiltros() {
   const refs = [...new Set(_leads.filter(l => l.canal_ref).map(l => l.canal_ref))].sort()
   $('lstRef').innerHTML = '<option value="">Todos los QRs</option>'
     + refs.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')
+  $('lstCanal').innerHTML = '<option value="">Todos los canales</option>'
+    + canales.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
 }
 
 function filtrosFecha() {
@@ -961,6 +964,7 @@ function renderLista(rows) {
   // Filtros de la lista, encima de los globales
   let lst = rows.filter(l =>
     (!_lstOrigen || l._origen === _lstOrigen) &&
+    (!_lstCanal  || l._canal === _lstCanal) &&
     (!_lstRef    || l.canal_ref === _lstRef) &&
     (!_lstEstado || l._estado === _lstEstado)
   )
@@ -1035,7 +1039,8 @@ $('segOrigen').querySelectorAll('button').forEach(b => {
     renderLista(filtrar())
   })
 })
-;['lstRef','lstEstado','lstOrden'].forEach(id => $(id).addEventListener('change', () => {
+;['lstCanal','lstRef','lstEstado','lstOrden'].forEach(id => $(id).addEventListener('change', () => {
+  _lstCanal  = $('lstCanal').value
   _lstRef    = $('lstRef').value
   _lstEstado = $('lstEstado').value
   _lstOrden  = $('lstOrden').value
