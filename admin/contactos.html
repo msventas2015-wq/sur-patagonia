@@ -153,6 +153,9 @@
     .empty-state { text-align: center; padding: 4rem; color: var(--gris-claro); font-size: 0.85rem; }
     .resultados-info { font-size: 0.7rem; color: var(--gris-claro); margin-bottom: 0.7rem; }
     .ref-mono { font-family: monospace; font-size: 0.6rem; color: var(--gris-claro); }
+    /* Mapa: provincias con hover cálido estilo Sur Patagonia */
+    .prov-path { transition: fill .25s; cursor: default; }
+    .prov-path:hover { fill: #271b10; filter: drop-shadow(0 0 6px rgba(215,111,63,0.45)); }
   </style>
 </head>
 <body>
@@ -432,7 +435,8 @@ async function cargarTodo() {
 
 // ── Filtros ───────────────────────────────────────────────
 function poblarFiltros() {
-  const canales = [...new Set(_leads.filter(l => l._canal).map(l => l._canal))].sort()
+  // Todos los canales existentes (tengan o no consultas todavía)
+  const canales = [...new Set([...Object.keys(_metaCanal), ..._leads.filter(l => l._canal).map(l => l._canal)])].sort()
   $('fCanal').innerHTML = '<option value="">Todos</option><option value="__directo__">— Solo directas —</option>'
     + canales.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
   const proyectos = [...new Set(_leads.filter(l => l._proyecto).map(l => l._proyecto))].sort()
@@ -584,11 +588,15 @@ cargarGeoArgentina()
     const svg = d3.select('#mapaSvg')
     const gProv = svg.append('g').attr('id', 'gProv')
     geojson.features.forEach(f => {
+      const nombreProv = f.properties?.name || ''
       gProv.append('path')
         .attr('d', pathGen(f))
-        .attr('fill', '#1d1b18')
-        .attr('stroke', 'rgba(255,255,255,0.08)')
-        .attr('stroke-width', 0.6)
+        .attr('class', 'prov-path')
+        .attr('fill', '#1a1511')
+        .attr('stroke', 'rgba(215,111,63,0.28)')
+        .attr('stroke-width', 0.7)
+        .on('mousemove', evt => { if (nombreProv) tipMapa(`<b>${nombreProv}</b>`, evt) })
+        .on('mouseleave', () => tipMapa(null))
     })
     svg.append('g').attr('id', 'gFlujos')
     svg.append('g').attr('id', 'gProy')
