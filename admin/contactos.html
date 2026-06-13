@@ -342,6 +342,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson.min.js"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
 
@@ -551,8 +552,26 @@ function render() {
 // canal → proyecto con grosor según cantidad de consultas.
 const MAPA_W = 500, MAPA_H = 980
 
-d3.json('https://simplemaps.com/static/svg/country/ar/admin1/ar.json')
-  .catch(() => d3.json('https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/argentina-states.geojson'))
+// Carga del contorno con 3 fuentes en cadena. La última (jsDelivr)
+// siempre funciona: silueta de Argentina desde el atlas mundial.
+async function cargarGeoArgentina() {
+  const intentos = [
+    () => d3.json('/js/argentina.json'),  // si está alojado en el propio sitio (provincias)
+    () => d3.json('https://simplemaps.com/static/svg/country/ar/admin1/ar.json'),
+    async () => {
+      const world = await d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+      const arg = topojson.feature(world, world.objects.countries).features
+        .find(f => (f.properties?.name || '') === 'Argentina')
+      return { type: 'FeatureCollection', features: [arg] }
+    },
+  ]
+  for (const fn of intentos) {
+    try { const g = await fn(); if (g?.features?.length && g.features[0]) return g } catch (e) {}
+  }
+  throw new Error('sin fuente de mapa')
+}
+
+cargarGeoArgentina()
   .then(geojson => {
     _mapProj = d3.geoMercator().fitSize([MAPA_W, MAPA_H], geojson)
     const pathGen = d3.geoPath().projection(_mapProj)
