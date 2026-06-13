@@ -310,6 +310,15 @@
       <h4>Mapa territorial
         <span style="font-weight:400; letter-spacing:0; text-transform:none;">● canal (tamaño = consultas) · ◇ proyecto · líneas = flujo origen → destino</span>
       </h4>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap; font-size:0.64rem; color:var(--gris-claro); margin-bottom:0.6rem;">
+        <span><span style="color:#6495ed;">●</span> Inmobiliaria</span>
+        <span><span style="color:#d76f3f;">●</span> Vendedor particular</span>
+        <span><span style="color:#50c878;">●</span> Punto de venta</span>
+        <span><span style="color:#b464dc;">●</span> Campaña</span>
+        <span><span style="color:#ffc832;">●</span> Evento</span>
+        <span><span style="color:#f0ede8;">◇</span> Proyecto</span>
+        <span><span style="color:#d76f3f;">─</span> Flujo canal → proyecto</span>
+      </div>
       <div id="mapaWrap" style="position:relative; display:flex; justify-content:center;">
         <svg id="mapaSvg" viewBox="0 0 500 980" style="height:540px; max-width:100%;"></svg>
         <div id="mapaTip" style="position:absolute; pointer-events:none; background:#0d0c0b; border:1px solid var(--card-border); border-radius:8px; padding:0.45rem 0.7rem; font-size:0.68rem; color:var(--blanco); opacity:0; transition:opacity .15s; z-index:10; white-space:nowrap;"></div>
@@ -392,7 +401,7 @@ async function cargarTodo() {
   ;(rCanales.data || []).forEach(c => {
     canalPorId[c.id] = c.nombre
     metaCanal[c.nombre] = { ciudad: c.ciudad || null, provincia: c.provincia || null,
-                            lat: c.latitud ?? null, lng: c.longitud ?? null }
+                            lat: c.latitud ?? null, lng: c.longitud ?? null, tipo: c.tipo || null }
   })
   _metaCanal = metaCanal
 
@@ -653,35 +662,48 @@ function renderMapa(rows) {
       .on('mouseleave', () => tipMapa(null))
   })
 
-  // Proyectos (rombos verdes)
+  // Proyectos (rombos color hueso)
   Object.entries(_proyGeo).forEach(([nombre, geo]) => {
     const [x, y] = _mapProj([geo.lng, geo.lat])
     const n = porProy[nombre] || 0
     gP.append('rect')
       .attr('x', -5).attr('y', -5).attr('width', 10).attr('height', 10)
       .attr('transform', `translate(${x},${y}) rotate(45)`)
-      .attr('fill', 'rgba(80,200,120,0.25)')
-      .attr('stroke', '#50c878')
+      .attr('fill', 'rgba(240,237,232,0.18)')
+      .attr('stroke', '#f0ede8')
       .attr('stroke-width', 1.6)
       .style('cursor', 'default')
       .on('mousemove', evt => tipMapa(`◇ <b>${nombre}</b><br>${n} consulta${n === 1 ? '' : 's'} recibida${n === 1 ? '' : 's'}`, evt))
       .on('mouseleave', () => tipMapa(null))
   })
 
-  // Canales (círculos dorados, tamaño según consultas)
+  // Canales: círculos coloreados por TIPO de canal, tamaño según consultas
+  const COLOR_TIPO = {
+    inmobiliaria: '#6495ed', particular: '#d76f3f', punto_venta: '#50c878',
+    'campaña': '#b464dc', evento: '#ffc832',
+  }
+  const LABEL_TIPO = {
+    inmobiliaria: 'Inmobiliaria', particular: 'Vendedor particular', punto_venta: 'Punto de venta',
+    'campaña': 'Campaña', evento: 'Evento',
+  }
   let sinCoords = []
   Object.entries(_metaCanal).forEach(([nombre, m]) => {
     const n = porCanal[nombre] || 0
-    if (m.lat == null || m.lng == null) { if (n > 0 || true) sinCoords.push(nombre); return }
+    if (m.lat == null || m.lng == null) { sinCoords.push(nombre); return }
     const [x, y] = _mapProj([m.lng, m.lat])
     const r = n > 0 ? Math.min(5 + Math.sqrt(n) * 3.5, 17) : 3.5
+    const col = COLOR_TIPO[m.tipo] || '#9aa0a6'
     gC.append('circle')
       .attr('cx', x).attr('cy', y).attr('r', r)
-      .attr('fill', n > 0 ? 'rgba(215,111,63,0.8)' : 'rgba(150,150,150,0.5)')
+      .attr('fill', col)
+      .attr('fill-opacity', n > 0 ? 0.85 : 0.4)
       .attr('stroke', 'rgba(255,255,255,0.55)')
       .attr('stroke-width', 1)
       .style('cursor', 'default')
-      .on('mousemove', evt => tipMapa(`● <b>${nombre}</b>${m.ciudad ? '<br>📍 ' + m.ciudad + (m.provincia ? ', ' + m.provincia : '') : ''}<br>${n} consulta${n === 1 ? '' : 's'} generada${n === 1 ? '' : 's'}`, evt))
+      .on('mousemove', evt => tipMapa(
+        `● <b>${nombre}</b> · ${LABEL_TIPO[m.tipo] || m.tipo || 'Canal'}` +
+        `${m.ciudad ? '<br>📍 ' + m.ciudad + (m.provincia ? ', ' + m.provincia : '') : ''}` +
+        `<br>${n} consulta${n === 1 ? '' : 's'} generada${n === 1 ? '' : 's'}`, evt))
       .on('mouseleave', () => tipMapa(null))
   })
 
