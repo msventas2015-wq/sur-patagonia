@@ -76,13 +76,25 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         Consultas
       </a>
+      <a href="crm.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
+        CRM
+      </a>
       <a href="canales.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         Canales
       </a>
+      <a       <a href="campanas.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Campañas
+      </a>
       <a href="tour360.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>
         Tour 360°
+      </a>
+      <a href="trafico.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Tráfico
       </a>
       <a href="apariencia.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
@@ -164,6 +176,32 @@
           <div class="form-grupo form-full">
             <label>Descripción</label>
             <textarea id="descripcion" rows="5" placeholder="Describí la propiedad con todos sus detalles..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); padding:2rem; margin-bottom:1.5rem;">
+        <h4 style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dorado); margin-bottom:1.5rem;">Financiación</h4>
+        <div class="form-grid">
+          <div class="form-grupo" style="flex-direction:row; align-items:center; gap:0.8rem;">
+            <input type="checkbox" id="financiacion" style="width:18px;height:18px;" />
+            <label for="financiacion" style="font-size:0.85rem; text-transform:none; letter-spacing:0; color:var(--blanco); cursor:pointer;">Acepta financiación en cuotas</label>
+          </div>
+          <div class="form-grupo" style="flex-direction:row; align-items:center; gap:0.8rem;">
+            <input type="checkbox" id="aceptaVehiculo" style="width:18px;height:18px;" />
+            <label for="aceptaVehiculo" style="font-size:0.85rem; text-transform:none; letter-spacing:0; color:var(--blanco); cursor:pointer;">Acepta vehículo como parte de pago</label>
+          </div>
+          <div class="form-grupo" id="grupoFinanciacion" style="display:none;">
+            <label>Adelanto mínimo (USD)</label>
+            <input type="number" id="adelantoMinimo" placeholder="Ej: 10000" min="0" />
+          </div>
+          <div class="form-grupo" id="grupoCuota" style="display:none;">
+            <label>Cuota mínima mensual (USD)</label>
+            <input type="number" id="cuotaMinima" placeholder="Ej: 500" min="0" />
+          </div>
+          <div class="form-grupo" id="grupoCantidad" style="display:none;">
+            <label>Cantidad de cuotas</label>
+            <input type="number" id="cuotasCantidad" placeholder="Ej: 24" min="1" />
           </div>
         </div>
       </div>
@@ -476,6 +514,15 @@
   })
   inputImagenes.addEventListener('change', () => agregarArchivos(inputImagenes.files))
 
+  // ── Financiación: toggle campos ──────────────────────────────
+  function toggleFinanciacion(activa) {
+    const display = activa ? 'block' : 'none'
+    document.getElementById('grupoFinanciacion').style.display = display
+    document.getElementById('grupoCuota').style.display = display
+    document.getElementById('grupoCantidad').style.display = display
+  }
+  document.getElementById('financiacion').addEventListener('change', e => toggleFinanciacion(e.target.checked))
+
   // ── YouTube: extraer y normalizar ID ──────────────────────────
   function extraerYtId(input) {
     if (!input) return null
@@ -648,6 +695,12 @@
       })
       document.getElementById('destacada').checked = data.destacada || false
       document.getElementById('activa').checked = data.activa !== false
+      document.getElementById('financiacion').checked = data.financiacion || false
+      document.getElementById('aceptaVehiculo').checked = data.acepta_vehiculo || false
+      document.getElementById('adelantoMinimo').value = data.adelanto_minimo || ''
+      document.getElementById('cuotaMinima').value = data.cuota_minima || ''
+      document.getElementById('cuotasCantidad').value = data.cuotas_cantidad || ''
+      toggleFinanciacion(data.financiacion || false)
 
       // Cargar tour 360 existente
       if (data.tour_360) {
@@ -734,6 +787,11 @@
         antiguedad: document.getElementById('antiguedad').value || null,
         condicion: document.getElementById('condicion').value || null,
         apto_credito: document.getElementById('apto_credito').checked,
+        financiacion: document.getElementById('financiacion').checked,
+        acepta_vehiculo: document.getElementById('aceptaVehiculo').checked,
+        adelanto_minimo: document.getElementById('adelantoMinimo').value || null,
+        cuota_minima: document.getElementById('cuotaMinima').value || null,
+        cuotas_cantidad: document.getElementById('cuotasCantidad').value || null,
         latitud: (() => { const v = parseFloat(document.getElementById('latitud').value); return (!isNaN(v) && v >= -90 && v <= 90) ? v : null })(),
         longitud: (() => { const v = parseFloat(document.getElementById('longitud').value); return (!isNaN(v) && v >= -180 && v <= 180) ? v : null })(),
         video_url: extraerYtId(document.getElementById('video_url').value) || null,

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRM — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris:#888; --blanco:#f5f3f0; }
+    html, body { overflow-x: visible !important; }
+    .admin-main { font-family:'Inter',system-ui,sans-serif; max-width:none; padding:0; overflow-x:auto; }
+
+    /* ── Header ── */
+    .crm-header { padding:1.5rem 1.5rem 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
+    .crm-header h2 { font-weight:300; margin:0; }
+    .crm-kpis { display:flex; gap:0.6rem; flex-wrap:wrap; }
+    .crm-kpi { background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:0.5rem 1rem; font-size:0.7rem; color:var(--gris); }
+    .crm-kpi strong { display:block; font-size:1.1rem; font-weight:700; color:var(--blanco); }
+
+    /* ── Board ── */
+    .crm-board {
+      display:flex; gap:0.8rem; padding:1.2rem 1.5rem 2rem;
+      overflow-x:auto; min-height:calc(100vh - 160px);
+      scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.1) transparent;
+    }
+
+    /* ── Columna ── */
+    .crm-col {
+      flex:0 0 260px; min-width:260px;
+      background:rgba(255,255,255,0.02);
+      border:1px solid var(--card-border);
+      border-radius:var(--card-radius);
+      display:flex; flex-direction:column;
+    }
+    .crm-col-head {
+      padding:0.9rem 1rem 0.7rem;
+      border-bottom:1px solid var(--card-border);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .crm-col-title { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; }
+    .crm-col-count { font-size:0.65rem; font-weight:600; background:rgba(255,255,255,0.07); color:var(--gris); padding:0.15rem 0.5rem; border-radius:999px; }
+    .crm-col-body { flex:1; padding:0.6rem; display:flex; flex-direction:column; gap:0.5rem; min-height:80px; }
+    .crm-col-body.drag-over { background:rgba(215,111,63,0.06); border-radius:8px; }
+
+    /* ── Card ── */
+    .crm-card {
+      background:var(--card-bg); border:1px solid var(--card-border);
+      border-radius:10px; padding:0.8rem 0.9rem;
+      cursor:grab; user-select:none;
+      transition:box-shadow .15s, border-color .15s;
+      position:relative;
+    }
+    .crm-card:hover { border-color:rgba(255,255,255,0.15); }
+    .crm-card.dragging { opacity:0.4; cursor:grabbing; }
+    .crm-card-nombre { font-size:0.82rem; font-weight:600; color:var(--blanco); margin-bottom:0.25rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .crm-card-prop { font-size:0.68rem; color:var(--accent); margin-bottom:0.35rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .crm-card-msg { font-size:0.68rem; color:rgba(255,255,255,0.4); line-height:1.4; margin-bottom:0.5rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .crm-card-footer { display:flex; align-items:center; justify-content:space-between; }
+    .crm-card-fecha { font-size:0.6rem; color:var(--gris); }
+    .crm-card-actions { display:flex; gap:0.3rem; }
+    .crm-card-btn { font-size:0.6rem; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:none; color:var(--gris); cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; }
+    .crm-card-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .crm-card-canal { font-size:0.6rem; color:var(--gris); background:rgba(255,255,255,0.04); border-radius:4px; padding:0.15rem 0.4rem; display:inline-block; margin-bottom:0.35rem; }
+    .crm-card-nueva::after { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--accent); border-radius:10px 0 0 10px; }
+    .crm-badge-vehiculo { font-size:0.55rem; background:rgba(74,208,196,0.1); color:#4ad0c4; border:1px solid rgba(74,208,196,0.2); border-radius:4px; padding:0.1rem 0.4rem; margin-left:0.3rem; }
+
+    /* Colores por columna */
+    .col-nueva    .crm-col-title { color:#d76f3f; }
+    .col-contactado .crm-col-title { color:#c9a84c; }
+    .col-visita   .crm-col-title { color:#8b8fff; }
+    .col-oferta   .crm-col-title { color:#4ad0c4; }
+    .col-cerrado  .crm-col-title { color:#4caf77; }
+    .col-descartado .crm-col-title { color:#666; }
+
+    /* ── Modal detalle ── */
+    .crm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center; }
+    .crm-overlay.open { display:flex; }
+    .crm-modal { background:#1a1814; border:1px solid var(--card-border); border-radius:var(--card-radius); padding:1.8rem; width:90%; max-width:480px; max-height:90vh; overflow-y:auto; }
+    .crm-modal h3 { font-size:1rem; font-weight:600; color:var(--blanco); margin-bottom:1.2rem; }
+    .crm-modal-row { display:flex; justify-content:space-between; align-items:flex-start; padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.75rem; }
+    .crm-modal-label { color:var(--gris); flex-shrink:0; width:110px; }
+    .crm-modal-val { color:var(--blanco); text-align:right; flex:1; word-break:break-word; }
+    .crm-modal-msg { padding:0.8rem; background:rgba(255,255,255,0.03); border-radius:8px; font-size:0.75rem; color:rgba(255,255,255,0.7); line-height:1.6; margin:0.8rem 0; }
+    .crm-modal-actions { display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1.2rem; }
+    .crm-modal-actions a { flex:1; text-align:center; padding:0.6rem; border-radius:8px; font-size:0.72rem; font-weight:600; text-decoration:none; }
+    .btn-wsp { background:rgba(37,211,102,0.1); color:#25d366; border:1px solid rgba(37,211,102,0.25); }
+    .btn-mail { background:rgba(215,111,63,0.1); color:var(--accent); border:1px solid rgba(215,111,63,0.25); }
+    .crm-modal-close { float:right; background:none; border:none; color:var(--gris); font-size:1.2rem; cursor:pointer; }
+
+    /* Etapa select en modal */
+    .crm-etapa-select { width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.78rem; margin-top:0.8rem; }
+
+    /* ── Nota ── */
+    .crm-nota-wrap { margin-top:0.8rem; }
+    .crm-nota-input { width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.75rem; resize:vertical; min-height:60px; box-sizing:border-box; }
+    .crm-nota-save { margin-top:0.4rem; padding:0.4rem 1rem; background:var(--accent); color:#fff; border:none; border-radius:6px; font-size:0.72rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
+
+    /* spinner */
+    .sp { width:24px; height:24px; border:2px solid rgba(255,255,255,0.1); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin:2rem auto; }
+    @keyframes spin{to{transform:rotate(360deg);}}
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="nueva-propiedad.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nueva propiedad
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+      <a href="crm.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
+        CRM
+      </a>
+      <a href="canales.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Canales
+      </a>
+      <a       <a href="campanas.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Campañas
+      </a>
+      <a href="tour360.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>
+        Tour 360°
+      </a>
+      <a href="trafico.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Tráfico
+      </a>
+      <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
+      <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        Apariencia
+      </a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Generar PDF
+      </a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+
+    <!-- Header + KPIs -->
+    <div class="crm-header">
+      <div>
+        <h2 style="font-weight:300;">Pipeline CRM</h2>
+        <p style="font-size:0.78rem; color:var(--gris); margin-top:0.2rem;">Arrastrá los leads entre columnas para actualizar su etapa</p>
+      </div>
+      <div class="crm-kpis" id="crmKpis"><div class="sp"></div></div>
+    </div>
+
+    <!-- Board -->
+    <div class="crm-board" id="crmBoard">
+      <div style="margin:auto; color:var(--gris); font-size:0.8rem;">Cargando leads...</div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal detalle -->
+<div class="crm-overlay" id="crmOverlay">
+  <div class="crm-modal">
+    <button class="crm-modal-close" id="crmModalClose">✕</button>
+    <h3 id="modalNombre">—</h3>
+    <div id="modalRows"></div>
+    <div class="crm-modal-msg" id="modalMensaje" style="display:none;"></div>
+    <select class="crm-etapa-select" id="modalEtapa"></select>
+    <div class="crm-nota-wrap">
+      <textarea class="crm-nota-input" id="modalNota" placeholder="Notas internas sobre este lead..."></textarea>
+      <button class="crm-nota-save" id="modalNotaSave">Guardar nota</button>
+    </div>
+    <div class="crm-modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<script type="module">
+import { supabase } from '../js/config.js'
+
+// ── Auth ──
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html' }
+document.getElementById('btnLogout').addEventListener('click', async e => {
+  e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
+})
+
+function esc(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '' }
+
+// ── Etapas del pipeline ──
+const ETAPAS = [
+  { id: 'nueva',      label: 'Nuevo lead',         clase: 'col-nueva' },
+  { id: 'contactado', label: 'Contactado',          clase: 'col-contactado' },
+  { id: 'visita',     label: 'Visita coordinada',   clase: 'col-visita' },
+  { id: 'oferta',     label: 'Oferta enviada',      clase: 'col-oferta' },
+  { id: 'cerrado',    label: 'Cerrado ✓',           clase: 'col-cerrado' },
+  { id: 'descartado', label: 'Descartado',          clase: 'col-descartado' }
+]
+
+let _leads = []
+let _dragged = null
+let _modalId = null
+
+// ── Cargar leads ──
+async function cargar() {
+  const { data, error } = await supabase
+    .from('contactos')
+    .select('*, propiedades(id, titulo)')
+    .order('created_at', { ascending: false })
+
+  if (error || !data) return
+  _leads = data.map(l => ({
+    ...l,
+    _propTitulo: l.propiedades?.titulo || null,
+    estado: l.estado || 'nueva'
+  }))
+
+  renderKpis()
+  renderBoard()
+}
+
+// ── KPIs ──
+function renderKpis() {
+  const total   = _leads.length
+  const nuevos  = _leads.filter(l => l.estado === 'nueva').length
+  const cerrados = _leads.filter(l => l.estado === 'cerrado').length
+  const tasa    = total > 0 ? ((cerrados / total) * 100).toFixed(0) : 0
+  document.getElementById('crmKpis').innerHTML = `
+    <div class="crm-kpi"><strong>${total}</strong>Total leads</div>
+    <div class="crm-kpi"><strong style="color:#d76f3f">${nuevos}</strong>Sin contactar</div>
+    <div class="crm-kpi"><strong style="color:#4caf77">${cerrados}</strong>Cerrados</div>
+    <div class="crm-kpi"><strong>${tasa}%</strong>Tasa cierre</div>
+  `
+}
+
+// ── Board ──
+function renderBoard() {
+  const board = document.getElementById('crmBoard')
+  board.innerHTML = ETAPAS.map(etapa => {
+    const leads = _leads.filter(l => (l.estado || 'nueva') === etapa.id)
+    return `
+      <div class="crm-col ${esc(etapa.clase)}" data-etapa="${esc(etapa.id)}">
+        <div class="crm-col-head">
+          <span class="crm-col-title">${esc(etapa.label)}</span>
+          <span class="crm-col-count">${leads.length}</span>
+        </div>
+        <div class="crm-col-body" data-etapa="${esc(etapa.id)}">
+          ${leads.map(renderCard).join('') || '<div style="text-align:center;padding:1.5rem 0;font-size:0.7rem;color:rgba(255,255,255,0.2);">Sin leads</div>'}
+        </div>
+      </div>`
+  }).join('')
+
+  // Drag & drop
+  board.querySelectorAll('.crm-card').forEach(card => {
+    card.addEventListener('dragstart', onDragStart)
+    card.addEventListener('dragend',   onDragEnd)
+    card.addEventListener('click',     () => abrirModal(card.dataset.id))
+  })
+  board.querySelectorAll('.crm-col-body').forEach(col => {
+    col.addEventListener('dragover',  onDragOver)
+    col.addEventListener('dragleave', onDragLeave)
+    col.addEventListener('drop',      onDrop)
+  })
+}
+
+function renderCard(l) {
+  const fecha = new Date(l.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short' })
+  const esNuevo = (l.estado || 'nueva') === 'nueva' && !l.leido
+  return `
+    <div class="crm-card${esNuevo ? ' crm-card-nueva' : ''}" draggable="true" data-id="${esc(l.id)}">
+      <div class="crm-card-nombre">${esc(l.nombre) || 'Sin nombre'}</div>
+      ${l._propTitulo ? `<div class="crm-card-prop">🏠 ${esc(l._propTitulo)}</div>` : ''}
+      ${l.canal_ref ? `<div class="crm-card-canal">📎 ${esc(l.canal_ref)}${l.canal_via === 'qr' ? ' · QR' : ''}</div>` : ''}
+      ${l.mensaje ? `<div class="crm-card-msg">${esc(l.mensaje)}</div>` : ''}
+      <div class="crm-card-footer">
+        <span class="crm-card-fecha">${fecha}</span>
+        <div class="crm-card-actions">
+          ${l.telefono ? `<a class="crm-card-btn" href="https://wa.me/${(l.telefono||'').replace(/[^\d]/g,'')}" target="_blank" onclick="event.stopPropagation()">WhatsApp</a>` : ''}
+          ${l.email ? `<a class="crm-card-btn" href="mailto:${esc(l.email)}" onclick="event.stopPropagation()">Email</a>` : ''}
+        </div>
+      </div>
+    </div>`
+}
+
+// ── Drag & drop ──
+function onDragStart(e) {
+  _dragged = e.currentTarget
+  _dragged.classList.add('dragging')
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', _dragged.dataset.id)
+}
+function onDragEnd() {
+  if (_dragged) _dragged.classList.remove('dragging')
+  document.querySelectorAll('.crm-col-body').forEach(c => c.classList.remove('drag-over'))
+  _dragged = null
+}
+function onDragOver(e) {
+  e.preventDefault()
+  e.dataTransfer.dropEffect = 'move'
+  e.currentTarget.classList.add('drag-over')
+}
+function onDragLeave(e) { e.currentTarget.classList.remove('drag-over') }
+
+async function onDrop(e) {
+  e.preventDefault()
+  e.currentTarget.classList.remove('drag-over')
+  const id     = e.dataTransfer.getData('text/plain')
+  const etapa  = e.currentTarget.dataset.etapa
+  if (!id || !etapa) return
+
+  // Optimistic update
+  const lead = _leads.find(l => l.id === id)
+  if (!lead || lead.estado === etapa) return
+  lead.estado = etapa
+  lead.leido  = true
+  renderBoard()
+  renderKpis()
+
+  await supabase.from('contactos').update({ estado: etapa, leido: true }).eq('id', id)
+}
+
+// ── Modal ──
+function abrirModal(id) {
+  const l = _leads.find(l => l.id === id)
+  if (!l) return
+  _modalId = id
+
+  document.getElementById('modalNombre').textContent = l.nombre || 'Sin nombre'
+
+  const rows = [
+    ['Email',      l.email     ? `<a href="mailto:${esc(l.email)}" style="color:var(--accent)">${esc(l.email)}</a>` : '—'],
+    ['Teléfono',   l.telefono  || '—'],
+    ['Propiedad',  l._propTitulo || '—'],
+    ['Canal',      l.canal_ref ? `${esc(l.canal_ref)}${l.canal_via === 'qr' ? ' (QR)' : ' (Link)'}` : 'Directo'],
+    ['Fecha',      new Date(l.created_at).toLocaleString('es-AR')],
+  ]
+  document.getElementById('modalRows').innerHTML = rows.map(([k,v]) =>
+    `<div class="crm-modal-row"><span class="crm-modal-label">${k}</span><span class="crm-modal-val">${v}</span></div>`
+  ).join('')
+
+  const msg = document.getElementById('modalMensaje')
+  if (l.mensaje) { msg.style.display = 'block'; msg.textContent = l.mensaje }
+  else msg.style.display = 'none'
+
+  const sel = document.getElementById('modalEtapa')
+  sel.innerHTML = ETAPAS.map(e => `<option value="${e.id}" ${l.estado === e.id ? 'selected':''}>${e.label}</option>`).join('')
+  sel.onchange = async () => {
+    const nueva = sel.value
+    l.estado = nueva; l.leido = true
+    renderBoard(); renderKpis()
+    await supabase.from('contactos').update({ estado: nueva, leido: true }).eq('id', id)
+  }
+
+  document.getElementById('modalNota').value = l.notas || ''
+
+  const actions = document.getElementById('modalActions')
+  actions.innerHTML = ''
+  if (l.telefono) {
+    const a = document.createElement('a')
+    a.href = `https://wa.me/${(l.telefono||'').replace(/[^\d]/g,'')}`
+    a.target = '_blank'; a.className = 'btn-wsp'; a.textContent = '💬 WhatsApp'
+    actions.appendChild(a)
+  }
+  if (l.email) {
+    const a = document.createElement('a')
+    a.href = `mailto:${l.email}`; a.className = 'btn-mail'; a.textContent = '✉ Email'
+    actions.appendChild(a)
+  }
+
+  document.getElementById('crmOverlay').classList.add('open')
+}
+
+document.getElementById('crmModalClose').addEventListener('click', () => {
+  document.getElementById('crmOverlay').classList.remove('open')
+  _modalId = null
+})
+document.getElementById('crmOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('crmOverlay')) {
+    document.getElementById('crmOverlay').classList.remove('open')
+    _modalId = null
+  }
+})
+
+document.getElementById('modalNotaSave').addEventListener('click', async () => {
+  if (!_modalId) return
+  const nota = document.getElementById('modalNota').value
+  const lead = _leads.find(l => l.id === _modalId)
+  if (lead) lead.notas = nota
+  await supabase.from('contactos').update({ notas: nota }).eq('id', _modalId)
+  const btn = document.getElementById('modalNotaSave')
+  btn.textContent = '✓ Guardado'
+  setTimeout(() => { btn.textContent = 'Guardar nota' }, 1500)
+})
+
+cargar()
+</script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tráfico — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris-claro:#888; --blanco:#f5f3f0; }
+    .admin-main { font-family:'Inter',system-ui,sans-serif; max-width:1200px; }
+
+    /* ── Rango ── */
+    .rango-bar {
+      display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;
+      margin-bottom:1.5rem;
+    }
+    .rango-btn {
+      font-size:0.72rem; font-weight:600; padding:0.4rem 0.9rem;
+      border-radius:999px; border:1px solid var(--card-border);
+      background:none; color:var(--gris-claro);
+      font-family:'Inter',sans-serif; cursor:pointer; transition:all .18s;
+    }
+    .rango-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .rango-btn.activo { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .ga4-link {
+      margin-left:auto; font-size:0.72rem; font-weight:600;
+      color:var(--accent); text-decoration:none;
+      display:flex; align-items:center; gap:0.4rem;
+      padding:0.4rem 0.9rem; border:1px solid rgba(215,111,63,0.3);
+      border-radius:999px; transition:all .18s;
+    }
+    .ga4-link:hover { background:rgba(215,111,63,0.1); }
+
+    /* ── KPI cards ── */
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:0.8rem; margin-bottom:1.5rem; }
+    .kpi-card {
+      background:var(--card-bg); border:1px solid var(--card-border);
+      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
+    }
+    .kpi-label { font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--gris-claro); margin-bottom:0.5rem; }
+    .kpi-val { font-size:1.9rem; font-weight:700; color:var(--blanco); line-height:1; margin-bottom:0.2rem; }
+    .kpi-sub { font-size:0.68rem; color:var(--gris-claro); }
+    .kpi-sub.up { color:#4ad0c4; }
+    .kpi-sub.dn { color:#e05c5c; }
+
+    /* ── Charts row ── */
+    .charts-row { display:grid; grid-template-columns:2fr 1fr; gap:1rem; margin-bottom:1rem; }
+    @media(max-width:900px){ .charts-row{grid-template-columns:1fr;} }
+    .chart-card {
+      background:var(--card-bg); border:1px solid var(--card-border);
+      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
+    }
+    .chart-titulo { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris-claro); margin-bottom:1rem; }
+    .chart-wrap { position:relative; }
+
+    /* ── Tablas ── */
+    .tablas-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+    @media(max-width:900px){ .tablas-row{grid-template-columns:1fr;} }
+    .tabla-card {
+      background:var(--card-bg); border:1px solid var(--card-border);
+      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
+    }
+    .tabla-titulo { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris-claro); margin-bottom:0.8rem; }
+    .tabla-item {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.04);
+      font-size:0.75rem;
+    }
+    .tabla-item:last-child { border-bottom:none; }
+    .tabla-item-name { color:var(--blanco); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tabla-item-bar-wrap { width:80px; height:4px; background:rgba(255,255,255,0.07); border-radius:999px; margin:0 0.8rem; flex-shrink:0; }
+    .tabla-item-bar { height:100%; background:var(--accent); border-radius:999px; }
+    .tabla-item-val { color:var(--gris-claro); font-size:0.7rem; font-weight:600; flex-shrink:0; }
+    .tabla-empty { text-align:center; padding:2rem; color:var(--gris-claro); font-size:0.75rem; }
+
+    /* ── Conversión ── */
+    .conv-card {
+      background:var(--card-bg); border:1px solid var(--card-border);
+      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
+      margin-bottom:1rem;
+    }
+    .conv-titulo { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris-claro); margin-bottom:1rem; }
+    .conv-row { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+    .conv-step {
+      display:flex; flex-direction:column; align-items:center; gap:0.3rem;
+      background:rgba(255,255,255,0.03); border:1px solid var(--card-border);
+      border-radius:10px; padding:0.9rem 1.4rem; min-width:120px;
+    }
+    .conv-step-val { font-size:1.5rem; font-weight:700; color:var(--blanco); }
+    .conv-step-lbl { font-size:0.62rem; color:var(--gris-claro); text-transform:uppercase; letter-spacing:0.08em; }
+    .conv-arrow { color:rgba(255,255,255,0.2); font-size:1.2rem; }
+    .conv-pct { font-size:0.75rem; font-weight:700; color:#4ad0c4; }
+
+    /* ── Por canal ── */
+    .canal-card {
+      background:var(--card-bg); border:1px solid var(--card-border);
+      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
+      margin-bottom:1rem;
+    }
+    .canal-titulo { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris-claro); margin-bottom:0.8rem; }
+    .canal-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+    .canal-table th { text-align:left; color:var(--gris-claro); font-weight:600; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; padding:0 0 0.6rem; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .canal-table th:not(:first-child) { text-align:center; }
+    .canal-table td { padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--blanco); vertical-align:middle; }
+    .canal-table td:not(:first-child) { text-align:center; color:var(--gris-claro); }
+    .canal-table tr:last-child td { border-bottom:none; }
+    .canal-badge {
+      display:inline-block; font-size:0.6rem; font-weight:700; text-transform:uppercase;
+      padding:0.18rem 0.5rem; border-radius:999px; letter-spacing:0.06em;
+    }
+    .canal-badge.qr  { background:rgba(215,111,63,0.15); color:#d76f3f; border:1px solid rgba(215,111,63,0.3); }
+    .canal-badge.link { background:rgba(74,208,196,0.12); color:#4ad0c4; border:1px solid rgba(74,208,196,0.25); }
+    .canal-badge.otro { background:rgba(255,255,255,0.06); color:#888; border:1px solid rgba(255,255,255,0.1); }
+    .canal-bar-wrap { display:inline-block; width:60px; height:3px; background:rgba(255,255,255,0.07); border-radius:999px; vertical-align:middle; margin-left:0.4rem; }
+    .canal-bar { height:100%; background:var(--accent); border-radius:999px; }
+
+    /* spinner */
+    .sp { width:24px; height:24px; border:2px solid rgba(255,255,255,0.1); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin:2rem auto; }
+    @keyframes spin{to{transform:rotate(360deg);}}
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="nueva-propiedad.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nueva propiedad
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+      <a href="crm.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
+        CRM
+      </a>
+      <a href="canales.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Canales
+      </a>
+      <a       <a href="campanas.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Campañas
+      </a>
+      <a href="tour360.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>
+        Tour 360°
+      </a>
+      <a href="trafico.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Tráfico
+      </a>
+      <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
+      <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        Apariencia
+      </a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Generar PDF
+      </a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-header">
+      <div>
+        <h2 style="font-weight:300;">Tráfico</h2>
+        <p style="font-size:0.78rem; color:var(--gris-claro);">Visitas al sitio, propiedades más vistas y conversión</p>
+      </div>
+    </div>
+
+    <!-- Rango de fechas -->
+    <div class="rango-bar">
+      <button class="rango-btn activo" data-dias="7">7 días</button>
+      <button class="rango-btn" data-dias="30">30 días</button>
+      <button class="rango-btn" data-dias="90">90 días</button>
+      <a class="ga4-link" href="https://analytics.google.com/analytics/web/#/a114422610p362179544/reports/intelligenthome" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Ver en Google Analytics →
+      </a>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card"><div class="sp"></div></div>
+    </div>
+
+    <!-- Gráfico de visitas + dispositivos -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-titulo">Visitas por día</div>
+        <div class="chart-wrap" style="height:200px;">
+          <canvas id="chartVisitas"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-titulo">Dispositivos</div>
+        <div class="chart-wrap" style="height:200px;">
+          <canvas id="chartDisp"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Propiedades más vistas + fuentes -->
+    <div class="tablas-row">
+      <div class="tabla-card">
+        <div class="tabla-titulo">Propiedades más vistas</div>
+        <div id="tblProps"><div class="sp"></div></div>
+      </div>
+      <div class="tabla-card">
+        <div class="tabla-titulo">Fuentes de tráfico</div>
+        <div id="tblRefs"><div class="sp"></div></div>
+      </div>
+    </div>
+
+    <!-- Por canal -->
+    <div class="canal-card">
+      <div class="canal-titulo">Por canal y medio</div>
+      <div id="tblCanal"><div class="sp"></div></div>
+    </div>
+
+    <!-- Conversión -->
+    <div class="conv-card">
+      <div class="conv-titulo">Embudo de conversión</div>
+      <div class="conv-row" id="convRow">
+        <div class="sp"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script type="module">
+import { supabase } from '../js/config.js'
+
+// ── Auth ──
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html'; }
+document.getElementById('btnLogout').addEventListener('click', async e => {
+  e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
+})
+
+// ── Estado ──
+let _dias = 7
+let _chartVisitas = null
+let _chartDisp = null
+
+// ── Helpers ──
+function fechaDesde(dias) {
+  const d = new Date(); d.setDate(d.getDate() - dias); return d.toISOString()
+}
+function fmt(n) { return Number(n).toLocaleString('es-AR') }
+
+// ── Carga principal ──
+async function cargar() {
+  const desde = fechaDesde(_dias)
+
+  const [{ data: visitas }, { data: contactos }, { data: props }] = await Promise.all([
+    supabase.from('visitas').select('*').gte('created_at', desde),
+    supabase.from('contactos').select('id, created_at').gte('created_at', desde),
+    supabase.from('propiedades').select('id, titulo')
+  ])
+
+  const vs = visitas || []
+  const cs = contactos || []
+
+  // ── KPIs ──
+  const total = vs.length
+  const propVistas = vs.filter(v => v.pagina === 'propiedad' || v.propiedad_id).length
+  const tours = vs.filter(v => v.pagina === 'tour').length
+  const tasa = total > 0 ? ((cs.length / total) * 100).toFixed(1) : '0.0'
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Visitas totales</div>
+      <div class="kpi-val">${fmt(total)}</div>
+      <div class="kpi-sub">últimos ${_dias} días</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Visitas a propiedades</div>
+      <div class="kpi-val">${fmt(propVistas)}</div>
+      <div class="kpi-sub">${total > 0 ? ((propVistas/total)*100).toFixed(0) : 0}% del total</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Consultas recibidas</div>
+      <div class="kpi-val">${fmt(cs.length)}</div>
+      <div class="kpi-sub">en el período</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Tasa de conversión</div>
+      <div class="kpi-val">${tasa}%</div>
+      <div class="kpi-sub class="${parseFloat(tasa) >= 2 ? 'up' : ''}">visitas → consultas</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Mobile</div>
+      <div class="kpi-val">${fmt(vs.filter(v => v.dispositivo === 'mobile').length)}</div>
+      <div class="kpi-sub">${total > 0 ? ((vs.filter(v=>v.dispositivo==='mobile').length/total)*100).toFixed(0) : 0}% del tráfico</div>
+    </div>
+  `
+
+  // ── Gráfico visitas por día ──
+  const dias = []
+  const counts = []
+  for (let i = _dias - 1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i)
+    const label = d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' })
+    const key = d.toISOString().slice(0, 10)
+    dias.push(label)
+    counts.push(vs.filter(v => v.created_at?.slice(0,10) === key).length)
+  }
+
+  if (_chartVisitas) _chartVisitas.destroy()
+  _chartVisitas = new Chart(document.getElementById('chartVisitas'), {
+    type: 'line',
+    data: {
+      labels: dias,
+      datasets: [{
+        data: counts,
+        borderColor: '#d76f3f',
+        backgroundColor: 'rgba(215,111,63,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: '#d76f3f'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color:'#888', font:{size:10} }, grid: { color:'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color:'#888', font:{size:10}, precision:0 }, grid: { color:'rgba(255,255,255,0.04)' }, beginAtZero:true }
+      }
+    }
+  })
+
+  // ── Gráfico dispositivos ──
+  const mob  = vs.filter(v => v.dispositivo === 'mobile').length
+  const desk = vs.filter(v => v.dispositivo === 'desktop').length
+  const tab  = vs.filter(v => v.dispositivo === 'tablet').length
+
+  if (_chartDisp) _chartDisp.destroy()
+  _chartDisp = new Chart(document.getElementById('chartDisp'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Mobile', 'Desktop', 'Tablet'],
+      datasets: [{ data: [mob, desk, tab], backgroundColor: ['#d76f3f','#4ad0c4','#a78bfa'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'bottom', labels:{ color:'#888', font:{size:11}, padding:12 } }
+      },
+      cutout: '65%'
+    }
+  })
+
+  // ── Propiedades más vistas ──
+  const propMap = {}
+  vs.filter(v => v.propiedad_id).forEach(v => {
+    propMap[v.propiedad_id] = (propMap[v.propiedad_id] || 0) + 1
+  })
+  const propsOrdenadas = Object.entries(propMap).sort((a,b) => b[1]-a[1]).slice(0,8)
+  const propNombres = {}
+  ;(props||[]).forEach(p => propNombres[p.id] = p.titulo)
+  const maxProp = propsOrdenadas[0]?.[1] || 1
+
+  document.getElementById('tblProps').innerHTML = propsOrdenadas.length === 0
+    ? `<div class="tabla-empty">Sin datos todavía. Las visitas aparecerán aquí en las próximas horas.</div>`
+    : propsOrdenadas.map(([id, n]) => `
+        <div class="tabla-item">
+          <div class="tabla-item-name">${propNombres[id] || id.slice(0,8)}</div>
+          <div class="tabla-item-bar-wrap"><div class="tabla-item-bar" style="width:${(n/maxProp*100).toFixed(0)}%"></div></div>
+          <div class="tabla-item-val">${n}</div>
+        </div>`).join('')
+
+  // ── Fuentes de tráfico ──
+  const refMap = {}
+  vs.forEach(v => {
+    const ref = v.referrer || 'directo'
+    refMap[ref] = (refMap[ref] || 0) + 1
+  })
+  const refsOrdenadas = Object.entries(refMap).sort((a,b) => b[1]-a[1]).slice(0,8)
+  const maxRef = refsOrdenadas[0]?.[1] || 1
+
+  document.getElementById('tblRefs').innerHTML = refsOrdenadas.length === 0
+    ? `<div class="tabla-empty">Sin datos todavía.</div>`
+    : refsOrdenadas.map(([ref, n]) => `
+        <div class="tabla-item">
+          <div class="tabla-item-name">${ref}</div>
+          <div class="tabla-item-bar-wrap"><div class="tabla-item-bar" style="width:${(n/maxRef*100).toFixed(0)}%"></div></div>
+          <div class="tabla-item-val">${n} (${total>0?((n/total)*100).toFixed(0):0}%)</div>
+        </div>`).join('')
+
+  // ── Por canal y medio ──
+  const canalMap = {}
+  vs.filter(v => v.canal_ref).forEach(v => {
+    const key = v.canal_ref
+    const via = v.canal_via || 'link'
+    if (!canalMap[key]) canalMap[key] = { qr: 0, link: 0 }
+    canalMap[key][via] = (canalMap[key][via] || 0) + 1
+  })
+  const canalesOrdenados = Object.entries(canalMap)
+    .map(([nombre, vias]) => ({ nombre, qr: vias.qr||0, link: vias.link||0, total: (vias.qr||0)+(vias.link||0) }))
+    .sort((a,b) => b.total - a.total)
+  const maxCanal = canalesOrdenados[0]?.total || 1
+
+  document.getElementById('tblCanal').innerHTML = canalesOrdenados.length === 0
+    ? `<div class="tabla-empty">Sin datos todavía. Aparecerán cuando alguien entre por un link o QR de un canal.</div>`
+    : `<table class="canal-table">
+        <thead><tr>
+          <th>Canal</th><th>Medio</th><th>Visitas</th><th>Progreso</th>
+        </tr></thead>
+        <tbody>${canalesOrdenados.flatMap(c => {
+          const rows = []
+          if (c.qr > 0)   rows.push({ via:'qr',   n: c.qr,   total: c.total, nombre: c.nombre, showName: true,  rowspan: (c.qr>0&&c.link>0) ? 2 : 1 })
+          if (c.link > 0) rows.push({ via:'link',  n: c.link, total: c.total, nombre: c.nombre, showName: c.qr===0, rowspan: 1 })
+          return rows
+        }).map((r,i,arr) => {
+          const prev = arr[i-1]
+          const showName = i === 0 || prev?.nombre !== r.nombre
+          return `<tr>
+            ${showName ? `<td rowspan="${arr.filter(x=>x.nombre===r.nombre).length}" style="font-weight:600;padding-right:1rem">${r.nombre}</td>` : ''}
+            <td><span class="canal-badge ${r.via}">${r.via === 'qr' ? '▣ QR' : '🔗 Link'}</span></td>
+            <td style="font-weight:600;color:var(--blanco)">${r.n}</td>
+            <td><span class="canal-bar-wrap"><span class="canal-bar" style="width:${(r.n/maxCanal*100).toFixed(0)}%"></span></span></td>
+          </tr>`
+        }).join('')}</tbody>
+      </table>`
+
+  // ── Embudo de conversión ──
+  const pctProp = total > 0 ? ((propVistas/total)*100).toFixed(0) : 0
+  const pctConv = propVistas > 0 ? ((cs.length/propVistas)*100).toFixed(1) : 0
+  document.getElementById('convRow').innerHTML = `
+    <div class="conv-step">
+      <div class="conv-step-val">${fmt(total)}</div>
+      <div class="conv-step-lbl">Visitas totales</div>
+    </div>
+    <div class="conv-arrow">→</div>
+    <div class="conv-step">
+      <div class="conv-step-val">${fmt(propVistas)}</div>
+      <div class="conv-step-lbl">Ven propiedades</div>
+      <div class="conv-pct">${pctProp}%</div>
+    </div>
+    <div class="conv-arrow">→</div>
+    <div class="conv-step">
+      <div class="conv-step-val">${fmt(cs.length)}</div>
+      <div class="conv-step-lbl">Consultan</div>
+      <div class="conv-pct">${pctConv}%</div>
+    </div>
+  `
+}
+
+// ── Botones de rango ──
+document.querySelectorAll('.rango-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.rango-btn').forEach(b => b.classList.remove('activo'))
+    btn.classList.add('activo')
+    _dias = parseInt(btn.dataset.dias)
+    cargar()
+  })
+})
+
+cargar()
+</script>
+</body>
+</html>
