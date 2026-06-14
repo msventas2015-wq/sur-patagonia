@@ -912,12 +912,27 @@ if (_rMatch) {
   document.documentElement.style.visibility = 'hidden'
   const { data: _r } = await supabase
     .from('referencias')
-    .select('codigo, destino, activo')
+    .select('codigo, destino, activo, canal_id')
     .eq('codigo', _rMatch[1])
     .maybeSingle()
   if (_r && _r.activo) {
-    const _dest = _r.destino || '/'
-    const _sep  = _dest.includes('?') ? '&' : '?'
+    let _dest = _r.destino || '/'
+    // ── Campaña activa tiene prioridad sobre el destino base ──
+    if (_r.canal_id) {
+      const _now = new Date().toISOString()
+      const { data: _cc } = await supabase
+        .from('campanas_canales')
+        .select('campanas(url_destino, activa, fecha_inicio, fecha_fin)')
+        .eq('canal_id', _r.canal_id)
+      const _camp = (_cc || [])
+        .map(x => x.campanas)
+        .filter(c => c && c.activa
+          && (!c.fecha_inicio || c.fecha_inicio <= _now)
+          && (!c.fecha_fin    || c.fecha_fin    >= _now))
+        .sort((a, b) => (b.fecha_inicio || '').localeCompare(a.fecha_inicio || ''))[0]
+      if (_camp) _dest = _camp.url_destino
+    }
+    const _sep = _dest.includes('?') ? '&' : '?'
     location.replace(`${_dest}${_sep}ref=${encodeURIComponent(_r.codigo)}&via=qr`)
   } else {
     location.replace('/')
