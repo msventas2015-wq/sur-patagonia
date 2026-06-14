@@ -231,7 +231,6 @@
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-  // Cliente propio del portal de colaboradores (sesión separada del admin)
   const supabase = createClient(
     'https://wajkfydxutptcvvfwrvq.supabase.co',
     'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s',
@@ -243,187 +242,210 @@
     location.href = 'login.html'
   }
 
-  const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-  const fmt = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
+  const esc  = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  const fmt  = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
   const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
-  const TIPO_LABEL   = { punto_venta:'Punto de venta', inmobiliaria:'Inmobiliaria', particular:'Particular', evento:'Evento' }
+
+  // Codifica el apellido: "Juan González" → "Juan Go***"
+  const codificarNombre = nombre => {
+    if (!nombre) return '—'
+    const partes = nombre.trim().split(/\s+/)
+    if (partes.length === 1) return partes[0]
+    const apellido = partes[partes.length - 1]
+    const codApellido = apellido.slice(0, 2) + '***'
+    return [...partes.slice(0, -1), codApellido].join(' ')
+  }
 
   ;(async () => {
-  // ── Auth ───────────────────────────────────────
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) { location.href = 'login.html'; return }
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { location.href = 'login.html'; return }
 
-  // ── Cargar canal del usuario ───────────────────
-  const userId = session.user.id
-  const { data: canal } = await supabase
-    .from('canales')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle()
+    const userId = session.user.id
 
-  if (!canal) {
-    document.getElementById('mainContent').innerHTML = '<div class="empty-msg">No se encontró tu canal. Contactá a Sur Patagonia.</div>'
-    return
-  }
+    // ── Cargar TODOS los canales del usuario ───────
+    const { data: canales } = await supabase
+      .from('canales').select('*').eq('user_id', userId).order('nombre')
 
-  // Header
-  document.getElementById('headerCanal').innerHTML =
-    `<strong>${esc(canal.nombre)}</strong>${TIPO_LABEL[canal.tipo] || canal.tipo}`
+    if (!canales?.length) {
+      document.getElementById('mainContent').innerHTML =
+        '<div class="empty-msg">No tenés canales asignados. Contactá a Sur Patagonia.</div>'
+      return
+    }
 
-  // ── Cargar métricas ────────────────────────────
-  const ahora   = new Date()
-  const hace30  = new Date(ahora - 30 * 86400000).toISOString()
+    const esPasivo  = canales[0].tipo_acceso !== 'activo'
+    const codigos   = canales.map(c => c.codigo)
+    const ahora     = new Date()
+    const hace30    = new Date(ahora - 30 * 86400000).toISOString()
 
-  const [rVisitas, rVisitas30, rContactos] = await Promise.all([
-    supabase.from('visitas').select('created_at, canal_via').eq('canal_ref', canal.codigo),
-    supabase.from('visitas').select('id', { count: 'exact', head: true }).eq('canal_ref', canal.codigo).gte('created_at', hace30),
-    supabase.from('contactos').select('*').eq('canal_ref', canal.codigo).order('created_at', { ascending: false }),
-  ])
+    // Header
+    document.getElementById('headerCanal').innerHTML =
+      `<strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}`
 
-  const visitas    = rVisitas.data    || []
-  const scans30    = rVisitas30.count || 0
-  const contactos  = rContactos.data  || []
-  const totalScans = visitas.length
-  const conv       = totalScans > 0 ? ((contactos.length / totalScans) * 100).toFixed(1) : 0
+    // ── Cargar métricas globales ───────────────────
+    const [rVisitas, rVisitas30, rContactos, rCampanas] = await Promise.all([
+      supabase.from('visitas').select('created_at, canal_via, canal_ref').in('canal_ref', codigos),
+      supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigos).gte('created_at', hace30),
+      supabase.from('contactos').select('*').in('canal_ref', codigos).order('created_at', { ascending: false }),
+      supabase.from('campanas_canales')
+        .select('canal_id, campanas(nombre, activa, fecha_inicio, fecha_fin)')
+        .in('canal_id', canales.map(c => c.id))
+    ])
 
-  // ── Estado QR ─────────────────────────────────
-  // Verificar campaña activa en este canal
-  const { data: ccRows } = await supabase
-    .from('campanas_canales')
-    .select('campanas(nombre, activa, fecha_inicio, fecha_fin)')
-    .eq('canal_id', canal.id)
+    const visitas    = rVisitas.data    || []
+    const scans30    = rVisitas30.count || 0
+    const contactos  = rContactos.data  || []
+    const totalScans = visitas.length
+    const conv       = totalScans > 0 ? ((contactos.length / totalScans) * 100).toFixed(1) : 0
 
-  const campanaActiva = (ccRows || [])
-    .map(x => x.campanas)
-    .filter(c => {
-      if (!c || !c.activa) return false
+    // Campaña activa por canal
+    const campanaActiva = {}
+    ;(rCampanas.data || []).forEach(row => {
+      const c = row.campanas
+      if (!c?.activa) return
       const ini = c.fecha_inicio ? new Date(c.fecha_inicio) : null
       const fin = c.fecha_fin    ? new Date(c.fecha_fin)    : null
-      return (!ini || ini <= ahora) && (!fin || fin >= ahora)
-    })[0] || null
+      if ((!ini || ini <= ahora) && (!fin || fin >= ahora)) {
+        campanaActiva[row.canal_id] = c.nombre
+      }
+    })
 
-  const qrEstado = !canal.activo ? 'inactivo' : campanaActiva ? 'campana' : 'activo'
-  const qrLabel  = qrEstado === 'inactivo' ? 'QR inactivo'
-    : campanaActiva ? `Campaña activa: ${campanaActiva.nombre}`
-    : 'QR activo'
-
-  // ── Render ─────────────────────────────────────
-  const main = document.getElementById('mainContent')
-  const esPasivo = canal.tipo_acceso !== 'activo'
-
-  main.innerHTML = `
-    <div class="bienvenida">
-      <h1>Hola, ${esc(canal.nombre)}</h1>
-      <p>${[canal.ciudad, canal.provincia].filter(Boolean).join(', ') || 'Tu panel de colaborador'}
-        · <span class="tipo-pill tipo-${esPasivo ? 'pasivo' : 'activo'}">${esPasivo ? 'Punto de venta' : 'Inmobiliaria / Vendedor'}</span>
-      </p>
-    </div>
-
-    <!-- Estado QR -->
-    <div class="qr-status">
-      <div class="qr-dot ${qrEstado}"></div>
-      <div class="qr-info">
-        <div class="qr-label">Estado de tu QR</div>
-        <div class="qr-valor">${esc(qrLabel)}</div>
-      </div>
-      <div class="qr-codigo">${esc(canal.codigo)}</div>
-    </div>
-
-    <!-- KPIs -->
-    <div class="kpi-grid">
-      <div class="kpi">
-        <div class="kpi-n accent">${totalScans.toLocaleString('es-AR')}</div>
-        <div class="kpi-label">Scans totales</div>
-        <div class="kpi-sub">desde el inicio</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-n">${scans30.toLocaleString('es-AR')}</div>
-        <div class="kpi-label">Scans últimos 30 días</div>
-        <div class="kpi-sub">actividad reciente</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-n dorado">${contactos.length}</div>
-        <div class="kpi-label">Consultas generadas</div>
-        <div class="kpi-sub">leads de tu canal</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-n verde">${conv}%</div>
-        <div class="kpi-label">Tasa de conversión</div>
-        <div class="kpi-sub">scans → consultas</div>
-      </div>
-    </div>
-
-    ${esPasivo ? renderPasivo(contactos) : renderActivo(contactos)}
-  `
-
-  function renderPasivo(contactos) {
-    // Solo muestra cantidad y fecha de las consultas, sin datos del lead
-    if (!contactos.length) return `
-      <div class="seccion">
-        <div class="sec-titulo">Consultas generadas</div>
-        <div class="empty-msg">Aún no hay consultas de tu canal. Cuando alguien consulte desde tu QR, aparecerá aquí.</div>
-      </div>`
-
-    const filas = contactos.slice(0, 20).map(c => `
-      <tr>
-        <td>${fmt(c.created_at)}</td>
-        <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr' : ''}">${c.canal_via === 'qr' ? '⬛ QR físico' : '🔗 Link'}</span></td>
-        <td><span class="estado-badge estado-${esc(c.estado || 'nueva')}">${esc(ESTADO_LABEL[c.estado] || 'Nueva')}</span></td>
-      </tr>`).join('')
-
-    return `
-      <div class="seccion">
-        <div class="sec-titulo">Consultas generadas por tu canal</div>
-        <div style="overflow-x:auto;">
-          <table class="tabla">
-            <thead><tr><th>Fecha</th><th>Origen</th><th>Estado</th></tr></thead>
-            <tbody>${filas}</tbody>
-          </table>
+    // ── Cards de canales (activo) ──────────────────
+    const renderCards = () => canales.map(c => {
+      const cScans    = visitas.filter(v => v.canal_ref === c.codigo).length
+      const cContacts = contactos.filter(x => x.canal_ref === c.codigo).length
+      const estado    = !c.activo ? 'inactivo' : campanaActiva[c.id] ? 'campana' : 'activo'
+      const estadoLabel = estado === 'inactivo' ? 'QR inactivo'
+        : campanaActiva[c.id] ? `Campaña: ${campanaActiva[c.id]}`
+        : 'QR activo'
+      return `
+      <div class="qr-status" style="flex-direction:column;align-items:flex-start;gap:.6rem;padding:1rem 1.2rem;">
+        <div style="display:flex;align-items:center;gap:.6rem;width:100%;">
+          <div class="qr-dot ${estado}"></div>
+          <div class="qr-info" style="flex:1;">
+            <div class="qr-label" style="font-weight:600;font-size:.8rem;">${esc(c.nombre)}</div>
+            <div class="qr-valor" style="font-size:.68rem;">${esc(estadoLabel)}</div>
+          </div>
+          <div class="qr-codigo">${esc(c.codigo)}</div>
+        </div>
+        <div style="display:flex;gap:1.5rem;font-size:.72rem;color:var(--gris);">
+          <span><strong style="color:var(--blanco);font-size:.9rem;">${cScans}</strong> scans</span>
+          <span><strong style="color:var(--dorado);font-size:.9rem;">${cContacts}</strong> consultas</span>
         </div>
       </div>`
-  }
+    }).join('')
 
-  function renderActivo(contactos) {
-    // Muestra datos completos + propiedad + estado CRM
-    const estadosHtml = contactos.length ? `
-      <div class="seccion">
-        <div class="sec-titulo">Tus consultas y estado en el proceso</div>
-        <div style="overflow-x:auto;">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Nombre</th>
-                <th>Propiedad consultada</th>
-                <th>Origen</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${contactos.slice(0, 50).map(c => `
-              <tr>
-                <td style="white-space:nowrap">${fmt(c.created_at)}</td>
-                <td>
-                  <span style="font-weight:500">${esc(c.nombre || '—')}</span>
-                  ${c.mensaje ? `<span style="display:block;font-size:.67rem;color:var(--gris);margin-top:.2rem;">${esc(c.mensaje.slice(0, 60))}${c.mensaje.length > 60 ? '…' : ''}</span>` : ''}
-                </td>
-                <td style="font-size:.72rem;color:var(--gris);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
-                <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr' : ''}">${c.canal_via === 'qr' ? '⬛ QR' : '🔗 Link'}</span></td>
-                <td><span class="estado-badge estado-${esc(c.estado || 'nueva')}">${esc(ESTADO_LABEL[c.estado] || 'Nueva')}</span></td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
+    // ── Render ─────────────────────────────────────
+    const main = document.getElementById('mainContent')
+    main.innerHTML = `
+      <div class="bienvenida">
+        <h1>Bienvenido</h1>
+        <p>${canales[0].ciudad ? canales[0].ciudad + (canales[0].provincia ? ', ' + canales[0].provincia : '') : 'Tu panel de colaborador'}
+          · <span class="tipo-pill tipo-${esPasivo ? 'pasivo':'activo'}">${esPasivo ? 'Punto de venta' : 'Inmobiliaria / Vendedor'}</span>
+        </p>
+      </div>
+
+      <!-- KPIs globales -->
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-n accent">${totalScans.toLocaleString('es-AR')}</div>
+          <div class="kpi-label">Scans totales</div>
+          <div class="kpi-sub">todos tus canales</div>
         </div>
-      </div>` : `
+        <div class="kpi">
+          <div class="kpi-n">${scans30.toLocaleString('es-AR')}</div>
+          <div class="kpi-label">Scans últimos 30 días</div>
+          <div class="kpi-sub">actividad reciente</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-n dorado">${contactos.length}</div>
+          <div class="kpi-label">Consultas generadas</div>
+          <div class="kpi-sub">leads de tus canales</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-n verde">${conv}%</div>
+          <div class="kpi-label">Tasa de conversión</div>
+          <div class="kpi-sub">scans → consultas</div>
+        </div>
+      </div>
+
+      ${!esPasivo && canales.length > 1 ? `
+      <!-- Cards por canal -->
       <div class="seccion">
-        <div class="sec-titulo">Tus consultas</div>
-        <div class="empty-msg">Aún no hay consultas de tu canal.</div>
-      </div>`
+        <div class="sec-titulo">Tus canales</div>
+        <div style="display:flex;flex-direction:column;gap:.6rem;">${renderCards()}</div>
+      </div>` : esPasivo ? `
+      <!-- Estado QR pasivo -->
+      ${renderCards()}` : renderCards()}
 
-    return estadosHtml
-  }
+      <!-- Tabla de consultas -->
+      ${esPasivo ? renderPasivo(contactos) : renderActivo(contactos)}
+    `
 
-  })() // fin IIFE
+    function renderPasivo(contactos) {
+      if (!contactos.length) return `
+        <div class="seccion">
+          <div class="sec-titulo">Consultas generadas</div>
+          <div class="empty-msg">Aún no hay consultas. Cuando alguien consulte desde tu QR, aparecerá aquí.</div>
+        </div>`
+      const filas = contactos.slice(0, 30).map(c => `
+        <tr>
+          <td>${fmt(c.created_at)}</td>
+          <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr':''}">${c.canal_via === 'qr' ? '⬛ QR físico' : '🔗 Link'}</span></td>
+          <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
+        </tr>`).join('')
+      return `
+        <div class="seccion">
+          <div class="sec-titulo">Consultas generadas por tu canal</div>
+          <div style="overflow-x:auto;">
+            <table class="tabla">
+              <thead><tr><th>Fecha</th><th>Origen</th><th>Estado</th></tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>
+        </div>`
+    }
+
+    function renderActivo(contactos) {
+      if (!contactos.length) return `
+        <div class="seccion">
+          <div class="sec-titulo">Consultas</div>
+          <div class="empty-msg">Aún no hay consultas de tus canales.</div>
+        </div>`
+
+      // Mapa codigo → nombre de canal para la columna Canal
+      const nombreCanal = {}
+      canales.forEach(c => { nombreCanal[c.codigo] = c.nombre })
+
+      const filas = contactos.slice(0, 50).map(c => `
+        <tr>
+          <td style="white-space:nowrap">${fmt(c.created_at)}</td>
+          <td>
+            <span style="font-weight:500">${esc(codificarNombre(c.nombre))}</span>
+            ${c.mensaje ? `<span style="display:block;font-size:.67rem;color:var(--gris);margin-top:.15rem;">${esc(c.mensaje.slice(0,70))}${c.mensaje.length > 70 ? '…':''}</span>` : ''}
+          </td>
+          <td style="font-size:.72rem;color:var(--gris);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
+          <td style="font-size:.7rem;color:var(--gris);">${esc(nombreCanal[c.canal_ref] || c.canal_ref || '—')}</td>
+          <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr':''}">${c.canal_via === 'qr' ? '⬛ QR' : '🔗 Link'}</span></td>
+          <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
+        </tr>`).join('')
+
+      return `
+        <div class="seccion">
+          <div class="sec-titulo">Tus consultas — todos los canales</div>
+          <div style="overflow-x:auto;">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Fecha</th><th>Nombre</th><th>Propiedad</th><th>Canal</th><th>Origen</th><th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>
+        </div>`
+    }
+
+  })()
 </script>
 </body>
 </html>
