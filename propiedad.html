@@ -11,12 +11,32 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
   <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
   <style>
+    /* ── Protección de imágenes ── */
+    img { -webkit-user-drag: none; user-drag: none; -webkit-user-select: none; user-select: none; }
+    .carrusel-principal::after {
+      content: '';
+      position: absolute;
+      bottom: 14px;
+      right: 16px;
+      width: 130px;
+      height: 32px;
+      background: url('logohorizontal.png') right bottom / contain no-repeat;
+      pointer-events: none;
+      z-index: 3;
+      opacity: 0.72;
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,0.7));
+    }
+    /* Bloquea arrastre de imagen principal */
+    .carrusel-principal img { pointer-events: none; }
+    /* Modal de galería también protegido */
+    .modal-galeria img { -webkit-user-drag: none; pointer-events: none; }
+
     /* Tour 360° — picos hotspot + logo */
     .tour360-wrap { position: relative; }
     .tour360-logo {
       position: absolute;
       bottom: 14px;
-      left: 16px;
+      right: 16px;
       height: 28px;
       opacity: 0.8;
       pointer-events: none;
@@ -368,20 +388,20 @@
           style="border-radius:12px; border:none; display:block;"></iframe>
       </div>
 
-      <!-- Foto 360° estándar (panorama única, entorno/exterior) -->
-      <div id="eFoto360Bloque" style="display:none; margin-bottom:2.5rem;">
-        <div style="margin-bottom:.8rem;"><span class="sh">Foto 360°</span></div>
-        <div class="tour360-wrap">
-          <div id="eFoto360Viewer" style="width:100%; height:420px;"></div>
-          <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
-        </div>
-      </div>
-
       <!-- Tour 360° interior (multi-escena) -->
       <div id="eTour360Bloque" style="display:none; margin-bottom:2.5rem;" data-anchor="tour-interior">
         <div style="margin-bottom:.8rem;"><span class="sh">Recorrido interior 360°</span></div>
         <div class="tour360-wrap" id="eTour360Wrap">
           <div id="eTour360Viewer" style="width:100%; height:420px;"></div>
+          <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
+        </div>
+      </div>
+
+      <!-- Foto 360° estándar (panorama única, entorno/exterior) -->
+      <div id="eFoto360Bloque" style="display:none; margin-bottom:2.5rem;">
+        <div style="margin-bottom:.8rem;"><span class="sh">Foto 360°</span></div>
+        <div class="tour360-wrap">
+          <div id="eFoto360Viewer" style="width:100%; height:420px;"></div>
           <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
         </div>
       </div>
@@ -502,20 +522,20 @@
           style="border-radius:12px; border:none; display:block;"></iframe>
       </div>
 
-      <!-- Foto 360° premium (panorama única, entorno/exterior) -->
-      <div id="pFoto360Bloque" style="display:none; margin-bottom:2.5rem;">
-        <div style="margin-bottom:.8rem;"><span class="sh">Foto 360°</span></div>
-        <div class="tour360-wrap">
-          <div id="pFoto360Viewer" style="width:100%; height:420px;"></div>
-          <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
-        </div>
-      </div>
-
       <!-- Tour 360° interior premium (multi-escena) -->
       <div id="pTour360Bloque" style="display:none; margin-bottom:2.5rem;">
         <div style="margin-bottom:.8rem;"><span class="sh">Recorrido interior 360°</span></div>
         <div class="tour360-wrap">
           <div id="pTour360Viewer" style="width:100%; height:420px;"></div>
+          <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
+        </div>
+      </div>
+
+      <!-- Foto 360° premium (panorama única, entorno/exterior) -->
+      <div id="pFoto360Bloque" style="display:none; margin-bottom:2.5rem;">
+        <div style="margin-bottom:.8rem;"><span class="sh">Foto 360°</span></div>
+        <div class="tour360-wrap">
+          <div id="pFoto360Viewer" style="width:100%; height:420px;"></div>
           <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
         </div>
       </div>
@@ -1269,6 +1289,10 @@ if (!id) {
 </script>
 
 <script>
+// Protección de imágenes — bloquea clic derecho sobre fotos
+document.addEventListener('contextmenu', e => { if (e.target.tagName === 'IMG') e.preventDefault() })
+document.addEventListener('dragstart',   e => { if (e.target.tagName === 'IMG') e.preventDefault() })
+
 const cur = document.getElementById('cur')
 document.addEventListener('mousemove', e => { cur.style.left = e.clientX+'px'; cur.style.top = e.clientY+'px' })
 document.addEventListener('mouseleave', () => cur.style.opacity='0')

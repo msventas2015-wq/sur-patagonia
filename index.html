@@ -358,7 +358,13 @@
     .reveal-left { opacity: 0; transform: translateX(-40px); }
     .reveal-right { opacity: 0; transform: translateX(40px); }
     @media (max-width: 1024px) { .prop-grid { grid-template-columns: 1fr 1fr; } .prop-card:first-child { grid-row: span 1; aspect-ratio: 4/5; } .stats-row { grid-template-columns: 1fr 1fr; } .stat-box:nth-child(2) { border-right: none; } .stat-box:nth-child(3), .stat-box:nth-child(4) { border-top: 1px solid var(--stroke); } .av-inner { grid-template-columns: 1fr; gap: 3rem; } .contacto-grid { grid-template-columns: 1fr; gap: 3rem; } .footer-inner { grid-template-columns: 1fr 1fr; } }
+    @keyframes swipeL { 0%,100%{transform:translateX(0);opacity:.6} 50%{transform:translateX(-5px);opacity:1} }
+    @keyframes swipeR { 0%,100%{transform:translateX(0);opacity:.6} 50%{transform:translateX(5px);opacity:1} }
+    .swipe-arr { font-size: 1rem; display:inline-block; }
+    .swipe-l { animation: swipeL 1.4s ease-in-out infinite; }
+    .swipe-r { animation: swipeR 1.4s ease-in-out infinite; }
     @media (max-width: 768px) {
+      #swipeHint { display: flex !important; }
       /* Carrusel propiedades */
       .prop-carrusel-wrap::before, .prop-carrusel-wrap::after { display: none; }
       .prop-card { flex: 0 0 100vw; aspect-ratio: 4/3; }
@@ -666,6 +672,12 @@
         <button class="prop-carrusel-btn" id="propNext">›</button>
       </div>
     </div>
+  </div>
+  <!-- Hint de scroll lateral — solo mobile -->
+  <div id="swipeHint" style="display:none; align-items:center; justify-content:center; gap:0.6rem; padding:0.5rem 0 0; color:rgba(201,168,76,0.65); font-size:0.62rem; letter-spacing:0.18em; text-transform:uppercase; font-family:'Montserrat',sans-serif;">
+    <span class="swipe-arr swipe-l">‹</span>
+    <span>deslizá</span>
+    <span class="swipe-arr swipe-r">›</span>
   </div>
   <div class="prop-carrusel-wrap" style="width:100%; overflow:hidden;">
     <div class="prop-grid" id="propGrid" style="padding:0;">
@@ -2018,6 +2030,11 @@ async function cargarPropiedades() {
   const grid = document.getElementById('propGrid')
   document.getElementById('propPrev').addEventListener('click', () => { grid.scrollBy({ left: -842, behavior: 'smooth' }) })
   document.getElementById('propNext').addEventListener('click', () => { grid.scrollBy({ left: 842, behavior: 'smooth' }) })
+  // Ocultar hint de swipe después del primer scroll
+  grid.addEventListener('scroll', () => {
+    const hint = document.getElementById('swipeHint')
+    if (hint) { hint.style.opacity = '0'; hint.style.transition = 'opacity 0.5s'; setTimeout(() => hint.remove(), 500) }
+  }, { once: true })
   if (!data||!data.length) { grid.innerHTML=`<div style="grid-column:1/-1;padding:4rem;text-align:center;color:var(--muted);">Las propiedades aparecerán aquí una vez que las cargues desde el panel.</div>`; return }
   grid.innerHTML = data.map((p,i) => {
     const img = p.imagenes?.[0] ? `<img class="prop-img" src="${p.imagenes[0]}" alt="${p.titulo}" loading="lazy" />` : `<div class="prop-placeholder">🏔️</div>`
