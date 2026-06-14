@@ -170,9 +170,16 @@
 </div>
 
 <script type="module">
-  import { supabase } from '../js/config.js'
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-  // Si ya está logueado, redirigir directo
+  // Sesión separada del admin
+  const supabase = createClient(
+    'https://wajkfydxutptcvvfwrvq.supabase.co',
+    'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s',
+    { auth: { storageKey: 'sp-colab-session' } }
+  )
+
+  // Si ya está logueado como colaborador, redirigir directo
   const { data: { session } } = await supabase.auth.getSession()
   if (session) location.href = 'index.html'
 

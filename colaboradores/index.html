@@ -229,11 +229,14 @@
 </main>
 
 <script type="module">
-  import { supabase } from '../js/config.js'
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-  // ── Auth ───────────────────────────────────────
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) { location.href = 'login.html'; }
+  // Cliente propio del portal de colaboradores (sesión separada del admin)
+  const supabase = createClient(
+    'https://wajkfydxutptcvvfwrvq.supabase.co',
+    'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s',
+    { auth: { storageKey: 'sp-colab-session' } }
+  )
 
   window.salir = async function() {
     await supabase.auth.signOut()
@@ -244,6 +247,11 @@
   const fmt = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
   const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
   const TIPO_LABEL   = { punto_venta:'Punto de venta', inmobiliaria:'Inmobiliaria', particular:'Particular', evento:'Evento' }
+
+  ;(async () => {
+  // ── Auth ───────────────────────────────────────
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) { location.href = 'login.html'; return }
 
   // ── Cargar canal del usuario ───────────────────
   const userId = session.user.id
@@ -414,6 +422,8 @@
 
     return estadosHtml
   }
+
+  })() // fin IIFE
 </script>
 </body>
 </html>
