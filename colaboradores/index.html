@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Panel — Sur Patagonia Colaboradores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0e0c;
+      --card: #161513;
+      --border: rgba(255,255,255,0.07);
+      --accent: #d76f3f;
+      --dorado: #c9a84c;
+      --verde: #50c878;
+      --gris: #888;
+      --blanco: #f5f3f0;
+      --rojo: #e05c5c;
+    }
+    body {
+      background: var(--bg);
+      color: var(--blanco);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem;
+      font-weight: 300;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .header-logo span { color: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .header-canal { font-size: .75rem; color: var(--gris); }
+    .header-canal strong { color: var(--blanco); display: block; font-size: .82rem; }
+    .btn-salir {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--gris);
+      padding: .35rem .8rem;
+      border-radius: 8px;
+      font-size: .72rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .18s;
+    }
+    .btn-salir:hover { border-color: var(--rojo); color: var(--rojo); }
+
+    /* Main */
+    .main { max-width: 900px; margin: 0 auto; padding: 2rem 1.4rem; }
+
+    .bienvenida { margin-bottom: 1.8rem; }
+    .bienvenida h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.9rem;
+      font-weight: 300;
+      margin-bottom: .3rem;
+    }
+    .bienvenida p { font-size: .76rem; color: var(--gris); }
+
+    /* Estado QR */
+    .qr-status {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .qr-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .qr-dot.activo { background: var(--verde); box-shadow: 0 0 8px rgba(80,200,120,.5); }
+    .qr-dot.campana { background: var(--dorado); box-shadow: 0 0 8px rgba(201,168,76,.5); }
+    .qr-dot.inactivo { background: var(--gris); }
+    .qr-info { flex: 1; }
+    .qr-label { font-size: .7rem; color: var(--gris); }
+    .qr-valor { font-size: .85rem; font-weight: 600; }
+    .qr-codigo { font-family: monospace; font-size: .72rem; color: var(--accent); margin-left: auto; }
+
+    /* KPIs */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: .8rem;
+      margin-bottom: 1.2rem;
+    }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.2rem;
+    }
+    .kpi-n {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: .3rem;
+    }
+    .kpi-n.accent { color: var(--accent); }
+    .kpi-n.dorado { color: var(--dorado); }
+    .kpi-n.verde  { color: var(--verde); }
+    .kpi-label { font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--gris); font-weight: 600; }
+    .kpi-sub { font-size: .65rem; color: var(--gris); margin-top: .3rem; }
+
+    /* Sección */
+    .seccion {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.3rem 1.4rem;
+      margin-bottom: 1.2rem;
+    }
+    .sec-titulo {
+      font-size: .6rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--gris);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    /* Tabla consultas */
+    .tabla { width: 100%; border-collapse: collapse; }
+    .tabla th {
+      font-size: .58rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--gris);
+      font-weight: 600;
+      padding: .55rem .7rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    .tabla td {
+      font-size: .76rem;
+      color: var(--blanco);
+      padding: .75rem .7rem;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      vertical-align: top;
+    }
+    .tabla tr:last-child td { border-bottom: none; }
+
+    /* Estado badges */
+    .estado-badge {
+      display: inline-block;
+      padding: .15rem .55rem;
+      border-radius: 999px;
+      font-size: .6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      white-space: nowrap;
+    }
+    .estado-nueva        { background: rgba(80,200,120,.12); color: var(--verde); }
+    .estado-en_contacto  { background: rgba(201,168,76,.12); color: var(--dorado); }
+    .estado-en_negociacion { background: rgba(215,111,63,.12); color: var(--accent); }
+    .estado-cerrada      { background: rgba(100,149,237,.12); color: #6495ed; }
+    .estado-descartada   { background: rgba(136,136,136,.12); color: var(--gris); }
+
+    /* Via badge */
+    .via-badge {
+      font-size: .6rem;
+      color: var(--gris);
+      font-family: monospace;
+    }
+    .via-badge.qr { color: var(--accent); }
+
+    .empty-msg {
+      text-align: center;
+      padding: 2rem;
+      color: var(--gris);
+      font-size: .8rem;
+    }
+
+    /* Tipo canal badge */
+    .tipo-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-size: .62rem;
+      font-weight: 600;
+      padding: .18rem .55rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .tipo-pasivo    { background: rgba(136,136,136,.12); color: var(--gris); border: 1px solid rgba(136,136,136,.2); }
+    .tipo-activo    { background: rgba(201,168,76,.1); color: var(--dorado); border: 1px solid rgba(201,168,76,.25); }
+
+    .sp { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,.1); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 4rem auto; display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider { height: 1px; background: var(--border); margin: 1.4rem 0; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">SUR <span>PATAGONIA</span></div>
+  <div class="header-right">
+    <div class="header-canal" id="headerCanal"></div>
+    <button class="btn-salir" onclick="salir()">Salir</button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main" id="mainContent">
+  <div class="sp"></div>
+</main>
+
+<script type="module">
+  import { supabase } from '../js/config.js'
+
+  // ── Auth ───────────────────────────────────────
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) { location.href = 'login.html'; }
+
+  window.salir = async function() {
+    await supabase.auth.signOut()
+    location.href = 'login.html'
+  }
+
+  const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  const fmt = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
+  const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
+  const TIPO_LABEL   = { punto_venta:'Punto de venta', inmobiliaria:'Inmobiliaria', particular:'Particular', evento:'Evento' }
+
+  // ── Cargar canal del usuario ───────────────────
+  const userId = session.user.id
+  const { data: canal } = await supabase
+    .from('canales')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!canal) {
+    document.getElementById('mainContent').innerHTML = '<div class="empty-msg">No se encontró tu canal. Contactá a Sur Patagonia.</div>'
+    return
+  }
+
+  // Header
+  document.getElementById('headerCanal').innerHTML =
+    `<strong>${esc(canal.nombre)}</strong>${TIPO_LABEL[canal.tipo] || canal.tipo}`
+
+  // ── Cargar métricas ────────────────────────────
+  const ahora   = new Date()
+  const hace30  = new Date(ahora - 30 * 86400000).toISOString()
+
+  const [rVisitas, rVisitas30, rContactos] = await Promise.all([
+    supabase.from('visitas').select('created_at, canal_via').eq('canal_ref', canal.codigo),
+    supabase.from('visitas').select('id', { count: 'exact', head: true }).eq('canal_ref', canal.codigo).gte('created_at', hace30),
+    supabase.from('contactos').select('*').eq('canal_ref', canal.codigo).order('created_at', { ascending: false }),
+  ])
+
+  const visitas    = rVisitas.data    || []
+  const scans30    = rVisitas30.count || 0
+  const contactos  = rContactos.data  || []
+  const totalScans = visitas.length
+  const conv       = totalScans > 0 ? ((contactos.length / totalScans) * 100).toFixed(1) : 0
+
+  // ── Estado QR ─────────────────────────────────
+  // Verificar campaña activa en este canal
+  const { data: ccRows } = await supabase
+    .from('campanas_canales')
+    .select('campanas(nombre, activa, fecha_inicio, fecha_fin)')
+    .eq('canal_id', canal.id)
+
+  const campanaActiva = (ccRows || [])
+    .map(x => x.campanas)
+    .filter(c => {
+      if (!c || !c.activa) return false
+      const ini = c.fecha_inicio ? new Date(c.fecha_inicio) : null
+      const fin = c.fecha_fin    ? new Date(c.fecha_fin)    : null
+      return (!ini || ini <= ahora) && (!fin || fin >= ahora)
+    })[0] || null
+
+  const qrEstado = !canal.activo ? 'inactivo' : campanaActiva ? 'campana' : 'activo'
+  const qrLabel  = qrEstado === 'inactivo' ? 'QR inactivo'
+    : campanaActiva ? `Campaña activa: ${campanaActiva.nombre}`
+    : 'QR activo'
+
+  // ── Render ─────────────────────────────────────
+  const main = document.getElementById('mainContent')
+  const esPasivo = canal.tipo_acceso !== 'activo'
+
+  main.innerHTML = `
+    <div class="bienvenida">
+      <h1>Hola, ${esc(canal.nombre)}</h1>
+      <p>${[canal.ciudad, canal.provincia].filter(Boolean).join(', ') || 'Tu panel de colaborador'}
+        · <span class="tipo-pill tipo-${esPasivo ? 'pasivo' : 'activo'}">${esPasivo ? 'Punto de venta' : 'Inmobiliaria / Vendedor'}</span>
+      </p>
+    </div>
+
+    <!-- Estado QR -->
+    <div class="qr-status">
+      <div class="qr-dot ${qrEstado}"></div>
+      <div class="qr-info">
+        <div class="qr-label">Estado de tu QR</div>
+        <div class="qr-valor">${esc(qrLabel)}</div>
+      </div>
+      <div class="qr-codigo">${esc(canal.codigo)}</div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-n accent">${totalScans.toLocaleString('es-AR')}</div>
+        <div class="kpi-label">Scans totales</div>
+        <div class="kpi-sub">desde el inicio</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-n">${scans30.toLocaleString('es-AR')}</div>
+        <div class="kpi-label">Scans últimos 30 días</div>
+        <div class="kpi-sub">actividad reciente</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-n dorado">${contactos.length}</div>
+        <div class="kpi-label">Consultas generadas</div>
+        <div class="kpi-sub">leads de tu canal</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-n verde">${conv}%</div>
+        <div class="kpi-label">Tasa de conversión</div>
+        <div class="kpi-sub">scans → consultas</div>
+      </div>
+    </div>
+
+    ${esPasivo ? renderPasivo(contactos) : renderActivo(contactos)}
+  `
+
+  function renderPasivo(contactos) {
+    // Solo muestra cantidad y fecha de las consultas, sin datos del lead
+    if (!contactos.length) return `
+      <div class="seccion">
+        <div class="sec-titulo">Consultas generadas</div>
+        <div class="empty-msg">Aún no hay consultas de tu canal. Cuando alguien consulte desde tu QR, aparecerá aquí.</div>
+      </div>`
+
+    const filas = contactos.slice(0, 20).map(c => `
+      <tr>
+        <td>${fmt(c.created_at)}</td>
+        <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr' : ''}">${c.canal_via === 'qr' ? '⬛ QR físico' : '🔗 Link'}</span></td>
+        <td><span class="estado-badge estado-${esc(c.estado || 'nueva')}">${esc(ESTADO_LABEL[c.estado] || 'Nueva')}</span></td>
+      </tr>`).join('')
+
+    return `
+      <div class="seccion">
+        <div class="sec-titulo">Consultas generadas por tu canal</div>
+        <div style="overflow-x:auto;">
+          <table class="tabla">
+            <thead><tr><th>Fecha</th><th>Origen</th><th>Estado</th></tr></thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
+      </div>`
+  }
+
+  function renderActivo(contactos) {
+    // Muestra datos completos + propiedad + estado CRM
+    const estadosHtml = contactos.length ? `
+      <div class="seccion">
+        <div class="sec-titulo">Tus consultas y estado en el proceso</div>
+        <div style="overflow-x:auto;">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Nombre</th>
+                <th>Propiedad consultada</th>
+                <th>Origen</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${contactos.slice(0, 50).map(c => `
+              <tr>
+                <td style="white-space:nowrap">${fmt(c.created_at)}</td>
+                <td>
+                  <span style="font-weight:500">${esc(c.nombre || '—')}</span>
+                  ${c.mensaje ? `<span style="display:block;font-size:.67rem;color:var(--gris);margin-top:.2rem;">${esc(c.mensaje.slice(0, 60))}${c.mensaje.length > 60 ? '…' : ''}</span>` : ''}
+                </td>
+                <td style="font-size:.72rem;color:var(--gris);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
+                <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr' : ''}">${c.canal_via === 'qr' ? '⬛ QR' : '🔗 Link'}</span></td>
+                <td><span class="estado-badge estado-${esc(c.estado || 'nueva')}">${esc(ESTADO_LABEL[c.estado] || 'Nueva')}</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : `
+      <div class="seccion">
+        <div class="sec-titulo">Tus consultas</div>
+        <div class="empty-msg">Aún no hay consultas de tu canal.</div>
+      </div>`
+
+    return estadosHtml
+  }
+</script>
+</body>
+</html>
