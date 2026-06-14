@@ -823,47 +823,47 @@
     // ── Búsqueda por voz (Web Speech API) ────────────────────────
     // ── INTÉRPRETE DE LENGUAJE NATURAL ────────────────────────
     function interpretarConsulta(texto) {
+      // Normalizar: minúsculas, sin acentos, sin puntuación
       const t = texto.toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g, '') // quita acentos
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
         .replace(/[^a-z0-9\s]/g, ' ')
 
-      // ── OPERACIÓN (temporario primero para no ser tapado por alquiler) ──
+      // ── OPERACIÓN (temporario con prioridad) ──────────────
       const mapaOp = [
-        ['alquiler_temporario', /\b(temporar|vacacion|temporada|verano)\w*/],
-        ['alquiler',            /\b(alquil|arrendar|arriendo|rento|rentar)\w*/],
-        ['venta',               /\b(vend|compr|venta|vendo|compro)\w*/],
+        ['alquiler_temporario', /\b(temporari\w*|temporada|vacacion\w*|turistic\w*|veraneo|estival|por dias|por semanas|semanas|dias)\b/],
+        ['alquiler',            /\b(alquil\w*|arrendar|arriendo|rento|rentar|en alquiler|para alquilar)\b/],
+        ['venta',               /\b(compr\w*|venta|vend\w*|adquir\w*|invertir|inversion\w*|a la venta)\b/],
       ]
       let opDetectada = null
       for (const [val, rx] of mapaOp) {
         if (rx.test(t)) { opDetectada = val; break }
       }
 
-      // ── TIPO ──────────────────────────────────────────────
-      const mapaTipo = {
-        galpon:        /\b(galpon|deposito|bodega|nave\s*industrial|galpones)\b/,
-        casa:          /\b(casa|chalet|vivienda|hogar|residencia)\b/,
-        departamento:  /\b(depto|departamento|apartamento|monoambiente|piso)\b/,
-        terreno:       /\b(terreno|lote|parcela|campo|chacra|loteo)\b/,
-        local:         /\b(local|comercio|negocio|comercial)\b/,
-        oficina:       /\b(oficina|coworking|estudio)\b/,
-        cabaña:        /\b(caba[nñ]a|bungalow|chalet)\b/,
-        duplex:        /\b(duplex|d[uú]plex)\b/,
-        quinta:        /\b(quinta|hacienda|estancia)\b/,
-      }
+      // ── TIPO (del más específico al más genérico) ─────────
+      const mapaTipo = [
+        ['galpon',       /\b(galpon\w*|deposito\w*|bodega\w*|nave industrial|nave comercial|almacen\w*|hangar|lugar para guardar|espacio industrial|planta industrial|taller industrial|para maquinaria|para vehiculos|para autos)\b/],
+        ['local',        /\b(local comercial|local de negocio|negocio\w*|comercio\w*|fondo de comercio|punto de venta|espacio comercial|tienda\w*)\b/],
+        ['oficina',      /\b(oficina\w*|coworking|espacio de trabajo|espacio laboral|consultorio\w*|estudio profesional|espacio profesional)\b/],
+        ['cabaña',       /\b(caba[n]\w*|bungalow\w*|refugio\w*|lodge\w*|alojamiento turistico|alojamiento de montana)\b/],
+        ['duplex',       /\b(duplex\w*|ph\b|penthouse\w*|dos plantas|planta alta)\b/],
+        ['quinta',       /\b(quinta\w*|hacienda\w*|estancia\w*|chacra recreativa|campo recreativo|finca\w*)\b/],
+        ['terreno',      /\b(terreno\w*|lote\w*|loteo\w*|parcela\w*|baldio\w*|fraccion\w*|tierra\w*|suelo\w*|para construir|campo para construir)\b/],
+        ['campo',        /\b(campo\w*|chacra\w*|establecimiento rural|campo ganadero|campo agricola|campo productivo)\b/],
+        ['departamento', /\b(departamento\w*|depto\w*|apartamento\w*|monoambiente\w*|piso\b|flat\b|studio\b|loft\b)\b/],
+        ['casa',         /\b(casa\w*|chalet\w*|vivienda\w*|hogar\b|residencia\w*|para vivir|para habitar|propiedad familiar|domicilio)\b/],
+      ]
       let tipoDetectado = null
-      for (const [val, rx] of Object.entries(mapaTipo)) {
+      for (const [val, rx] of mapaTipo) {
         if (rx.test(t)) { tipoDetectado = val; break }
       }
 
       // ── DORMITORIOS ───────────────────────────────────────
-      const dormMatch = t.match(/\b(\d+)\s*(dormitorio|habitacion|cuarto|ambiente)s?\b/)
       let dormDetectado = null
+      const dormMatch = t.match(/\b(\d+)\s*(dormitorio|habitacion|cuarto|ambiente|recamara|pieza)s?\b/)
       if (dormMatch) dormDetectado = dormMatch[1]
-      // "monoambiente" → 0 dormitorios
-      if (/\bmonoambiente\b/.test(t)) dormDetectado = '0'
+      if (/\bmonoambiente\b|\bstudio\b|\bloft\b/.test(t)) dormDetectado = '0'
 
       // ── APLICAR A LOS FILTROS ─────────────────────────────
-      // Desactivar todo primero
       document.querySelectorAll('.filtro-op').forEach(cb => cb.checked = false)
       document.querySelectorAll('.filtro-tipo').forEach(cb => cb.checked = false)
       document.querySelectorAll('.filtro-dorm').forEach(cb => cb.checked = false)
@@ -881,24 +881,19 @@
         if (cb) cb.checked = true
       }
 
-      // Si no detectamos operacion ni tipo, limpiar el campo de texto
-      // para que la búsqueda ilike funcione como fallback
-      if (!opDetectada && !tipoDetectado) return // deja el texto para búsqueda literal
+      // Sin ningún intent claro → dejar texto original para búsqueda literal
+      if (!opDetectada && !tipoDetectado && !dormDetectado) return
 
-      // Si detectamos intent, limpiar el campo de texto (ya usamos filtros)
-      // pero mantener palabras de ubicación si las hay
-      const stopwords = /\b(quiero|busco|necesito|estoy|buscando|un|una|el|la|los|las|para|con|de|en|del|que|me|mi|hay|tiene|tienen|algun|alguna|alguno)\b/g
-      const limpio = t.replace(stopwords, ' ')
-        // también quitar las palabras de operacion y tipo que ya mapeamos
-        .replace(/\b(alquil|arrendar|arriendo|rento|rentar|vend|compr|venta|vendo|compro|temporar|vacacion|temporada|galpon|deposito|bodega|nave|casa|chalet|vivienda|depto|departamento|apartamento|monoambiente|terreno|lote|parcela|campo|chacra|local|comercio|comercial|oficina|caba.a|duplex|quinta)\w*/g, ' ')
+      // Extraer posible ubicación: quitar palabras de intent y stopwords
+      const stopRx = /\b(quiero|busco|necesito|estoy|buscando|un|una|unos|unas|el|la|los|las|para|con|de|en|del|al|que|me|mi|mis|hay|tiene|tienen|algun|alguna|alguno|algo|muy|bien|grande|chico|nuevo|disponible|inmueble|propiedad|comercial|industrial|residencial|amplio|moderno|luminoso|cerca|lejos|zona|sector|barrio|sobre|frente|calle|avenida|ruta)\b/g
+      const intentRx = /\b(temporari\w+|temporada|vacacion\w+|turistic\w+|alquil\w+|arrendar|arriendo|rentar|rento|compr\w+|venta|vend\w+|adquir\w+|invertir|inversion\w+|galpon\w+|deposito\w+|bodega\w+|nave\w+|almacen\w+|local\w+|negocio\w+|comercio\w+|oficina\w+|coworking|caban\w+|bungalow\w+|refugio\w+|duplex\w+|penthouse\w+|quinta\w+|chacra\w+|estancia\w+|finca\w+|terreno\w+|lote\w+|parcela\w+|baldio\w+|fraccion\w+|tierra\w+|campo\w+|departamento\w+|depto\w+|apartamento\w+|monoambiente\w+|studio\w+|loft\w+|casa\w+|chalet\w+|vivienda\w+|hogar\w+|residencia\w+|\d+\s*(dormitorio|habitacion|cuarto|ambiente)s?)\b/g
+
+      const residuo = t
+        .replace(intentRx, ' ')
+        .replace(stopRx, ' ')
         .replace(/\s+/g, ' ').trim()
 
-      // Si queda algo útil (probable ubicación), usarlo como texto de búsqueda
-      if (limpio.length > 2) {
-        inputBusq.value = limpio
-      } else {
-        inputBusq.value = ''
-      }
+      inputBusq.value = residuo.length > 2 ? residuo : ''
     }
 
     const btnMic = document.getElementById('busquedaMic')
