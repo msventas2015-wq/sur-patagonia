@@ -11,6 +11,37 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
   <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
   <style>
+    /* Tour 360° — picos hotspot + logo */
+    .tour360-wrap { position: relative; }
+    .tour360-logo {
+      position: absolute;
+      bottom: 14px;
+      left: 16px;
+      height: 28px;
+      opacity: 0.8;
+      pointer-events: none;
+      z-index: 5;
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,0.6));
+    }
+    .pnlm-hotspot.pnlm-scene,
+    .pnlm-hotspot.pnlm-info {
+      background: url('assets/PICOS.png') center/contain no-repeat !important;
+      background-color: transparent !important;
+      border: none !important;
+      border-radius: 0 !important;
+      width: 44px !important;
+      height: 44px !important;
+      box-shadow: none !important;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+      transition: transform 0.15s, filter 0.15s;
+    }
+    .pnlm-hotspot.pnlm-scene:hover,
+    .pnlm-hotspot.pnlm-info:hover {
+      filter: drop-shadow(0 2px 10px rgba(201,168,76,0.9));
+      transform: scale(1.15);
+    }
+  </style>
+  <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
     :root {
       --bg:    #f2f0ed;
@@ -337,10 +368,22 @@
           style="border-radius:12px; border:none; display:block;"></iframe>
       </div>
 
-      <!-- Tour 360 estándar -->
-      <div id="eTour360Bloque" style="display:none; margin-bottom:2.5rem;">
-        <div style="margin-bottom:.8rem;"><span class="sh">Tour 360°</span></div>
-        <div id="eTour360Viewer" style="width:100%; height:420px;"></div>
+      <!-- Foto 360° estándar (panorama única, entorno/exterior) -->
+      <div id="eFoto360Bloque" style="display:none; margin-bottom:2.5rem;">
+        <div style="margin-bottom:.8rem;"><span class="sh">Foto 360°</span></div>
+        <div class="tour360-wrap">
+          <div id="eFoto360Viewer" style="width:100%; height:420px;"></div>
+          <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
+        </div>
+      </div>
+
+      <!-- Tour 360° interior (multi-escena) -->
+      <div id="eTour360Bloque" style="display:none; margin-bottom:2.5rem;" data-anchor="tour-interior">
+        <div style="margin-bottom:.8rem;"><span class="sh">Recorrido interior 360°</span></div>
+        <div class="tour360-wrap" id="eTour360Wrap">
+          <div id="eTour360Viewer" style="width:100%; height:420px;"></div>
+          <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
+        </div>
       </div>
 
       <!-- Mapa -->
@@ -459,10 +502,22 @@
           style="border-radius:12px; border:none; display:block;"></iframe>
       </div>
 
-      <!-- Tour 360 premium -->
+      <!-- Foto 360° premium (panorama única, entorno/exterior) -->
+      <div id="pFoto360Bloque" style="display:none; margin-bottom:2.5rem;">
+        <div style="margin-bottom:.8rem;"><span class="sh">Foto 360°</span></div>
+        <div class="tour360-wrap">
+          <div id="pFoto360Viewer" style="width:100%; height:420px;"></div>
+          <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
+        </div>
+      </div>
+
+      <!-- Tour 360° interior premium (multi-escena) -->
       <div id="pTour360Bloque" style="display:none; margin-bottom:2.5rem;">
-        <div style="margin-bottom:.8rem;"><span class="sh">Tour 360°</span></div>
-        <div id="pTour360Viewer" style="width:100%; height:420px;"></div>
+        <div style="margin-bottom:.8rem;"><span class="sh">Recorrido interior 360°</span></div>
+        <div class="tour360-wrap">
+          <div id="pTour360Viewer" style="width:100%; height:420px;"></div>
+          <img class="tour360-logo" src="logohorizontal.png" alt="Sur Patagonia" />
+        </div>
       </div>
 
       <!-- Mapa -->
@@ -861,31 +916,29 @@ function initForm(formId, alertaId, propId, tituloPropiedad) {
   })
 }
 
-// ── Tour 360° multi-escena ──
+// ── Foto 360° — panorama única (campo tour_360, exterior/entorno) ──
+function initFoto360(bloqueId, viewerId, p) {
+  if (!p.tour_360) return
+  document.getElementById(bloqueId).style.display = 'block'
+  pannellum.viewer(viewerId, {
+    type: 'equirectangular',
+    panorama: p.tour_360,
+    autoLoad: true,
+    compass: false,
+    showZoomCtrl: true,
+    showFullscreenCtrl: true,
+    hfov: 100
+  })
+}
+
+// ── Tour 360° interior — multi-escena ──
 function initTour360(bloqueId, viewerId, p) {
   const escenas = p._escenas || []
-
-  if (escenas.length === 0) {
-    // Fallback: escena única desde campo tour_360 legacy
-    if (p.tour_360) {
-      document.getElementById(bloqueId).style.display = 'block'
-      pannellum.viewer(viewerId, {
-        type: 'equirectangular',
-        panorama: p.tour_360,
-        autoLoad: true,
-        compass: false,
-        showZoomCtrl: true,
-        showFullscreenCtrl: true,
-        hfov: 100
-      })
-    }
-    return
-  }
+  if (escenas.length === 0 || !p.tour_publicado) return
 
   document.getElementById(bloqueId).style.display = 'block'
 
   if (escenas.length === 1) {
-    // Una sola escena: visor simple
     pannellum.viewer(viewerId, {
       type: 'equirectangular',
       panorama: escenas[0].imagen_url,
@@ -901,7 +954,6 @@ function initTour360(bloqueId, viewerId, p) {
     return
   }
 
-  // Multi-escena
   const scenes = {}
   escenas.forEach(esc => {
     scenes[esc.id] = {
@@ -993,7 +1045,10 @@ function renderEstandar(p) {
       `https://my.matterport.com/show/?m=${encodeURIComponent(p.tour_matterport)}&play=1&hl=1`
   }
 
-  // Tour 360 — multi-escena
+  // Foto 360° — panorama única exterior
+  initFoto360('eFoto360Bloque', 'eFoto360Viewer', p)
+
+  // Tour 360° interior — multi-escena
   initTour360('eTour360Bloque', 'eTour360Viewer', p)
 
   // Mapa — lazy load
@@ -1091,7 +1146,10 @@ async function renderPremium(p) {
       `https://my.matterport.com/show/?m=${encodeURIComponent(p.tour_matterport)}&play=1&hl=1`
   }
 
-  // Tour 360 premium — multi-escena
+  // Foto 360° premium — panorama única exterior
+  initFoto360('pFoto360Bloque', 'pFoto360Viewer', p)
+
+  // Tour 360° interior premium — multi-escena
   initTour360('pTour360Bloque', 'pTour360Viewer', p)
 
   // Mapa — lazy load
@@ -1198,6 +1256,13 @@ if (!id) {
       await renderPremium(data)
     } else {
       renderEstandar(data)
+    }
+    // Scroll directo al tour si viene desde el mapa
+    if (window.location.hash === '#tour-interior') {
+      setTimeout(() => {
+        const el = document.querySelector('[data-anchor="tour-interior"]')
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 800)
     }
   }
 }
