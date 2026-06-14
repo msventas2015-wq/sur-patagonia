@@ -127,6 +127,29 @@
     .acceso-pasivo { background: rgba(136,136,136,.12); color: #888; }
     .acceso-activo { background: rgba(201,168,76,.12); color: #c9a84c; }
     .colab-acciones { display: flex; gap: .35rem; margin-top: .8rem; }
+
+    /* ── Modal cambiar contraseña ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); z-index: 999;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal-box {
+      background: #1a1814; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px; padding: 2rem; width: 100%; max-width: 380px;
+    }
+    .modal-titulo { font-size: .85rem; font-weight: 700; margin-bottom: .3rem; }
+    .modal-sub { font-size: .72rem; color: #888; margin-bottom: 1.4rem; }
+    .modal-grupo { margin-bottom: 1rem; }
+    .modal-grupo label { display: block; font-size: .6rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #888; margin-bottom: .35rem; }
+    .modal-grupo input { width: 100%; padding: .65rem .9rem; font-size: .83rem; }
+    .modal-acciones { display: flex; gap: .6rem; margin-top: 1.4rem; }
+    .modal-acciones .btn-primary { flex: 1; padding: .7rem; text-align: center; border-radius: 10px !important; }
+    .modal-acciones .btn-cancel { flex: 1; background: none; border: 1px solid rgba(255,255,255,.12); color: #888; border-radius: 10px; padding: .7rem; cursor: pointer; font-size: .78rem; font-weight: 600; font-family: inherit; transition: border-color .18s; }
+    .modal-acciones .btn-cancel:hover { border-color: #555; }
+    .modal-err { font-size: .72rem; color: #e07070; margin-top: .5rem; display: none; }
+    .modal-err.visible { display: block; }
   </style>
 </head>
 <body>
@@ -277,6 +300,27 @@
   </main>
 </div>
 
+<!-- ── MODAL CAMBIAR CONTRASEÑA ── -->
+<div class="modal-overlay" id="modalPass">
+  <div class="modal-box">
+    <div class="modal-titulo">Cambiar contraseña</div>
+    <div class="modal-sub" id="modalPassSub">—</div>
+    <div class="modal-grupo">
+      <label>Nueva contraseña</label>
+      <input type="password" id="modalPassInput" class="admin-input" placeholder="Mínimo 6 caracteres" />
+    </div>
+    <div class="modal-grupo">
+      <label>Confirmar contraseña</label>
+      <input type="password" id="modalPassInput2" class="admin-input" placeholder="Repetí la contraseña" />
+    </div>
+    <div class="modal-err" id="modalPassErr"></div>
+    <div class="modal-acciones">
+      <button class="btn-cancel" onclick="cerrarModalPass()">Cancelar</button>
+      <button class="btn-primary" id="btnModalPassGuardar" onclick="ejecutarCambioPass()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
@@ -392,7 +436,7 @@ async function cargarUsuarios() {
         <span style="font-size:.75rem;color:var(--gris-claro);">${u.desactivado ? 'Inactivo' : 'Activo'}</span>
       </td>
       <td>
-        <button class="btn-tbl" onclick="resetPassword('${esc(u.email)}', ${esColab})">Reset contraseña</button>
+        <button class="btn-tbl" onclick="abrirModalPass('${esc(u.id)}', '${esc(u.email)}')">Cambiar contraseña</button>
         <button class="btn-tbl ${u.desactivado ? '' : 'danger'}" onclick="toggleUsuario('${esc(u.id)}', ${u.desactivado})">
           ${u.desactivado ? 'Activar' : 'Desactivar'}
         </button>
@@ -521,16 +565,66 @@ window.guardarCanal = async (userId) => {
   cargarUsuarios()
 }
 
-// ── Reset contraseña ──────────────────────────────────────
-window.resetPassword = async (email, esColab = false) => {
-  if (!confirm(`¿Enviar email de reset de contraseña a ${email}?`)) return
-  const redirectTo = esColab
-    ? window.location.origin + '/colaboradores/login.html'
-    : window.location.origin + '/admin/login.html'
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
-  if (error) alert('Error: ' + error.message)
-  else alert(`✓ Email de reset enviado a ${email}.`)
+// ── Modal cambiar contraseña ──────────────────────────────
+const EDGE_URL = 'https://wajkfydxutptcvvfwrvq.supabase.co/functions/v1/admin-reset-password'
+let _passUserId = null
+
+window.abrirModalPass = (userId, email) => {
+  _passUserId = userId
+  document.getElementById('modalPassSub').textContent = email
+  document.getElementById('modalPassInput').value  = ''
+  document.getElementById('modalPassInput2').value = ''
+  const errEl = document.getElementById('modalPassErr')
+  errEl.textContent = ''; errEl.classList.remove('visible')
+  document.getElementById('modalPass').classList.add('visible')
+  setTimeout(() => document.getElementById('modalPassInput').focus(), 80)
 }
+
+window.cerrarModalPass = () => {
+  document.getElementById('modalPass').classList.remove('visible')
+  _passUserId = null
+}
+
+window.ejecutarCambioPass = async () => {
+  const pass  = document.getElementById('modalPassInput').value
+  const pass2 = document.getElementById('modalPassInput2').value
+  const errEl = document.getElementById('modalPassErr')
+  const btn   = document.getElementById('btnModalPassGuardar')
+
+  errEl.textContent = ''; errEl.classList.remove('visible')
+
+  if (!pass || pass.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; errEl.classList.add('visible'); return }
+  if (pass !== pass2)            { errEl.textContent = 'Las contraseñas no coinciden.'; errEl.classList.add('visible'); return }
+
+  btn.disabled = true; btn.textContent = 'Guardando…'
+
+  const { data: { session: s } } = await supabase.auth.getSession()
+  const res = await fetch(EDGE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + s.access_token
+    },
+    body: JSON.stringify({ userId: _passUserId, newPassword: pass })
+  })
+
+  btn.disabled = false; btn.textContent = 'Guardar'
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    errEl.textContent = body.error || `Error ${res.status}`
+    errEl.classList.add('visible')
+    return
+  }
+
+  cerrarModalPass()
+  alert('✓ Contraseña cambiada correctamente.')
+}
+
+// Cerrar modal con Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModalPass() })
+// Cerrar al click en overlay
+document.getElementById('modalPass').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModalPass() })
 
 // ── Helpers ───────────────────────────────────────────────
 function limpiarForm() {
