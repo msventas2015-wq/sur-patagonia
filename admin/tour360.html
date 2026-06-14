@@ -219,6 +219,38 @@
 
     .viewer-wrap { position: relative; }
     #tourViewer { width: 100%; height: 430px; display: block; }
+
+    /* ── Logo watermark ── */
+    .viewer-logo {
+      position: absolute;
+      bottom: 14px;
+      left: 16px;
+      height: 32px;
+      opacity: 0.75;
+      pointer-events: none;
+      z-index: 5;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+    }
+
+    /* ── Hotspot picos ── */
+    .pnlm-hotspot.pnlm-scene,
+    .pnlm-hotspot.pnlm-info {
+      background: url('../assets/PICOS.png') center/contain no-repeat !important;
+      background-color: transparent !important;
+      border: none !important;
+      border-radius: 0 !important;
+      width: 44px !important;
+      height: 44px !important;
+      box-shadow: none !important;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+    }
+    .pnlm-hotspot.pnlm-scene:hover,
+    .pnlm-hotspot.pnlm-info:hover {
+      filter: drop-shadow(0 2px 10px rgba(215,111,63,0.8));
+      transform: scale(1.15);
+      transition: transform 0.15s, filter 0.15s;
+    }
+
     #viewerOverlay {
       position: absolute;
       inset: 0;
@@ -495,10 +527,13 @@
     <!-- Contenido principal (se muestra al seleccionar propiedad) -->
     <div id="contenidoTour" style="display:none;">
 
-      <!-- Barra de preview -->
+      <!-- Barra de preview + publicar -->
       <div class="preview-bar">
         <div class="preview-info">Tour de <strong id="previewNombreProp">—</strong> · <span id="previewCantEscenas">0</span> escena(s)</div>
-        <button class="btn-acc primary" id="btnPreview">▶ Vista previa del tour</button>
+        <div style="display:flex;gap:0.6rem;align-items:center;">
+          <button class="btn-acc" id="btnPublicar">● Publicar tour</button>
+          <button class="btn-acc primary" id="btnPreview">▶ Vista previa</button>
+        </div>
       </div>
 
       <!-- Upload nueva escena -->
@@ -543,6 +578,7 @@
         </div>
         <div class="viewer-wrap">
           <div id="tourViewer"></div>
+          <img class="viewer-logo" src="../logohorizontal.png" alt="Sur Patagonia" />
           <div id="viewerOverlay">
             <div class="overlay-hint">Hacé clic donde querés poner el hotspot</div>
           </div>
@@ -649,19 +685,47 @@ async function cargarPropiedades() {
   })
 }
 
-$('selProp').addEventListener('change', e => {
+$('selProp').addEventListener('change', async e => {
   _propId = e.target.value || null
   _propNombre = e.target.selectedOptions[0]?.textContent || ''
   if (_propId) {
     $('estadoVacio').style.display = 'none'
     $('contenidoTour').style.display = 'block'
     $('previewNombreProp').textContent = _propNombre
+    // Cargar estado publicado
+    const { data: pd } = await supabase.from('propiedades').select('tour_publicado').eq('id', _propId).single()
+    actualizarBtnPublicar(pd?.tour_publicado || false)
     cargarEscenas()
   } else {
     $('estadoVacio').style.display = 'block'
     $('contenidoTour').style.display = 'none'
     limpiarEditor()
   }
+})
+
+// ── Publicar / despublicar ──
+function actualizarBtnPublicar(publicado) {
+  const btn = $('btnPublicar')
+  if (publicado) {
+    btn.textContent = '✓ Publicado — Despublicar'
+    btn.style.borderColor = '#4ad0c4'
+    btn.style.color = '#4ad0c4'
+  } else {
+    btn.textContent = '● Publicar tour'
+    btn.style.borderColor = ''
+    btn.style.color = ''
+  }
+  btn.dataset.publicado = publicado ? '1' : '0'
+}
+
+$('btnPublicar').addEventListener('click', async () => {
+  if (!_propId) return
+  const publicado = $('btnPublicar').dataset.publicado === '1'
+  const nuevoEstado = !publicado
+  const { error } = await supabase.from('propiedades').update({ tour_publicado: nuevoEstado }).eq('id', _propId)
+  if (error) { alerta('Error al cambiar estado: ' + error.message, 'err'); return }
+  actualizarBtnPublicar(nuevoEstado)
+  alerta(nuevoEstado ? 'Tour publicado ✓ — ya visible en la propiedad' : 'Tour despublicado')
 })
 
 // ─────────────────────────────────────────
