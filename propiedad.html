@@ -329,6 +329,14 @@
         </div>
       </div>
 
+      <!-- Tour Matterport estándar -->
+      <div id="eMatterportBloque" style="display:none; margin-bottom:2.5rem;">
+        <div style="margin-bottom:.8rem;"><span class="sh">Recorrido 3D</span></div>
+        <iframe id="eMatterportViewer" src="" width="100%" height="480"
+          frameborder="0" allowfullscreen allow="xr-spatial-tracking"
+          style="border-radius:12px; border:none; display:block;"></iframe>
+      </div>
+
       <!-- Tour 360 estándar -->
       <div id="eTour360Bloque" style="display:none; margin-bottom:2.5rem;">
         <div style="margin-bottom:.8rem;"><span class="sh">Tour 360°</span></div>
@@ -441,6 +449,14 @@
             <div class="video-play-btn"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
           </div>
         </div>
+      </div>
+
+      <!-- Tour Matterport premium -->
+      <div id="pMatterportBloque" style="display:none; margin-bottom:2.5rem;">
+        <div style="margin-bottom:.8rem;"><span class="sh">Recorrido 3D</span></div>
+        <iframe id="pMatterportViewer" src="" width="100%" height="480"
+          frameborder="0" allowfullscreen allow="xr-spatial-tracking"
+          style="border-radius:12px; border:none; display:block;"></iframe>
       </div>
 
       <!-- Tour 360 premium -->
@@ -845,6 +861,77 @@ function initForm(formId, alertaId, propId, tituloPropiedad) {
   })
 }
 
+// ── Tour 360° multi-escena ──
+function initTour360(bloqueId, viewerId, p) {
+  const escenas = p._escenas || []
+
+  if (escenas.length === 0) {
+    // Fallback: escena única desde campo tour_360 legacy
+    if (p.tour_360) {
+      document.getElementById(bloqueId).style.display = 'block'
+      pannellum.viewer(viewerId, {
+        type: 'equirectangular',
+        panorama: p.tour_360,
+        autoLoad: true,
+        compass: false,
+        showZoomCtrl: true,
+        showFullscreenCtrl: true,
+        hfov: 100
+      })
+    }
+    return
+  }
+
+  document.getElementById(bloqueId).style.display = 'block'
+
+  if (escenas.length === 1) {
+    // Una sola escena: visor simple
+    pannellum.viewer(viewerId, {
+      type: 'equirectangular',
+      panorama: escenas[0].imagen_url,
+      autoLoad: true,
+      compass: false,
+      showZoomCtrl: true,
+      showFullscreenCtrl: true,
+      hfov: 100,
+      hotSpots: (escenas[0].hotspots || []).map(hs => ({
+        pitch: hs.pitch, yaw: hs.yaw, type: 'info', text: hs.etiqueta || '→'
+      }))
+    })
+    return
+  }
+
+  // Multi-escena
+  const scenes = {}
+  escenas.forEach(esc => {
+    scenes[esc.id] = {
+      type: 'equirectangular',
+      panorama: esc.imagen_url,
+      title: esc.nombre,
+      hotSpots: (esc.hotspots || []).map(hs => ({
+        pitch: hs.pitch,
+        yaw: hs.yaw,
+        type: 'scene',
+        text: hs.etiqueta || '→',
+        sceneId: hs.destino_id
+      }))
+    }
+  })
+
+  pannellum.viewer(viewerId, {
+    default: {
+      firstScene: escenas[0].id,
+      sceneFadeDuration: 1000,
+      autoLoad: true,
+      compass: false,
+      showZoomCtrl: true,
+      showFullscreenCtrl: true,
+      hfov: 100
+    },
+    scenes
+  })
+}
+
 // Render ESTÁNDAR
 function renderEstandar(p) {
   imgs = p.imagenes || []
@@ -899,19 +986,15 @@ function renderEstandar(p) {
     }
   }
 
-  // Tour 360
-  if (p.tour_360) {
-    document.getElementById('eTour360Bloque').style.display = 'block'
-    pannellum.viewer('eTour360Viewer', {
-      type: 'equirectangular',
-      panorama: p.tour_360,
-      autoLoad: true,
-      compass: false,
-      showZoomCtrl: true,
-      showFullscreenCtrl: true,
-      hfov: 100
-    })
+  // Matterport 3D
+  if (p.tour_matterport) {
+    document.getElementById('eMatterportBloque').style.display = 'block'
+    document.getElementById('eMatterportViewer').src =
+      `https://my.matterport.com/show/?m=${encodeURIComponent(p.tour_matterport)}&play=1&hl=1`
   }
+
+  // Tour 360 — multi-escena
+  initTour360('eTour360Bloque', 'eTour360Viewer', p)
 
   // Mapa — lazy load
   if (p.latitud && p.longitud) {
@@ -1001,19 +1084,15 @@ async function renderPremium(p) {
     }
   }
 
-  // Tour 360 premium
-  if (p.tour_360) {
-    document.getElementById('pTour360Bloque').style.display = 'block'
-    pannellum.viewer('pTour360Viewer', {
-      type: 'equirectangular',
-      panorama: p.tour_360,
-      autoLoad: true,
-      compass: false,
-      showZoomCtrl: true,
-      showFullscreenCtrl: true,
-      hfov: 100
-    })
+  // Matterport 3D premium
+  if (p.tour_matterport) {
+    document.getElementById('pMatterportBloque').style.display = 'block'
+    document.getElementById('pMatterportViewer').src =
+      `https://my.matterport.com/show/?m=${encodeURIComponent(p.tour_matterport)}&play=1&hl=1`
   }
+
+  // Tour 360 premium — multi-escena
+  initTour360('pTour360Bloque', 'pTour360Viewer', p)
 
   // Mapa — lazy load
   if (p.latitud && p.longitud) {
@@ -1103,14 +1182,17 @@ if (!id) {
   document.getElementById('estadoCargando').style.display = 'none'
   document.getElementById('noEncontrado').style.display = 'block'
 } else {
-  const { data, error } = await supabase
-    .from('propiedades').select('*').eq('id', id).eq('activa', true).single()
+  const [{ data, error }, { data: escenas }] = await Promise.all([
+    supabase.from('propiedades').select('*').eq('id', id).eq('activa', true).single(),
+    supabase.from('tour_escenas').select('*').eq('propiedad_id', id).order('orden')
+  ])
 
   document.getElementById('estadoCargando').style.display = 'none'
 
   if (error || !data) {
     document.getElementById('noEncontrado').style.display = 'block'
   } else {
+    data._escenas = escenas || []
     document.title = `${data.titulo} — Sur Patagonia`
     if (data.premium) {
       await renderPremium(data)
