@@ -34,9 +34,13 @@
 
     .f-group { display: flex; flex-direction: column; gap: 0.4rem; }
     .f-group label { font-size: 0.65rem; font-weight:600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gris-claro); }
-    input, select { border-radius: 8px !important; font-family:'Inter',sans-serif; background:rgba(255,255,255,0.04) !important; border:1px solid rgba(255,255,255,0.1) !important; }
+    input, select { border-radius: 8px !important; font-family:'Inter',sans-serif; background:rgba(255,255,255,0.04) !important; border:1px solid rgba(255,255,255,0.1) !important; color:#f5f3f0 !important; }
     input:focus, select:focus { outline:none; border-color:var(--dorado) !important; }
+    input::placeholder { color:rgba(255,255,255,.3) !important; }
+    select option { background:#1a1814; color:#f5f3f0; }
     .btn, .btn-dorado { border-radius:8px !important; font-family:'Inter',sans-serif !important; font-weight:600 !important; }
+    .btn-nuevo, .btn-primary { background:var(--accent); color:#fff !important; border:none !important; padding:.55rem 1.2rem; border-radius:999px !important; font-size:.78rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .18s; }
+    .btn-nuevo:hover, .btn-primary:hover { opacity:.85; }
 
     .alerta { padding: 0.8rem 1rem; font-size: 0.75rem; margin-bottom: 1.2rem; display: none; border-radius: 8px; }
     .alerta-ok  { background: rgba(39,174,96,.08);  border: 1px solid rgba(39,174,96,.2); color: #5ec98a; }
@@ -97,6 +101,32 @@
     .empty-state { text-align: center; padding: 3rem; color: var(--gris-claro); font-size: 0.82rem; }
 
     #canalWrap { display: none; }
+
+    /* ── Colaboradores ── */
+    .seccion-div {
+      display: flex; align-items: center; gap: 1rem; margin: 2rem 0 1.4rem;
+    }
+    .seccion-div-line { flex: 1; height: 1px; background: var(--card-border); }
+    .seccion-div-label {
+      font-size: .6rem; font-weight: 700; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--gris-claro); white-space: nowrap;
+    }
+    .colab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .8rem; margin-top: 1rem; }
+    .colab-card {
+      background: rgba(255,255,255,.02); border: 1px solid var(--card-border);
+      border-radius: 12px; padding: 1rem 1.1rem;
+    }
+    .colab-nombre { font-size: .88rem; font-weight: 600; margin-bottom: .15rem; }
+    .colab-codigo { font-family: monospace; font-size: .67rem; color: var(--accent); }
+    .colab-email  { font-size: .72rem; color: var(--gris-claro); margin-top: .5rem; }
+    .colab-acceso-row { display: flex; align-items: center; gap: .5rem; margin-top: .7rem; }
+    .acceso-badge {
+      font-size: .58rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      padding: .15rem .5rem; border-radius: 999px;
+    }
+    .acceso-pasivo { background: rgba(136,136,136,.12); color: #888; }
+    .acceso-activo { background: rgba(201,168,76,.12); color: #c9a84c; }
+    .colab-acciones { display: flex; gap: .35rem; margin-top: .8rem; }
   </style>
 </head>
 <body>
@@ -130,7 +160,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         Canales
       </a>
-      <a       <a href="campanas.html" class="admin-nav-item">
+      <a href="campanas.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Campañas
       </a>
@@ -166,7 +196,7 @@
     <div class="admin-header">
       <div>
         <h2 style="font-weight:300; margin-bottom:0.2rem;">Usuarios</h2>
-        <p style="font-size:0.78rem; color:var(--gris-claro);">Crear y gestionar accesos al panel</p>
+        <p style="font-size:0.78rem; color:var(--gris-claro);">Crear y gestionar accesos al panel y al portal de colaboradores</p>
       </div>
     </div>
 
@@ -183,7 +213,8 @@
         <div class="f-group">
           <label>Rol *</label>
           <select id="uRol" class="admin-input" onchange="onRolChange()">
-            <option value="agente">Agente (inmobiliaria / vendedor)</option>
+            <option value="agente">Agente — acceso al panel admin</option>
+            <option value="colaborador">Colaborador — acceso al portal externo</option>
             <option value="admin">Admin</option>
           </select>
         </div>
@@ -200,15 +231,21 @@
         </div>
       </div>
 
-      <!-- Canal — solo para agentes -->
-      <div class="form-row-1" id="canalWrap">
-        <div class="f-group">
-          <label>Canal asociado</label>
-          <select id="uCanal" class="admin-input">
-            <option value="">Sin canal asignado aún</option>
-          </select>
-          <div style="font-size:0.72rem; color:var(--gris-claro); margin-top:0.3rem;">
-            El agente solo verá los leads de este canal. También podés asignarlo después desde Canales → Editar.
+      <!-- Canal + tipo acceso — solo para colaboradores/agentes -->
+      <div id="canalWrap" style="display:none;">
+        <div class="form-row">
+          <div class="f-group">
+            <label>Canal asociado</label>
+            <select id="uCanal" class="admin-input">
+              <option value="">Sin canal asignado aún</option>
+            </select>
+          </div>
+          <div class="f-group" id="tipoAccesoWrap" style="display:none;">
+            <label>Tipo de acceso</label>
+            <select id="uTipoAcceso" class="admin-input">
+              <option value="pasivo">Pasivo — Solo métricas</option>
+              <option value="activo">Activo — Métricas + consultas + CRM</option>
+            </select>
           </div>
         </div>
       </div>
@@ -218,14 +255,14 @@
 
     <!-- ── LISTA DE USUARIOS ──────────────────────────── -->
     <div class="usr-lista-wrap">
-      <div class="usr-lista-titulo">Usuarios activos</div>
+      <div class="usr-lista-titulo">Todos los usuarios</div>
       <div style="overflow-x:auto;">
         <table class="tabla-admin tabla-usuarios" style="width:100%;">
           <thead>
             <tr>
               <th>Email</th>
               <th>Rol</th>
-              <th>Canal</th>
+              <th>Canal / Acceso</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -264,28 +301,30 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
   window.location.href = 'login.html'
 })
 
+// ── Helpers ───────────────────────────────────────────────
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+const TIPO_LABEL = { punto_venta:'Punto de venta', inmobiliaria:'Inmobiliaria', particular:'Particular', evento:'Evento' }
+let todosCanales = []
+
 // ── Rol change ────────────────────────────────────────────
 window.onRolChange = function() {
   const rol = document.getElementById('uRol').value
-  document.getElementById('canalWrap').style.display = rol === 'agente' ? '' : 'none'
+  const mostrarCanal = rol === 'agente' || rol === 'colaborador'
+  document.getElementById('canalWrap').style.display = mostrarCanal ? '' : 'none'
+  document.getElementById('tipoAccesoWrap').style.display = rol === 'colaborador' ? '' : 'none'
 }
-onRolChange() // mostrar/ocultar canal según valor inicial
+onRolChange()
 
-// ── Cargar canales activos sin usuario asignado ───────────
+// ── Cargar todos los canales ──────────────────────────────
 async function cargarCanales() {
-  const { data } = await supabase
-    .from('canales')
-    .select('id, nombre, codigo, tipo')
-    .in('tipo', ['inmobiliaria', 'particular'])
-    .eq('activo', true)
-    .order('nombre')
-
+  const { data } = await supabase.from('canales').select('id, nombre, codigo, tipo').eq('activo', true).order('nombre')
+  todosCanales = data || []
   const sel = document.getElementById('uCanal')
   sel.innerHTML = '<option value="">Sin canal asignado aún</option>'
-  if (data) data.forEach(c => {
+  todosCanales.forEach(c => {
     const o = document.createElement('option')
     o.value = c.id
-    o.textContent = `${c.nombre} (${c.codigo})`
+    o.textContent = `${c.nombre} · ${TIPO_LABEL[c.tipo]||c.tipo} (${c.codigo})`
     sel.appendChild(o)
   })
 }
@@ -294,54 +333,70 @@ cargarCanales()
 // ── Cargar lista de usuarios ──────────────────────────────
 async function cargarUsuarios() {
   const { data: usuarios, error } = await supabase.rpc('admin_listar_usuarios')
-  const { data: canales } = await supabase.from('canales').select('id, nombre, codigo, user_id')
+  const { data: canales } = await supabase.from('canales').select('id, nombre, codigo, tipo, user_id, tipo_acceso')
+  todosCanales = canales || []
 
   const tbody = document.getElementById('tbodyUsuarios')
-
-  if (error) {
-    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error: ${error.message}</div></td></tr>`
-    return
-  }
-  if (!usuarios?.length) {
-    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">No hay usuarios aún.</div></td></tr>`
-    return
-  }
+  if (error) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error: ${error.message}</div></td></tr>`; return }
+  if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
 
   const canalPorUsuario = {}
-  if (canales) canales.forEach(c => { if (c.user_id) canalPorUsuario[c.user_id] = c })
+  todosCanales.forEach(c => { if (c.user_id) canalPorUsuario[c.user_id] = c })
 
-  const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
   const myId = session.user.id
 
   tbody.innerHTML = usuarios.map(u => {
-    const canal = canalPorUsuario[u.id]
-    const canalHtml = canal
-      ? `<span class="canal-link">${esc(canal.nombre)}<br>${esc(canal.codigo)}</span>`
-      : `<span style="color:var(--gris-claro); font-size:0.75rem;">—</span>`
-    const rolActual = (u.rol === 'admin' || u.rol === 'agente') ? u.rol : ''
+    const canal    = canalPorUsuario[u.id]
+    const rolActual = u.rol || ''
+    const esColab  = rolActual === 'colaborador'
+
+    // Columna canal/acceso
+    let canalHtml = ''
+    if (esColab) {
+      // Selector de canal + tipo_acceso inline
+      const optsCanal = todosCanales.map(c =>
+        `<option value="${esc(c.id)}" ${canal?.id === c.id ? 'selected' : ''}>${esc(c.nombre)} (${esc(c.codigo)})</option>`
+      ).join('')
+      canalHtml = `
+        <div style="display:flex;flex-direction:column;gap:.35rem;">
+          <select class="admin-input" style="padding:.25rem .5rem;font-size:.72rem;width:100%;" id="canal-${esc(u.id)}">
+            <option value="">— Sin canal —</option>${optsCanal}
+          </select>
+          <select class="admin-input" style="padding:.25rem .5rem;font-size:.72rem;width:100%;" id="acceso-${esc(u.id)}">
+            <option value="pasivo" ${canal?.tipo_acceso !== 'activo' ? 'selected' : ''}>Pasivo — Solo métricas</option>
+            <option value="activo" ${canal?.tipo_acceso === 'activo' ? 'selected' : ''}>Activo — CRM + consultas</option>
+          </select>
+          <button class="btn-tbl" onclick="guardarCanal('${esc(u.id)}')">Guardar canal</button>
+        </div>`
+    } else if (canal) {
+      canalHtml = `<span class="canal-link">${esc(canal.nombre)}<br>${esc(canal.codigo)}</span>`
+    } else {
+      canalHtml = `<span style="color:var(--gris-claro);font-size:.75rem;">—</span>`
+    }
 
     return `
     <tr>
-      <td>${esc(u.email)}${u.id === myId ? ' <span style="font-size:0.65rem; color:var(--dorado);">(vos)</span>' : ''}</td>
+      <td>${esc(u.email)}${u.id === myId ? ' <span style="font-size:.65rem;color:var(--dorado);">(vos)</span>' : ''}</td>
       <td>
-        <select class="admin-input" style="padding:0.3rem 0.5rem; font-size:0.75rem; width:auto;"
-                onchange="cambiarRol('${u.id}', this, '${esc(u.email)}')">
-          <option value="" ${rolActual === '' ? 'selected' : ''} disabled>Sin rol</option>
-          <option value="agente" ${rolActual === 'agente' ? 'selected' : ''}>Agente</option>
-          <option value="admin"  ${rolActual === 'admin'  ? 'selected' : ''}>Admin</option>
+        <select class="admin-input" style="padding:.3rem .5rem;font-size:.75rem;width:auto;"
+                onchange="cambiarRol('${esc(u.id)}', this, '${esc(u.email)}')">
+          <option value="" ${!rolActual ? 'selected' : ''} disabled>Sin rol</option>
+          <option value="agente"       ${rolActual==='agente'       ? 'selected':''}>Agente</option>
+          <option value="colaborador"  ${rolActual==='colaborador'  ? 'selected':''}>Colaborador</option>
+          <option value="admin"        ${rolActual==='admin'        ? 'selected':''}>Admin</option>
         </select>
       </td>
       <td>${canalHtml}</td>
       <td>
         <span class="estado-dot ${u.desactivado ? 'inactivo' : 'activo'}"></span>
-        <span style="font-size:0.75rem; color:var(--gris-claro);">${u.desactivado ? 'Inactivo' : 'Activo'}</span>
+        <span style="font-size:.75rem;color:var(--gris-claro);">${u.desactivado ? 'Inactivo' : 'Activo'}</span>
       </td>
       <td>
-        <button class="btn-tbl" onclick="resetPassword('${esc(u.email)}')">Reset contraseña</button>
-        <button class="btn-tbl ${u.desactivado ? '' : 'danger'}" onclick="toggleUsuario('${u.id}', ${u.desactivado})">
+        <button class="btn-tbl" onclick="resetPassword('${esc(u.email)}', ${esColab})">Reset contraseña</button>
+        <button class="btn-tbl ${u.desactivado ? '' : 'danger'}" onclick="toggleUsuario('${esc(u.id)}', ${u.desactivado})">
           ${u.desactivado ? 'Activar' : 'Desactivar'}
         </button>
-        ${u.id !== myId ? `<button class="btn-tbl danger" onclick="eliminarUsuario('${u.id}', '${esc(u.email)}')">Eliminar</button>` : ''}
+        ${u.id !== myId ? `<button class="btn-tbl danger" onclick="eliminarUsuario('${esc(u.id)}', '${esc(u.email)}')">Eliminar</button>` : ''}
       </td>
     </tr>`
   }).join('')
@@ -386,9 +441,12 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
   // Asignar rol via función SQL
   await supabase.rpc('admin_set_user_rol', { p_user_id: userId, p_rol: rol })
 
-  // Vincular canal si es agente
-  if (rol === 'agente' && canalId) {
-    await supabase.from('canales').update({ user_id: userId }).eq('id', canalId)
+  // Vincular canal
+  if (canalId) {
+    const tipoAcceso = document.getElementById('uTipoAcceso')?.value || 'pasivo'
+    const update = { user_id: userId }
+    if (rol === 'colaborador') { update.tipo_acceso = tipoAcceso; update.colaborador_email = email }
+    await supabase.from('canales').update(update).eq('id', canalId)
   }
 
   mostrar(`✓ Usuario creado correctamente (${email}).`, 'ok')
@@ -449,12 +507,27 @@ window.toggleUsuario = async (id, desactivado) => {
   cargarUsuarios()
 }
 
+// ── Guardar canal de colaborador ──────────────────────────
+window.guardarCanal = async (userId) => {
+  const canalId    = document.getElementById('canal-' + userId)?.value
+  const tipoAcceso = document.getElementById('acceso-' + userId)?.value || 'pasivo'
+
+  // Limpiar canal anterior de este usuario
+  await supabase.from('canales').update({ user_id: null, tipo_acceso: 'pasivo' }).eq('user_id', userId)
+
+  if (canalId) {
+    await supabase.from('canales').update({ user_id: userId, tipo_acceso: tipoAcceso }).eq('id', canalId)
+  }
+  cargarUsuarios()
+}
+
 // ── Reset contraseña ──────────────────────────────────────
-window.resetPassword = async (email) => {
+window.resetPassword = async (email, esColab = false) => {
   if (!confirm(`¿Enviar email de reset de contraseña a ${email}?`)) return
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/admin/login.html'
-  })
+  const redirectTo = esColab
+    ? window.location.origin + '/colaboradores/login.html'
+    : window.location.origin + '/admin/login.html'
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
   if (error) alert('Error: ' + error.message)
   else alert(`✓ Email de reset enviado a ${email}.`)
 }
@@ -475,6 +548,8 @@ function mostrar(msg, tipo) {
   el.className      = 'alerta' + (tipo ? ' alerta-' + tipo : '')
   el.style.display  = msg ? 'block' : 'none'
 }
+
+
 
 </script>
 </body>

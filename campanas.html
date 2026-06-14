@@ -66,6 +66,14 @@
     .btn-asignar:hover { opacity:.85; }
     .btn-limpiar { background:none; border:1px solid rgba(224,92,92,.4); color:#e05c5c; padding:.4rem .8rem; border-radius:8px; font-size:.74rem; cursor:pointer; font-family:inherit; }
     .btn-limpiar:hover { background:rgba(224,92,92,.1); }
+    .accion-divider { width:1px; background:rgba(255,255,255,.1); align-self:stretch; margin:0 .2rem; }
+    .accion-url { background:rgba(255,255,255,0.05); border:1px solid var(--card-border); color:var(--blanco); padding:.4rem .8rem; border-radius:8px; font-size:.74rem; font-family:inherit; width:200px; }
+    .accion-url::placeholder { color:rgba(255,255,255,.3); }
+    .accion-url:focus { outline:none; border-color:var(--accent); }
+    .btn-destino { background:rgba(201,168,76,.15); color:var(--dorado); border:1px solid rgba(201,168,76,.3); padding:.4rem .9rem; border-radius:8px; font-size:.74rem; font-weight:600; cursor:pointer; font-family:inherit; }
+    .btn-destino:hover { background:rgba(201,168,76,.25); }
+    .btn-edit-dest { background:none; border:none; color:var(--gris); cursor:pointer; font-size:.68rem; padding:.15rem .4rem; border-radius:5px; font-family:inherit; transition:all .18s; }
+    .btn-edit-dest:hover { color:var(--dorado); background:rgba(201,168,76,.08); }
 
     /* Campañas cards */
     .campanas-grid { display:grid; gap:.85rem; }
@@ -117,6 +125,17 @@
     .btn-save:hover { opacity:.85; }
 
     .empty-msg { text-align:center; padding:2.5rem; color:var(--gris); font-size:.82rem; }
+    .chips-seleccion { display:flex; gap:.45rem; flex-wrap:wrap; margin-bottom:.8rem; }
+    .chip-sel { padding:.28rem .75rem; border-radius:999px; font-size:.67rem; font-weight:600; cursor:pointer; border:1px solid; transition:all .18s; font-family:inherit; background:none; }
+    .chip-sel:hover { opacity:.8; }
+    .chip-sel.punto_venta { color:var(--verde); border-color:rgba(80,200,120,.35); }
+    .chip-sel.punto_venta:hover { background:rgba(80,200,120,.1); }
+    .chip-sel.inmobiliaria { color:#6495ed; border-color:rgba(100,149,237,.35); }
+    .chip-sel.inmobiliaria:hover { background:rgba(100,149,237,.1); }
+    .chip-sel.particular { color:var(--accent); border-color:rgba(215,111,63,.35); }
+    .chip-sel.particular:hover { background:rgba(215,111,63,.1); }
+    .chip-sel.evento { color:var(--dorado); border-color:rgba(201,168,76,.35); }
+    .chip-sel.evento:hover { background:rgba(201,168,76,.1); }
     .select-all-row { display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem; font-size:.72rem; color:var(--gris); cursor:pointer; }
   </style>
 </head>
@@ -264,12 +283,24 @@
       <!-- Barra de acción masiva -->
       <div class="accion-bar" id="accionBar">
         <span id="accionCount">0 canales seleccionados</span>
+        <div class="accion-divider"></div>
+        <input type="text" class="accion-url" id="accionDestino" placeholder="Nueva URL de destino…" />
+        <button class="btn-destino" onclick="cambiarDestinoMasivo()">Cambiar destino QR</button>
+        <div class="accion-divider"></div>
         <select class="accion-sel" id="accionCampana">
-          <option value="">— Elegir campaña —</option>
+          <option value="">— Asignar a campaña —</option>
         </select>
-        <button class="btn-asignar" onclick="asignarMasivo()">Asignar a campaña</button>
-        <button class="btn-limpiar" onclick="quitarDeCampana()">Quitar de campaña activa</button>
+        <button class="btn-asignar" onclick="asignarMasivo()">Asignar</button>
+        <button class="btn-limpiar" onclick="quitarDeCampana()">Quitar de campaña</button>
         <button class="btn-sm" onclick="deseleccionarTodo()" style="margin-left:auto;">Cancelar</button>
+      </div>
+
+      <!-- Chips de selección rápida por tipo -->
+      <div class="chips-seleccion">
+        <button class="chip-sel punto_venta" onclick="seleccionarPorTipo('punto_venta')">+ Seleccionar Puntos de venta</button>
+        <button class="chip-sel inmobiliaria" onclick="seleccionarPorTipo('inmobiliaria')">+ Seleccionar Inmobiliarias</button>
+        <button class="chip-sel particular" onclick="seleccionarPorTipo('particular')">+ Seleccionar Particulares</button>
+        <button class="chip-sel evento" onclick="seleccionarPorTipo('evento')">+ Seleccionar Eventos</button>
       </div>
 
       <!-- Select all -->
@@ -287,7 +318,7 @@
               <th>Canal</th>
               <th>Tipo</th>
               <th>Ciudad / Provincia</th>
-              <th>Estado</th>
+              <th>Destino QR</th>
               <th>Campaña activa</th>
             </tr>
           </thead>
@@ -298,6 +329,28 @@
       </div>
     </div>
   </main>
+</div>
+
+<!-- ── MODAL EDITAR DESTINO INDIVIDUAL ──────── -->
+<div class="modal-overlay" id="modalDestino">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" onclick="cerrarModalDestino()">✕</button>
+    <h3>Cambiar destino QR</h3>
+    <p style="font-size:.74rem;color:var(--gris);margin-bottom:1.2rem;" id="mDestNombre"></p>
+    <div class="form-group">
+      <label class="form-label">Destino actual</label>
+      <div id="mDestActual" style="font-size:.72rem;color:var(--gris);font-family:monospace;padding:.4rem 0;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nuevo destino *</label>
+      <input type="text" class="form-input" id="mDestNuevo" placeholder="Ej: /propiedad.html?id=xxx o https://..." />
+      <div class="form-hint">El QR físico no cambia — solo el destino al que lleva.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="cerrarModalDestino()">Cancelar</button>
+      <button class="btn-save" onclick="guardarDestinoIndividual()">Guardar destino</button>
+    </div>
+  </div>
 </div>
 
 <!-- ── MODAL NUEVA/EDITAR CAMPAÑA ───────────── -->
@@ -346,17 +399,15 @@
 </div>
 
 <script type="module">
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-  const SUPA_URL = 'https://cjkwpnjkxpccbyenttcl.supabase.co'
-  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqa3dwbmpреHBjY2J5ZW50dGNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTU4MDY5NzAsImV4cCI6MjAzMTM4Mjk3MH0.Ej7mAkqJNYTOBB7_6V4lfBdLAzGRn-oN5VwWC5RlJfQ'
-  const supabase = createClient(SUPA_URL, SUPA_KEY)
+  import { supabase } from '../js/config.js'
 
   const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
   const fmtDate = iso => iso ? new Date(iso).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
 
-  let campanas = [], canales = [], canalesCC = [], editId = null
+  let campanas = [], canales = [], canalesCC = [], referencias = [], editId = null
   let seleccionados = new Set()
   let activaToggle = true
+  let editDestinoId = null  // referencia.id en edición individual
 
   // ── Auth ──────────────────────────────────────
   const { data: { session } } = await supabase.auth.getSession()
@@ -367,20 +418,26 @@
 
   // ── Cargar datos ──────────────────────────────
   async function cargar() {
-    const [rCamp, rCanales, rCC] = await Promise.all([
+    const [rCamp, rCanales, rCC, rRefs] = await Promise.all([
       supabase.from('campanas').select('*').order('created_at', { ascending: false }),
       supabase.from('canales').select('*').order('nombre'),
       supabase.from('campanas_canales').select('campana_id, canal_id'),
+      supabase.from('referencias').select('id, canal_id, destino, codigo, activo'),
     ])
     campanas    = rCamp.data    || []
     canales     = rCanales.data || []
     canalesCC   = rCC.data      || []
+    referencias = rRefs.data    || []
 
     actualizarKPIs()
     renderCampanas()
     renderTablaCanales()
     poblarFiltros()
     poblarSelectCampana()
+  }
+
+  function refDeCanal(canalId) {
+    return referencias.find(r => r.canal_id === canalId) || null
   }
 
   function estadoCampana(c) {
@@ -438,6 +495,8 @@
         <div class="campana-bottom">
           <span class="campana-canales-count">${count} canal${count !== 1 ? 'es' : ''} asignado${count !== 1 ? 's' : ''}</span>
           <div class="campana-acciones">
+            <a class="btn-sm" href="campana-reporte.html?id=${esc(c.id)}" style="text-decoration:none;">Ver reporte</a>
+            <button class="btn-sm" onclick="compartirCampana('${esc(c.id)}')">Compartir</button>
             <button class="btn-sm" onclick="editarCampana('${esc(c.id)}')">Editar</button>
             <button class="btn-sm" onclick="toggleCampanaActiva('${esc(c.id)}', ${c.activa})">${c.activa ? 'Pausar' : 'Activar'}</button>
             <button class="btn-sm danger" onclick="eliminarCampana('${esc(c.id)}')">Eliminar</button>
@@ -501,6 +560,8 @@
     const TIPO_LABEL = { punto_venta: 'Punto de venta', inmobiliaria: 'Inmobiliaria', particular: 'Particular', evento: 'Evento' }
     tbody.innerHTML = lista.map(c => {
       const campAct = campanaActivaDeCanal(c.id)
+      const ref     = refDeCanal(c.id)
+      const destino = ref?.destino || '—'
       const checked = seleccionados.has(c.id) ? 'checked' : ''
       return `<tr class="${seleccionados.has(c.id) ? 'selected' : ''}" id="fila-${esc(c.id)}">
         <td><input type="checkbox" class="canal-check" data-id="${esc(c.id)}" ${checked} onchange="toggleSelect('${esc(c.id)}', this.checked)" /></td>
@@ -510,7 +571,11 @@
         </td>
         <td><span class="badge badge-${esc(c.tipo)}">${esc(TIPO_LABEL[c.tipo] || c.tipo)}</span></td>
         <td style="font-size:.72rem;color:var(--gris);">${[c.ciudad, c.provincia].filter(Boolean).map(esc).join(', ') || '—'}</td>
-        <td><span class="badge ${c.activo ? 'badge-activo' : 'badge-inactivo'}">${c.activo ? 'Activo' : 'Inactivo'}</span></td>
+        <td>
+          <span style="font-family:monospace;font-size:.65rem;color:${campAct ? 'var(--gris)' : 'var(--dorado)'};">${esc(destino)}</span>
+          ${campAct ? `<span style="font-size:.6rem;color:var(--purpura);display:block;">campaña activa</span>` : ''}
+          ${ref ? `<button class="btn-edit-dest" onclick="editarDestinoIndividual('${esc(c.id)}')">✏ editar</button>` : ''}
+        </td>
         <td>${campAct ? `<span class="badge badge-en-campana">${esc(campAct.nombre)}</span>` : '<span style="color:var(--gris);font-size:.7rem;">—</span>'}</td>
       </tr>`
     }).join('')
@@ -529,6 +594,12 @@
       if (checked) seleccionados.add(c.id)
       else seleccionados.delete(c.id)
     })
+    renderTablaCanales()
+    actualizarAccionBar()
+  }
+
+  window.seleccionarPorTipo = function(tipo) {
+    canales.filter(c => c.tipo === tipo).forEach(c => seleccionados.add(c.id))
     renderTablaCanales()
     actualizarAccionBar()
   }
@@ -572,6 +643,51 @@
     await cargar()
   }
 
+  // ── Cambio de destino base (sin campaña) ─────
+  window.cambiarDestinoMasivo = async function() {
+    const nuevaUrl = document.getElementById('accionDestino').value.trim()
+    if (!nuevaUrl) { alert('Ingresá la URL de destino.'); return }
+    if (!seleccionados.size) { alert('Seleccioná al menos un canal.'); return }
+
+    const ids = [...seleccionados]
+    // Buscar referencias de los canales seleccionados
+    const refsAfectadas = referencias.filter(r => ids.includes(r.canal_id))
+    if (!refsAfectadas.length) { alert('Los canales seleccionados no tienen QR asignado.'); return }
+
+    const refIds = refsAfectadas.map(r => r.id)
+    const { error } = await supabase.from('referencias').update({ destino: nuevaUrl }).in('id', refIds)
+    if (error) { alert('Error: ' + error.message); return }
+
+    document.getElementById('accionDestino').value = ''
+    deseleccionarTodo()
+    await cargar()
+  }
+
+  window.editarDestinoIndividual = function(canalId) {
+    const canal = canales.find(c => c.id === canalId)
+    const ref   = refDeCanal(canalId)
+    if (!ref) return
+    editDestinoId = ref.id
+    document.getElementById('mDestNombre').textContent = canal?.nombre || canalId
+    document.getElementById('mDestActual').textContent = ref.destino || '—'
+    document.getElementById('mDestNuevo').value = ref.destino || ''
+    document.getElementById('modalDestino').classList.add('open')
+  }
+
+  window.cerrarModalDestino = function() {
+    document.getElementById('modalDestino').classList.remove('open')
+    editDestinoId = null
+  }
+
+  window.guardarDestinoIndividual = async function() {
+    const nuevaUrl = document.getElementById('mDestNuevo').value.trim()
+    if (!nuevaUrl) { alert('Ingresá el destino.'); return }
+    const { error } = await supabase.from('referencias').update({ destino: nuevaUrl }).eq('id', editDestinoId)
+    if (error) { alert('Error: ' + error.message); return }
+    cerrarModalDestino()
+    await cargar()
+  }
+
   // ── Modal campaña ─────────────────────────────
   window.abrirModal = function(id = null) {
     editId = id
@@ -610,6 +726,13 @@
   }
 
   window.editarCampana = function(id) { abrirModal(id) }
+
+  window.compartirCampana = function(id) {
+    const link = `${location.origin}/reporte.html?campana=${id}`
+    navigator.clipboard.writeText(link)
+      .then(() => alert('Link copiado al portapapeles:\n' + link))
+      .catch(() => prompt('Copiá este link para compartir:', link))
+  }
 
   window.guardarCampana = async function() {
     const nombre    = document.getElementById('mNombre').value.trim()
