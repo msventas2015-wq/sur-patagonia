@@ -3,22 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin — Sur Patagonia</title>
+  <title>Acceso — Sur Patagonia</title>
   <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     body {
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: var(--negro);
+      background: #0d0c0b;
+      font-family: 'Inter', system-ui, sans-serif;
     }
     .login-box {
-      background: var(--negro-2);
-      border: 1px solid var(--gris-oscuro);
+      background: #161513;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px;
       padding: 3rem;
       width: 100%;
       max-width: 420px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
     }
     .login-logo {
       font-family: 'Cormorant Garamond', serif;
@@ -31,23 +36,69 @@
     .login-logo span { color: var(--dorado); }
     .login-subtitulo {
       text-align: center;
-      font-size: 0.7rem;
-      letter-spacing: 0.15em;
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
       color: var(--gris-claro);
       margin-bottom: 2.5rem;
+    }
+    .form-grupo label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gris-claro);
+      margin-bottom: 0.5rem;
+    }
+    .form-grupo input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 8px;
+      color: var(--blanco);
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color .18s;
+    }
+    .form-grupo input:focus { border-color: var(--dorado); }
+    .btn-dorado {
+      background: var(--dorado);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 0.85rem 1.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: opacity .18s;
+    }
+    .btn-dorado:hover { opacity: 0.85; }
+    .alerta-error {
+      background: rgba(192,57,43,.08);
+      border: 1px solid rgba(192,57,43,0.25);
+      border-radius: 8px;
+      color: #e07070;
+      padding: 0.8rem 1rem;
+      font-size: 0.75rem;
+      margin-bottom: 1.2rem;
     }
   </style>
 </head>
 <body>
   <div class="login-box">
     <div class="login-logo">SUR <span>PATAGONIA</span></div>
-    <p class="login-subtitulo">Panel de administración</p>
+    <p class="login-subtitulo">Panel de acceso</p>
     <div id="alertaLogin"></div>
     <form id="formLogin">
       <div class="form-grupo" style="margin-bottom:1.2rem;">
         <label>Email</label>
-        <input type="email" id="email" placeholder="admin@surpatagonia.com" required autofocus />
+        <input type="email" id="email" placeholder="tu@email.com" required autofocus />
       </div>
       <div class="form-grupo" style="margin-bottom:2rem;">
         <label>Contraseña</label>
@@ -61,32 +112,50 @@
   </div>
 
   <script type="module">
-    import { supabase } from '../js/config.js'
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-    // Si ya hay sesión, redirigir
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = 'dashboard.html'
-    })
+    const supabase = createClient(
+      'https://wajkfydxutptcvvfwrvq.supabase.co',
+      'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
+    )
+
+    async function redirigirPorRol(rol) {
+      if (rol === 'admin')  window.location.href = 'dashboard.html'
+      else if (rol === 'agente') window.location.href = '../portal/index.html'
+      else {
+        await supabase.auth.signOut()
+        document.getElementById('alertaLogin').innerHTML =
+          `<div class="alerta-error">Tu cuenta no tiene acceso al panel. Contactá a Sur Patagonia.</div>`
+        document.getElementById('btnLogin').textContent = 'Ingresar'
+        document.getElementById('btnLogin').disabled = false
+      }
+    }
+
+    // Si ya hay sesión activa, redirigir según rol
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) redirigirPorRol(user.user_metadata?.rol)
 
     document.getElementById('formLogin').addEventListener('submit', async (e) => {
       e.preventDefault()
       const btn = document.getElementById('btnLogin')
       btn.textContent = 'Ingresando...'
       btn.disabled = true
+      document.getElementById('alertaLogin').innerHTML = ''
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: document.getElementById('email').value,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email:    document.getElementById('email').value,
         password: document.getElementById('password').value
       })
 
       if (error) {
         document.getElementById('alertaLogin').innerHTML =
-          `<div class="alerta alerta-error">Email o contraseña incorrectos.</div>`
+          `<div class="alerta-error">Email o contraseña incorrectos.</div>`
         btn.textContent = 'Ingresar'
         btn.disabled = false
-      } else {
-        window.location.href = 'dashboard.html'
+        return
       }
+
+      redirigirPorRol(data.user?.user_metadata?.rol)
     })
   </script>
 </body>

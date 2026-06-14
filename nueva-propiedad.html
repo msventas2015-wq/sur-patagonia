@@ -80,6 +80,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         Canales
       </a>
+      <a href="tour360.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>
+        Tour 360°
+      </a>
       <a href="apariencia.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
         Apariencia
@@ -382,6 +386,17 @@
         <p style="font-size:0.72rem; color:var(--gris); margin-top:0.5rem;">Pegá la URL completa de YouTube o solo el ID del video.</p>
       </div>
 
+      <!-- MATTERPORT -->
+      <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); padding:2rem; margin-bottom:1.5rem;">
+        <h4 style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dorado); margin-bottom:0.5rem;">Recorrido 3D virtual (opcional)</h4>
+        <p style="font-size:0.72rem; color:var(--gris-claro); margin-bottom:1.5rem;">Pegá el link del tour virtual — funciona con Kuula, Matterport, Momento360, Roundme o cualquier plataforma que genere un link embebible.</p>
+        <div class="form-grupo">
+          <label>URL del tour virtual</label>
+          <input type="text" id="tour_matterport" placeholder="Ej: https://kuula.co/share/collection/XXXXXXX  o  https://my.matterport.com/show/?m=XXXXXXX" />
+        </div>
+        <p id="matterportHint" style="font-size:0.72rem; color:var(--gris); margin-top:0.5rem;">En Kuula: Share → Embed → copiá la URL del src del iframe. En Matterport: Share → Copy Link.</p>
+      </div>
+
       <!-- TOUR 360 -->
       <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); padding:2rem; margin-bottom:1.5rem;">
         <h4 style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dorado); margin-bottom:0.5rem;">Tour 360° (opcional)</h4>
@@ -471,6 +486,37 @@
     const m = s.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/))([a-zA-Z0-9_-]{11})/)
     return m ? m[1] : null
   }
+  // ── Matterport: extraer ID del link ──────────────────────
+  function extraerMatterportId(s) {
+    s = (s || '').trim()
+    if (!s) return null
+    // URL tipo my.matterport.com/show/?m=XXXXX
+    const m = s.match(/[?&]m=([A-Za-z0-9_-]+)/)
+    if (m) return m[1]
+    // Solo el ID directamente (alfanumérico, sin espacios)
+    if (/^[A-Za-z0-9_-]{6,20}$/.test(s)) return s
+    return null
+  }
+  const matterportInput = document.getElementById('tour_matterport')
+  const matterportHint  = document.getElementById('matterportHint')
+  matterportInput.addEventListener('blur', function() {
+    const val = this.value.trim()
+    if (!val) return
+    const id = extraerMatterportId(val)
+    if (id) {
+      this.value = id
+      matterportHint.textContent = '✓ ID detectado: ' + id
+      matterportHint.style.color = 'var(--dorado)'
+    } else {
+      matterportHint.textContent = '⚠ No se reconoció el link. Pegá la URL de Matterport o solo el ID del modelo.'
+      matterportHint.style.color = '#e07070'
+    }
+  })
+  matterportInput.addEventListener('focus', function() {
+    matterportHint.textContent = 'Encontrás el link en Matterport → tu modelo → Share → Copy Link.'
+    matterportHint.style.color = ''
+  })
+
   const videoInput = document.getElementById('video_url')
   const videoHint = videoInput.nextElementSibling
   videoInput.addEventListener('blur', function() {
@@ -595,6 +641,7 @@
       document.getElementById('latitud').value = data.latitud || ''
       document.getElementById('longitud').value = data.longitud || ''
       document.getElementById('video_url').value = data.video_url || ''
+      document.getElementById('tour_matterport').value = data.tour_matterport || ''
       const amenExist = Array.isArray(data.amenidades) ? data.amenidades : []
       document.querySelectorAll('.amenidad-check').forEach(cb => {
         cb.checked = amenExist.includes(cb.value)
@@ -690,6 +737,7 @@
         latitud: (() => { const v = parseFloat(document.getElementById('latitud').value); return (!isNaN(v) && v >= -90 && v <= 90) ? v : null })(),
         longitud: (() => { const v = parseFloat(document.getElementById('longitud').value); return (!isNaN(v) && v >= -180 && v <= 180) ? v : null })(),
         video_url: extraerYtId(document.getElementById('video_url').value) || null,
+        tour_matterport: extraerMatterportId(document.getElementById('tour_matterport').value) || null,
         tour_360: tour360Url,
         amenidades: [...document.querySelectorAll('.amenidad-check:checked')].map(cb => cb.value),
         destacada: document.getElementById('destacada').checked,
