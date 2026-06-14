@@ -173,6 +173,32 @@
       </div>
 
       <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); padding:2rem; margin-bottom:1.5rem;">
+        <h4 style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dorado); margin-bottom:1.5rem;">Financiación</h4>
+        <div class="form-grid">
+          <div class="form-grupo" style="flex-direction:row; align-items:center; gap:0.8rem;">
+            <input type="checkbox" id="financiacion" style="width:18px;height:18px;" />
+            <label for="financiacion" style="font-size:0.85rem; text-transform:none; letter-spacing:0; color:var(--blanco); cursor:pointer;">Acepta financiación en cuotas</label>
+          </div>
+          <div class="form-grupo" style="flex-direction:row; align-items:center; gap:0.8rem;">
+            <input type="checkbox" id="aceptaVehiculo" style="width:18px;height:18px;" />
+            <label for="aceptaVehiculo" style="font-size:0.85rem; text-transform:none; letter-spacing:0; color:var(--blanco); cursor:pointer;">Acepta vehículo como parte de pago</label>
+          </div>
+          <div class="form-grupo" id="grupoFinanciacion" style="display:none;">
+            <label>Adelanto mínimo (USD)</label>
+            <input type="number" id="adelantoMinimo" placeholder="Ej: 10000" min="0" />
+          </div>
+          <div class="form-grupo" id="grupoCuota" style="display:none;">
+            <label>Cuota mínima mensual (USD)</label>
+            <input type="number" id="cuotaMinima" placeholder="Ej: 500" min="0" />
+          </div>
+          <div class="form-grupo" id="grupoCantidad" style="display:none;">
+            <label>Cantidad de cuotas</label>
+            <input type="number" id="cuotasCantidad" placeholder="Ej: 24" min="1" />
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); padding:2rem; margin-bottom:1.5rem;">
         <h4 style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dorado); margin-bottom:1.5rem;">Ubicación</h4>
         <div class="form-grid">
           <div class="form-grupo">
@@ -480,6 +506,15 @@
   })
   inputImagenes.addEventListener('change', () => agregarArchivos(inputImagenes.files))
 
+  // ── Financiación: toggle campos ──────────────────────────────
+  function toggleFinanciacion(activa) {
+    const display = activa ? 'block' : 'none'
+    document.getElementById('grupoFinanciacion').style.display = display
+    document.getElementById('grupoCuota').style.display = display
+    document.getElementById('grupoCantidad').style.display = display
+  }
+  document.getElementById('financiacion').addEventListener('change', e => toggleFinanciacion(e.target.checked))
+
   // ── YouTube: extraer y normalizar ID ──────────────────────────
   function extraerYtId(input) {
     if (!input) return null
@@ -652,6 +687,12 @@
       })
       document.getElementById('destacada').checked = data.destacada || false
       document.getElementById('activa').checked = data.activa !== false
+      document.getElementById('financiacion').checked = data.financiacion || false
+      document.getElementById('aceptaVehiculo').checked = data.acepta_vehiculo || false
+      document.getElementById('adelantoMinimo').value = data.adelanto_minimo || ''
+      document.getElementById('cuotaMinima').value = data.cuota_minima || ''
+      document.getElementById('cuotasCantidad').value = data.cuotas_cantidad || ''
+      toggleFinanciacion(data.financiacion || false)
 
       // Cargar tour 360 existente
       if (data.tour_360) {
@@ -738,6 +779,11 @@
         antiguedad: document.getElementById('antiguedad').value || null,
         condicion: document.getElementById('condicion').value || null,
         apto_credito: document.getElementById('apto_credito').checked,
+        financiacion: document.getElementById('financiacion').checked,
+        acepta_vehiculo: document.getElementById('aceptaVehiculo').checked,
+        adelanto_minimo: document.getElementById('adelantoMinimo').value || null,
+        cuota_minima: document.getElementById('cuotaMinima').value || null,
+        cuotas_cantidad: document.getElementById('cuotasCantidad').value || null,
         latitud: (() => { const v = parseFloat(document.getElementById('latitud').value); return (!isNaN(v) && v >= -90 && v <= 90) ? v : null })(),
         longitud: (() => { const v = parseFloat(document.getElementById('longitud').value); return (!isNaN(v) && v >= -180 && v <= 180) ? v : null })(),
         video_url: extraerYtId(document.getElementById('video_url').value) || null,
