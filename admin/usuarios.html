@@ -98,6 +98,25 @@
     .btn-tbl.danger:hover { border-color: #e05; color: #e05; }
 
     .canal-link { font-size: 0.72rem; color: var(--gris-claro); font-family: monospace; }
+
+    /* ── Chips de canales ── */
+    .canal-chips { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+    .canal-chip {
+      display: inline-flex; align-items: center; gap: .3rem;
+      background: rgba(215,111,63,.1); border: 1px solid rgba(215,111,63,.25);
+      border-radius: 999px; padding: .18rem .55rem .18rem .65rem;
+      font-size: .68rem; color: var(--accent); white-space: nowrap;
+    }
+    .canal-chip button {
+      background: none; border: none; color: inherit; cursor: pointer;
+      font-size: .8rem; line-height: 1; padding: 0; opacity: .7;
+    }
+    .canal-chip button:hover { opacity: 1; }
+    .add-canal-row { display: flex; gap: .3rem; align-items: center; margin-top: .3rem; width: 100%; }
+    .add-canal-row select { flex: 1; padding: .22rem .4rem; font-size: .68rem; }
+    .add-canal-row button { white-space: nowrap; font-size: .68rem; padding: .22rem .5rem; }
+    .acceso-row { display: flex; align-items: center; gap: .4rem; margin-top: .35rem; }
+    .acceso-row select { font-size: .68rem; padding: .22rem .4rem; }
     .empty-state { text-align: center; padding: 3rem; color: var(--gris-claro); font-size: 0.82rem; }
 
     #canalWrap { display: none; }
@@ -384,36 +403,60 @@ async function cargarUsuarios() {
   if (error) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error: ${error.message}</div></td></tr>`; return }
   if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
 
-  const canalPorUsuario = {}
-  todosCanales.forEach(c => { if (c.user_id) canalPorUsuario[c.user_id] = c })
+  const canalesPorUsuario = {}
+  todosCanales.forEach(c => {
+    if (c.user_id) {
+      if (!canalesPorUsuario[c.user_id]) canalesPorUsuario[c.user_id] = []
+      canalesPorUsuario[c.user_id].push(c)
+    }
+  })
 
   const myId = session.user.id
 
   tbody.innerHTML = usuarios.map(u => {
-    const canal    = canalPorUsuario[u.id]
-    const rolActual = u.rol || ''
-    const esColab  = rolActual === 'colaborador'
+    const userCanales = canalesPorUsuario[u.id] || []
+    const rolActual   = u.rol || ''
+    const esColab     = rolActual === 'colaborador'
+    const tipoAcceso  = userCanales[0]?.tipo_acceso || 'pasivo'
+
+    // IDs de canales ya asignados a este user
+    const asignadosIds = new Set(userCanales.map(c => c.id))
+    // Canales disponibles para agregar (sin user asignado O asignados a este mismo user)
+    const disponibles = todosCanales.filter(c => !c.user_id || c.user_id === u.id)
 
     // Columna canal/acceso
     let canalHtml = ''
     if (esColab) {
-      // Selector de canal + tipo_acceso inline
-      const optsCanal = todosCanales.map(c =>
-        `<option value="${esc(c.id)}" ${canal?.id === c.id ? 'selected' : ''}>${esc(c.nombre)} (${esc(c.codigo)})</option>`
-      ).join('')
+      const chips = userCanales.map(c => `
+        <span class="canal-chip">
+          ${esc(c.nombre)} <span style="font-size:.6rem;opacity:.6;">(${esc(c.codigo)})</span>
+          <button onclick="quitarCanal('${esc(u.id)}','${esc(c.id)}')" title="Quitar canal">×</button>
+        </span>`).join('')
+
+      const optsAgregar = disponibles
+        .filter(c => !asignadosIds.has(c.id))
+        .map(c => `<option value="${esc(c.id)}">${esc(c.nombre)} (${esc(c.codigo)})</option>`)
+        .join('')
+
       canalHtml = `
-        <div style="display:flex;flex-direction:column;gap:.35rem;">
-          <select class="admin-input" style="padding:.25rem .5rem;font-size:.72rem;width:100%;" id="canal-${esc(u.id)}">
-            <option value="">— Sin canal —</option>${optsCanal}
-          </select>
-          <select class="admin-input" style="padding:.25rem .5rem;font-size:.72rem;width:100%;" id="acceso-${esc(u.id)}">
-            <option value="pasivo" ${canal?.tipo_acceso !== 'activo' ? 'selected' : ''}>Pasivo — Solo métricas</option>
-            <option value="activo" ${canal?.tipo_acceso === 'activo' ? 'selected' : ''}>Activo — CRM + consultas</option>
-          </select>
-          <button class="btn-tbl" onclick="guardarCanal('${esc(u.id)}')">Guardar canal</button>
+        <div style="min-width:200px;">
+          <div class="canal-chips">${chips || '<span style="font-size:.7rem;color:var(--gris-claro);">Sin canales</span>'}</div>
+          <div class="add-canal-row">
+            <select class="admin-input" id="add-canal-${esc(u.id)}">
+              <option value="">+ canal…</option>${optsAgregar}
+            </select>
+            <button class="btn-tbl" onclick="agregarCanal('${esc(u.id)}')">Agregar</button>
+          </div>
+          <div class="acceso-row">
+            <span style="font-size:.63rem;color:var(--gris-claro);">Acceso:</span>
+            <select class="admin-input" id="acceso-${esc(u.id)}" onchange="cambiarAcceso('${esc(u.id)}', this.value)">
+              <option value="pasivo" ${tipoAcceso !== 'activo' ? 'selected':''}>Pasivo</option>
+              <option value="activo" ${tipoAcceso === 'activo' ? 'selected':''}>Activo</option>
+            </select>
+          </div>
         </div>`
-    } else if (canal) {
-      canalHtml = `<span class="canal-link">${esc(canal.nombre)}<br>${esc(canal.codigo)}</span>`
+    } else if (userCanales.length) {
+      canalHtml = `<span class="canal-link">${esc(userCanales[0].nombre)}<br>${esc(userCanales[0].codigo)}</span>`
     } else {
       canalHtml = `<span style="color:var(--gris-claro);font-size:.75rem;">—</span>`
     }
@@ -551,17 +594,25 @@ window.toggleUsuario = async (id, desactivado) => {
   cargarUsuarios()
 }
 
-// ── Guardar canal de colaborador ──────────────────────────
-window.guardarCanal = async (userId) => {
-  const canalId    = document.getElementById('canal-' + userId)?.value
+// ── Agregar canal a colaborador ───────────────────────────
+window.agregarCanal = async (userId) => {
+  const canalId = document.getElementById('add-canal-' + userId)?.value
+  if (!canalId) return
   const tipoAcceso = document.getElementById('acceso-' + userId)?.value || 'pasivo'
+  await supabase.from('canales').update({ user_id: userId, tipo_acceso: tipoAcceso, colaborador_email: null }).eq('id', canalId)
+  cargarUsuarios()
+}
 
-  // Limpiar canal anterior de este usuario
-  await supabase.from('canales').update({ user_id: null, tipo_acceso: 'pasivo' }).eq('user_id', userId)
+// ── Quitar canal de colaborador ───────────────────────────
+window.quitarCanal = async (userId, canalId) => {
+  if (!confirm('¿Quitar este canal del colaborador?')) return
+  await supabase.from('canales').update({ user_id: null, tipo_acceso: 'pasivo' }).eq('id', canalId)
+  cargarUsuarios()
+}
 
-  if (canalId) {
-    await supabase.from('canales').update({ user_id: userId, tipo_acceso: tipoAcceso }).eq('id', canalId)
-  }
+// ── Cambiar tipo de acceso (aplica a todos sus canales) ───
+window.cambiarAcceso = async (userId, tipoAcceso) => {
+  await supabase.from('canales').update({ tipo_acceso: tipoAcceso }).eq('user_id', userId)
   cargarUsuarios()
 }
 
