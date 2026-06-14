@@ -66,6 +66,14 @@
     .btn-asignar:hover { opacity:.85; }
     .btn-limpiar { background:none; border:1px solid rgba(224,92,92,.4); color:#e05c5c; padding:.4rem .8rem; border-radius:8px; font-size:.74rem; cursor:pointer; font-family:inherit; }
     .btn-limpiar:hover { background:rgba(224,92,92,.1); }
+    .accion-divider { width:1px; background:rgba(255,255,255,.1); align-self:stretch; margin:0 .2rem; }
+    .accion-url { background:rgba(255,255,255,0.05); border:1px solid var(--card-border); color:var(--blanco); padding:.4rem .8rem; border-radius:8px; font-size:.74rem; font-family:inherit; width:200px; }
+    .accion-url::placeholder { color:rgba(255,255,255,.3); }
+    .accion-url:focus { outline:none; border-color:var(--accent); }
+    .btn-destino { background:rgba(201,168,76,.15); color:var(--dorado); border:1px solid rgba(201,168,76,.3); padding:.4rem .9rem; border-radius:8px; font-size:.74rem; font-weight:600; cursor:pointer; font-family:inherit; }
+    .btn-destino:hover { background:rgba(201,168,76,.25); }
+    .btn-edit-dest { background:none; border:none; color:var(--gris); cursor:pointer; font-size:.68rem; padding:.15rem .4rem; border-radius:5px; font-family:inherit; transition:all .18s; }
+    .btn-edit-dest:hover { color:var(--dorado); background:rgba(201,168,76,.08); }
 
     /* Campañas cards */
     .campanas-grid { display:grid; gap:.85rem; }
@@ -264,11 +272,15 @@
       <!-- Barra de acción masiva -->
       <div class="accion-bar" id="accionBar">
         <span id="accionCount">0 canales seleccionados</span>
+        <div class="accion-divider"></div>
+        <input type="text" class="accion-url" id="accionDestino" placeholder="Nueva URL de destino…" />
+        <button class="btn-destino" onclick="cambiarDestinoMasivo()">Cambiar destino QR</button>
+        <div class="accion-divider"></div>
         <select class="accion-sel" id="accionCampana">
-          <option value="">— Elegir campaña —</option>
+          <option value="">— Asignar a campaña —</option>
         </select>
-        <button class="btn-asignar" onclick="asignarMasivo()">Asignar a campaña</button>
-        <button class="btn-limpiar" onclick="quitarDeCampana()">Quitar de campaña activa</button>
+        <button class="btn-asignar" onclick="asignarMasivo()">Asignar</button>
+        <button class="btn-limpiar" onclick="quitarDeCampana()">Quitar de campaña</button>
         <button class="btn-sm" onclick="deseleccionarTodo()" style="margin-left:auto;">Cancelar</button>
       </div>
 
@@ -287,7 +299,7 @@
               <th>Canal</th>
               <th>Tipo</th>
               <th>Ciudad / Provincia</th>
-              <th>Estado</th>
+              <th>Destino QR</th>
               <th>Campaña activa</th>
             </tr>
           </thead>
@@ -298,6 +310,28 @@
       </div>
     </div>
   </main>
+</div>
+
+<!-- ── MODAL EDITAR DESTINO INDIVIDUAL ──────── -->
+<div class="modal-overlay" id="modalDestino">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" onclick="cerrarModalDestino()">✕</button>
+    <h3>Cambiar destino QR</h3>
+    <p style="font-size:.74rem;color:var(--gris);margin-bottom:1.2rem;" id="mDestNombre"></p>
+    <div class="form-group">
+      <label class="form-label">Destino actual</label>
+      <div id="mDestActual" style="font-size:.72rem;color:var(--gris);font-family:monospace;padding:.4rem 0;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nuevo destino *</label>
+      <input type="text" class="form-input" id="mDestNuevo" placeholder="Ej: /propiedad.html?id=xxx o https://..." />
+      <div class="form-hint">El QR físico no cambia — solo el destino al que lleva.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="cerrarModalDestino()">Cancelar</button>
+      <button class="btn-save" onclick="guardarDestinoIndividual()">Guardar destino</button>
+    </div>
+  </div>
 </div>
 
 <!-- ── MODAL NUEVA/EDITAR CAMPAÑA ───────────── -->
@@ -351,9 +385,10 @@
   const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
   const fmtDate = iso => iso ? new Date(iso).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
 
-  let campanas = [], canales = [], canalesCC = [], editId = null
+  let campanas = [], canales = [], canalesCC = [], referencias = [], editId = null
   let seleccionados = new Set()
   let activaToggle = true
+  let editDestinoId = null  // referencia.id en edición individual
 
   // ── Auth ──────────────────────────────────────
   const { data: { session } } = await supabase.auth.getSession()
@@ -364,20 +399,26 @@
 
   // ── Cargar datos ──────────────────────────────
   async function cargar() {
-    const [rCamp, rCanales, rCC] = await Promise.all([
+    const [rCamp, rCanales, rCC, rRefs] = await Promise.all([
       supabase.from('campanas').select('*').order('created_at', { ascending: false }),
       supabase.from('canales').select('*').order('nombre'),
       supabase.from('campanas_canales').select('campana_id, canal_id'),
+      supabase.from('referencias').select('id, canal_id, destino, codigo, activo'),
     ])
     campanas    = rCamp.data    || []
     canales     = rCanales.data || []
     canalesCC   = rCC.data      || []
+    referencias = rRefs.data    || []
 
     actualizarKPIs()
     renderCampanas()
     renderTablaCanales()
     poblarFiltros()
     poblarSelectCampana()
+  }
+
+  function refDeCanal(canalId) {
+    return referencias.find(r => r.canal_id === canalId) || null
   }
 
   function estadoCampana(c) {
@@ -500,6 +541,8 @@
     const TIPO_LABEL = { punto_venta: 'Punto de venta', inmobiliaria: 'Inmobiliaria', particular: 'Particular', evento: 'Evento' }
     tbody.innerHTML = lista.map(c => {
       const campAct = campanaActivaDeCanal(c.id)
+      const ref     = refDeCanal(c.id)
+      const destino = ref?.destino || '—'
       const checked = seleccionados.has(c.id) ? 'checked' : ''
       return `<tr class="${seleccionados.has(c.id) ? 'selected' : ''}" id="fila-${esc(c.id)}">
         <td><input type="checkbox" class="canal-check" data-id="${esc(c.id)}" ${checked} onchange="toggleSelect('${esc(c.id)}', this.checked)" /></td>
@@ -509,7 +552,11 @@
         </td>
         <td><span class="badge badge-${esc(c.tipo)}">${esc(TIPO_LABEL[c.tipo] || c.tipo)}</span></td>
         <td style="font-size:.72rem;color:var(--gris);">${[c.ciudad, c.provincia].filter(Boolean).map(esc).join(', ') || '—'}</td>
-        <td><span class="badge ${c.activo ? 'badge-activo' : 'badge-inactivo'}">${c.activo ? 'Activo' : 'Inactivo'}</span></td>
+        <td>
+          <span style="font-family:monospace;font-size:.65rem;color:${campAct ? 'var(--gris)' : 'var(--dorado)'};">${esc(destino)}</span>
+          ${campAct ? `<span style="font-size:.6rem;color:var(--purpura);display:block;">campaña activa</span>` : ''}
+          ${ref ? `<button class="btn-edit-dest" onclick="editarDestinoIndividual('${esc(c.id)}')">✏ editar</button>` : ''}
+        </td>
         <td>${campAct ? `<span class="badge badge-en-campana">${esc(campAct.nombre)}</span>` : '<span style="color:var(--gris);font-size:.7rem;">—</span>'}</td>
       </tr>`
     }).join('')
@@ -568,6 +615,51 @@
     const { error } = await query
     if (error) { alert('Error: ' + error.message); return }
     deseleccionarTodo()
+    await cargar()
+  }
+
+  // ── Cambio de destino base (sin campaña) ─────
+  window.cambiarDestinoMasivo = async function() {
+    const nuevaUrl = document.getElementById('accionDestino').value.trim()
+    if (!nuevaUrl) { alert('Ingresá la URL de destino.'); return }
+    if (!seleccionados.size) { alert('Seleccioná al menos un canal.'); return }
+
+    const ids = [...seleccionados]
+    // Buscar referencias de los canales seleccionados
+    const refsAfectadas = referencias.filter(r => ids.includes(r.canal_id))
+    if (!refsAfectadas.length) { alert('Los canales seleccionados no tienen QR asignado.'); return }
+
+    const refIds = refsAfectadas.map(r => r.id)
+    const { error } = await supabase.from('referencias').update({ destino: nuevaUrl }).in('id', refIds)
+    if (error) { alert('Error: ' + error.message); return }
+
+    document.getElementById('accionDestino').value = ''
+    deseleccionarTodo()
+    await cargar()
+  }
+
+  window.editarDestinoIndividual = function(canalId) {
+    const canal = canales.find(c => c.id === canalId)
+    const ref   = refDeCanal(canalId)
+    if (!ref) return
+    editDestinoId = ref.id
+    document.getElementById('mDestNombre').textContent = canal?.nombre || canalId
+    document.getElementById('mDestActual').textContent = ref.destino || '—'
+    document.getElementById('mDestNuevo').value = ref.destino || ''
+    document.getElementById('modalDestino').classList.add('open')
+  }
+
+  window.cerrarModalDestino = function() {
+    document.getElementById('modalDestino').classList.remove('open')
+    editDestinoId = null
+  }
+
+  window.guardarDestinoIndividual = async function() {
+    const nuevaUrl = document.getElementById('mDestNuevo').value.trim()
+    if (!nuevaUrl) { alert('Ingresá el destino.'); return }
+    const { error } = await supabase.from('referencias').update({ destino: nuevaUrl }).eq('id', editDestinoId)
+    if (error) { alert('Error: ' + error.message); return }
+    cerrarModalDestino()
     await cargar()
   }
 
