@@ -94,6 +94,29 @@
     .conv-arrow { color:rgba(255,255,255,0.2); font-size:1.2rem; }
     .conv-pct { font-size:0.75rem; font-weight:700; color:#4ad0c4; }
 
+    /* ── Por canal ── */
+    .canal-card {
+      background:var(--card-bg); border:1px solid var(--card-border);
+      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
+      margin-bottom:1rem;
+    }
+    .canal-titulo { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris-claro); margin-bottom:0.8rem; }
+    .canal-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+    .canal-table th { text-align:left; color:var(--gris-claro); font-weight:600; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; padding:0 0 0.6rem; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .canal-table th:not(:first-child) { text-align:center; }
+    .canal-table td { padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--blanco); vertical-align:middle; }
+    .canal-table td:not(:first-child) { text-align:center; color:var(--gris-claro); }
+    .canal-table tr:last-child td { border-bottom:none; }
+    .canal-badge {
+      display:inline-block; font-size:0.6rem; font-weight:700; text-transform:uppercase;
+      padding:0.18rem 0.5rem; border-radius:999px; letter-spacing:0.06em;
+    }
+    .canal-badge.qr  { background:rgba(215,111,63,0.15); color:#d76f3f; border:1px solid rgba(215,111,63,0.3); }
+    .canal-badge.link { background:rgba(74,208,196,0.12); color:#4ad0c4; border:1px solid rgba(74,208,196,0.25); }
+    .canal-badge.otro { background:rgba(255,255,255,0.06); color:#888; border:1px solid rgba(255,255,255,0.1); }
+    .canal-bar-wrap { display:inline-block; width:60px; height:3px; background:rgba(255,255,255,0.07); border-radius:999px; vertical-align:middle; margin-left:0.4rem; }
+    .canal-bar { height:100%; background:var(--accent); border-radius:999px; }
+
     /* spinner */
     .sp { width:24px; height:24px; border:2px solid rgba(255,255,255,0.1); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin:2rem auto; }
     @keyframes spin{to{transform:rotate(360deg);}}
@@ -211,6 +234,12 @@
         <div class="tabla-titulo">Fuentes de tráfico</div>
         <div id="tblRefs"><div class="sp"></div></div>
       </div>
+    </div>
+
+    <!-- Por canal -->
+    <div class="canal-card">
+      <div class="canal-titulo">Por canal y medio</div>
+      <div id="tblCanal"><div class="sp"></div></div>
     </div>
 
     <!-- Conversión -->
@@ -385,6 +414,42 @@ async function cargar() {
           <div class="tabla-item-bar-wrap"><div class="tabla-item-bar" style="width:${(n/maxRef*100).toFixed(0)}%"></div></div>
           <div class="tabla-item-val">${n} (${total>0?((n/total)*100).toFixed(0):0}%)</div>
         </div>`).join('')
+
+  // ── Por canal y medio ──
+  const canalMap = {}
+  vs.filter(v => v.canal_ref).forEach(v => {
+    const key = v.canal_ref
+    const via = v.canal_via || 'link'
+    if (!canalMap[key]) canalMap[key] = { qr: 0, link: 0 }
+    canalMap[key][via] = (canalMap[key][via] || 0) + 1
+  })
+  const canalesOrdenados = Object.entries(canalMap)
+    .map(([nombre, vias]) => ({ nombre, qr: vias.qr||0, link: vias.link||0, total: (vias.qr||0)+(vias.link||0) }))
+    .sort((a,b) => b.total - a.total)
+  const maxCanal = canalesOrdenados[0]?.total || 1
+
+  document.getElementById('tblCanal').innerHTML = canalesOrdenados.length === 0
+    ? `<div class="tabla-empty">Sin datos todavía. Aparecerán cuando alguien entre por un link o QR de un canal.</div>`
+    : `<table class="canal-table">
+        <thead><tr>
+          <th>Canal</th><th>Medio</th><th>Visitas</th><th>Progreso</th>
+        </tr></thead>
+        <tbody>${canalesOrdenados.flatMap(c => {
+          const rows = []
+          if (c.qr > 0)   rows.push({ via:'qr',   n: c.qr,   total: c.total, nombre: c.nombre, showName: true,  rowspan: (c.qr>0&&c.link>0) ? 2 : 1 })
+          if (c.link > 0) rows.push({ via:'link',  n: c.link, total: c.total, nombre: c.nombre, showName: c.qr===0, rowspan: 1 })
+          return rows
+        }).map((r,i,arr) => {
+          const prev = arr[i-1]
+          const showName = i === 0 || prev?.nombre !== r.nombre
+          return `<tr>
+            ${showName ? `<td rowspan="${arr.filter(x=>x.nombre===r.nombre).length}" style="font-weight:600;padding-right:1rem">${r.nombre}</td>` : ''}
+            <td><span class="canal-badge ${r.via}">${r.via === 'qr' ? '▣ QR' : '🔗 Link'}</span></td>
+            <td style="font-weight:600;color:var(--blanco)">${r.n}</td>
+            <td><span class="canal-bar-wrap"><span class="canal-bar" style="width:${(r.n/maxCanal*100).toFixed(0)}%"></span></span></td>
+          </tr>`
+        }).join('')}</tbody>
+      </table>`
 
   // ── Embudo de conversión ──
   const pctProp = total > 0 ? ((propVistas/total)*100).toFixed(0) : 0
