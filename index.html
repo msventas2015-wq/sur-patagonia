@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- Google Analytics GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZTDBZP6R96"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-ZTDBZP6R96', { anonymize_ip: true });
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -2598,5 +2606,22 @@ window.onYouTubeIframeAPIReady = function() {
 </script>
 <!-- ── FIN YouTube IFrame API ──────────────────────────────────────── -->
 
+
+<script type="module">
+  // ── Tracker de visitas Sur Patagonia ──
+  try {
+    const { supabase } = await import('./js/config.js').catch(() => ({ supabase: null }))
+    if (!supabase) throw new Error('no supabase')
+    const pagina = window.location.pathname.replace(/\/$/,'').split('/').pop() || 'home'
+    const params = new URLSearchParams(window.location.search)
+    const propId = params.get('id') || null
+    const ref = document.referrer ? new URL(document.referrer).hostname : 'directo'
+    const ua = navigator.userAgent
+    const dispositivo = /Mobi|Android/i.test(ua) ? 'mobile' : /Tablet|iPad/i.test(ua) ? 'tablet' : 'desktop'
+    const canalRef = params.get('ref') || null
+    const canalVia  = params.get('via') || null
+    await supabase.from('visitas').insert({ pagina, propiedad_id: propId, referrer: ref, dispositivo, canal_ref: canalRef, canal_via: canalVia })
+  } catch(e) {}
+</script>
 </body>
 </html>
