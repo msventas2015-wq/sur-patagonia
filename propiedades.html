@@ -821,6 +821,86 @@
     })
 
     // ── Búsqueda por voz (Web Speech API) ────────────────────────
+    // ── INTÉRPRETE DE LENGUAJE NATURAL ────────────────────────
+    function interpretarConsulta(texto) {
+      const t = texto.toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '') // quita acentos
+        .replace(/[^a-z0-9\s]/g, ' ')
+
+      // ── OPERACIÓN (temporario primero para no ser tapado por alquiler) ──
+      const mapaOp = [
+        ['alquiler_temporario', /\b(temporar|vacacion|temporada|verano)\w*/],
+        ['alquiler',            /\b(alquil|arrendar|arriendo|rento|rentar)\w*/],
+        ['venta',               /\b(vend|compr|venta|vendo|compro)\w*/],
+      ]
+      let opDetectada = null
+      for (const [val, rx] of mapaOp) {
+        if (rx.test(t)) { opDetectada = val; break }
+      }
+
+      // ── TIPO ──────────────────────────────────────────────
+      const mapaTipo = {
+        galpon:        /\b(galpon|deposito|bodega|nave\s*industrial|galpones)\b/,
+        casa:          /\b(casa|chalet|vivienda|hogar|residencia)\b/,
+        departamento:  /\b(depto|departamento|apartamento|monoambiente|piso)\b/,
+        terreno:       /\b(terreno|lote|parcela|campo|chacra|loteo)\b/,
+        local:         /\b(local|comercio|negocio|comercial)\b/,
+        oficina:       /\b(oficina|coworking|estudio)\b/,
+        cabaña:        /\b(caba[nñ]a|bungalow|chalet)\b/,
+        duplex:        /\b(duplex|d[uú]plex)\b/,
+        quinta:        /\b(quinta|hacienda|estancia)\b/,
+      }
+      let tipoDetectado = null
+      for (const [val, rx] of Object.entries(mapaTipo)) {
+        if (rx.test(t)) { tipoDetectado = val; break }
+      }
+
+      // ── DORMITORIOS ───────────────────────────────────────
+      const dormMatch = t.match(/\b(\d+)\s*(dormitorio|habitacion|cuarto|ambiente)s?\b/)
+      let dormDetectado = null
+      if (dormMatch) dormDetectado = dormMatch[1]
+      // "monoambiente" → 0 dormitorios
+      if (/\bmonoambiente\b/.test(t)) dormDetectado = '0'
+
+      // ── APLICAR A LOS FILTROS ─────────────────────────────
+      // Desactivar todo primero
+      document.querySelectorAll('.filtro-op').forEach(cb => cb.checked = false)
+      document.querySelectorAll('.filtro-tipo').forEach(cb => cb.checked = false)
+      document.querySelectorAll('.filtro-dorm').forEach(cb => cb.checked = false)
+
+      if (opDetectada) {
+        const cb = document.querySelector(`.filtro-op[value="${opDetectada}"]`)
+        if (cb) cb.checked = true
+      }
+      if (tipoDetectado) {
+        const cb = document.querySelector(`.filtro-tipo[value="${tipoDetectado}"]`)
+        if (cb) cb.checked = true
+      }
+      if (dormDetectado) {
+        const cb = document.querySelector(`.filtro-dorm[value="${dormDetectado}"]`)
+        if (cb) cb.checked = true
+      }
+
+      // Si no detectamos operacion ni tipo, limpiar el campo de texto
+      // para que la búsqueda ilike funcione como fallback
+      if (!opDetectada && !tipoDetectado) return // deja el texto para búsqueda literal
+
+      // Si detectamos intent, limpiar el campo de texto (ya usamos filtros)
+      // pero mantener palabras de ubicación si las hay
+      const stopwords = /\b(quiero|busco|necesito|estoy|buscando|un|una|el|la|los|las|para|con|de|en|del|que|me|mi|hay|tiene|tienen|algun|alguna|alguno)\b/g
+      const limpio = t.replace(stopwords, ' ')
+        // también quitar las palabras de operacion y tipo que ya mapeamos
+        .replace(/\b(alquil|arrendar|arriendo|rento|rentar|vend|compr|venta|vendo|compro|temporar|vacacion|temporada|galpon|deposito|bodega|nave|casa|chalet|vivienda|depto|departamento|apartamento|monoambiente|terreno|lote|parcela|campo|chacra|local|comercio|comercial|oficina|caba.a|duplex|quinta)\w*/g, ' ')
+        .replace(/\s+/g, ' ').trim()
+
+      // Si queda algo útil (probable ubicación), usarlo como texto de búsqueda
+      if (limpio.length > 2) {
+        inputBusq.value = limpio
+      } else {
+        inputBusq.value = ''
+      }
+    }
+
     const btnMic = document.getElementById('busquedaMic')
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 
@@ -856,6 +936,7 @@
         inputBusq.value = texto
         btnClear.style.display = 'block'
         paginaActual = 1
+        interpretarConsulta(texto)
         cargarPropiedades()
       })
 
