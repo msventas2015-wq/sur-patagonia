@@ -196,8 +196,15 @@
 
         <!-- SIDEBAR FILTROS -->
         <aside class="filtros-sidebar">
-          <h4 style="margin-bottom:1.5rem; font-family:'Montserrat'; font-weight:600; font-size:0.75rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--blanco);">Filtrar</h4>
 
+          <!-- Tabs -->
+          <div style="display:flex; gap:0; margin-bottom:1.5rem; border:1px solid rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
+            <button id="tabFiltros" onclick="switchTab('filtros')" style="flex:1; padding:0.55rem 0.5rem; font-family:'Montserrat'; font-size:0.6rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:var(--dorado); color:#000; border:none; cursor:pointer; transition:all .2s;">Filtros</button>
+            <button id="tabInversion" onclick="switchTab('inversion')" style="flex:1; padding:0.55rem 0.5rem; font-family:'Montserrat'; font-size:0.6rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; background:none; color:rgba(255,255,255,0.5); border:none; cursor:pointer; transition:all .2s;">Por inversión</button>
+          </div>
+
+          <!-- Panel filtros estándar -->
+          <div id="panelFiltros">
           <div class="filtro-grupo">
             <p class="filtro-titulo">Operación</p>
             <div class="filtro-opciones">
@@ -241,6 +248,43 @@
 
           <button class="btn btn-dorado" id="btnAplicarFiltros" style="width:100%; margin-top:0.5rem;">Aplicar filtros</button>
           <button class="btn btn-outline" id="btnLimpiarFiltros" style="width:100%; margin-top:0.5rem;">Limpiar</button>
+          </div><!-- /panelFiltros -->
+
+          <!-- Panel buscador por inversión -->
+          <div id="panelInversion" style="display:none;">
+            <p style="font-size:0.68rem; color:rgba(255,255,255,0.45); line-height:1.5; margin-bottom:1.2rem;">Decinos cuánto podés invertir y te mostramos qué propiedades se adaptan a tu presupuesto.</p>
+
+            <div class="filtro-grupo">
+              <p class="filtro-titulo">¿Cuánto tenés disponible ahora? (USD)</p>
+              <input type="number" id="invAdelanto" placeholder="Ej: 15000" min="0" style="width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:6px; font-family:'Montserrat'; font-size:0.78rem;" />
+            </div>
+
+            <div class="filtro-grupo">
+              <p class="filtro-titulo">¿Podés pagar en cuotas?</p>
+              <div class="filtro-opciones">
+                <label class="filtro-opcion"><input type="radio" name="invCuotas" value="si" id="invCuotasSi" /> Sí</label>
+                <label class="filtro-opcion"><input type="radio" name="invCuotas" value="no" id="invCuotasNo" checked /> No, solo contado</label>
+              </div>
+            </div>
+
+            <div id="grupoCuotasBusq" style="display:none;">
+              <div class="filtro-grupo">
+                <p class="filtro-titulo">Cuota mensual máxima (USD)</p>
+                <input type="number" id="invCuotaMax" placeholder="Ej: 800" min="0" style="width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:6px; font-family:'Montserrat'; font-size:0.78rem;" />
+              </div>
+            </div>
+
+            <div class="filtro-grupo">
+              <label class="filtro-opcion" style="gap:0.6rem;">
+                <input type="checkbox" id="invVehiculo" style="width:16px;height:16px;" />
+                <span style="font-size:0.75rem; color:rgba(255,255,255,0.75);">Quiero pagar parte con un vehículo</span>
+              </label>
+            </div>
+
+            <button class="btn btn-dorado" id="btnBuscarInversion" style="width:100%; margin-top:0.5rem;">Buscar propiedades</button>
+            <button class="btn btn-outline" id="btnLimpiarInversion" style="width:100%; margin-top:0.5rem;">Limpiar</button>
+          </div><!-- /panelInversion -->
+
         </aside>
 
         <!-- LISTADO -->
@@ -515,7 +559,7 @@
       }, ['created_at', 'desc'])
 
       let query = supabase.from('propiedades').select(
-        'id, titulo, tipo, operacion, precio, moneda, ubicacion, ciudad, dormitorios, banos, superficie_cubierta, superficie_total, imagenes, destacada',
+        'id, titulo, tipo, operacion, precio, moneda, ubicacion, ciudad, dormitorios, banos, superficie_cubierta, superficie_total, imagenes, destacada, financiacion, adelanto_minimo, cuota_minima, cuotas_cantidad, acepta_vehiculo',
         { count: 'exact' }
       ).eq('activa', true)
 
@@ -604,6 +648,91 @@
           </div>
         </div>`
     }
+
+    // ── Tab switcher ──────────────────────────────────────────────
+    window.switchTab = function(tab) {
+      const esFiltros = tab === 'filtros'
+      document.getElementById('panelFiltros').style.display   = esFiltros ? 'block' : 'none'
+      document.getElementById('panelInversion').style.display = esFiltros ? 'none'  : 'block'
+      document.getElementById('tabFiltros').style.background  = esFiltros ? 'var(--dorado)' : 'none'
+      document.getElementById('tabFiltros').style.color       = esFiltros ? '#000' : 'rgba(255,255,255,0.5)'
+      document.getElementById('tabInversion').style.background = esFiltros ? 'none' : 'var(--dorado)'
+      document.getElementById('tabInversion').style.color      = esFiltros ? 'rgba(255,255,255,0.5)' : '#000'
+    }
+
+    // Toggle cuotas en buscador inversión
+    document.querySelectorAll('input[name="invCuotas"]').forEach(r => {
+      r.addEventListener('change', () => {
+        document.getElementById('grupoCuotasBusq').style.display =
+          document.getElementById('invCuotasSi').checked ? 'block' : 'none'
+      })
+    })
+
+    // ── Buscador por inversión ────────────────────────────────────
+    async function buscarPorInversion() {
+      const contenedor = document.getElementById('listadoPropiedades')
+      contenedor.innerHTML = `<div class="estado-cargando" style="grid-column:1/-1"><div class="spinner"></div><p>Buscando propiedades...</p></div>`
+
+      const adelanto   = parseFloat(document.getElementById('invAdelanto').value) || 0
+      const quiereCuotas = document.getElementById('invCuotasSi').checked
+      const cuotaMax   = parseFloat(document.getElementById('invCuotaMax').value) || 0
+      const quiereVehiculo = document.getElementById('invVehiculo').checked
+
+      let query = supabase.from('propiedades').select(
+        'id, titulo, tipo, operacion, precio, moneda, ubicacion, ciudad, dormitorios, banos, superficie_cubierta, superficie_total, imagenes, destacada, financiacion, adelanto_minimo, cuota_minima, cuotas_cantidad, acepta_vehiculo'
+      ).eq('activa', true)
+
+      // Si no puede pagar cuotas, solo mostrar propiedades donde el adelanto cubre el precio total
+      if (!quiereCuotas) {
+        if (adelanto > 0) query = query.lte('precio', adelanto)
+      } else {
+        // Puede pagar cuotas: mostrar las que tienen financiación con adelanto y cuota accesibles
+        query = query.eq('financiacion', true)
+        if (adelanto > 0)   query = query.lte('adelanto_minimo', adelanto)
+        if (cuotaMax > 0)   query = query.lte('cuota_minima', cuotaMax)
+      }
+
+      if (quiereVehiculo) query = query.eq('acepta_vehiculo', true)
+
+      const { data, error } = await query.order('precio', { ascending: true })
+
+      document.getElementById('totalResultados').textContent = data?.length || 0
+
+      if (error || !data || data.length === 0) {
+        contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--gris-claro)">No encontramos propiedades para ese presupuesto. Probá ajustando los valores.</p></div>`
+        document.getElementById('paginacion').innerHTML = ''
+        return
+      }
+
+      contenedor.innerHTML = data.map(p => {
+        const baseCard = renderCard(p)
+        // Agregar badge de financiación a la card
+        const badges = []
+        if (p.financiacion) {
+          const cuotaInfo = p.cuota_minima ? `USD ${Number(p.cuota_minima).toLocaleString('es-AR')}/mes` : ''
+          const plazoInfo = p.cuotas_cantidad ? ` · ${p.cuotas_cantidad} cuotas` : ''
+          badges.push(`<div style="margin:0.4rem 1rem 0; padding:0.4rem 0.7rem; background:rgba(201,168,76,0.1); border:1px solid rgba(201,168,76,0.3); border-radius:6px; font-size:0.65rem; color:var(--dorado); font-weight:600;">💳 Financiación: ${cuotaInfo}${plazoInfo}</div>`)
+        }
+        if (p.acepta_vehiculo) {
+          badges.push(`<div style="margin:0.3rem 1rem 0.5rem; padding:0.3rem 0.7rem; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:6px; font-size:0.65rem; color:rgba(255,255,255,0.6);">🚗 Acepta vehículo como parte de pago</div>`)
+        }
+        if (badges.length === 0) return baseCard
+        return baseCard.replace('</div></div>', `</div>${badges.join('')}</div>`)
+      }).join('')
+      document.getElementById('paginacion').innerHTML = ''
+    }
+
+    document.getElementById('btnBuscarInversion').addEventListener('click', buscarPorInversion)
+    document.getElementById('btnLimpiarInversion').addEventListener('click', () => {
+      document.getElementById('invAdelanto').value = ''
+      document.getElementById('invCuotasNo').checked = true
+      document.getElementById('invCuotaMax').value = ''
+      document.getElementById('invVehiculo').checked = false
+      document.getElementById('grupoCuotasBusq').style.display = 'none'
+      paginaActual = 1
+      cargarPropiedades()
+      switchTab('filtros')
+    })
 
     // Eventos filtros
     document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
