@@ -86,6 +86,37 @@
       margin-bottom: 1rem;
     }
     .breadcrumb a { color: var(--dorado); }
+    /* ── Barra de búsqueda con voz ── */
+    .busqueda-wrap {
+      display:flex; align-items:center; gap:0.5rem;
+      margin-bottom:1rem;
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:10px; padding:0.5rem 0.8rem;
+      transition:border-color .2s;
+    }
+    .busqueda-wrap:focus-within { border-color:rgba(201,168,76,0.5); }
+    .busqueda-input {
+      flex:1; background:none; border:none; outline:none;
+      color:var(--blanco); font-family:'Montserrat',sans-serif;
+      font-size:0.82rem; font-weight:300;
+    }
+    .busqueda-input::placeholder { color:rgba(255,255,255,0.3); }
+    .busqueda-clear {
+      background:none; border:none; color:rgba(255,255,255,0.3);
+      cursor:pointer; font-size:1rem; padding:0; line-height:1;
+      display:none;
+    }
+    .busqueda-mic {
+      background:none; border:none; cursor:pointer; padding:0.1rem;
+      color:rgba(255,255,255,0.4); transition:color .2s; line-height:1;
+      display:flex; align-items:center;
+    }
+    .busqueda-mic:hover { color:var(--dorado); }
+    .busqueda-mic.escuchando { color:#e05c5c; animation:pulso 1s ease-in-out infinite; }
+    @keyframes pulso { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .voz-no-soportada { display:none; }
+
     .resultados-header {
       display: flex;
       justify-content: space-between;
@@ -289,6 +320,16 @@
 
         <!-- LISTADO -->
         <div>
+          <!-- Barra de búsqueda + voz -->
+          <div class="busqueda-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="busquedaTexto" class="busqueda-input" placeholder="Buscá por título, ciudad, tipo de propiedad…" autocomplete="off" />
+            <button class="busqueda-clear" id="busquedaClear" title="Limpiar">✕</button>
+            <button class="busqueda-mic" id="busquedaMic" title="Buscar por voz">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+          </div>
+
           <div class="resultados-header">
             <p class="resultados-count"><span id="totalResultados">—</span> propiedades encontradas</p>
             <select class="ordenar-select" id="ordenar">
@@ -569,6 +610,12 @@
       if (precioMin) query = query.gte('precio', parseFloat(precioMin))
       if (precioMaxVal) query = query.lte('precio', parseFloat(precioMaxVal))
 
+      // Búsqueda por texto/voz
+      const termino = document.getElementById('busquedaTexto').value.trim()
+      if (termino) {
+        query = query.or(`titulo.ilike.%${termino}%,ciudad.ilike.%${termino}%,ubicacion.ilike.%${termino}%,tipo.ilike.%${termino}%,descripcion.ilike.%${termino}%`)
+      }
+
       query = query.order(ordenCol, { ascending: ordenDir === 'asc' })
       query = query.range((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA - 1)
 
@@ -753,6 +800,80 @@
       paginaActual = 1
       cargarPropiedades()
     })
+
+    // ── Búsqueda por texto ────────────────────────────────────────
+    const inputBusq = document.getElementById('busquedaTexto')
+    const btnClear  = document.getElementById('busquedaClear')
+
+    inputBusq.addEventListener('input', () => {
+      btnClear.style.display = inputBusq.value ? 'block' : 'none'
+      clearTimeout(inputBusq._timer)
+      inputBusq._timer = setTimeout(() => { paginaActual = 1; cargarPropiedades() }, 400)
+    })
+    inputBusq.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { paginaActual = 1; cargarPropiedades() }
+    })
+    btnClear.addEventListener('click', () => {
+      inputBusq.value = ''
+      btnClear.style.display = 'none'
+      paginaActual = 1
+      cargarPropiedades()
+    })
+
+    // ── Búsqueda por voz (Web Speech API) ────────────────────────
+    const btnMic = document.getElementById('busquedaMic')
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+
+    if (!SpeechRecognition) {
+      btnMic.title = 'Tu navegador no soporta búsqueda por voz'
+      btnMic.style.opacity = '0.3'
+      btnMic.style.cursor = 'not-allowed'
+    } else {
+      const recognition = new SpeechRecognition()
+      recognition.lang = 'es-AR'
+      recognition.interimResults = false
+      recognition.maxAlternatives = 1
+
+      let escuchando = false
+
+      btnMic.addEventListener('click', () => {
+        if (escuchando) {
+          recognition.stop()
+        } else {
+          recognition.start()
+        }
+      })
+
+      recognition.addEventListener('start', () => {
+        escuchando = true
+        btnMic.classList.add('escuchando')
+        btnMic.title = 'Escuchando… hablá ahora'
+        inputBusq.placeholder = '🎙 Escuchando…'
+      })
+
+      recognition.addEventListener('result', e => {
+        const texto = e.results[0][0].transcript
+        inputBusq.value = texto
+        btnClear.style.display = 'block'
+        paginaActual = 1
+        cargarPropiedades()
+      })
+
+      recognition.addEventListener('end', () => {
+        escuchando = false
+        btnMic.classList.remove('escuchando')
+        btnMic.title = 'Buscar por voz'
+        inputBusq.placeholder = 'Buscá por título, ciudad, tipo de propiedad…'
+      })
+
+      recognition.addEventListener('error', e => {
+        escuchando = false
+        btnMic.classList.remove('escuchando')
+        if (e.error === 'not-allowed') {
+          alert('Activá el micrófono en tu navegador para usar búsqueda por voz.')
+        }
+      })
+    }
 
     cargarPropiedades()
 
