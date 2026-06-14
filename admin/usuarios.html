@@ -97,6 +97,32 @@
     .empty-state { text-align: center; padding: 3rem; color: var(--gris-claro); font-size: 0.82rem; }
 
     #canalWrap { display: none; }
+
+    /* ── Colaboradores ── */
+    .seccion-div {
+      display: flex; align-items: center; gap: 1rem; margin: 2rem 0 1.4rem;
+    }
+    .seccion-div-line { flex: 1; height: 1px; background: var(--card-border); }
+    .seccion-div-label {
+      font-size: .6rem; font-weight: 700; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--gris-claro); white-space: nowrap;
+    }
+    .colab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .8rem; margin-top: 1rem; }
+    .colab-card {
+      background: rgba(255,255,255,.02); border: 1px solid var(--card-border);
+      border-radius: 12px; padding: 1rem 1.1rem;
+    }
+    .colab-nombre { font-size: .88rem; font-weight: 600; margin-bottom: .15rem; }
+    .colab-codigo { font-family: monospace; font-size: .67rem; color: var(--accent); }
+    .colab-email  { font-size: .72rem; color: var(--gris-claro); margin-top: .5rem; }
+    .colab-acceso-row { display: flex; align-items: center; gap: .5rem; margin-top: .7rem; }
+    .acceso-badge {
+      font-size: .58rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      padding: .15rem .5rem; border-radius: 999px;
+    }
+    .acceso-pasivo { background: rgba(136,136,136,.12); color: #888; }
+    .acceso-activo { background: rgba(201,168,76,.12); color: #c9a84c; }
+    .colab-acciones { display: flex; gap: .35rem; margin-top: .8rem; }
   </style>
 </head>
 <body>
@@ -234,6 +260,51 @@
             <tr><td colspan="5"><div class="empty-state">Cargando usuarios…</div></td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ── SECCIÓN COLABORADORES ──────────────────────── -->
+    <div class="seccion-div">
+      <div class="seccion-div-line"></div>
+      <div class="seccion-div-label">Portal de Colaboradores</div>
+      <div class="seccion-div-line"></div>
+    </div>
+
+    <div class="usr-form">
+      <div class="usr-form-title">Dar acceso a un colaborador</div>
+      <p style="font-size:.74rem;color:var(--gris-claro);margin-bottom:1.2rem;">El colaborador recibirá un email para crear su contraseña y acceder a <strong style="color:var(--blanco)">surpatagonia.com.ar/colaboradores</strong> donde verá solo sus propios datos.</p>
+      <div id="alertaColab" class="alerta"></div>
+
+      <div class="form-row">
+        <div class="f-group">
+          <label>Email del colaborador *</label>
+          <input type="email" id="cEmail" class="admin-input" placeholder="inmobiliaria@mail.com" />
+        </div>
+        <div class="f-group">
+          <label>Canal asociado *</label>
+          <select id="cCanal" class="admin-input">
+            <option value="">— Elegir canal —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-1">
+        <div class="f-group">
+          <label>Tipo de acceso *</label>
+          <select id="cTipoAcceso" class="admin-input">
+            <option value="pasivo">Pasivo — Solo métricas (puntos de venta, locales)</option>
+            <option value="activo">Activo — Métricas + consultas + estado CRM (inmobiliarias, vendedores)</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btnInvitar" style="margin-top:.5rem;">Dar acceso</button>
+    </div>
+
+    <!-- Lista colaboradores -->
+    <div class="usr-lista-wrap">
+      <div class="usr-lista-titulo">Colaboradores con acceso al portal</div>
+      <div class="colab-grid" id="listaColaboradores">
+        <div class="empty-state">Cargando…</div>
       </div>
     </div>
 
@@ -474,6 +545,110 @@ function mostrar(msg, tipo) {
   el.textContent    = msg
   el.className      = 'alerta' + (tipo ? ' alerta-' + tipo : '')
   el.style.display  = msg ? 'block' : 'none'
+}
+
+// ── COLABORADORES ─────────────────────────────────────────
+
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+const TIPO_LABEL = { punto_venta:'Punto de venta', inmobiliaria:'Inmobiliaria', particular:'Particular', evento:'Evento' }
+
+async function cargarCanalesParaColab() {
+  const { data } = await supabase.from('canales').select('id, nombre, codigo, tipo').eq('activo', true).order('nombre')
+  const sel = document.getElementById('cCanal')
+  sel.innerHTML = '<option value="">— Elegir canal —</option>'
+  if (data) data.forEach(c => {
+    const o = document.createElement('option')
+    o.value = c.id
+    o.textContent = `${c.nombre} · ${TIPO_LABEL[c.tipo] || c.tipo} (${c.codigo})`
+    sel.appendChild(o)
+  })
+}
+cargarCanalesParaColab()
+
+async function cargarColaboradores() {
+  const { data: canales } = await supabase
+    .from('canales')
+    .select('id, nombre, codigo, tipo, tipo_acceso, colaborador_email')
+    .not('user_id', 'is', null)
+    .order('nombre')
+
+  const cont = document.getElementById('listaColaboradores')
+  if (!canales?.length) {
+    cont.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No hay colaboradores con acceso aún.</div>'
+    return
+  }
+  cont.innerHTML = canales.map(c => `
+    <div class="colab-card">
+      <div class="colab-nombre">${esc(c.nombre)}</div>
+      <div class="colab-codigo">${esc(c.codigo)}</div>
+      ${c.colaborador_email ? `<div class="colab-email">✉ ${esc(c.colaborador_email)}</div>` : ''}
+      <div class="colab-acceso-row">
+        <span class="acceso-badge acceso-${esc(c.tipo_acceso || 'pasivo')}">${c.tipo_acceso === 'activo' ? 'Activo' : 'Pasivo'}</span>
+        <span style="font-size:.65rem;color:var(--gris-claro);">${esc(TIPO_LABEL[c.tipo] || c.tipo)}</span>
+      </div>
+      <div class="colab-acciones">
+        <button class="btn-tbl" onclick="cambiarTipoAcceso('${c.id}', '${c.tipo_acceso === 'activo' ? 'pasivo' : 'activo'}')">
+          → ${c.tipo_acceso === 'activo' ? 'Cambiar a Pasivo' : 'Cambiar a Activo'}
+        </button>
+        <button class="btn-tbl danger" onclick="quitarAcceso('${c.id}', '${esc(c.nombre)}')">Quitar acceso</button>
+      </div>
+    </div>`).join('')
+}
+cargarColaboradores()
+
+document.getElementById('btnInvitar').addEventListener('click', async () => {
+  const email      = document.getElementById('cEmail').value.trim()
+  const canalId    = document.getElementById('cCanal').value
+  const tipoAcceso = document.getElementById('cTipoAcceso').value
+  const btn        = document.getElementById('btnInvitar')
+
+  mostrarColab('', '')
+  if (!email || !canalId) { mostrarColab('Completá el email y elegí un canal.', 'err'); return }
+
+  btn.disabled = true; btn.textContent = 'Procesando…'
+
+  // Crear usuario con contraseña temporal
+  const tempPass = 'Temp' + Math.random().toString(36).slice(2, 10) + '!'
+  const { data: signData, error: signErr } = await supabaseAux.auth.signUp({ email, password: tempPass })
+
+  if (signErr) { mostrarColab('Error: ' + signErr.message, 'err'); btn.disabled = false; btn.textContent = 'Dar acceso'; return }
+
+  const userId = signData.user?.id
+  if (!userId) { mostrarColab('Usuario creado. Debe confirmar su email.', 'ok'); btn.disabled = false; btn.textContent = 'Dar acceso'; return }
+
+  // Vincular canal
+  await supabase.from('canales').update({ user_id: userId, tipo_acceso: tipoAcceso, colaborador_email: email }).eq('id', canalId)
+
+  // Enviar reset de contraseña al portal colaboradores
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/colaboradores/login.html'
+  })
+
+  mostrarColab(`✓ Acceso creado para ${email}. Le llegará un email para configurar su contraseña.`, 'ok')
+  document.getElementById('cEmail').value = ''
+  document.getElementById('cCanal').value = ''
+  btn.disabled = false; btn.textContent = 'Dar acceso'
+  cargarColaboradores()
+  cargarCanalesParaColab()
+})
+
+window.cambiarTipoAcceso = async (canalId, nuevoTipo) => {
+  await supabase.from('canales').update({ tipo_acceso: nuevoTipo }).eq('id', canalId)
+  cargarColaboradores()
+}
+
+window.quitarAcceso = async (canalId, nombre) => {
+  if (!confirm(`¿Quitar el acceso al portal de "${nombre}"? El canal y sus métricas no se borran.`)) return
+  await supabase.from('canales').update({ user_id: null, tipo_acceso: 'pasivo', colaborador_email: null }).eq('id', canalId)
+  cargarColaboradores()
+  cargarCanalesParaColab()
+}
+
+function mostrarColab(msg, tipo) {
+  const el = document.getElementById('alertaColab')
+  el.textContent   = msg
+  el.className     = 'alerta' + (tipo ? ' alerta-' + tipo : '')
+  el.style.display = msg ? 'block' : 'none'
 }
 
 </script>
