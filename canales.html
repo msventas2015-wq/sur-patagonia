@@ -251,10 +251,11 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
 
 // ── Cargar canales + métricas ─────────────────────────────
 async function cargarCanales() {
-  const [rCanales, rRefs, rLeads] = await Promise.all([
+  const [rCanales, rRefs, rLeads, rColabs] = await Promise.all([
     supabase.from('canales').select('*').order('created_at', { ascending: false }),
     supabase.from('referencias').select('codigo, canal_id, activo'),
     supabase.from('contactos').select('canal_ref, created_at').not('canal_ref', 'is', null),
+    supabase.rpc('admin_listar_usuarios'),
   ])
 
   const grid = document.getElementById('gridCanales')
@@ -268,8 +269,9 @@ async function cargarCanales() {
     return
   }
 
-  const refs  = rRefs.data  || []
-  const leads = rLeads.data || []
+  const refs    = rRefs.data   || []
+  const leads   = rLeads.data  || []
+  const colabs  = (rColabs.data || []).filter(u => u.rol === 'colaborador')
 
   // Métricas por canal
   const canalDeRef = {}
@@ -306,7 +308,8 @@ async function cargarCanales() {
   const esActivo = t => t === 'inmobiliaria' || t === 'particular'
 
   grid.innerHTML = canales.map(c => {
-    const st = stats[c.id]
+    const st    = stats[c.id]
+    const colab = colabs.find(x => x.id === c.user_id)
     const ultimo = st.ultimo
       ? new Date(st.ultimo).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
       : '—'
@@ -337,6 +340,16 @@ async function cargarCanales() {
         <a href="nuevo-canal.html?id=${c.id}" class="btn-cc">Editar</a>
         <a href="contactos.html" class="btn-cc">Ver consultas</a>
         <button class="btn-cc danger" onclick="toggleActivo('${c.id}', ${c.activo})">${c.activo ? 'Desactivar' : 'Activar'}</button>
+      </div>
+      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
+        <div>
+          <div style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris-claro);margin-bottom:.25rem;">Colaborador</div>
+          ${colab
+            ? `<div style="font-size:.75rem;color:var(--blanco);">${esc(colab.email)}</div>`
+            : `<div style="font-size:.72rem;color:var(--gris-claro);">Sin colaborador asignado</div>`
+          }
+        </div>
+        <a href="nuevo-canal.html?id=${c.id}" class="btn-cc" style="white-space:nowrap;font-size:.65rem;">${colab ? 'Ver acceso' : '+ Asignar'}</a>
       </div>
     </div>`
   }).join('')

@@ -330,20 +330,42 @@
       </div>
     </div>
 
-    <!-- ── 4. ACCESO AL PANEL (solo canales activos) ──── -->
+    <!-- ── 4. ACCESO EXTERNO ────────────────────────────── -->
     <div class="form-seccion" id="seccionAcceso">
-      <h3>Acceso al panel del agente <span class="tipo-tag tag-activo">Canal activo</span></h3>
-      <div class="form-row-1">
-        <label class="admin-label">Usuario asignado</label>
-        <select id="userId" class="admin-input">
-          <option value="">Sin usuario asignado</option>
-        </select>
-        <div class="hint">
-          El agente seleccionado podrá ingresar al portal y ver sus leads.
-          Si no aparece en la lista, primero crealo desde
-          <a href="usuarios.html" style="color:var(--dorado);">Usuarios</a>.
+      <h3>Acceso externo</h3>
+      <p style="font-size:.78rem;color:var(--gris-claro);margin-bottom:1.2rem;">
+        Si este canal pertenece a un colaborador externo (inmo, punto de venta, vendedor), creá su acceso aquí. Si es un canal propio, dejalo vacío.
+      </p>
+
+      <!-- Usuario ya existente (modo edición) -->
+      <div id="accesoExistente" style="display:none;background:rgba(255,255,255,.03);border:1px solid var(--card-border);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:1rem;">
+        <div style="font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris-claro);margin-bottom:.3rem;">Colaborador asignado</div>
+        <div id="accesoEmail" style="font-size:.85rem;font-weight:500;"></div>
+        <div style="font-size:.72rem;color:var(--gris-claro);margin-top:.25rem;">Para cambiar la contraseña usá el panel de <a href="usuarios.html" style="color:var(--accent);">Usuarios</a>.</div>
+      </div>
+
+      <!-- Crear nuevo acceso -->
+      <div id="accesoNuevo">
+        <div class="form-row">
+          <div>
+            <label class="admin-label">Email del colaborador</label>
+            <input type="email" id="accesoEmailInput" class="admin-input" placeholder="inmo@ejemplo.com" />
+          </div>
+          <div>
+            <label class="admin-label">Contraseña temporal</label>
+            <input type="password" id="accesoPass" class="admin-input" placeholder="Mínimo 6 caracteres" />
+          </div>
+        </div>
+        <div class="form-row-1" style="margin-top:.8rem;">
+          <label class="admin-label">Tipo de acceso</label>
+          <select id="accesoTipo" class="admin-input">
+            <option value="pasivo">Pasivo — Solo métricas (punto de venta, cafetería)</option>
+            <option value="activo">Activo — Métricas + consultas + CRM (inmo, vendedor)</option>
+          </select>
         </div>
       </div>
+
+      <input type="hidden" id="userId" value="" />
     </div>
 
     <!-- ── 5. REFERENCIAS (activos, post-guardado) ────── -->
@@ -415,6 +437,13 @@ const supabase = createClient(
   'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
 )
 
+// Cliente auxiliar para crear usuarios sin cerrar la sesión del admin
+const supabaseAux = createClient(
+  'https://wajkfydxutptcvvfwrvq.supabase.co',
+  'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s',
+  { auth: { storageKey: 'sp-aux-create', autoRefreshToken: false, persistSession: false } }
+)
+
 const BASE_URL = 'https://surpatagonia.com.ar'
 const params   = new URLSearchParams(location.search)
 const editId   = params.get('id')
@@ -432,23 +461,6 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
   window.location.href = 'login.html'
 })
 
-// ── Cargar agentes para el selector ──────────────────────
-async function cargarAgentes(selectedId) {
-  const { data: usuarios } = await supabase.rpc('admin_listar_usuarios')
-  const sel = document.getElementById('userId')
-  sel.innerHTML = '<option value="">Sin usuario asignado</option>'
-  if (usuarios) {
-    usuarios
-      .filter(u => u.rol === 'agente')
-      .forEach(u => {
-        const opt = document.createElement('option')
-        opt.value = u.id
-        opt.textContent = u.email
-        if (selectedId && u.id === selectedId) opt.selected = true
-        sel.appendChild(opt)
-      })
-  }
-}
 // ── Helpers ───────────────────────────────────────────────
 function toSlug(str) {
   return str.toLowerCase()
@@ -470,7 +482,7 @@ window.onTipoChange = function() {
   const activo = esActivo(tipo)
 
   document.getElementById('seccionDestino').style.display  = activo ? 'none' : ''
-  document.getElementById('seccionAcceso').style.display   = activo ? ''     : 'none'
+  // Acceso externo siempre visible — cualquier canal puede tener colaborador
 
   const hints = {
     inmobiliaria: 'Canal activo — puede vender múltiples proyectos con links independientes.',
@@ -755,7 +767,17 @@ if (editId) {
       document.getElementById('coords').value = `${c.latitud}, ${c.longitud}`
     }
     document.getElementById('slugPreview').textContent = c.codigo || '—'
-    cargarAgentes(c.user_id || null)
+
+    // Si ya tiene usuario asignado, mostrar info de solo lectura
+    if (c.user_id) {
+      document.getElementById('userId').value = c.user_id
+      document.getElementById('accesoExistente').style.display = ''
+      document.getElementById('accesoNuevo').style.display = 'none'
+      // Buscar email del usuario
+      const { data: usuarios } = await supabase.rpc('admin_listar_usuarios')
+      const u = usuarios?.find(x => x.id === c.user_id)
+      document.getElementById('accesoEmail').textContent = u ? u.email : c.user_id
+    }
 
     onTipoChange()
 
@@ -777,7 +799,6 @@ if (editId) {
     }
   }
 } else {
-  cargarAgentes()
   onTipoChange()
 }
 
@@ -790,7 +811,23 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const tipo     = document.getElementById('tipo').value
   const activo_v = esActivo(tipo)
   const destino  = activo_v ? '/' : getDestinoUrl()
-  const userId   = document.getElementById('userId').value.trim() || null
+
+  // Datos de acceso externo
+  const emailAcceso = document.getElementById('accesoEmailInput').value.trim()
+  const passAcceso  = document.getElementById('accesoPass').value
+  const tipoAcceso  = document.getElementById('accesoTipo').value
+  const tieneAccesoNuevo = emailAcceso && passAcceso && document.getElementById('accesoNuevo').style.display !== 'none'
+
+  if (emailAcceso && !passAcceso) {
+    alert('Si ingresás un email de colaborador, también tenés que poner una contraseña temporal.')
+    return
+  }
+  if (emailAcceso && passAcceso.length < 6) {
+    alert('La contraseña temporal debe tener al menos 6 caracteres.')
+    return
+  }
+
+  let userId = document.getElementById('userId').value.trim() || null
 
   // Coordenadas: acepta el formato que copia Google Maps ("lat, lng")
   let latitud = null, longitud = null
@@ -824,6 +861,40 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   if (error) { alert('Error al guardar: ' + error.message); return }
 
   _canalId = data.id
+
+  // ── Crear usuario colaborador si se llenaron los campos ──
+  if (tieneAccesoNuevo) {
+    const btn = document.getElementById('btnGuardar')
+    btn.textContent = 'Creando acceso…'
+
+    const { data: signUpData, error: signUpError } = await supabaseAux.auth.signUp({
+      email: emailAcceso,
+      password: passAcceso,
+    })
+
+    if (signUpError) {
+      alert('Canal guardado, pero hubo un error al crear el usuario: ' + signUpError.message)
+    } else {
+      const newUserId = signUpData.user.id
+
+      // Asignar rol colaborador y tipo de acceso
+      await supabase.rpc('admin_set_user_rol',    { p_user_id: newUserId, p_rol: 'colaborador' })
+      await supabase.rpc('admin_set_tipo_acceso', { p_user_id: newUserId, p_tipo: tipoAcceso })
+
+      // Vincular usuario al canal
+      await supabase.from('canales').update({ user_id: newUserId }).eq('id', _canalId)
+      userId = newUserId
+
+      // Cerrar sesión del cliente auxiliar
+      await supabaseAux.auth.signOut()
+
+      // Mostrar info del usuario creado
+      document.getElementById('userId').value = newUserId
+      document.getElementById('accesoExistente').style.display = ''
+      document.getElementById('accesoNuevo').style.display = 'none'
+      document.getElementById('accesoEmail').textContent = emailAcceso
+    }
+  }
 
   // Para canales pasivos: crear/actualizar la referencia única automáticamente
   if (!activo_v) {

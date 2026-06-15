@@ -98,6 +98,25 @@
     .btn-tbl.danger:hover { border-color: #e05; color: #e05; }
 
     .canal-link { font-size: 0.72rem; color: var(--gris-claro); font-family: monospace; }
+
+    /* ── Chips de canales ── */
+    .canal-chips { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+    .canal-chip {
+      display: inline-flex; align-items: center; gap: .3rem;
+      background: rgba(215,111,63,.1); border: 1px solid rgba(215,111,63,.25);
+      border-radius: 999px; padding: .18rem .55rem .18rem .65rem;
+      font-size: .68rem; color: var(--accent); white-space: nowrap;
+    }
+    .canal-chip button {
+      background: none; border: none; color: inherit; cursor: pointer;
+      font-size: .8rem; line-height: 1; padding: 0; opacity: .7;
+    }
+    .canal-chip button:hover { opacity: 1; }
+    .add-canal-row { display: flex; gap: .3rem; align-items: center; margin-top: .3rem; width: 100%; }
+    .add-canal-row select { flex: 1; padding: .22rem .4rem; font-size: .68rem; }
+    .add-canal-row button { white-space: nowrap; font-size: .68rem; padding: .22rem .5rem; }
+    .acceso-row { display: flex; align-items: center; gap: .4rem; margin-top: .35rem; }
+    .acceso-row select { font-size: .68rem; padding: .22rem .4rem; }
     .empty-state { text-align: center; padding: 3rem; color: var(--gris-claro); font-size: 0.82rem; }
 
     #canalWrap { display: none; }
@@ -127,6 +146,29 @@
     .acceso-pasivo { background: rgba(136,136,136,.12); color: #888; }
     .acceso-activo { background: rgba(201,168,76,.12); color: #c9a84c; }
     .colab-acciones { display: flex; gap: .35rem; margin-top: .8rem; }
+
+    /* ── Modal cambiar contraseña ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); z-index: 999;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal-box {
+      background: #1a1814; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px; padding: 2rem; width: 100%; max-width: 380px;
+    }
+    .modal-titulo { font-size: .85rem; font-weight: 700; margin-bottom: .3rem; }
+    .modal-sub { font-size: .72rem; color: #888; margin-bottom: 1.4rem; }
+    .modal-grupo { margin-bottom: 1rem; }
+    .modal-grupo label { display: block; font-size: .6rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #888; margin-bottom: .35rem; }
+    .modal-grupo input { width: 100%; padding: .65rem .9rem; font-size: .83rem; }
+    .modal-acciones { display: flex; gap: .6rem; margin-top: 1.4rem; }
+    .modal-acciones .btn-primary { flex: 1; padding: .7rem; text-align: center; border-radius: 10px !important; }
+    .modal-acciones .btn-cancel { flex: 1; background: none; border: 1px solid rgba(255,255,255,.12); color: #888; border-radius: 10px; padding: .7rem; cursor: pointer; font-size: .78rem; font-weight: 600; font-family: inherit; transition: border-color .18s; }
+    .modal-acciones .btn-cancel:hover { border-color: #555; }
+    .modal-err { font-size: .72rem; color: #e07070; margin-top: .5rem; display: none; }
+    .modal-err.visible { display: block; }
   </style>
 </head>
 <body>
@@ -231,20 +273,14 @@
         </div>
       </div>
 
-      <!-- Canal + tipo acceso — solo para colaboradores/agentes -->
-      <div id="canalWrap" style="display:none;">
+      <!-- Tipo acceso — solo para colaboradores -->
+      <div id="tipoAccesoWrap" style="display:none;">
         <div class="form-row">
           <div class="f-group">
-            <label>Canal asociado</label>
-            <select id="uCanal" class="admin-input">
-              <option value="">Sin canal asignado aún</option>
-            </select>
-          </div>
-          <div class="f-group" id="tipoAccesoWrap" style="display:none;">
             <label>Tipo de acceso</label>
             <select id="uTipoAcceso" class="admin-input">
-              <option value="pasivo">Pasivo — Solo métricas</option>
-              <option value="activo">Activo — Métricas + consultas + CRM</option>
+              <option value="pasivo">Pasivo — Solo métricas (punto de venta)</option>
+              <option value="activo">Activo — Métricas + consultas + CRM (inmo/vendedor)</option>
             </select>
           </div>
         </div>
@@ -262,19 +298,41 @@
             <tr>
               <th>Email</th>
               <th>Rol</th>
-              <th>Canal / Acceso</th>
+              <th>Tipo acceso</th>
+              <th>Canal asignado</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody id="tbodyUsuarios">
-            <tr><td colspan="5"><div class="empty-state">Cargando usuarios…</div></td></tr>
+            <tr><td colspan="6"><div class="empty-state">Cargando usuarios…</div></td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
   </main>
+</div>
+
+<!-- ── MODAL CAMBIAR CONTRASEÑA ── -->
+<div class="modal-overlay" id="modalPass">
+  <div class="modal-box">
+    <div class="modal-titulo">Cambiar contraseña</div>
+    <div class="modal-sub" id="modalPassSub">—</div>
+    <div class="modal-grupo">
+      <label>Nueva contraseña</label>
+      <input type="password" id="modalPassInput" class="admin-input" placeholder="Mínimo 6 caracteres" />
+    </div>
+    <div class="modal-grupo">
+      <label>Confirmar contraseña</label>
+      <input type="password" id="modalPassInput2" class="admin-input" placeholder="Repetí la contraseña" />
+    </div>
+    <div class="modal-err" id="modalPassErr"></div>
+    <div class="modal-acciones">
+      <button class="btn-cancel" onclick="cerrarModalPass()">Cancelar</button>
+      <button class="btn-primary" id="btnModalPassGuardar" onclick="ejecutarCambioPass()">Guardar</button>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -303,76 +361,47 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
 
 // ── Helpers ───────────────────────────────────────────────
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
-const TIPO_LABEL = { punto_venta:'Punto de venta', inmobiliaria:'Inmobiliaria', particular:'Particular', evento:'Evento' }
-let todosCanales = []
 
 // ── Rol change ────────────────────────────────────────────
 window.onRolChange = function() {
   const rol = document.getElementById('uRol').value
-  const mostrarCanal = rol === 'agente' || rol === 'colaborador'
-  document.getElementById('canalWrap').style.display = mostrarCanal ? '' : 'none'
   document.getElementById('tipoAccesoWrap').style.display = rol === 'colaborador' ? '' : 'none'
 }
 onRolChange()
 
-// ── Cargar todos los canales ──────────────────────────────
-async function cargarCanales() {
-  const { data } = await supabase.from('canales').select('id, nombre, codigo, tipo').eq('activo', true).order('nombre')
-  todosCanales = data || []
-  const sel = document.getElementById('uCanal')
-  sel.innerHTML = '<option value="">Sin canal asignado aún</option>'
-  todosCanales.forEach(c => {
-    const o = document.createElement('option')
-    o.value = c.id
-    o.textContent = `${c.nombre} · ${TIPO_LABEL[c.tipo]||c.tipo} (${c.codigo})`
-    sel.appendChild(o)
-  })
-}
-cargarCanales()
-
 // ── Cargar lista de usuarios ──────────────────────────────
 async function cargarUsuarios() {
-  const { data: usuarios, error } = await supabase.rpc('admin_listar_usuarios')
-  const { data: canales } = await supabase.from('canales').select('id, nombre, codigo, tipo, user_id, tipo_acceso')
-  todosCanales = canales || []
+  const [{ data: usuarios, error }, { data: canales }] = await Promise.all([
+    supabase.rpc('admin_listar_usuarios'),
+    supabase.from('canales').select('id, nombre, codigo, user_id').not('user_id', 'is', null),
+  ])
 
   const tbody = document.getElementById('tbodyUsuarios')
-  if (error) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error: ${error.message}</div></td></tr>`; return }
-  if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
+  if (error) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error: ${error.message}</div></td></tr>`; return }
+  if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
 
-  const canalPorUsuario = {}
-  todosCanales.forEach(c => { if (c.user_id) canalPorUsuario[c.user_id] = c })
+  // mapa userId → canal
+  const canalDeUser = {}
+  ;(canales || []).forEach(c => { canalDeUser[c.user_id] = c })
 
   const myId = session.user.id
 
   tbody.innerHTML = usuarios.map(u => {
-    const canal    = canalPorUsuario[u.id]
-    const rolActual = u.rol || ''
-    const esColab  = rolActual === 'colaborador'
+    const rolActual  = u.rol || ''
+    const esColab    = rolActual === 'colaborador'
+    const tipoAcceso = u.tipo_acceso || 'pasivo'
+    const canal      = canalDeUser[u.id]
 
-    // Columna canal/acceso
-    let canalHtml = ''
-    if (esColab) {
-      // Selector de canal + tipo_acceso inline
-      const optsCanal = todosCanales.map(c =>
-        `<option value="${esc(c.id)}" ${canal?.id === c.id ? 'selected' : ''}>${esc(c.nombre)} (${esc(c.codigo)})</option>`
-      ).join('')
-      canalHtml = `
-        <div style="display:flex;flex-direction:column;gap:.35rem;">
-          <select class="admin-input" style="padding:.25rem .5rem;font-size:.72rem;width:100%;" id="canal-${esc(u.id)}">
-            <option value="">— Sin canal —</option>${optsCanal}
-          </select>
-          <select class="admin-input" style="padding:.25rem .5rem;font-size:.72rem;width:100%;" id="acceso-${esc(u.id)}">
-            <option value="pasivo" ${canal?.tipo_acceso !== 'activo' ? 'selected' : ''}>Pasivo — Solo métricas</option>
-            <option value="activo" ${canal?.tipo_acceso === 'activo' ? 'selected' : ''}>Activo — CRM + consultas</option>
-          </select>
-          <button class="btn-tbl" onclick="guardarCanal('${esc(u.id)}')">Guardar canal</button>
-        </div>`
-    } else if (canal) {
-      canalHtml = `<span class="canal-link">${esc(canal.nombre)}<br>${esc(canal.codigo)}</span>`
-    } else {
-      canalHtml = `<span style="color:var(--gris-claro);font-size:.75rem;">—</span>`
-    }
+    const accesoHtml = esColab ? `
+      <select class="admin-input" style="padding:.25rem .5rem;font-size:.75rem;"
+              onchange="cambiarTipoAcceso('${esc(u.id)}', this.value)">
+        <option value="pasivo" ${tipoAcceso !== 'activo' ? 'selected':''}>Pasivo</option>
+        <option value="activo" ${tipoAcceso === 'activo' ? 'selected':''}>Activo</option>
+      </select>` : `<span style="color:var(--gris-claro);font-size:.75rem;">—</span>`
+
+    const canalHtml = canal
+      ? `<a href="nuevo-canal.html?id=${esc(canal.id)}" style="font-size:.75rem;color:var(--accent);text-decoration:none;" title="${esc(canal.codigo)}">${esc(canal.nombre)}</a>`
+      : `<span style="font-size:.75rem;color:var(--gris-claro);">—</span>`
 
     return `
     <tr>
@@ -386,13 +415,14 @@ async function cargarUsuarios() {
           <option value="admin"        ${rolActual==='admin'        ? 'selected':''}>Admin</option>
         </select>
       </td>
+      <td>${accesoHtml}</td>
       <td>${canalHtml}</td>
       <td>
         <span class="estado-dot ${u.desactivado ? 'inactivo' : 'activo'}"></span>
         <span style="font-size:.75rem;color:var(--gris-claro);">${u.desactivado ? 'Inactivo' : 'Activo'}</span>
       </td>
       <td>
-        <button class="btn-tbl" onclick="resetPassword('${esc(u.email)}', ${esColab})">Reset contraseña</button>
+        <button class="btn-tbl" onclick="abrirModalPass('${esc(u.id)}', '${esc(u.email)}')">Cambiar contraseña</button>
         <button class="btn-tbl ${u.desactivado ? '' : 'danger'}" onclick="toggleUsuario('${esc(u.id)}', ${u.desactivado})">
           ${u.desactivado ? 'Activar' : 'Desactivar'}
         </button>
@@ -409,7 +439,6 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
   const rol     = document.getElementById('uRol').value
   const pass    = document.getElementById('uPassword').value
   const pass2   = document.getElementById('uPassword2').value
-  const canalId = document.getElementById('uCanal').value
   const btn     = document.getElementById('btnCrear')
 
   mostrar('', '')
@@ -438,21 +467,18 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
     return
   }
 
-  // Asignar rol via función SQL
+  // Asignar rol
   await supabase.rpc('admin_set_user_rol', { p_user_id: userId, p_rol: rol })
 
-  // Vincular canal
-  if (canalId) {
+  // Guardar tipo_acceso en metadata si es colaborador
+  if (rol === 'colaborador') {
     const tipoAcceso = document.getElementById('uTipoAcceso')?.value || 'pasivo'
-    const update = { user_id: userId }
-    if (rol === 'colaborador') { update.tipo_acceso = tipoAcceso; update.colaborador_email = email }
-    await supabase.from('canales').update(update).eq('id', canalId)
+    await supabase.rpc('admin_set_tipo_acceso', { p_user_id: userId, p_tipo: tipoAcceso })
   }
 
-  mostrar(`✓ Usuario creado correctamente (${email}).`, 'ok')
+  mostrar(`✓ Usuario creado (${email}). Asignale canales desde el panel de Canales.`, 'ok')
   limpiarForm()
   cargarUsuarios()
-  cargarCanales()
 
   btn.disabled = false
   btn.textContent = 'Crear usuario'
@@ -507,38 +533,78 @@ window.toggleUsuario = async (id, desactivado) => {
   cargarUsuarios()
 }
 
-// ── Guardar canal de colaborador ──────────────────────────
-window.guardarCanal = async (userId) => {
-  const canalId    = document.getElementById('canal-' + userId)?.value
-  const tipoAcceso = document.getElementById('acceso-' + userId)?.value || 'pasivo'
+// ── Cambiar tipo de acceso del colaborador ────────────────
+window.cambiarTipoAcceso = async (userId, tipo) => {
+  await supabase.rpc('admin_set_tipo_acceso', { p_user_id: userId, p_tipo: tipo })
+}
 
-  // Limpiar canal anterior de este usuario
-  await supabase.from('canales').update({ user_id: null, tipo_acceso: 'pasivo' }).eq('user_id', userId)
+// ── Modal cambiar contraseña ──────────────────────────────
+const EDGE_URL = 'https://wajkfydxutptcvvfwrvq.supabase.co/functions/v1/admin-reset-password'
+let _passUserId = null
 
-  if (canalId) {
-    await supabase.from('canales').update({ user_id: userId, tipo_acceso: tipoAcceso }).eq('id', canalId)
+window.abrirModalPass = (userId, email) => {
+  _passUserId = userId
+  document.getElementById('modalPassSub').textContent = email
+  document.getElementById('modalPassInput').value  = ''
+  document.getElementById('modalPassInput2').value = ''
+  const errEl = document.getElementById('modalPassErr')
+  errEl.textContent = ''; errEl.classList.remove('visible')
+  document.getElementById('modalPass').classList.add('visible')
+  setTimeout(() => document.getElementById('modalPassInput').focus(), 80)
+}
+
+window.cerrarModalPass = () => {
+  document.getElementById('modalPass').classList.remove('visible')
+  _passUserId = null
+}
+
+window.ejecutarCambioPass = async () => {
+  const pass  = document.getElementById('modalPassInput').value
+  const pass2 = document.getElementById('modalPassInput2').value
+  const errEl = document.getElementById('modalPassErr')
+  const btn   = document.getElementById('btnModalPassGuardar')
+
+  errEl.textContent = ''; errEl.classList.remove('visible')
+
+  if (!pass || pass.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; errEl.classList.add('visible'); return }
+  if (pass !== pass2)            { errEl.textContent = 'Las contraseñas no coinciden.'; errEl.classList.add('visible'); return }
+
+  btn.disabled = true; btn.textContent = 'Guardando…'
+
+  const { data: { session: s } } = await supabase.auth.getSession()
+  const res = await fetch(EDGE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + s.access_token
+    },
+    body: JSON.stringify({ userId: _passUserId, newPassword: pass })
+  })
+
+  btn.disabled = false; btn.textContent = 'Guardar'
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    errEl.textContent = body.error || `Error ${res.status}`
+    errEl.classList.add('visible')
+    return
   }
-  cargarUsuarios()
+
+  cerrarModalPass()
+  alert('✓ Contraseña cambiada correctamente.')
 }
 
-// ── Reset contraseña ──────────────────────────────────────
-window.resetPassword = async (email, esColab = false) => {
-  if (!confirm(`¿Enviar email de reset de contraseña a ${email}?`)) return
-  const redirectTo = esColab
-    ? window.location.origin + '/colaboradores/login.html'
-    : window.location.origin + '/admin/login.html'
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
-  if (error) alert('Error: ' + error.message)
-  else alert(`✓ Email de reset enviado a ${email}.`)
-}
+// Cerrar modal con Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModalPass() })
+// Cerrar al click en overlay
+document.getElementById('modalPass').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModalPass() })
 
 // ── Helpers ───────────────────────────────────────────────
 function limpiarForm() {
-  document.getElementById('uEmail').value    = ''
-  document.getElementById('uPassword').value = ''
+  document.getElementById('uEmail').value     = ''
+  document.getElementById('uPassword').value  = ''
   document.getElementById('uPassword2').value = ''
-  document.getElementById('uCanal').value    = ''
-  document.getElementById('uRol').value      = 'agente'
+  document.getElementById('uRol').value       = 'agente'
   onRolChange()
 }
 
