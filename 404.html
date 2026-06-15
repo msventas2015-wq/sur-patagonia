@@ -1375,50 +1375,95 @@ function renderMapaLotes(lotes, mapaImagenUrl) {
     <div class="ml-cnt"><div class="ml-cnt-n">${vend}</div><div class="ml-cnt-l">Vendidos</div></div>
     <div class="ml-cnt"><div class="ml-cnt-n">${lotes.length}</div><div class="ml-cnt-l">Total lotes</div></div>`
 
-  // Renderizar círculos una vez que carga la imagen
+  // Renderizar pines estilo mapa una vez que carga la imagen
   function dibujar() {
     const W = img.naturalWidth || img.clientWidth
     const H = img.naturalHeight || img.clientHeight
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
-    svg.innerHTML = ''
-    const rBase = Math.round(W * 0.014)
+    const r  = Math.round(W * 0.017)   // radio del círculo del pin
+    const sh = Math.round(W * 0.003)   // blur de sombra
+
+    svg.innerHTML = `<defs>
+      <filter id="mlSh" x="-70%" y="-70%" width="240%" height="300%">
+        <feDropShadow dx="0" dy="${Math.round(W*0.002)}" stdDeviation="${sh}" flood-color="#000" flood-opacity="0.38"/>
+      </filter>
+    </defs>`
+
+    const ns = 'http://www.w3.org/2000/svg'
+    const mk = tag => document.createElementNS(ns, tag)
 
     lotesConPos.forEach(l => {
-      const cx = (l.mapa_x / 100) * W
-      const cy = (l.mapa_y / 100) * H
-      const zona = l.tipo_lote || 'Bosque'
-      const isComp = zona === 'Complejo turístico'
-      const estado = isComp ? 'complejo' : (l.estado || 'vendido')
-      const color  = estado==='disponible' ? (ZONA_COLOR[zona] || '#8aab78')
-                   : estado==='reservado'  ? '#c9a84c'
-                   : estado==='complejo'   ? '#c8bfa8'
-                   : '#c9784c'
-      const opacity = (estado==='vendido' || estado==='complejo') ? 0.58 : 0.88
-      const r = isComp ? Math.round(rBase * 0.85) : rBase
+      const tipX = (l.mapa_x / 100) * W   // punta del pin = posición exacta
+      const tipY = (l.mapa_y / 100) * H
+      const ccx  = tipX                    // centro del círculo (mismo X)
+      const ccy  = tipY - r * 1.22        // centro del círculo (encima de la punta)
+      const tw   = r * 0.52               // semi-ancho de la cola en el hombro
+      const ty   = ccy + r * 0.62         // Y del hombro de la cola
 
-      const g = document.createElementNS('http://www.w3.org/2000/svg','g')
-      g.setAttribute('class','ml-lot')
+      const zona    = l.tipo_lote || 'Bosque'
+      const isComp  = zona === 'Complejo turístico'
+      const estado  = isComp ? 'complejo' : (l.estado || 'vendido')
+      const muted   = estado === 'vendido' || estado === 'complejo'
+      const color   = estado==='disponible' ? (ZONA_COLOR[zona] || '#8aab78')
+                    : estado==='reservado'  ? '#c9a84c'
+                    : estado==='complejo'   ? '#a8b8c0'
+                    : '#c4734a'
 
-      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle')
-      circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', r)
-      circle.setAttribute('fill', color); circle.setAttribute('fill-opacity', opacity)
-      circle.setAttribute('stroke','rgba(255,255,255,0.65)'); circle.setAttribute('stroke-width', Math.round(W*0.0015))
+      const g = mk('g'); g.setAttribute('class', 'ml-lot')
 
-      const text = document.createElementNS('http://www.w3.org/2000/svg','text')
-      text.setAttribute('x', cx); text.setAttribute('y', cy)
+      // Sombra en el suelo
+      const ell = mk('ellipse')
+      ell.setAttribute('cx', tipX); ell.setAttribute('cy', tipY + r * 0.22)
+      ell.setAttribute('rx', r * 0.42); ell.setAttribute('ry', r * 0.13)
+      ell.setAttribute('fill', 'rgba(0,0,0,0.18)'); ell.setAttribute('pointer-events','none')
+      g.appendChild(ell)
+
+      // Cola del pin (triángulo)
+      const tail = mk('polygon')
+      tail.setAttribute('points', `${ccx-tw},${ty} ${ccx+tw},${ty} ${tipX},${tipY}`)
+      tail.setAttribute('fill', color)
+      tail.setAttribute('fill-opacity', muted ? '0.58' : '0.93')
+      tail.setAttribute('filter', 'url(#mlSh)')
+      g.appendChild(tail)
+
+      // Cuerpo del pin (círculo)
+      const circle = mk('circle')
+      circle.setAttribute('cx', ccx); circle.setAttribute('cy', ccy); circle.setAttribute('r', r)
+      circle.setAttribute('fill', color)
+      circle.setAttribute('fill-opacity', muted ? '0.62' : '0.93')
+      circle.setAttribute('stroke', 'rgba(255,255,255,0.7)')
+      circle.setAttribute('stroke-width', Math.round(W * 0.0018))
+      circle.setAttribute('filter', 'url(#mlSh)')
+      g.appendChild(circle)
+
+      // Anillo interior sutil
+      const ring = mk('circle')
+      ring.setAttribute('cx', ccx); ring.setAttribute('cy', ccy); ring.setAttribute('r', r * 0.68)
+      ring.setAttribute('fill', 'none')
+      ring.setAttribute('stroke', 'rgba(255,255,255,0.28)')
+      ring.setAttribute('stroke-width', Math.round(W * 0.0012))
+      ring.setAttribute('pointer-events', 'none')
+      g.appendChild(ring)
+
+      // Número / label
+      const text = mk('text')
+      text.setAttribute('x', ccx); text.setAttribute('y', ccy)
       text.setAttribute('text-anchor','middle'); text.setAttribute('dominant-baseline','central')
-      text.setAttribute('font-size', Math.round(W * 0.016)); text.setAttribute('font-weight','700')
-      text.setAttribute('fill','white'); text.setAttribute('pointer-events','none')
+      text.setAttribute('font-size', Math.round(W * 0.013))
+      text.setAttribute('font-weight', '600')
+      text.setAttribute('fill', 'white')
+      text.setAttribute('fill-opacity', muted ? '0.7' : '1')
+      text.setAttribute('pointer-events','none')
       text.textContent = String(l.numero || '').replace(/^lote\s+/i, '')
+      g.appendChild(text)
 
-      g.appendChild(circle); g.appendChild(text)
-
+      // Popup al hover
       g.addEventListener('mouseenter', () => {
         const svgR  = svg.getBoundingClientRect()
         const wrapR = wrap.getBoundingClientRect()
         const sx = svgR.width / W, sy = svgR.height / H
-        let px = (cx * sx) + (svgR.left - wrapR.left) + 18
-        let py = (cy * sy) + (svgR.top  - wrapR.top)  - 24
+        let px = (ccx * sx) + (svgR.left - wrapR.left) + 18
+        let py = (ccy * sy) + (svgR.top  - wrapR.top)  - 24
         if (px + 210 > wrapR.width) px -= 228
         if (py < 0) py += 56
         const eLabel = estado==='disponible'?'Disponible':estado==='reservado'?'Reservado':estado==='complejo'?'Complejo turístico':'Vendido'
