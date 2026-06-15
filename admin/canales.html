@@ -340,6 +340,7 @@ async function cargarCanales() {
         <a href="nuevo-canal.html?id=${c.id}" class="btn-cc">Editar</a>
         <a href="contactos.html" class="btn-cc">Ver consultas</a>
         <button class="btn-cc danger" onclick="toggleActivo('${c.id}', ${c.activo})">${c.activo ? 'Desactivar' : 'Activar'}</button>
+        <button class="btn-cc danger" onclick="eliminarCanal('${c.id}', '${esc(c.nombre)}')">Eliminar</button>
       </div>
       <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
         <div>
@@ -353,6 +354,15 @@ async function cargarCanales() {
       </div>
     </div>`
   }).join('')
+}
+
+// ── Eliminar canal ────────────────────────────────────────
+window.eliminarCanal = async (id, nombre) => {
+  if (!confirm(`¿Eliminar el canal "${nombre}"?\n\nSe borrarán también sus referencias (QRs). Las consultas y visitas registradas NO se borran.`)) return
+  await supabase.from('referencias').delete().eq('canal_id', id)
+  const { error } = await supabase.from('canales').delete().eq('id', id)
+  if (error) { alert('Error al eliminar: ' + error.message); return }
+  cargarCanales()
 }
 
 // ── Toggle activo ─────────────────────────────────────────
