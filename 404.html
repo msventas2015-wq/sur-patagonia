@@ -1266,7 +1266,7 @@ async function init() {
   renderAtmosfera(p)
   renderPres(p)
   renderPlano(p)
-  if (slug === 'aldea-los-huemules') renderMapaLotes(allLotes)
+  if (p.mapa_imagen_url) renderMapaLotes(allLotes, p.mapa_imagen_url)
   renderDisponibilidad(allLotes)
   renderGaleria(p)
   renderInfo(p)
@@ -1343,56 +1343,25 @@ function renderPlano(p) {
 }
 
 // ── Disponibilidad ────────────────────────────────────────────────────
-// ── Mapa interactivo de lotes (solo aldea-los-huemules) ───────────────
-const LOTE_COORDS = {
-   1:{x:1232,y:310,zona:'Complejo turístico'}, 2:{x:1278,y:335,zona:'Complejo turístico'},
-   3:{x:1316,y:332,zona:'Complejo turístico'}, 4:{x:1358,y:310,zona:'Complejo turístico'},
-   5:{x:1222,y:490,zona:'Complejo turístico'},
-   6:{x:1058,y:860,zona:'Bosque'},  7:{x:1162,y:488,zona:'Bosque'},
-   8:{x:1202,y:714,zona:'Bosque'},  9:{x:1150,y:514,zona:'Bosque'},
-  10:{x:1128,y:546,zona:'Bosque'}, 11:{x:1048,y:796,zona:'Bosque'},
-  12:{x:1016,y:826,zona:'Bosque'}, 13:{x:1066,y:822,zona:'Bosque'},
-  14:{x:1058,y:752,zona:'Bosque'}, 15:{x:1064,y:784,zona:'Bosque'},
-  16:{x:1120,y:850,zona:'Bosque'}, 17:{x: 924,y:910,zona:'Río'},
-  18:{x: 868,y:888,zona:'Río'},    19:{x:1050,y:832,zona:'Bosque'},
-  20:{x: 824,y:854,zona:'Bosque'}, 21:{x: 918,y:812,zona:'Bosque'},
-  22:{x: 862,y:790,zona:'Bosque'}, 23:{x: 784,y:752,zona:'Bosque'},
-  24:{x: 758,y:778,zona:'Bosque'}, 25:{x: 724,y:800,zona:'Bosque'},
-  26:{x: 722,y:724,zona:'Bosque'}, 27:{x: 686,y:736,zona:'Bosque'},
-  28:{x: 692,y:694,zona:'Bosque'}, 29:{x: 660,y:714,zona:'Bosque'},
-  30:{x: 280,y:718,zona:'Río'},    31:{x: 305,y:676,zona:'Bosque'},
-  32:{x: 255,y:674,zona:'Río'},    33:{x: 482,y:630,zona:'Bosque'},
-  34:{x: 238,y:636,zona:'Río'},    35:{x: 476,y:578,zona:'Bosque'},
-  36:{x: 224,y:586,zona:'Río'},    37:{x: 360,y:530,zona:'Bosque'},
-  38:{x: 204,y:534,zona:'Río'},    39:{x: 330,y:470,zona:'Bosque'},
-  40:{x: 190,y:478,zona:'Río'},    41:{x: 190,y:432,zona:'Bosque'},
-  42:{x: 126,y:376,zona:'Río'},    43:{x: 218,y:338,zona:'Río'},
-  44:{x: 294,y:322,zona:'Bosque'}, 45:{x: 426,y:308,zona:'Bosque'},
-  46:{x: 530,y:344,zona:'Bosque'}, 47:{x: 584,y:326,zona:'Bosque'},
-  48:{x: 633,y:306,zona:'Laguna'}, 49:{x: 694,y:340,zona:'Laguna'},
-  50:{x: 596,y:376,zona:'Bosque'}, 51:{x: 590,y:428,zona:'Bosque'},
-  52:{x: 587,y:480,zona:'Bosque'}, 53:{x: 575,y:520,zona:'Bosque'},
-  54:{x: 676,y:384,zona:'Laguna'}, 55:{x: 730,y:418,zona:'Laguna'},
-  56:{x: 762,y:444,zona:'Laguna'}, 57:{x: 784,y:490,zona:'Laguna'},
-  58:{x: 846,y:474,zona:'Laguna'}, 59:{x: 748,y:516,zona:'Laguna'},
-  60:{x: 845,y:528,zona:'Laguna'}, 61:{x: 806,y:550,zona:'Laguna'},
-  62:{x: 766,y:574,zona:'Laguna'}, 63:{x: 724,y:588,zona:'Laguna'},
-  64:{x: 884,y:316,zona:'Laguna'}, 65:{x:1067,y:322,zona:'Laguna'},
-  66:{x: 954,y:432,zona:'Laguna'}, 67:{x: 921,y:452,zona:'Laguna'},
-  68:{x: 891,y:474,zona:'Laguna'}, 69:{x: 955,y:476,zona:'Laguna'},
-  70:{x: 937,y:502,zona:'Laguna'},
-}
+// ── Mapa interactivo de lotes (dinámico desde Supabase) ───────────────
 const ZONA_COLOR = { 'Laguna':'#7ec8d4', 'Bosque':'#8aab78', 'Río':'#6aabb4', 'Complejo turístico':'#c8bfa8' }
 
-function renderMapaLotes(lotes) {
+function renderMapaLotes(lotes, mapaImagenUrl) {
   const seccion = document.getElementById('mapa-lotes')
+  const img   = document.getElementById('mlMapImg')
   const svg   = document.getElementById('mlSvg')
   const popup = document.getElementById('mlPopup')
   const wrap  = document.getElementById('mlMapWrap')
-  if (!svg || !popup || !wrap) return
+  if (!svg || !popup || !wrap || !img) return
+
+  // Solo mostrar lotes que tienen posición configurada
+  const lotesConPos = lotes.filter(l => l.mapa_x != null && l.mapa_y != null)
+  if (!lotesConPos.length && !mapaImagenUrl) return
+
   if (seccion) seccion.style.display = ''
-  const db = {}
-  ;(lotes || []).forEach(l => { db[l.numero] = l })
+  img.src = mapaImagenUrl
+
+  // Contadores
   let disp=0, res=0, vend=0
   lotes.forEach(l => {
     if (l.estado==='disponible') disp++
@@ -1405,51 +1374,71 @@ function renderMapaLotes(lotes) {
     <div class="ml-cnt"><div class="ml-cnt-n">${res}</div><div class="ml-cnt-l">Reservados</div></div>
     <div class="ml-cnt"><div class="ml-cnt-n">${vend}</div><div class="ml-cnt-l">Vendidos</div></div>
     <div class="ml-cnt"><div class="ml-cnt-n">${lotes.length}</div><div class="ml-cnt-l">Total lotes</div></div>`
-  svg.innerHTML = ''
-  Object.entries(LOTE_COORDS).forEach(([num, c]) => {
-    const n = parseInt(num)
-    const rec = db[n]
-    const isComp = c.zona === 'Complejo turístico'
-    const estado = isComp ? 'complejo' : (rec ? rec.estado : 'vendido')
-    const color  = estado==='disponible' ? ZONA_COLOR[c.zona] : estado==='reservado' ? '#c9a84c' : estado==='complejo' ? '#c8bfa8' : '#c9784c'
-    const opacity = (estado==='vendido' || estado==='complejo') ? 0.58 : 0.88
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g')
-    g.setAttribute('class','ml-lot')
-    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle')
-    circle.setAttribute('cx', c.x); circle.setAttribute('cy', c.y)
-    circle.setAttribute('r', isComp ? 15 : 17)
-    circle.setAttribute('fill', color)
-    circle.setAttribute('fill-opacity', opacity)
-    circle.setAttribute('stroke','rgba(255,255,255,0.65)')
-    circle.setAttribute('stroke-width','1.5')
-    const text = document.createElementNS('http://www.w3.org/2000/svg','text')
-    text.setAttribute('x', c.x); text.setAttribute('y', c.y)
-    text.textContent = n
-    g.appendChild(circle); g.appendChild(text)
-    g.addEventListener('mouseenter', () => {
-      const svgR  = svg.getBoundingClientRect()
-      const wrapR = wrap.getBoundingClientRect()
-      const sx = svgR.width / 1400
-      const sy = svgR.height / 1145
-      let px = (c.x * sx) + (svgR.left - wrapR.left) + 18
-      let py = (c.y * sy) + (svgR.top  - wrapR.top)  - 24
-      if (px + 210 > wrapR.width) px -= 228
-      if (py < 0) py += 56
-      const eLabel = estado==='disponible'?'Disponible':estado==='reservado'?'Reservado':estado==='complejo'?'Complejo turístico':'Vendido'
-      let html = `<div class="ml-popup-lote">Lote ${n}</div><div class="ml-popup-zona">${c.zona}</div>`
-      if (rec?.superficie_m2) html += `<div class="ml-popup-row"><span class="ml-popup-lbl">Superficie</span><span class="ml-popup-val">${Number(rec.superficie_m2).toLocaleString('es-AR')} m²</span></div>`
-      if (rec?.precio_usd && estado==='disponible') html += `<div class="ml-popup-row"><span class="ml-popup-lbl">Precio</span><span class="ml-popup-val">USD ${Number(rec.precio_usd).toLocaleString('es-AR')}</span></div>`
-      html += `<span class="ml-popup-badge ${estado}">${eLabel}</span>`
-      if (estado==='disponible') html += `<a class="ml-popup-cta" href="#contacto">Consultar este lote →</a>`
-      popup.innerHTML = html
-      popup.style.left = px + 'px'
-      popup.style.top  = py + 'px'
-      popup.classList.add('visible')
+
+  // Renderizar círculos una vez que carga la imagen
+  function dibujar() {
+    const W = img.naturalWidth || img.clientWidth
+    const H = img.naturalHeight || img.clientHeight
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+    svg.innerHTML = ''
+    const rBase = Math.round(W * 0.014)
+
+    lotesConPos.forEach(l => {
+      const cx = (l.mapa_x / 100) * W
+      const cy = (l.mapa_y / 100) * H
+      const zona = l.tipo_lote || 'Bosque'
+      const isComp = zona === 'Complejo turístico'
+      const estado = isComp ? 'complejo' : (l.estado || 'vendido')
+      const color  = estado==='disponible' ? (ZONA_COLOR[zona] || '#8aab78')
+                   : estado==='reservado'  ? '#c9a84c'
+                   : estado==='complejo'   ? '#c8bfa8'
+                   : '#c9784c'
+      const opacity = (estado==='vendido' || estado==='complejo') ? 0.58 : 0.88
+      const r = isComp ? Math.round(rBase * 0.85) : rBase
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg','g')
+      g.setAttribute('class','ml-lot')
+
+      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle')
+      circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', r)
+      circle.setAttribute('fill', color); circle.setAttribute('fill-opacity', opacity)
+      circle.setAttribute('stroke','rgba(255,255,255,0.65)'); circle.setAttribute('stroke-width', Math.round(W*0.0015))
+
+      const text = document.createElementNS('http://www.w3.org/2000/svg','text')
+      text.setAttribute('x', cx); text.setAttribute('y', cy)
+      text.setAttribute('text-anchor','middle'); text.setAttribute('dominant-baseline','central')
+      text.setAttribute('font-size', Math.round(W * 0.016)); text.setAttribute('font-weight','700')
+      text.setAttribute('fill','white'); text.setAttribute('pointer-events','none')
+      text.textContent = l.numero
+
+      g.appendChild(circle); g.appendChild(text)
+
+      g.addEventListener('mouseenter', () => {
+        const svgR  = svg.getBoundingClientRect()
+        const wrapR = wrap.getBoundingClientRect()
+        const sx = svgR.width / W, sy = svgR.height / H
+        let px = (cx * sx) + (svgR.left - wrapR.left) + 18
+        let py = (cy * sy) + (svgR.top  - wrapR.top)  - 24
+        if (px + 210 > wrapR.width) px -= 228
+        if (py < 0) py += 56
+        const eLabel = estado==='disponible'?'Disponible':estado==='reservado'?'Reservado':estado==='complejo'?'Complejo turístico':'Vendido'
+        let html = `<div class="ml-popup-lote">Lote ${l.numero}</div><div class="ml-popup-zona">${zona}</div>`
+        if (l.superficie_m2) html += `<div class="ml-popup-row"><span class="ml-popup-lbl">Superficie</span><span class="ml-popup-val">${Number(l.superficie_m2).toLocaleString('es-AR')} m²</span></div>`
+        if (l.precio_usd && estado==='disponible') html += `<div class="ml-popup-row"><span class="ml-popup-lbl">Precio</span><span class="ml-popup-val">USD ${Number(l.precio_usd).toLocaleString('es-AR')}</span></div>`
+        html += `<span class="ml-popup-badge ${estado}">${eLabel}</span>`
+        if (estado==='disponible') html += `<a class="ml-popup-cta" href="#contacto">Consultar este lote →</a>`
+        popup.innerHTML = html
+        popup.style.left = px + 'px'; popup.style.top = py + 'px'
+        popup.classList.add('visible')
+      })
+      g.addEventListener('mouseleave', () => popup.classList.remove('visible'))
+      g.addEventListener('click', () => { if (estado==='disponible') document.querySelector('#contacto')?.scrollIntoView({behavior:'smooth'}) })
+      svg.appendChild(g)
     })
-    g.addEventListener('mouseleave', () => popup.classList.remove('visible'))
-    g.addEventListener('click', () => { if (estado==='disponible') document.querySelector('#contacto')?.scrollIntoView({behavior:'smooth'}) })
-    svg.appendChild(g)
-  })
+  }
+
+  if (img.complete && img.naturalWidth) dibujar()
+  else img.addEventListener('load', dibujar)
 }
 
 function renderDisponibilidad(lotes) {
