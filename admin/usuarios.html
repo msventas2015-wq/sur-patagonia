@@ -299,12 +299,13 @@
               <th>Email</th>
               <th>Rol</th>
               <th>Tipo acceso</th>
+              <th>Canal asignado</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody id="tbodyUsuarios">
-            <tr><td colspan="5"><div class="empty-state">Cargando usuarios…</div></td></tr>
+            <tr><td colspan="6"><div class="empty-state">Cargando usuarios…</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -370,11 +371,18 @@ onRolChange()
 
 // ── Cargar lista de usuarios ──────────────────────────────
 async function cargarUsuarios() {
-  const { data: usuarios, error } = await supabase.rpc('admin_listar_usuarios')
+  const [{ data: usuarios, error }, { data: canales }] = await Promise.all([
+    supabase.rpc('admin_listar_usuarios'),
+    supabase.from('canales').select('id, nombre, codigo, user_id').not('user_id', 'is', null),
+  ])
 
   const tbody = document.getElementById('tbodyUsuarios')
-  if (error) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error: ${error.message}</div></td></tr>`; return }
-  if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
+  if (error) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error: ${error.message}</div></td></tr>`; return }
+  if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
+
+  // mapa userId → canal
+  const canalDeUser = {}
+  ;(canales || []).forEach(c => { canalDeUser[c.user_id] = c })
 
   const myId = session.user.id
 
@@ -382,6 +390,7 @@ async function cargarUsuarios() {
     const rolActual  = u.rol || ''
     const esColab    = rolActual === 'colaborador'
     const tipoAcceso = u.tipo_acceso || 'pasivo'
+    const canal      = canalDeUser[u.id]
 
     const accesoHtml = esColab ? `
       <select class="admin-input" style="padding:.25rem .5rem;font-size:.75rem;"
@@ -389,6 +398,10 @@ async function cargarUsuarios() {
         <option value="pasivo" ${tipoAcceso !== 'activo' ? 'selected':''}>Pasivo</option>
         <option value="activo" ${tipoAcceso === 'activo' ? 'selected':''}>Activo</option>
       </select>` : `<span style="color:var(--gris-claro);font-size:.75rem;">—</span>`
+
+    const canalHtml = canal
+      ? `<a href="nuevo-canal.html?id=${esc(canal.id)}" style="font-size:.75rem;color:var(--accent);text-decoration:none;" title="${esc(canal.codigo)}">${esc(canal.nombre)}</a>`
+      : `<span style="font-size:.75rem;color:var(--gris-claro);">—</span>`
 
     return `
     <tr>
@@ -403,6 +416,7 @@ async function cargarUsuarios() {
         </select>
       </td>
       <td>${accesoHtml}</td>
+      <td>${canalHtml}</td>
       <td>
         <span class="estado-dot ${u.desactivado ? 'inactivo' : 'activo'}"></span>
         <span style="font-size:.75rem;color:var(--gris-claro);">${u.desactivado ? 'Inactivo' : 'Activo'}</span>
