@@ -843,6 +843,7 @@
       <button class="form-tab" data-panel="panel-comercial">Comercial</button>
       <button class="form-tab" data-panel="panel-desarrollador">Desarrollador</button>
       <button class="form-tab" data-panel="panel-mapa" id="tabMapa">Mapa de lotes</button>
+      <button class="form-tab" data-panel="panel-rep">Representantes</button>
     </div>
 
     <!-- ══ PANEL 1: IDENTIDAD ═══════════════════════════════════════════ -->
@@ -1759,6 +1760,24 @@
             <div class="ml-acciones">
               <button class="btn-secundario" style="flex:1;font-size:0.7rem;" id="mlBtnQuitar" onclick="mlQuitarPos()" disabled>Quitar posición</button>
             </div>
+            <!-- Selector estilo de pin -->
+            <div class="ml-pin-selector">
+              <div class="ml-pin-sel-tit">Estilo de pin</div>
+              <div class="ml-pin-opts">
+                <div class="ml-pin-opt activo" id="pinOptCirculo" onclick="mlSetPinEstilo('circulo')">
+                  <svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="13" fill="#8aab78" fill-opacity="0.9" stroke="rgba(255,255,255,0.6)" stroke-width="1.2"/><circle cx="18" cy="18" r="9" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/><text x="18" y="18" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="500" fill="white">L1</text></svg>
+                  <span>Círculo</span>
+                </div>
+                <div class="ml-pin-opt" id="pinOptGotita" onclick="mlSetPinEstilo('gotita')">
+                  <svg width="36" height="42" viewBox="0 0 36 42"><ellipse cx="18" cy="39" rx="5" ry="1.5" fill="rgba(0,0,0,0.2)"/><polygon points="11,22 25,22 18,38" fill="#8aab78" fill-opacity="0.92"/><circle cx="18" cy="13" r="12" fill="#8aab78" fill-opacity="0.92" stroke="rgba(255,255,255,0.6)" stroke-width="1.2"/><circle cx="18" cy="13" r="8" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/><text x="18" y="13" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="500" fill="white">L1</text></svg>
+                  <span>Gotita</span>
+                </div>
+                <div class="ml-pin-opt" id="pinOptEtiqueta" onclick="mlSetPinEstilo('etiqueta')">
+                  <svg width="44" height="42" viewBox="0 0 44 42"><ellipse cx="22" cy="39" rx="5" ry="1.5" fill="rgba(0,0,0,0.2)"/><polygon points="16,28 28,28 22,38" fill="#8aab78" fill-opacity="0.92"/><rect x="4" y="10" width="36" height="20" rx="5" fill="#8aab78" fill-opacity="0.92" stroke="rgba(255,255,255,0.6)" stroke-width="1.2"/><text x="22" y="20" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="500" fill="white">L1</text></svg>
+                  <span>Etiqueta</span>
+                </div>
+              </div>
+            </div>
             <!-- Leyenda zonas + estados -->
             <div class="ml-leyenda-mini">
               <div style="font-size:0.6rem;color:var(--gris-claro);width:100%;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.2rem;">Zonas</div>
@@ -1788,6 +1807,18 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ══ PANEL REPRESENTANTES ═════════════════════════════════════════ -->
+    <div class="form-panel" id="panel-rep">
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Representantes del proyecto</h4>
+        <p style="font-size:0.78rem;color:var(--gris-claro);margin-bottom:1.2rem;">
+          Agregá las inmobiliarias o agentes que comercializan este proyecto. Se mostrarán debajo del formulario de contacto en la página pública.
+        </p>
+        <button class="btn-secundario" style="font-size:0.78rem;margin-bottom:1.2rem;" onclick="repAgregar()">+ Agregar representante</button>
+        <div id="repAdminLista"></div>
       </div>
     </div>
 
@@ -1939,6 +1970,24 @@ ALTER TABLE proyectos
   </div>
 </div>
 
+<!-- ══ PANEL REPRESENTANTES ══════════════════════════════════════════ -->
+<style>
+  #panel-rep { display: none; }
+  #panel-rep.activo { display: block; }
+  .rep-admin-lista-wrap { display: flex; flex-direction: column; gap: 0.75rem; }
+  .rep-admin-item { display: flex; align-items: center; gap: 0.9rem; padding: 0.8rem 1rem; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border,rgba(255,255,255,0.08)); border-radius: 8px; }
+  .rep-logo-zone { width: 90px; height: 54px; border: 1px dashed rgba(255,255,255,0.14); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; background: rgba(255,255,255,0.02); transition: border-color 0.15s; }
+  .rep-logo-zone:hover { border-color: var(--dorado,#c9a84c); }
+  .rep-logo-zone img { width: 100%; height: 100%; object-fit: contain; }
+  .rep-upload-txt { font-size: 0.6rem; color: #555; text-align: center; line-height: 1.4; padding: 0.3rem; }
+  .rep-inputs { flex: 1; display: flex; flex-direction: column; gap: 0.45rem; min-width: 0; }
+  .rep-inputs input { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #ddd; font-size: 0.8rem; padding: 0.25rem 0; outline: none; font-family: inherit; width: 100%; }
+  .rep-inputs input:focus { border-bottom-color: var(--dorado,#c9a84c); color: var(--dorado,#c9a84c); }
+  .rep-inputs input::placeholder { color: #444; }
+  .rep-del { background: none; border: none; color: rgba(255,255,255,0.18); cursor: pointer; font-size: 1rem; padding: 0.2rem 0.4rem; flex-shrink: 0; transition: color 0.15s; }
+  .rep-del:hover { color: #c9784c; }
+</style>
+
 <!-- ══ PANEL MAPA DE LOTES (inline en el editor de proyecto) ══════════ -->
 <style>
   #panel-mapa { display: none; }
@@ -1986,6 +2035,15 @@ ALTER TABLE proyectos
   .ml-leg { display:flex; align-items:center; gap:0.35rem; font-size:0.63rem; color:var(--gris-claro,#888); }
   .ml-leg-d { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
   .ml-acciones { padding:0.7rem 1rem; border-top:1px solid var(--card-border,rgba(255,255,255,0.08)); display:flex; gap:0.5rem; }
+  /* Selector de estilo de pin */
+  .ml-pin-selector { padding:0.7rem 1rem; border-top:1px solid var(--card-border,rgba(255,255,255,0.08)); }
+  .ml-pin-sel-tit { font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gris-claro,#888); margin-bottom:0.5rem; }
+  .ml-pin-opts { display:flex; gap:0.4rem; }
+  .ml-pin-opt { flex:1; display:flex; flex-direction:column; align-items:center; gap:0.3rem; padding:0.5rem 0.3rem; border:1px solid rgba(255,255,255,0.1); border-radius:6px; cursor:pointer; transition:all 0.15s; background:rgba(255,255,255,0.02); }
+  .ml-pin-opt:hover { border-color:rgba(255,255,255,0.25); background:rgba(255,255,255,0.04); }
+  .ml-pin-opt.activo { border-color:var(--dorado,#c9a84c); background:rgba(201,168,76,0.08); }
+  .ml-pin-opt span { font-size:0.6rem; color:var(--gris-claro,#888); }
+  .ml-pin-opt.activo span { color:var(--dorado,#c9a84c); }
 </style>
 
 <script type="module">
@@ -2713,6 +2771,7 @@ ALTER TABLE proyectos
         dev_whatsapp: v('dev_whatsapp'), dev_email: v('dev_email'), dev_domicilio: v('dev_domicilio'),
         notas_internas: v('notas_internas'),
         contacto_nombre: v('contacto_nombre'), contacto_whatsapp: v('contacto_whatsapp'), contacto_email: v('contacto_email'),
+        representantes: window._getRepLista ? window._getRepLista() : [],
         updated_at: new Date().toISOString(),
       },
       lotes
@@ -2912,6 +2971,9 @@ ALTER TABLE proyectos
     set('notas_internas', p.notas_internas)
     set('contacto_nombre', p.contacto_nombre); set('contacto_whatsapp', p.contacto_whatsapp); set('contacto_email', p.contacto_email)
 
+    // Representantes
+    if (window._setRepLista) window._setRepLista(p.representantes)
+
     document.getElementById('slugPreview').textContent = p.slug || '—'
     document.getElementById('saveBarNombre').textContent = p.nombre || 'Sin nombre'
     document.getElementById('saveBarEstado').textContent = p.estado || 'Borrador'
@@ -3020,9 +3082,19 @@ let _mlZonaActiva = null
 // ── Estado lotes ─────────────────────────────────────────────────────
 // _mlPos keyed by lote.id (UUID) — no por numero, que puede repetirse
 let _mlLotes = [], _mlPos = {}, _mlSel = null, _mlDrag = null, _mlUrl = null
+let _mlPinEstilo = 'gotita'   // 'circulo' | 'gotita' | 'etiqueta'
 // Exponer para que guardarProyecto() (otro script) pueda acceder al estado en memoria
-window._getMlPos   = () => _mlPos
-window._getMlLotes = () => _mlLotes
+window._getMlPos      = () => _mlPos
+window._getMlLotes    = () => _mlLotes
+window._getMlPinEstilo = () => _mlPinEstilo
+
+window.mlSetPinEstilo = (estilo) => {
+  _mlPinEstilo = estilo
+  ;['Circulo','Gotita','Etiqueta'].forEach(e => {
+    document.getElementById('pinOpt'+e)?.classList.toggle('activo', e.toLowerCase() === estilo)
+  })
+  mlRenderSvg()
+}
 const svgNS = 'http://www.w3.org/2000/svg'
 
 // Helper: label corto para mostrar en el mapa (sin el prefijo "lote ")
@@ -3114,7 +3186,7 @@ window.mlGuardar = async () => {
   if (!pid) { alert('Guardá el proyecto primero.'); return }
   document.getElementById('mlCanvasInfo').textContent = 'Guardando...'
   const updates = [
-    supabase.from('proyectos').update({ mapa_imagen_url: _mlUrl || null, mapa_zonas: _mlZonas }).eq('id', pid)
+    supabase.from('proyectos').update({ mapa_imagen_url: _mlUrl || null, mapa_zonas: _mlZonas, mapa_pin_estilo: _mlPinEstilo }).eq('id', pid)
   ]
   _mlLotes.forEach(l => {
     updates.push(supabase.from('lotes').update({
@@ -3218,82 +3290,97 @@ function mlRenderLista() {
   })
 }
 
+function mlCrearPinG(id, pos, lote, W, H, isSel) {
+  const estado = lote.estado || 'disponible'
+  const muted  = estado === 'vendido'
+  const color  = estado==='vendido' ? '#c4734a' : estado==='reservado' ? '#c9a84c' : mlZonaColor(pos.tipo_lote) || '#8aab78'
+  const label  = loteLabel(lote)
+  const r  = Math.round(W * 0.017)
+  const rr = isSel ? Math.round(r * 1.15) : r
+  const tipX = (pos.x / 100) * W
+  const tipY = (pos.y / 100) * H
+  const fo  = muted ? '0.62' : '0.93'
+  const sw  = Math.round(W * (isSel ? 0.003 : 0.0018))
+  const stk = isSel ? '#f5d78e' : 'rgba(255,255,255,0.72)'
+  const mk  = tag => document.createElementNS(svgNS, tag)
+
+  const g = mk('g'); g.dataset.id = id; g.style.cursor = 'pointer'
+
+  const addText = (x, y) => {
+    const t = mk('text')
+    t.setAttribute('x', x); t.setAttribute('y', y)
+    t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','central')
+    t.setAttribute('font-size', Math.round(W * 0.009)); t.setAttribute('font-weight','500')
+    t.setAttribute('fill','white'); t.setAttribute('fill-opacity', muted ? '0.7' : '1')
+    t.setAttribute('pointer-events','none'); t.textContent = label
+    g.appendChild(t)
+  }
+  const addRing = (cx, cy, r2) => {
+    const ring = mk('circle')
+    ring.setAttribute('cx', cx); ring.setAttribute('cy', cy); ring.setAttribute('r', r2*0.68)
+    ring.setAttribute('fill','none'); ring.setAttribute('stroke','rgba(255,255,255,0.28)')
+    ring.setAttribute('stroke-width', Math.round(W*0.0012)); ring.setAttribute('pointer-events','none')
+    g.appendChild(ring)
+  }
+  const addGroundShadow = (cx, cy, r2) => {
+    const ell = mk('ellipse')
+    ell.setAttribute('cx', cx); ell.setAttribute('cy', cy+r2*0.18)
+    ell.setAttribute('rx', r2*0.4); ell.setAttribute('ry', r2*0.12)
+    ell.setAttribute('fill','rgba(0,0,0,0.18)'); ell.setAttribute('pointer-events','none')
+    g.appendChild(ell)
+  }
+
+  if (_mlPinEstilo === 'circulo') {
+    addGroundShadow(tipX, tipY, rr)
+    const c = mk('circle')
+    c.setAttribute('cx', tipX); c.setAttribute('cy', tipY); c.setAttribute('r', rr)
+    c.setAttribute('fill', color); c.setAttribute('fill-opacity', fo)
+    c.setAttribute('stroke', stk); c.setAttribute('stroke-width', sw); c.setAttribute('filter','url(#mlSh)')
+    g.appendChild(c); addRing(tipX, tipY, rr); addText(tipX, tipY)
+
+  } else if (_mlPinEstilo === 'gotita') {
+    const ccy = tipY - rr * 2.2, ty = ccy + rr, tw = rr * 0.44
+    addGroundShadow(tipX, tipY, rr)
+    const tail = mk('polygon')
+    tail.setAttribute('points',`${tipX-tw},${ty} ${tipX+tw},${ty} ${tipX},${tipY}`)
+    tail.setAttribute('fill',color); tail.setAttribute('fill-opacity',fo); tail.setAttribute('filter','url(#mlSh)')
+    g.appendChild(tail)
+    const c = mk('circle')
+    c.setAttribute('cx',tipX); c.setAttribute('cy',ccy); c.setAttribute('r',rr)
+    c.setAttribute('fill',color); c.setAttribute('fill-opacity',fo)
+    c.setAttribute('stroke',stk); c.setAttribute('stroke-width',sw); c.setAttribute('filter','url(#mlSh)')
+    g.appendChild(c); addRing(tipX, ccy, rr); addText(tipX, ccy)
+
+  } else {
+    // etiqueta
+    const bw = Math.round(rr*2.8), bh = Math.round(rr*1.4), brad = Math.round(rr*0.35)
+    const by = tipY - bh - rr * 1.1, ty = by + bh, tw = rr * 0.38
+    addGroundShadow(tipX, tipY, rr*0.7)
+    const tail = mk('polygon')
+    tail.setAttribute('points',`${tipX-tw},${ty} ${tipX+tw},${ty} ${tipX},${tipY}`)
+    tail.setAttribute('fill',color); tail.setAttribute('fill-opacity',fo); tail.setAttribute('filter','url(#mlSh)')
+    g.appendChild(tail)
+    const rect = mk('rect')
+    rect.setAttribute('x', tipX-bw/2); rect.setAttribute('y', by)
+    rect.setAttribute('width', bw); rect.setAttribute('height', bh); rect.setAttribute('rx', brad)
+    rect.setAttribute('fill',color); rect.setAttribute('fill-opacity',fo)
+    rect.setAttribute('stroke',stk); rect.setAttribute('stroke-width',sw); rect.setAttribute('filter','url(#mlSh)')
+    g.appendChild(rect); addText(tipX, by+bh/2)
+  }
+  return g
+}
+
 function mlRenderSvg() {
   const svg = document.getElementById('mlMapSvg'); if (!svg) return
   const img = document.getElementById('mlMapImg'); if (!img?.naturalWidth) return
   const W = img.naturalWidth, H = img.naturalHeight
-  const r  = Math.round(W * 0.017)
   const sh = Math.round(W * 0.003)
-
-  svg.innerHTML = `<defs>
-    <filter id="mlSh" x="-70%" y="-70%" width="240%" height="300%">
-      <feDropShadow dx="0" dy="${Math.round(W*0.002)}" stdDeviation="${sh}" flood-color="#000" flood-opacity="0.42"/>
-    </filter>
-  </defs>`
-
+  svg.innerHTML = `<defs><filter id="mlSh" x="-70%" y="-70%" width="240%" height="300%"><feDropShadow dx="0" dy="${Math.round(W*0.002)}" stdDeviation="${sh}" flood-color="#000" flood-opacity="0.42"/></filter></defs>`
   Object.entries(_mlPos).forEach(([id, pos]) => {
     const lote = _mlLotes.find(l => l.id === id); if (!lote) return
-    const tipX = (pos.x / 100) * W
-    const tipY = (pos.y / 100) * H
-    const isSel = id === _mlSel
-    const rr   = isSel ? Math.round(r * 1.18) : r
-    const ccx  = tipX
-    const ccy  = tipY - rr * 1.22
-    const tw   = rr * 0.52
-    const ty   = ccy + rr * 0.62
-
-    const estado = lote.estado || 'disponible'
-    let color
-    if (estado === 'vendido') color = '#c4734a'
-    else if (estado === 'reservado') color = '#c9a84c'
-    else color = mlZonaColor(pos.tipo_lote) || '#8aab78'
-
-    const g = document.createElementNS(svgNS, 'g')
-    g.dataset.id = id; g.style.cursor = 'pointer'
-
-    // Sombra en el suelo
-    const ell = document.createElementNS(svgNS, 'ellipse')
-    ell.setAttribute('cx', tipX); ell.setAttribute('cy', tipY + rr * 0.22)
-    ell.setAttribute('rx', rr * 0.42); ell.setAttribute('ry', rr * 0.13)
-    ell.setAttribute('fill', 'rgba(0,0,0,0.2)'); ell.setAttribute('pointer-events','none')
-    g.appendChild(ell)
-
-    // Cola del pin
-    const tail = document.createElementNS(svgNS, 'polygon')
-    tail.setAttribute('points', `${ccx-tw},${ty} ${ccx+tw},${ty} ${tipX},${tipY}`)
-    tail.setAttribute('fill', color); tail.setAttribute('filter', 'url(#mlSh)')
-    g.appendChild(tail)
-
-    // Cuerpo del pin
-    const c = document.createElementNS(svgNS, 'circle')
-    c.setAttribute('cx', ccx); c.setAttribute('cy', ccy); c.setAttribute('r', rr)
-    c.setAttribute('fill', color); c.setAttribute('fill-opacity', '0.93')
-    c.setAttribute('stroke', isSel ? '#f5d78e' : 'rgba(255,255,255,0.72)')
-    c.setAttribute('stroke-width', Math.round(W * (isSel ? 0.003 : 0.0018)))
-    c.setAttribute('filter', 'url(#mlSh)')
-    g.appendChild(c)
-
-    // Anillo interior sutil
-    const ring = document.createElementNS(svgNS, 'circle')
-    ring.setAttribute('cx', ccx); ring.setAttribute('cy', ccy); ring.setAttribute('r', rr * 0.68)
-    ring.setAttribute('fill', 'none')
-    ring.setAttribute('stroke', 'rgba(255,255,255,0.28)')
-    ring.setAttribute('stroke-width', Math.round(W * 0.0012))
-    ring.setAttribute('pointer-events', 'none')
-    g.appendChild(ring)
-
-    // Label
-    const t = document.createElementNS(svgNS, 'text')
-    t.setAttribute('x', ccx); t.setAttribute('y', ccy)
-    t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'central')
-    t.setAttribute('font-size', Math.round(W * 0.013)); t.setAttribute('font-weight', '600')
-    t.setAttribute('fill', 'white'); t.setAttribute('pointer-events', 'none')
-    t.textContent = loteLabel(lote)
-    g.appendChild(t)
-
+    const g = mlCrearPinG(id, pos, lote, W, H, id === _mlSel)
     g.addEventListener('mousedown', e => {
-      e.stopPropagation()
-      mlSeleccionar(id)
+      e.stopPropagation(); mlSeleccionar(id)
       const pt = svgPt(svg, e)
       _mlDrag = { id, sx: pt.x, sy: pt.y, ox: pos.x, oy: pos.y }
     })
@@ -3351,12 +3438,75 @@ document.getElementById('tabMapa')?.addEventListener('click', async () => {
     if (l.mapa_x != null && l.mapa_y != null)
       _mlPos[l.id] = { x: l.mapa_x, y: l.mapa_y, tipo_lote: l.tipo_lote || '' }
   })
-  const { data: p } = await supabase.from('proyectos').select('mapa_imagen_url, mapa_zonas').eq('id', pid).single()
+  const { data: p } = await supabase.from('proyectos').select('mapa_imagen_url, mapa_zonas, mapa_pin_estilo').eq('id', pid).single()
   if (p?.mapa_zonas?.length) _mlZonas = p.mapa_zonas
+  if (p?.mapa_pin_estilo) window.mlSetPinEstilo(p.mapa_pin_estilo)
   mlRenderZonas()
   mlRenderLista()
   if (p?.mapa_imagen_url) { _mlUrl = p.mapa_imagen_url; mlMostrarMapa(_mlUrl) }
 })
+</script>
+
+<script type="module">
+// ── Representantes del proyecto ──────────────────────────────────────────
+import { supabase } from '../js/config.js'
+
+let _repLista = []
+
+window._getRepLista = () => _repLista
+window._setRepLista = (lista) => { _repLista = Array.isArray(lista) ? [...lista] : []; repRender() }
+
+window.repAgregar = () => {
+  _repLista.push({ nombre: '', ciudad: '', logo_url: '' })
+  repRender()
+}
+
+window.repEliminar = (i) => {
+  _repLista.splice(i, 1)
+  repRender()
+}
+
+window.repActualizar = (i, campo, val) => {
+  if (_repLista[i]) _repLista[i][campo] = val
+}
+
+window.repSubirLogo = async (i, input) => {
+  const file = input.files[0]; if (!file) return
+  const pid = window._proyectoId; if (!pid) { alert('Guardá el proyecto primero.'); return }
+  const slug = document.getElementById('slug')?.value || pid
+  const ext = file.name.split('.').pop()
+  const path = `representantes/${slug}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
+  if (error) { alert('Error subiendo logo: ' + error.message); return }
+  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
+  _repLista[i].logo_url = data.publicUrl
+  repRender()
+}
+
+function repRender() {
+  const cont = document.getElementById('repAdminLista')
+  if (!cont) return
+  if (!_repLista.length) {
+    cont.innerHTML = `<div style="font-size:0.75rem;color:#555;padding:1.2rem;text-align:center;border:1px dashed rgba(255,255,255,0.07);border-radius:8px;">Ningún representante cargado. Hacé clic en "+ Agregar".</div>`
+    return
+  }
+  cont.innerHTML = `<div class="rep-admin-lista-wrap">${_repLista.map((r, i) => `
+    <div class="rep-admin-item">
+      <label class="rep-logo-zone" title="Subir logo PNG">
+        ${r.logo_url
+          ? `<img src="${r.logo_url}" alt="logo" />`
+          : `<div class="rep-upload-txt">📎<br>Logo PNG</div>`}
+        <input type="file" accept="image/*" style="display:none;" onchange="repSubirLogo(${i},this)" />
+      </label>
+      <div class="rep-inputs">
+        <input type="text" placeholder="Nombre (ej: Radatili)" value="${r.nombre || ''}" oninput="repActualizar(${i},'nombre',this.value)" />
+        <input type="text" placeholder="Ciudad / Provincia (ej: Chubut)" value="${r.ciudad || ''}" oninput="repActualizar(${i},'ciudad',this.value)" />
+      </div>
+      <button class="rep-del" onclick="repEliminar(${i})" title="Eliminar">✕</button>
+    </div>`).join('')}</div>`
+}
+
+repRender()
 </script>
 </body>
 </html>
