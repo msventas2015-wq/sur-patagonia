@@ -273,20 +273,14 @@
         </div>
       </div>
 
-      <!-- Canal + tipo acceso — solo para colaboradores/agentes -->
-      <div id="canalWrap" style="display:none;">
+      <!-- Tipo acceso — solo para colaboradores -->
+      <div id="tipoAccesoWrap" style="display:none;">
         <div class="form-row">
           <div class="f-group">
-            <label>Canal asociado</label>
-            <select id="uCanal" class="admin-input">
-              <option value="">Sin canal asignado aún</option>
-            </select>
-          </div>
-          <div class="f-group" id="tipoAccesoWrap" style="display:none;">
             <label>Tipo de acceso</label>
             <select id="uTipoAcceso" class="admin-input">
-              <option value="pasivo">Pasivo — Solo métricas</option>
-              <option value="activo">Activo — Métricas + consultas + CRM</option>
+              <option value="pasivo">Pasivo — Solo métricas (punto de venta)</option>
+              <option value="activo">Activo — Métricas + consultas + CRM (inmo/vendedor)</option>
             </select>
           </div>
         </div>
@@ -304,7 +298,7 @@
             <tr>
               <th>Email</th>
               <th>Rol</th>
-              <th>Canal / Acceso</th>
+              <th>Tipo acceso</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -366,100 +360,35 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
 
 // ── Helpers ───────────────────────────────────────────────
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
-const TIPO_LABEL = { punto_venta:'Punto de venta', inmobiliaria:'Inmobiliaria', particular:'Particular', evento:'Evento' }
-let todosCanales = []
 
 // ── Rol change ────────────────────────────────────────────
 window.onRolChange = function() {
   const rol = document.getElementById('uRol').value
-  const mostrarCanal = rol === 'agente' || rol === 'colaborador'
-  document.getElementById('canalWrap').style.display = mostrarCanal ? '' : 'none'
   document.getElementById('tipoAccesoWrap').style.display = rol === 'colaborador' ? '' : 'none'
 }
 onRolChange()
 
-// ── Cargar todos los canales ──────────────────────────────
-async function cargarCanales() {
-  const { data } = await supabase.from('canales').select('id, nombre, codigo, tipo').eq('activo', true).order('nombre')
-  todosCanales = data || []
-  const sel = document.getElementById('uCanal')
-  sel.innerHTML = '<option value="">Sin canal asignado aún</option>'
-  todosCanales.forEach(c => {
-    const o = document.createElement('option')
-    o.value = c.id
-    o.textContent = `${c.nombre} · ${TIPO_LABEL[c.tipo]||c.tipo} (${c.codigo})`
-    sel.appendChild(o)
-  })
-}
-cargarCanales()
-
 // ── Cargar lista de usuarios ──────────────────────────────
 async function cargarUsuarios() {
   const { data: usuarios, error } = await supabase.rpc('admin_listar_usuarios')
-  const { data: canales } = await supabase.from('canales').select('id, nombre, codigo, tipo, user_id, tipo_acceso')
-  todosCanales = canales || []
 
   const tbody = document.getElementById('tbodyUsuarios')
   if (error) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error: ${error.message}</div></td></tr>`; return }
   if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
 
-  const canalesPorUsuario = {}
-  todosCanales.forEach(c => {
-    if (c.user_id) {
-      if (!canalesPorUsuario[c.user_id]) canalesPorUsuario[c.user_id] = []
-      canalesPorUsuario[c.user_id].push(c)
-    }
-  })
-
   const myId = session.user.id
 
   tbody.innerHTML = usuarios.map(u => {
-    const userCanales = canalesPorUsuario[u.id] || []
-    const rolActual   = u.rol || ''
-    const esColab     = rolActual === 'colaborador'
-    const tipoAcceso  = userCanales[0]?.tipo_acceso || 'pasivo'
+    const rolActual  = u.rol || ''
+    const esColab    = rolActual === 'colaborador'
+    const tipoAcceso = u.tipo_acceso || 'pasivo'
 
-    // IDs de canales ya asignados a este user
-    const asignadosIds = new Set(userCanales.map(c => c.id))
-    // Canales disponibles para agregar (sin user asignado O asignados a este mismo user)
-    const disponibles = todosCanales.filter(c => !c.user_id || c.user_id === u.id)
-
-    // Columna canal/acceso
-    let canalHtml = ''
-    if (esColab) {
-      const chips = userCanales.map(c => `
-        <span class="canal-chip">
-          ${esc(c.nombre)} <span style="font-size:.6rem;opacity:.6;">(${esc(c.codigo)})</span>
-          <button onclick="quitarCanal('${esc(u.id)}','${esc(c.id)}')" title="Quitar canal">×</button>
-        </span>`).join('')
-
-      const optsAgregar = disponibles
-        .filter(c => !asignadosIds.has(c.id))
-        .map(c => `<option value="${esc(c.id)}">${esc(c.nombre)} (${esc(c.codigo)})</option>`)
-        .join('')
-
-      canalHtml = `
-        <div style="min-width:200px;">
-          <div class="canal-chips">${chips || '<span style="font-size:.7rem;color:var(--gris-claro);">Sin canales</span>'}</div>
-          <div class="add-canal-row">
-            <select class="admin-input" id="add-canal-${esc(u.id)}">
-              <option value="">+ canal…</option>${optsAgregar}
-            </select>
-            <button class="btn-tbl" onclick="agregarCanal('${esc(u.id)}')">Agregar</button>
-          </div>
-          <div class="acceso-row">
-            <span style="font-size:.63rem;color:var(--gris-claro);">Acceso:</span>
-            <select class="admin-input" id="acceso-${esc(u.id)}" onchange="cambiarAcceso('${esc(u.id)}', this.value)">
-              <option value="pasivo" ${tipoAcceso !== 'activo' ? 'selected':''}>Pasivo</option>
-              <option value="activo" ${tipoAcceso === 'activo' ? 'selected':''}>Activo</option>
-            </select>
-          </div>
-        </div>`
-    } else if (userCanales.length) {
-      canalHtml = `<span class="canal-link">${esc(userCanales[0].nombre)}<br>${esc(userCanales[0].codigo)}</span>`
-    } else {
-      canalHtml = `<span style="color:var(--gris-claro);font-size:.75rem;">—</span>`
-    }
+    const accesoHtml = esColab ? `
+      <select class="admin-input" style="padding:.25rem .5rem;font-size:.75rem;"
+              onchange="cambiarTipoAcceso('${esc(u.id)}', this.value)">
+        <option value="pasivo" ${tipoAcceso !== 'activo' ? 'selected':''}>Pasivo</option>
+        <option value="activo" ${tipoAcceso === 'activo' ? 'selected':''}>Activo</option>
+      </select>` : `<span style="color:var(--gris-claro);font-size:.75rem;">—</span>`
 
     return `
     <tr>
@@ -473,7 +402,7 @@ async function cargarUsuarios() {
           <option value="admin"        ${rolActual==='admin'        ? 'selected':''}>Admin</option>
         </select>
       </td>
-      <td>${canalHtml}</td>
+      <td>${accesoHtml}</td>
       <td>
         <span class="estado-dot ${u.desactivado ? 'inactivo' : 'activo'}"></span>
         <span style="font-size:.75rem;color:var(--gris-claro);">${u.desactivado ? 'Inactivo' : 'Activo'}</span>
@@ -496,7 +425,6 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
   const rol     = document.getElementById('uRol').value
   const pass    = document.getElementById('uPassword').value
   const pass2   = document.getElementById('uPassword2').value
-  const canalId = document.getElementById('uCanal').value
   const btn     = document.getElementById('btnCrear')
 
   mostrar('', '')
@@ -525,21 +453,18 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
     return
   }
 
-  // Asignar rol via función SQL
+  // Asignar rol
   await supabase.rpc('admin_set_user_rol', { p_user_id: userId, p_rol: rol })
 
-  // Vincular canal
-  if (canalId) {
+  // Guardar tipo_acceso en metadata si es colaborador
+  if (rol === 'colaborador') {
     const tipoAcceso = document.getElementById('uTipoAcceso')?.value || 'pasivo'
-    const update = { user_id: userId }
-    if (rol === 'colaborador') { update.tipo_acceso = tipoAcceso; update.colaborador_email = email }
-    await supabase.from('canales').update(update).eq('id', canalId)
+    await supabase.rpc('admin_set_tipo_acceso', { p_user_id: userId, p_tipo: tipoAcceso })
   }
 
-  mostrar(`✓ Usuario creado correctamente (${email}).`, 'ok')
+  mostrar(`✓ Usuario creado (${email}). Asignale canales desde el panel de Canales.`, 'ok')
   limpiarForm()
   cargarUsuarios()
-  cargarCanales()
 
   btn.disabled = false
   btn.textContent = 'Crear usuario'
@@ -594,26 +519,9 @@ window.toggleUsuario = async (id, desactivado) => {
   cargarUsuarios()
 }
 
-// ── Agregar canal a colaborador ───────────────────────────
-window.agregarCanal = async (userId) => {
-  const canalId = document.getElementById('add-canal-' + userId)?.value
-  if (!canalId) return
-  const tipoAcceso = document.getElementById('acceso-' + userId)?.value || 'pasivo'
-  await supabase.from('canales').update({ user_id: userId, tipo_acceso: tipoAcceso, colaborador_email: null }).eq('id', canalId)
-  cargarUsuarios()
-}
-
-// ── Quitar canal de colaborador ───────────────────────────
-window.quitarCanal = async (userId, canalId) => {
-  if (!confirm('¿Quitar este canal del colaborador?')) return
-  await supabase.from('canales').update({ user_id: null, tipo_acceso: 'pasivo' }).eq('id', canalId)
-  cargarUsuarios()
-}
-
-// ── Cambiar tipo de acceso (aplica a todos sus canales) ───
-window.cambiarAcceso = async (userId, tipoAcceso) => {
-  await supabase.from('canales').update({ tipo_acceso: tipoAcceso }).eq('user_id', userId)
-  cargarUsuarios()
+// ── Cambiar tipo de acceso del colaborador ────────────────
+window.cambiarTipoAcceso = async (userId, tipo) => {
+  await supabase.rpc('admin_set_tipo_acceso', { p_user_id: userId, p_tipo: tipo })
 }
 
 // ── Modal cambiar contraseña ──────────────────────────────
@@ -679,11 +587,10 @@ document.getElementById('modalPass').addEventListener('click', e => { if (e.targ
 
 // ── Helpers ───────────────────────────────────────────────
 function limpiarForm() {
-  document.getElementById('uEmail').value    = ''
-  document.getElementById('uPassword').value = ''
+  document.getElementById('uEmail').value     = ''
+  document.getElementById('uPassword').value  = ''
   document.getElementById('uPassword2').value = ''
-  document.getElementById('uCanal').value    = ''
-  document.getElementById('uRol').value      = 'agente'
+  document.getElementById('uRol').value       = 'agente'
   onRolChange()
 }
 

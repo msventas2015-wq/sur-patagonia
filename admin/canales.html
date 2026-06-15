@@ -251,10 +251,11 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
 
 // ── Cargar canales + métricas ─────────────────────────────
 async function cargarCanales() {
-  const [rCanales, rRefs, rLeads] = await Promise.all([
+  const [rCanales, rRefs, rLeads, rColabs] = await Promise.all([
     supabase.from('canales').select('*').order('created_at', { ascending: false }),
     supabase.from('referencias').select('codigo, canal_id, activo'),
     supabase.from('contactos').select('canal_ref, created_at').not('canal_ref', 'is', null),
+    supabase.rpc('admin_listar_usuarios'),
   ])
 
   const grid = document.getElementById('gridCanales')
@@ -268,8 +269,10 @@ async function cargarCanales() {
     return
   }
 
-  const refs  = rRefs.data  || []
-  const leads = rLeads.data || []
+  const refs    = rRefs.data   || []
+  const leads   = rLeads.data  || []
+  const colabs  = (rColabs.data || []).filter(u => u.rol === 'colaborador')
+  const optsColabs = colabs.map(u => `<option value="${esc(u.id)}">${esc(u.email)}</option>`).join('')
 
   // Métricas por canal
   const canalDeRef = {}
@@ -338,8 +341,30 @@ async function cargarCanales() {
         <a href="contactos.html" class="btn-cc">Ver consultas</a>
         <button class="btn-cc danger" onclick="toggleActivo('${c.id}', ${c.activo})">${c.activo ? 'Desactivar' : 'Activar'}</button>
       </div>
+      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--card-border);">
+        <div style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris-claro);margin-bottom:.4rem;">Colaborador asignado</div>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <select class="admin-input" style="flex:1;padding:.28rem .5rem;font-size:.72rem;" id="colab-${esc(c.id)}"
+                  onchange="asignarColaborador('${esc(c.id)}', this.value)">
+            <option value="">— Sin colaborador —</option>
+            ${colabs.map(u => `<option value="${esc(u.id)}" ${c.user_id === u.id ? 'selected':''}>${esc(u.email)}</option>`).join('')}
+          </select>
+          ${c.user_id ? `<button class="btn-cc danger" onclick="quitarColaborador('${esc(c.id)}')">Quitar</button>` : ''}
+        </div>
+      </div>
     </div>`
   }).join('')
+}
+
+// ── Asignar / quitar colaborador ──────────────────────────
+window.asignarColaborador = async (canalId, userId) => {
+  await supabase.from('canales').update({ user_id: userId || null }).eq('id', canalId)
+  cargarCanales()
+}
+window.quitarColaborador = async (canalId) => {
+  if (!confirm('¿Quitar el colaborador de este canal?')) return
+  await supabase.from('canales').update({ user_id: null }).eq('id', canalId)
+  cargarCanales()
 }
 
 // ── Toggle activo ─────────────────────────────────────────
