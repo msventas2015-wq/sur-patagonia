@@ -10,6 +10,20 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Playfair+Display:ital,wght@0,400;1,400&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Cinzel:wght@400&family=Lora:ital,wght@0,400;1,400&family=Montserrat:wght@300;400;500&family=Raleway:wght@300;400&family=Josefin+Sans:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <style>
     :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; }
+    /* ── Toggle switch ─────────────────────────────────────────────── */
+    .seccion-toggle { display:flex; align-items:center; gap:0.75rem; margin-bottom:1.2rem; padding:0.7rem 1rem; background:rgba(255,255,255,0.03); border:1px solid var(--card-border); border-radius:8px; cursor:pointer; user-select:none; }
+    .seccion-toggle:hover { background:rgba(255,255,255,0.05); }
+    .tog-track { width:38px; height:22px; background:rgba(255,255,255,0.12); border-radius:11px; position:relative; transition:background 0.2s; flex-shrink:0; }
+    .tog-track.on { background:var(--dorado,#c9a84c); }
+    .tog-thumb { width:16px; height:16px; background:#fff; border-radius:50%; position:absolute; top:3px; left:3px; transition:left 0.18s; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+    .tog-track.on .tog-thumb { left:19px; }
+    .tog-info { flex:1; }
+    .tog-titulo { font-size:0.8rem; font-weight:500; color:#ddd; }
+    .tog-subtitulo { font-size:0.68rem; color:var(--gris-claro,#888); margin-top:0.1rem; }
+    .tog-track.on ~ .tog-info .tog-titulo { color:#fff; }
+    .tog-badge { font-size:0.62rem; padding:0.15rem 0.5rem; border-radius:99px; font-weight:600; letter-spacing:0.05em; }
+    .tog-badge.on { background:rgba(201,168,76,0.15); color:#c9a84c; }
+    .tog-badge.off { background:rgba(255,255,255,0.06); color:#666; }
     .admin-main { font-family:'Inter',system-ui,sans-serif; }
     input, select, textarea { border-radius:8px !important; font-family:'Inter',sans-serif; }
     input:focus, select:focus, textarea:focus { outline:none; border-color:var(--dorado) !important; }
@@ -1512,8 +1526,20 @@
             <input type="url" id="video_url" placeholder="https://youtube.com/watch?v=..." />
           </div>
 
-          <div class="form-grupo form-full">
+          <div class="form-grupo form-full" style="padding-bottom:0;">
             <label>Plano / Masterplan (imagen)</label>
+            <div class="seccion-toggle" onclick="toggleSeccion('plano_activo','togTrackPlano')">
+              <div class="tog-track on" id="togTrackPlano"><div class="tog-thumb"></div></div>
+              <div class="tog-info">
+                <div class="tog-titulo">Mostrar plano en la web pública</div>
+                <div class="tog-subtitulo">Si está desactivado, el plano no se muestra aunque tenga imagen cargada</div>
+              </div>
+              <span class="tog-badge on" id="togBadgePlano">ACTIVO</span>
+            </div>
+          </div>
+
+          <div class="form-grupo form-full">
+            <input type="hidden" id="plano_activo" value="1" />
             <input type="hidden" id="masterplan_url" />
             <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
               <label class="btn-upload" for="masterplanFile">
@@ -1703,6 +1729,15 @@
     <div class="form-panel" id="panel-mapa">
       <div class="form-bloque">
         <h4 class="form-bloque-titulo">Mapa interactivo de lotes</h4>
+        <div class="seccion-toggle" onclick="toggleSeccion('mapa_activo','togTrackMapa')">
+          <div class="tog-track on" id="togTrackMapa"><div class="tog-thumb"></div></div>
+          <div class="tog-info">
+            <div class="tog-titulo">Mostrar mapa interactivo en la web pública</div>
+            <div class="tog-subtitulo">Si está desactivado, la sección de mapa no aparece en la miniWeb del proyecto</div>
+          </div>
+          <span class="tog-badge on" id="togBadgeMapa">ACTIVO</span>
+        </div>
+        <input type="hidden" id="mapa_activo" value="1" />
         <p style="font-size:0.78rem;color:var(--gris-claro);margin-bottom:1rem;">
           Definí las zonas con nombre y color, subí la imagen del mapa, seleccioná cada lote y hacé clic en el mapa para posicionarlo. Arrastrá para ajustar.
         </p>
@@ -2671,6 +2706,8 @@ ALTER TABLE proyectos
         foto_fondo: v('foto_fondo'),
         opacidad_fondo: parseInt(document.getElementById('opacidad_fondo').value) || 7,
         video_url: v('video_url'), masterplan_url: v('masterplan_url'), brochure_url: v('brochure_url'),
+        plano_activo: document.getElementById('plano_activo')?.value !== '0',
+        mapa_activo:  document.getElementById('mapa_activo')?.value  !== '0',
         dev_empresa: v('dev_empresa'), dev_cuit: v('dev_cuit'),
         dev_contacto_nombre: v('dev_contacto_nombre'), dev_contacto_cargo: v('dev_contacto_cargo'),
         dev_whatsapp: v('dev_whatsapp'), dev_email: v('dev_email'), dev_domicilio: v('dev_domicilio'),
@@ -2817,6 +2854,17 @@ ALTER TABLE proyectos
       document.getElementById('fondoOpacidadVal').textContent = p.opacidad_fondo + '%'
     }
     set('video_url', p.video_url)
+    // Toggles de sección
+    const _setToggle = (fieldId, trackId, badgeId, val) => {
+      const isOn = val !== false  // default true si es null/undefined
+      document.getElementById(fieldId).value = isOn ? '1' : '0'
+      document.getElementById(trackId).classList.toggle('on', isOn)
+      const badge = document.getElementById(badgeId)
+      badge.textContent = isOn ? 'ACTIVO' : 'INACTIVO'
+      badge.className = `tog-badge ${isOn ? 'on' : 'off'}`
+    }
+    _setToggle('plano_activo', 'togTrackPlano', 'togBadgePlano', p.plano_activo)
+    _setToggle('mapa_activo',  'togTrackMapa',  'togBadgeMapa',  p.mapa_activo)
     if (p.masterplan_url) {
       document.getElementById('masterplan_url').value = p.masterplan_url
       document.getElementById('masterplanPreview').style.display = 'block'
@@ -2882,6 +2930,23 @@ ALTER TABLE proyectos
     navigator.clipboard.writeText(document.getElementById('sqlContent').textContent)
       .then(() => alert('SQL copiado al portapapeles'))
       .catch(() => alert('No se pudo copiar automáticamente. Seleccioná el texto manualmente.'))
+  }
+
+  // ── Toggle de sección ───────────────────────────────────────────────
+  window.toggleSeccion = (fieldId, trackId) => {
+    const input = document.getElementById(fieldId); if (!input) return
+    const track = document.getElementById(trackId); if (!track) return
+    const isOn = input.value !== '0'
+    const newVal = isOn ? '0' : '1'
+    input.value = newVal
+    track.classList.toggle('on', !isOn)
+    // badge: mismo id pero "togBadge" + capitalizar el resto
+    const badgeId = 'togBadge' + trackId.replace('togTrack','')
+    const badge = document.getElementById(badgeId)
+    if (badge) {
+      badge.textContent = newVal === '1' ? 'ACTIVO' : 'INACTIVO'
+      badge.className = `tog-badge ${newVal === '1' ? 'on' : 'off'}`
+    }
   }
 
   // init
