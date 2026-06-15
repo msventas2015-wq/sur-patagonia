@@ -1704,31 +1704,32 @@
       <div class="form-bloque">
         <h4 class="form-bloque-titulo">Mapa interactivo de lotes</h4>
         <p style="font-size:0.78rem;color:var(--gris-claro);margin-bottom:1rem;">
-          Subí la imagen del mapa, seleccioná cada lote de la lista y hacé clic en el mapa para posicionarlo. Arrastrá para ajustar.
+          Definí las zonas con nombre y color, subí la imagen del mapa, seleccioná cada lote y hacé clic en el mapa para posicionarlo. Arrastrá para ajustar.
         </p>
         <div class="ml-editor-layout">
-          <!-- Lista de lotes -->
+          <!-- Panel izquierdo -->
           <div class="ml-panel-lista">
+            <!-- Zonas editables -->
             <div class="ml-panel-head">
+              <span class="ml-panel-head-tit">Zonas</span>
+              <button class="ml-add-zona-btn" onclick="mlAgregarZona()" title="Nueva zona">+ Zona</button>
+            </div>
+            <div class="ml-zonas-lista" id="mlZonasLista"></div>
+            <!-- Lotes -->
+            <div class="ml-panel-head" style="margin-top:0.5rem;border-top:1px solid var(--card-border,rgba(255,255,255,0.08));padding-top:0.8rem;">
               <span class="ml-panel-head-tit">Lotes</span>
               <span style="font-size:0.7rem;color:var(--gris-claro)"><span id="mlPosCount">0</span> posicionados</span>
-            </div>
-            <div class="ml-zona-sel">
-              <label>Zona del lote seleccionado</label>
-              <button class="ml-zbtn activo" data-z="Bosque" onclick="mlSetZona('Bosque')">Bosque</button>
-              <button class="ml-zbtn" data-z="Laguna" onclick="mlSetZona('Laguna')">Laguna</button>
-              <button class="ml-zbtn" data-z="Río" onclick="mlSetZona('Río')">Río</button>
-              <button class="ml-zbtn" data-z="Complejo turístico" onclick="mlSetZona('Complejo turístico')">Complejo</button>
             </div>
             <div class="ml-lotes-lista" id="mlLotesLista"></div>
             <div class="ml-acciones">
               <button class="btn-secundario" style="flex:1;font-size:0.7rem;" id="mlBtnQuitar" onclick="mlQuitarPos()" disabled>Quitar posición</button>
             </div>
+            <!-- Leyenda zonas + estados -->
             <div class="ml-leyenda-mini">
-              <div class="ml-leg"><div class="ml-leg-d" style="background:#7ec8d4"></div>Laguna</div>
-              <div class="ml-leg"><div class="ml-leg-d" style="background:#8aab78"></div>Bosque</div>
-              <div class="ml-leg"><div class="ml-leg-d" style="background:#6aabb4"></div>Río</div>
-              <div class="ml-leg"><div class="ml-leg-d" style="background:#c8bfa8"></div>Complejo</div>
+              <div style="font-size:0.6rem;color:var(--gris-claro);width:100%;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.2rem;">Zonas</div>
+              <div id="mlLeyendaZonas" style="display:contents"></div>
+              <div style="font-size:0.6rem;color:var(--gris-claro);width:100%;letter-spacing:0.1em;text-transform:uppercase;margin-top:0.4rem;margin-bottom:0.2rem;">Disponibilidad</div>
+              <div class="ml-leg"><div class="ml-leg-d" style="background:#4cc982"></div>Disponible</div>
               <div class="ml-leg"><div class="ml-leg-d" style="background:#c9a84c"></div>Reservado</div>
               <div class="ml-leg"><div class="ml-leg-d" style="background:#c9784c"></div>Vendido</div>
             </div>
@@ -1909,24 +1910,30 @@ ALTER TABLE proyectos
   #panel-mapa.activo { display: block; }
   .ml-editor-layout { display: grid; grid-template-columns: 260px 1fr; gap: 1rem; align-items: start; margin-top: 1rem; }
   .ml-panel-lista { background: var(--card-bg, #111); border: 1px solid var(--card-border, rgba(255,255,255,0.08)); border-radius: 8px; overflow: hidden; }
-  .ml-panel-head { padding: 0.8rem 1rem; border-bottom: 1px solid var(--card-border, rgba(255,255,255,0.08)); display: flex; justify-content: space-between; align-items: center; }
+  .ml-panel-head { padding: 0.8rem 1rem; display: flex; justify-content: space-between; align-items: center; }
   .ml-panel-head-tit { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gris-claro, #888); }
-  .ml-zona-sel { padding: 0.6rem 1rem; border-bottom: 1px solid var(--card-border, rgba(255,255,255,0.08)); display: flex; flex-wrap: wrap; gap: 0.35rem; }
-  .ml-zona-sel label { font-size: 0.65rem; color: var(--gris-claro,#888); width:100%; margin-bottom:0.15rem; }
-  .ml-zbtn { padding: 0.25rem 0.55rem; border-radius: 999px; border: 1px solid var(--card-border,rgba(255,255,255,0.08)); background: none; color: var(--gris-claro,#888); font-size: 0.65rem; cursor: pointer; }
-  .ml-zbtn.activo { color:#fff; border-color:transparent; }
-  .ml-zbtn[data-z="Laguna"].activo    { background:#7ec8d4; }
-  .ml-zbtn[data-z="Bosque"].activo    { background:#8aab78; }
-  .ml-zbtn[data-z="Río"].activo       { background:#6aabb4; }
-  .ml-zbtn[data-z="Complejo turístico"].activo { background:#c8bfa8; color:#333; }
-  .ml-lotes-lista { max-height: 440px; overflow-y: auto; }
-  .ml-lote-item { display:flex; align-items:center; gap:0.5rem; padding:0.45rem 1rem; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.1s; font-size:0.78rem; }
+  /* Zonas editables */
+  .ml-add-zona-btn { background: none; border: 1px solid rgba(255,255,255,0.15); color: var(--dorado,#c9a84c); border-radius: 4px; padding: 0.1rem 0.5rem; cursor: pointer; font-size: 0.68rem; }
+  .ml-add-zona-btn:hover { background: rgba(201,168,76,0.1); }
+  .ml-zonas-lista { padding: 0.4rem 0.6rem; display: flex; flex-direction: column; gap: 0.25rem; min-height: 40px; }
+  .ml-zona-item { display: flex; align-items: center; gap: 0.45rem; padding: 0.35rem 0.5rem; border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: background 0.1s; }
+  .ml-zona-item:hover { background: rgba(255,255,255,0.04); }
+  .ml-zona-item.activo { background: rgba(201,168,76,0.1); border-color: rgba(201,168,76,0.3); }
+  .ml-zona-color-inp { width: 22px; height: 22px; border: none; background: none; cursor: pointer; padding: 0; border-radius: 4px; flex-shrink: 0; }
+  .ml-zona-nombre { flex: 1; font-size: 0.75rem; color: #ddd; outline: none; min-width: 0; background: none; border: none; cursor: text; font-family: inherit; }
+  .ml-zona-nombre:focus { color: var(--dorado, #c9a84c); }
+  .ml-zona-del { background: none; border: none; color: rgba(255,255,255,0.2); cursor: pointer; font-size: 0.7rem; padding: 0 0.2rem; line-height: 1; }
+  .ml-zona-del:hover { color: #c9784c; }
+  /* Lotes */
+  .ml-lotes-lista { max-height: 300px; overflow-y: auto; }
+  .ml-lote-item { display:flex; align-items:center; gap:0.5rem; padding:0.42rem 1rem; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.1s; font-size:0.78rem; }
   .ml-lote-item:hover { background: rgba(255,255,255,0.03); }
   .ml-lote-item.sel { background: rgba(201,168,76,0.1); color: var(--dorado,#c9a84c); }
   .ml-lote-dot { width:9px; height:9px; border-radius:50%; border:1px solid rgba(255,255,255,0.3); flex-shrink:0; }
-  .ml-lote-num { min-width:24px; font-weight:500; }
+  .ml-lote-num { min-width:28px; font-weight:500; }
   .ml-lote-tipo { flex:1; font-size:0.65rem; color:var(--gris-claro,#888); }
   .ml-lote-ok { font-size:0.65rem; }
+  /* Canvas */
   .ml-canvas-area { background: var(--card-bg,#111); border:1px solid var(--card-border,rgba(255,255,255,0.08)); border-radius:8px; overflow:hidden; }
   .ml-canvas-bar { display:flex; align-items:center; gap:0.8rem; padding:0.7rem 1rem; border-bottom:1px solid var(--card-border,rgba(255,255,255,0.08)); flex-wrap:wrap; }
   .ml-canvas-info { flex:1; font-size:0.75rem; color:var(--gris-claro,#888); }
@@ -1940,9 +1947,9 @@ ALTER TABLE proyectos
   .ml-svg { position:absolute; top:0; left:0; width:100%; height:100%; }
   .ml-instruc { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(201,168,76,0.9); color:#000; font-size:0.7rem; padding:0.35rem 0.8rem; border-radius:999px; white-space:nowrap; pointer-events:none; display:none; z-index:10; }
   .ml-instruc.v { display:block; }
-  .ml-leyenda-mini { display:flex; flex-wrap:wrap; gap:0.4rem 1rem; padding:0.7rem 1rem; border-top:1px solid var(--card-border,rgba(255,255,255,0.08)); }
+  .ml-leyenda-mini { display:flex; flex-wrap:wrap; gap:0.35rem 0.8rem; padding:0.7rem 1rem; border-top:1px solid var(--card-border,rgba(255,255,255,0.08)); }
   .ml-leg { display:flex; align-items:center; gap:0.35rem; font-size:0.63rem; color:var(--gris-claro,#888); }
-  .ml-leg-d { width:8px; height:8px; border-radius:50%; }
+  .ml-leg-d { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
   .ml-acciones { padding:0.7rem 1rem; border-top:1px solid var(--card-border,rgba(255,255,255,0.08)); display:flex; gap:0.5rem; }
 </style>
 
@@ -2905,34 +2912,117 @@ ALTER TABLE proyectos
 <script type="module">
 // ══ MAPA DE LOTES — lógica del panel inline ══════════════════════════
 import { supabase } from '../js/config.js'
-const ZONA_COLOR = { 'Laguna':'#7ec8d4','Bosque':'#8aab78','Río':'#6aabb4','Complejo turístico':'#c8bfa8' }
-let _mlLotes = [], _mlPos = {}, _mlSel = null, _mlZona = 'Bosque', _mlDrag = null, _mlUrl = null
+
+// ── Zonas editables ───────────────────────────────────────────────────
+const ML_ZONA_DEFAULTS = [
+  { nombre: 'Laguna', color: '#7ec8d4' },
+  { nombre: 'Bosque', color: '#8aab78' },
+  { nombre: 'Río', color: '#6aabb4' },
+  { nombre: 'Complejo turístico', color: '#c8bfa8' }
+]
+let _mlZonas = JSON.parse(JSON.stringify(ML_ZONA_DEFAULTS))
+let _mlZonaActiva = null  // nombre de la zona activa
+
+// ── Estado lotes ─────────────────────────────────────────────────────
+let _mlLotes = [], _mlPos = {}, _mlSel = null, _mlDrag = null, _mlUrl = null
 const svgNS = 'http://www.w3.org/2000/svg'
 
-window.mlSetZona = (z) => {
-  _mlZona = z
-  document.querySelectorAll('.ml-zbtn').forEach(b => b.classList.toggle('activo', b.dataset.z === z))
-  if (_mlSel && _mlPos[_mlSel]) { _mlPos[_mlSel].tipo_lote = z; mlRenderLista(); mlRenderSvg() }
+function mlZonaColor(nombre) {
+  return (_mlZonas.find(z => z.nombre === nombre) || {}).color || '#8aab78'
 }
+
+// ── Zonas UI ──────────────────────────────────────────────────────────
+function mlRenderZonas() {
+  const ul = document.getElementById('mlZonasLista'); if (!ul) return
+  ul.innerHTML = _mlZonas.map((z, i) => `
+    <div class="ml-zona-item${_mlZonaActiva === z.nombre ? ' activo' : ''}" data-zona="${escHtml(z.nombre)}">
+      <input type="color" class="ml-zona-color-inp" value="${z.color}" title="Cambiar color"
+        onchange="mlCambiarColorZona(${i}, this.value)" onclick="event.stopPropagation()" />
+      <input type="text" class="ml-zona-nombre" value="${escHtml(z.nombre)}"
+        onblur="mlRenombrarZona(${i}, this.value.trim())"
+        onkeydown="if(event.key==='Enter'){this.blur()}"
+        onclick="event.stopPropagation()" />
+      <button class="ml-zona-del" onclick="mlEliminarZona(${i});event.stopPropagation()" title="Eliminar zona">✕</button>
+    </div>
+  `).join('')
+  ul.querySelectorAll('.ml-zona-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const nombre = el.dataset.zona
+      _mlZonaActiva = (_mlZonaActiva === nombre) ? null : nombre
+      if (_mlSel && _mlZonaActiva) {
+        if (!_mlPos[_mlSel]) _mlPos[_mlSel] = { x: 50, y: 50, tipo_lote: _mlZonaActiva }
+        else _mlPos[_mlSel].tipo_lote = _mlZonaActiva
+        mlRenderLista(); mlRenderSvg()
+      }
+      mlRenderZonas()
+    })
+  })
+  mlRenderLeyendaZonas()
+}
+
+function mlRenderLeyendaZonas() {
+  const leg = document.getElementById('mlLeyendaZonas'); if (!leg) return
+  leg.innerHTML = _mlZonas.map(z =>
+    `<div class="ml-leg"><div class="ml-leg-d" style="background:${z.color}"></div>${escHtml(z.nombre)}</div>`
+  ).join('')
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+window.mlAgregarZona = () => {
+  _mlZonas.push({ nombre: 'Nueva zona', color: '#aaaaaa' })
+  mlRenderZonas()
+}
+window.mlEliminarZona = (i) => {
+  if (_mlZonas.length <= 1) return
+  const nombre = _mlZonas[i].nombre
+  if (_mlZonaActiva === nombre) _mlZonaActiva = null
+  _mlZonas.splice(i, 1)
+  mlRenderZonas(); mlRenderLista(); mlRenderSvg()
+}
+window.mlCambiarColorZona = (i, color) => {
+  _mlZonas[i].color = color
+  mlRenderZonas(); mlRenderLista(); mlRenderSvg()
+}
+window.mlRenombrarZona = (i, nuevoNombre) => {
+  if (!nuevoNombre) return
+  const viejo = _mlZonas[i].nombre
+  if (nuevoNombre === viejo) return
+  _mlZonas[i].nombre = nuevoNombre
+  if (_mlZonaActiva === viejo) _mlZonaActiva = nuevoNombre
+  Object.values(_mlPos).forEach(p => { if (p.tipo_lote === viejo) p.tipo_lote = nuevoNombre })
+  mlRenderZonas(); mlRenderLista(); mlRenderSvg()
+}
+
+// ── Lotes ──────────────────────────────────────────────────────────────
 window.mlQuitarPos = () => {
   if (!_mlSel) return
   delete _mlPos[_mlSel]
   mlRenderLista(); mlRenderSvg()
   document.getElementById('mlBtnQuitar').disabled = true
 }
+
 window.mlGuardar = async () => {
   const pid = window._proyectoId
   if (!pid) { alert('Guardá el proyecto primero.'); return }
-  if (_mlUrl) await supabase.from('proyectos').update({ mapa_imagen_url: _mlUrl }).eq('id', pid)
-  const updates = _mlLotes.map(l => supabase.from('lotes').update({
-    mapa_x: _mlPos[l.numero]?.x ?? null,
-    mapa_y: _mlPos[l.numero]?.y ?? null,
-    tipo_lote: _mlPos[l.numero]?.tipo_lote ?? null
-  }).eq('id', l.id))
-  await Promise.all(updates)
+  document.getElementById('mlCanvasInfo').textContent = 'Guardando...'
+  const updates = [
+    supabase.from('proyectos').update({ mapa_imagen_url: _mlUrl || null, mapa_zonas: _mlZonas }).eq('id', pid)
+  ]
+  _mlLotes.forEach(l => {
+    updates.push(supabase.from('lotes').update({
+      mapa_x:    _mlPos[l.numero]?.x ?? null,
+      mapa_y:    _mlPos[l.numero]?.y ?? null,
+      tipo_lote: _mlPos[l.numero]?.tipo_lote ?? null
+    }).eq('id', l.id))
+  })
+  const results = await Promise.all(updates)
+  const err = results.find(r => r.error)
+  if (err) { document.getElementById('mlCanvasInfo').textContent = 'Error al guardar'; console.error(err.error); return }
   document.getElementById('mlCanvasInfo').innerHTML = '<strong>✓ Mapa guardado</strong>'
-  setTimeout(() => document.getElementById('mlCanvasInfo').textContent = 'Listo', 2000)
+  setTimeout(() => { document.getElementById('mlCanvasInfo').textContent = 'Listo' }, 2000)
 }
+
 window.mlSubirMapa = async (input) => {
   const file = input.files[0]; if (!file) return
   const pid = window._proyectoId; if (!pid) { alert('Guardá el proyecto primero.'); return }
@@ -2945,6 +3035,7 @@ window.mlSubirMapa = async (input) => {
   const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
   _mlUrl = data.publicUrl
   mlMostrarMapa(_mlUrl)
+  document.getElementById('mlCanvasInfo').textContent = 'Imagen cargada — posicioná los lotes y guardá'
 }
 
 function mlMostrarMapa(url) {
@@ -2962,13 +3053,21 @@ function mlMostrarMapa(url) {
 }
 
 function mlSeleccionar(num) {
-  _mlSel = _mlSel === num ? null : num
-  if (_mlSel && _mlPos[_mlSel]) mlSetZona(_mlPos[_mlSel].tipo_lote || _mlZona)
+  // num es siempre string (l.numero del DB)
+  _mlSel = (_mlSel === num) ? null : num
+  if (_mlSel && _mlPos[_mlSel]?.tipo_lote) {
+    _mlZonaActiva = _mlPos[_mlSel].tipo_lote
+    mlRenderZonas()
+  }
   mlRenderLista(); mlRenderSvg()
   document.getElementById('mlBtnQuitar').disabled = !(_mlSel && _mlPos[_mlSel])
   const instr = document.getElementById('mlInstruc')
-  if (_mlSel) { instr.textContent = `Lote ${_mlSel} — hacé clic en el mapa para posicionar`; instr.classList.add('v') }
-  else instr.classList.remove('v')
+  if (_mlSel) {
+    instr.textContent = `Lote ${_mlSel} — elegí una zona y hacé clic en el mapa`
+    instr.classList.add('v')
+  } else {
+    instr.classList.remove('v')
+  }
 }
 
 function mlRenderLista() {
@@ -2977,18 +3076,21 @@ function mlRenderLista() {
   ul.innerHTML = _mlLotes.map(l => {
     const pos = _mlPos[l.numero]
     if (pos) cnt++
-    const color = ZONA_COLOR[pos?.tipo_lote || ''] || '#555'
-    return `<div class="ml-lote-item${_mlSel===l.numero?' sel':''}" onclick="(function(){window._mlSel=${l.numero};})(); document.querySelectorAll('.ml-lote-item').forEach(x=>x.classList.remove('sel')); this.classList.add('sel'); window._mlSelFn(${l.numero})">
-      <div class="ml-lote-dot" style="background:${pos?color:'transparent'};border-color:${color||'rgba(255,255,255,0.2)'};"></div>
-      <span class="ml-lote-num">${l.numero}</span>
-      <span class="ml-lote-tipo">${pos?.tipo_lote||'—'}</span>
-      <span class="ml-lote-ok" style="color:${pos?'#4cc982':'rgba(255,255,255,0.15)'}">${pos?'✓':'○'}</span>
+    const color = pos ? (mlZonaColor(pos.tipo_lote) || '#555') : 'transparent'
+    const borderC = pos ? (mlZonaColor(pos.tipo_lote) || '#555') : 'rgba(255,255,255,0.2)'
+    return `<div class="ml-lote-item${_mlSel === l.numero ? ' sel' : ''}" data-num="${escHtml(String(l.numero))}">
+      <div class="ml-lote-dot" style="background:${color};border-color:${borderC};"></div>
+      <span class="ml-lote-num">${escHtml(String(l.numero))}</span>
+      <span class="ml-lote-tipo">${pos?.tipo_lote ? escHtml(pos.tipo_lote) : '—'}</span>
+      <span class="ml-lote-ok" style="color:${pos ? '#4cc982' : 'rgba(255,255,255,0.15)'}">${pos ? '✓' : '○'}</span>
     </div>`
   }).join('')
   document.getElementById('mlPosCount').textContent = cnt
+  // Event delegation — sin inline JS con interpolación
+  ul.querySelectorAll('.ml-lote-item').forEach(el => {
+    el.addEventListener('click', () => mlSeleccionar(el.dataset.num))
+  })
 }
-
-window._mlSelFn = mlSeleccionar
 
 function mlRenderSvg() {
   const svg = document.getElementById('mlMapSvg'); if (!svg) return
@@ -2996,31 +3098,35 @@ function mlRenderSvg() {
   const W = img.naturalWidth, H = img.naturalHeight
   svg.innerHTML = ''
   Object.entries(_mlPos).forEach(([num, pos]) => {
-    const cx = (pos.x/100)*W, cy = (pos.y/100)*H
-    const tipo = pos.tipo_lote||'Bosque'
-    const lote = _mlLotes.find(l=>l.numero===parseInt(num))
-    const estado = lote?.estado||'disponible'
-    const color = estado==='vendido'?'#c9784c':estado==='reservado'?'#c9a84c':(ZONA_COLOR[tipo]||'#8aab78')
-    const isSel = parseInt(num)===_mlSel
-    const r = Math.round(W*0.014)
-    const g = document.createElementNS(svgNS,'g')
-    g.dataset.num = num; g.style.cursor='pointer'
-    const c = document.createElementNS(svgNS,'circle')
-    c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',isSel?r*1.3:r)
-    c.setAttribute('fill',color);c.setAttribute('fill-opacity',0.88)
-    c.setAttribute('stroke',isSel?'#c9a84c':'rgba(255,255,255,0.7)')
-    c.setAttribute('stroke-width',Math.round(W*(isSel?0.004:0.002)))
-    const t = document.createElementNS(svgNS,'text')
-    t.setAttribute('x',cx);t.setAttribute('y',cy)
-    t.setAttribute('text-anchor','middle');t.setAttribute('dominant-baseline','central')
-    t.setAttribute('font-size',Math.round(W*0.016));t.setAttribute('font-weight','700')
-    t.setAttribute('fill','white');t.setAttribute('pointer-events','none')
-    t.textContent=num
-    g.appendChild(c);g.appendChild(t);svg.appendChild(g)
-    g.addEventListener('mousedown', e=>{
-      e.stopPropagation(); mlSeleccionar(parseInt(num))
-      const pt=svgPt(svg,e); const p=_mlPos[num]
-      _mlDrag={num:parseInt(num),sx:pt.x,sy:pt.y,ox:p.x,oy:p.y}
+    const cx = (pos.x / 100) * W, cy = (pos.y / 100) * H
+    const lote = _mlLotes.find(l => String(l.numero) === String(num))
+    const estado = lote?.estado || 'disponible'
+    let color
+    if (estado === 'vendido') color = '#c9784c'
+    else if (estado === 'reservado') color = '#c9a84c'
+    else color = mlZonaColor(pos.tipo_lote) || '#8aab78'
+    const isSel = String(num) === String(_mlSel)
+    const r = Math.round(W * 0.014)
+    const g = document.createElementNS(svgNS, 'g')
+    g.dataset.num = num; g.style.cursor = 'pointer'
+    const c = document.createElementNS(svgNS, 'circle')
+    c.setAttribute('cx', cx); c.setAttribute('cy', cy)
+    c.setAttribute('r', isSel ? r * 1.3 : r)
+    c.setAttribute('fill', color); c.setAttribute('fill-opacity', 0.88)
+    c.setAttribute('stroke', isSel ? '#c9a84c' : 'rgba(255,255,255,0.7)')
+    c.setAttribute('stroke-width', Math.round(W * (isSel ? 0.004 : 0.002)))
+    const t = document.createElementNS(svgNS, 'text')
+    t.setAttribute('x', cx); t.setAttribute('y', cy)
+    t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'central')
+    t.setAttribute('font-size', Math.round(W * 0.016)); t.setAttribute('font-weight', '700')
+    t.setAttribute('fill', 'white'); t.setAttribute('pointer-events', 'none')
+    t.textContent = num
+    g.appendChild(c); g.appendChild(t); svg.appendChild(g)
+    g.addEventListener('mousedown', e => {
+      e.stopPropagation()
+      mlSeleccionar(String(num))
+      const pt = svgPt(svg, e)
+      _mlDrag = { num: String(num), sx: pt.x, sy: pt.y, ox: pos.x, oy: pos.y }
     })
   })
 }
@@ -3030,41 +3136,54 @@ function mlBindCanvas() {
   if (_mlBound) return; _mlBound = true
   const svg = document.getElementById('mlMapSvg')
   const img = document.getElementById('mlMapImg')
-  svg.addEventListener('click', e=>{
-    if (_mlDrag) return
+  svg.addEventListener('click', e => {
+    if (_mlDrag) { _mlDrag = null; return }
     if (!_mlSel) return
-    const pt=svgPt(svg,e); const W=img.naturalWidth,H=img.naturalHeight
-    _mlPos[_mlSel]={x:(pt.x/W)*100,y:(pt.y/H)*100,tipo_lote:_mlZona}
+    const pt = svgPt(svg, e)
+    const W = img.naturalWidth, H = img.naturalHeight
+    const zona = _mlZonaActiva || _mlZonas[0]?.nombre || 'Sin zona'
+    _mlPos[_mlSel] = { x: (pt.x / W) * 100, y: (pt.y / H) * 100, tipo_lote: zona }
     mlRenderLista(); mlRenderSvg()
-    document.getElementById('mlBtnQuitar').disabled=false
-    // avanzar al siguiente sin posición
-    const sig=_mlLotes.find(l=>!_mlPos[l.numero])
-    if(sig) mlSeleccionar(sig.numero)
-    else { _mlSel=null; document.getElementById('mlInstruc').classList.remove('v'); mlRenderLista();mlRenderSvg() }
+    document.getElementById('mlBtnQuitar').disabled = false
+    // Avanzar al siguiente lote sin posición
+    const sig = _mlLotes.find(l => !_mlPos[l.numero])
+    if (sig) mlSeleccionar(String(sig.numero))
+    else { _mlSel = null; document.getElementById('mlInstruc').classList.remove('v'); mlRenderLista(); mlRenderSvg() }
   })
-  svg.addEventListener('mousemove', e=>{
-    if(!_mlDrag) return
-    const pt=svgPt(svg,e); const W=img.naturalWidth,H=img.naturalHeight
-    _mlPos[_mlDrag.num].x=Math.max(0,Math.min(100,_mlDrag.ox+((pt.x-_mlDrag.sx)/W)*100))
-    _mlPos[_mlDrag.num].y=Math.max(0,Math.min(100,_mlDrag.oy+((pt.y-_mlDrag.sy)/H)*100))
+  svg.addEventListener('mousemove', e => {
+    if (!_mlDrag) return
+    const pt = svgPt(svg, e)
+    const W = img.naturalWidth, H = img.naturalHeight
+    const p = _mlPos[_mlDrag.num]; if (!p) return
+    p.x = Math.max(0, Math.min(100, _mlDrag.ox + ((pt.x - _mlDrag.sx) / W) * 100))
+    p.y = Math.max(0, Math.min(100, _mlDrag.oy + ((pt.y - _mlDrag.sy) / H) * 100))
     mlRenderSvg()
   })
-  svg.addEventListener('mouseup',()=>_mlDrag=null)
-  svg.addEventListener('mouseleave',()=>_mlDrag=null)
+  svg.addEventListener('mouseup', () => { _mlDrag = null })
+  svg.addEventListener('mouseleave', () => { _mlDrag = null })
 }
 
-function svgPt(svg,e){const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())}
+function svgPt(svg, e) {
+  const pt = svg.createSVGPoint()
+  pt.x = e.clientX; pt.y = e.clientY
+  return pt.matrixTransform(svg.getScreenCTM().inverse())
+}
 
-// Cargar lotes cuando se abre la pestaña Mapa
+// ── Cargar tab Mapa ────────────────────────────────────────────────────
 document.getElementById('tabMapa')?.addEventListener('click', async () => {
   const pid = window._proyectoId; if (!pid) return
-  if (_mlLotes.length) return // ya cargado
-  const {data:lotes} = await supabase.from('lotes').select('*').eq('proyecto_id',pid).order('numero')
-  _mlLotes = lotes||[]
-  _mlLotes.forEach(l=>{ if(l.mapa_x!=null&&l.mapa_y!=null) _mlPos[l.numero]={x:l.mapa_x,y:l.mapa_y,tipo_lote:l.tipo_lote||'Bosque'} })
+  if (_mlLotes.length) { mlRenderZonas(); return }
+  const { data: lotes } = await supabase.from('lotes').select('*').eq('proyecto_id', pid).order('numero')
+  _mlLotes = lotes || []
+  _mlLotes.forEach(l => {
+    if (l.mapa_x != null && l.mapa_y != null)
+      _mlPos[String(l.numero)] = { x: l.mapa_x, y: l.mapa_y, tipo_lote: l.tipo_lote || '' }
+  })
+  const { data: p } = await supabase.from('proyectos').select('mapa_imagen_url, mapa_zonas').eq('id', pid).single()
+  if (p?.mapa_zonas?.length) _mlZonas = p.mapa_zonas
+  mlRenderZonas()
   mlRenderLista()
-  const {data:p} = await supabase.from('proyectos').select('mapa_imagen_url').eq('id',pid).single()
-  if(p?.mapa_imagen_url){_mlUrl=p.mapa_imagen_url;mlMostrarMapa(_mlUrl)}
+  if (p?.mapa_imagen_url) { _mlUrl = p.mapa_imagen_url; mlMostrarMapa(_mlUrl) }
 })
 </script>
 </body>
