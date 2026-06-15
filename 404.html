@@ -662,7 +662,7 @@
 
     /* ══ MAPA ════════════════════════════════════════════════════════════ */
     /* ══ MAPA INTERACTIVO DE LOTES ══════════════════════════════════════ */
-    #mapa-lotes { border-top: 1px solid var(--line); padding: 5rem 0 3.5rem; position: relative; z-index: 1; }
+    #mapa-lotes { border-top: 1px solid var(--line); padding: 5rem 2vw 3.5rem; position: relative; z-index: 1; }
     .ml-header { text-align: center; padding: 0 5vw 2rem; max-width: 680px; margin: 0 auto; }
     .ml-eyebrow { font-size: 0.6rem; letter-spacing: 0.32em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.8rem; font-weight: 500; }
     .ml-titulo { font-family: var(--font-serif); font-size: clamp(1.9rem, 4vw, 3rem); font-weight: 300; line-height: 1.2; margin-bottom: 0.9rem; }
@@ -672,9 +672,9 @@
     .ml-cnt { background: var(--surface); border: 1px solid var(--line); padding: 1rem 2rem; text-align: center; flex: 1; min-width: 100px; max-width: 180px; }
     .ml-cnt-n { font-family: var(--font-serif); font-size: 2rem; font-weight: 300; color: var(--gold); line-height: 1; }
     .ml-cnt-l { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 0.4rem; }
-    .ml-map-wrap { position: relative; max-width: 920px; margin: 0 auto; padding: 0 2vw; }
-    .ml-map-img { width: 100%; display: block; border-radius: 6px; }
-    .ml-svg-overlay { position: absolute; top: 0; left: 2vw; width: calc(100% - 4vw); height: 100%; }
+    .ml-map-wrap { position: relative; max-width: 1200px; margin: 0 auto; padding: 0; }
+    .ml-map-img { width: 100%; display: block; border-radius: 8px; }
+    .ml-svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
     .ml-lot { cursor: pointer; }
     .ml-lot circle { transition: r 0.12s, fill-opacity 0.12s; }
     .ml-lot:hover circle { fill-opacity: 1 !important; }
@@ -1266,7 +1266,7 @@ async function init() {
   renderAtmosfera(p)
   renderPres(p)
   renderPlano(p)
-  if (p.mapa_imagen_url && p.mapa_activo !== false) renderMapaLotes(allLotes, p.mapa_imagen_url)
+  if (p.mapa_imagen_url && p.mapa_activo !== false) renderMapaLotes(allLotes, p.mapa_imagen_url, p.mapa_pin_estilo || 'gotita')
   renderDisponibilidad(allLotes)
   renderGaleria(p)
   renderInfo(p)
@@ -1346,7 +1346,7 @@ function renderPlano(p) {
 // ── Mapa interactivo de lotes (dinámico desde Supabase) ───────────────
 const ZONA_COLOR = { 'Laguna':'#7ec8d4', 'Bosque':'#8aab78', 'Río':'#6aabb4', 'Complejo turístico':'#c8bfa8' }
 
-function renderMapaLotes(lotes, mapaImagenUrl) {
+function renderMapaLotes(lotes, mapaImagenUrl, pinEstilo) {
   const seccion = document.getElementById('mapa-lotes')
   const img   = document.getElementById('mlMapImg')
   const svg   = document.getElementById('mlSvg')
@@ -1380,8 +1380,9 @@ function renderMapaLotes(lotes, mapaImagenUrl) {
     const W = img.naturalWidth || img.clientWidth
     const H = img.naturalHeight || img.clientHeight
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
-    const r  = Math.round(W * 0.017)   // radio del círculo del pin
-    const sh = Math.round(W * 0.003)   // blur de sombra
+    const r  = Math.round(W * 0.017)
+    const sh = Math.round(W * 0.003)
+    const estilo = pinEstilo || 'gotita'
 
     svg.innerHTML = `<defs>
       <filter id="mlSh" x="-70%" y="-70%" width="240%" height="300%">
@@ -1393,69 +1394,87 @@ function renderMapaLotes(lotes, mapaImagenUrl) {
     const mk = tag => document.createElementNS(ns, tag)
 
     lotesConPos.forEach(l => {
-      const tipX = (l.mapa_x / 100) * W   // punta del pin = posición exacta
+      const tipX = (l.mapa_x / 100) * W
       const tipY = (l.mapa_y / 100) * H
-      const ccx  = tipX
-      const ccy  = tipY - r * 2.2         // círculo bien por encima de la punta
-      const ty   = ccy + r                // cola arranca en el borde inferior del círculo
-      const tw   = r * 0.44              // semi-ancho de la cola
 
-      const zona    = l.tipo_lote || 'Bosque'
-      const isComp  = zona === 'Complejo turístico'
-      const estado  = isComp ? 'complejo' : (l.estado || 'vendido')
-      const muted   = estado === 'vendido' || estado === 'complejo'
-      const color   = estado==='disponible' ? (ZONA_COLOR[zona] || '#8aab78')
-                    : estado==='reservado'  ? '#c9a84c'
-                    : estado==='complejo'   ? '#a8b8c0'
-                    : '#c4734a'
+      const zona   = l.tipo_lote || 'Bosque'
+      const isComp = zona === 'Complejo turístico'
+      const estado = isComp ? 'complejo' : (l.estado || 'vendido')
+      const muted  = estado === 'vendido' || estado === 'complejo'
+      const fo     = muted ? '0.62' : '0.93'
+      const color  = estado==='disponible' ? (ZONA_COLOR[zona] || '#8aab78')
+                   : estado==='reservado'  ? '#c9a84c'
+                   : estado==='complejo'   ? '#a8b8c0'
+                   : '#c4734a'
+      const SW = Math.round(W * 0.0018)
 
       const g = mk('g'); g.setAttribute('class', 'ml-lot')
 
-      // Sombra en el suelo
-      const ell = mk('ellipse')
-      ell.setAttribute('cx', tipX); ell.setAttribute('cy', tipY + r * 0.22)
-      ell.setAttribute('rx', r * 0.42); ell.setAttribute('ry', r * 0.13)
-      ell.setAttribute('fill', 'rgba(0,0,0,0.18)'); ell.setAttribute('pointer-events','none')
-      g.appendChild(ell)
+      const addText = (x, y) => {
+        const t = mk('text')
+        t.setAttribute('x', x); t.setAttribute('y', y)
+        t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','central')
+        t.setAttribute('font-size', Math.round(W * 0.009)); t.setAttribute('font-weight','500')
+        t.setAttribute('fill','white'); t.setAttribute('fill-opacity', muted ? '0.7' : '1')
+        t.setAttribute('pointer-events','none')
+        t.textContent = String(l.numero || '').replace(/^lote\s+/i, '')
+        g.appendChild(t)
+      }
+      const addRing = (cx, cy) => {
+        const ring = mk('circle')
+        ring.setAttribute('cx', cx); ring.setAttribute('cy', cy); ring.setAttribute('r', r * 0.68)
+        ring.setAttribute('fill','none'); ring.setAttribute('stroke','rgba(255,255,255,0.28)')
+        ring.setAttribute('stroke-width', Math.round(W*0.0012)); ring.setAttribute('pointer-events','none')
+        g.appendChild(ring)
+      }
+      const addShadow = (cx, cy) => {
+        const ell = mk('ellipse')
+        ell.setAttribute('cx', cx); ell.setAttribute('cy', cy + r*0.18)
+        ell.setAttribute('rx', r*0.4); ell.setAttribute('ry', r*0.12)
+        ell.setAttribute('fill','rgba(0,0,0,0.18)'); ell.setAttribute('pointer-events','none')
+        g.appendChild(ell)
+      }
 
-      // Cola del pin (triángulo)
-      const tail = mk('polygon')
-      tail.setAttribute('points', `${ccx-tw},${ty} ${ccx+tw},${ty} ${tipX},${tipY}`)
-      tail.setAttribute('fill', color)
-      tail.setAttribute('fill-opacity', muted ? '0.58' : '0.93')
-      tail.setAttribute('filter', 'url(#mlSh)')
-      g.appendChild(tail)
+      if (estilo === 'circulo') {
+        addShadow(tipX, tipY)
+        const c = mk('circle')
+        c.setAttribute('cx', tipX); c.setAttribute('cy', tipY); c.setAttribute('r', r)
+        c.setAttribute('fill', color); c.setAttribute('fill-opacity', fo)
+        c.setAttribute('stroke','rgba(255,255,255,0.7)'); c.setAttribute('stroke-width', SW)
+        c.setAttribute('filter','url(#mlSh)')
+        g.appendChild(c); addRing(tipX, tipY); addText(tipX, tipY)
 
-      // Cuerpo del pin (círculo)
-      const circle = mk('circle')
-      circle.setAttribute('cx', ccx); circle.setAttribute('cy', ccy); circle.setAttribute('r', r)
-      circle.setAttribute('fill', color)
-      circle.setAttribute('fill-opacity', muted ? '0.62' : '0.93')
-      circle.setAttribute('stroke', 'rgba(255,255,255,0.7)')
-      circle.setAttribute('stroke-width', Math.round(W * 0.0018))
-      circle.setAttribute('filter', 'url(#mlSh)')
-      g.appendChild(circle)
+      } else if (estilo === 'gotita') {
+        const ccy = tipY - r*2.2, ty = ccy + r, tw = r*0.44
+        addShadow(tipX, tipY)
+        const tail = mk('polygon')
+        tail.setAttribute('points',`${tipX-tw},${ty} ${tipX+tw},${ty} ${tipX},${tipY}`)
+        tail.setAttribute('fill',color); tail.setAttribute('fill-opacity',fo); tail.setAttribute('filter','url(#mlSh)')
+        g.appendChild(tail)
+        const c = mk('circle')
+        c.setAttribute('cx',tipX); c.setAttribute('cy',ccy); c.setAttribute('r',r)
+        c.setAttribute('fill',color); c.setAttribute('fill-opacity',fo)
+        c.setAttribute('stroke','rgba(255,255,255,0.7)'); c.setAttribute('stroke-width',SW)
+        c.setAttribute('filter','url(#mlSh)')
+        g.appendChild(c); addRing(tipX, ccy); addText(tipX, ccy)
 
-      // Anillo interior sutil
-      const ring = mk('circle')
-      ring.setAttribute('cx', ccx); ring.setAttribute('cy', ccy); ring.setAttribute('r', r * 0.68)
-      ring.setAttribute('fill', 'none')
-      ring.setAttribute('stroke', 'rgba(255,255,255,0.28)')
-      ring.setAttribute('stroke-width', Math.round(W * 0.0012))
-      ring.setAttribute('pointer-events', 'none')
-      g.appendChild(ring)
-
-      // Número / label
-      const text = mk('text')
-      text.setAttribute('x', ccx); text.setAttribute('y', ccy)
-      text.setAttribute('text-anchor','middle'); text.setAttribute('dominant-baseline','central')
-      text.setAttribute('font-size', Math.round(W * 0.009))
-      text.setAttribute('font-weight', '500')
-      text.setAttribute('fill', 'white')
-      text.setAttribute('fill-opacity', muted ? '0.7' : '1')
-      text.setAttribute('pointer-events','none')
-      text.textContent = String(l.numero || '').replace(/^lote\s+/i, '')
-      g.appendChild(text)
+      } else {
+        // etiqueta
+        const bw = Math.round(r*2.8), bh = Math.round(r*1.4), brad = Math.round(r*0.35)
+        const by = tipY - bh - r*1.1, ty = by + bh, tw = r*0.38
+        addShadow(tipX, tipY)
+        const tail = mk('polygon')
+        tail.setAttribute('points',`${tipX-tw},${ty} ${tipX+tw},${ty} ${tipX},${tipY}`)
+        tail.setAttribute('fill',color); tail.setAttribute('fill-opacity',fo); tail.setAttribute('filter','url(#mlSh)')
+        g.appendChild(tail)
+        const rect = mk('rect')
+        rect.setAttribute('x', tipX-bw/2); rect.setAttribute('y', by)
+        rect.setAttribute('width', bw); rect.setAttribute('height', bh); rect.setAttribute('rx', brad)
+        rect.setAttribute('fill',color); rect.setAttribute('fill-opacity',fo)
+        rect.setAttribute('stroke','rgba(255,255,255,0.7)'); rect.setAttribute('stroke-width',SW)
+        rect.setAttribute('filter','url(#mlSh)')
+        g.appendChild(rect); addText(tipX, by+bh/2)
+      }
 
       // Popup al hover
       g.addEventListener('mouseenter', () => {
