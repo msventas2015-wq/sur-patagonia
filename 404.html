@@ -66,7 +66,7 @@
     #loading, #lightbox, #nav,
     #hero, #atmosfera, #presentacion, #plano,
     #disponibilidad, #galeria, #info,
-    #ubicacion, #contacto, footer {
+    #ubicacion, #contacto, #representantes, footer {
       position: relative; z-index: 1;
     }
 
@@ -559,6 +559,48 @@
     .form-ok  { font-size: 0.78rem; color: var(--gold); margin-top: 1rem; }
     .form-err { font-size: 0.78rem; color: #c94c4c; margin-top: 1rem; }
 
+    /* ══ REPRESENTANTES ════════════════════════════════════════════════ */
+    #representantes {
+      padding: 5rem 5vw 6rem;
+      background: var(--surface); border-top: 1px solid var(--line);
+      text-align: center;
+    }
+    .rep-pub-inner { max-width: 900px; margin: 0 auto; }
+    .rep-pub-eyebrow {
+      font-size: 0.58rem; letter-spacing: 0.42em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 2.4rem;
+    }
+    .rep-pub-grid {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    }
+    .rep-pub-card {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.55rem; padding: 1.6rem 2.4rem;
+      border-right: 1px solid var(--line);
+      flex: 0 0 auto; min-width: 140px;
+    }
+    .rep-pub-card:last-child { border-right: none; }
+    .rep-pub-logo {
+      height: 40px; max-width: 110px; object-fit: contain;
+      filter: grayscale(1) brightness(1.6); opacity: 0.72;
+      transition: filter 0.25s, opacity 0.25s;
+    }
+    .rep-pub-card:hover .rep-pub-logo { filter: none; opacity: 1; }
+    .rep-pub-nombre {
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--texto); opacity: 0.8;
+    }
+    .rep-pub-ciudad {
+      font-size: 0.62rem; color: var(--gris-claro, #888); letter-spacing: 0.02em;
+    }
+    .rep-pub-placeholder {
+      width: 54px; height: 40px; border-radius: 4px;
+      background: rgba(255,255,255,0.07);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; opacity: 0.5;
+    }
+
     /* ══ FOOTER ════════════════════════════════════════════════════════ */
     footer {
       padding: 2.2rem 5vw;
@@ -955,6 +997,14 @@
   </div>
 </section>
 
+<!-- ══ REPRESENTANTES ════════════════════════════════════════════════════ -->
+<section id="representantes" style="display:none;">
+  <div class="rep-pub-inner">
+    <p class="rep-pub-eyebrow">Trabajan con nosotros</p>
+    <div class="rep-pub-grid" id="repPubGrid"></div>
+  </div>
+</section>
+
 <!-- FOOTER -->
 <footer>
   <div class="footer-brand">Sur <em>Patagonia</em> · Propiedades</div>
@@ -1267,6 +1317,7 @@ async function init() {
   renderPres(p)
   renderPlano(p)
   if (p.mapa_imagen_url && p.mapa_activo !== false) renderMapaLotes(allLotes, p.mapa_imagen_url, p.mapa_pin_estilo || 'gotita')
+  if (p.representantes?.length) renderRepresentantes(p.representantes)
   renderDisponibilidad(allLotes)
   renderGaleria(p)
   renderInfo(p)
@@ -1343,6 +1394,23 @@ function renderPlano(p) {
 }
 
 // ── Disponibilidad ────────────────────────────────────────────────────
+// ── Representantes del proyecto ───────────────────────────────────────
+function renderRepresentantes(lista) {
+  if (!lista?.length) return
+  const sec = document.getElementById('representantes')
+  const grid = document.getElementById('repPubGrid')
+  if (!sec || !grid) return
+  grid.innerHTML = lista.map(r => `
+    <div class="rep-pub-card">
+      ${r.logo_url
+        ? `<img class="rep-pub-logo" src="${r.logo_url}" alt="${r.nombre || 'logo'}" loading="lazy" />`
+        : `<div class="rep-pub-placeholder">🏢</div>`}
+      ${r.nombre ? `<div class="rep-pub-nombre">${r.nombre}</div>` : ''}
+      ${r.ciudad ? `<div class="rep-pub-ciudad">${r.ciudad}</div>` : ''}
+    </div>`).join('')
+  sec.style.display = 'block'
+}
+
 // ── Mapa interactivo de lotes (dinámico desde Supabase) ───────────────
 const ZONA_COLOR = { 'Laguna':'#7ec8d4', 'Bosque':'#8aab78', 'Río':'#6aabb4', 'Complejo turístico':'#c8bfa8' }
 
