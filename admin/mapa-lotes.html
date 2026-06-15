@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa de Lotes — Sur Patagonia Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a; --surface: #111; --surface2: #171717;
+      --border: rgba(255,255,255,0.08); --dorado: #c9a84c;
+      --text: #f0ede8; --gris: #888; --rojo: #c94c4c; --verde: #4cc982;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+    /* ── Layout ── */
+    .admin-layout { display: flex; min-height: 100vh; }
+    .admin-sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 0; display: flex; flex-direction: column; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .admin-sidebar-logo { font-size: 0.75rem; letter-spacing: 0.35em; font-weight: 600; padding: 0 1.4rem 1.5rem; color: var(--dorado); border-bottom: 1px solid var(--border); margin-bottom: 0.8rem; }
+    .admin-sidebar-logo span { color: var(--text); }
+    .admin-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 0.6rem; }
+    .admin-nav-item { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0.8rem; border-radius: 6px; color: var(--gris); font-size: 0.78rem; text-decoration: none; transition: all 0.15s; }
+    .admin-nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+    .admin-nav-item.activo { background: rgba(201,168,76,0.12); color: var(--dorado); }
+    .admin-nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    /* ── Main ── */
+    .admin-main { flex: 1; padding: 2rem; overflow-y: auto; min-width: 0; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+    .page-titulo { font-size: 1.4rem; font-weight: 300; letter-spacing: 0.04em; }
+    .page-titulo span { color: var(--dorado); }
+
+    /* ── Controles superiores ── */
+    .controles-top { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; padding: 1rem 1.2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+    .ctrl-label { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris); white-space: nowrap; }
+    .ctrl-select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.45rem 0.8rem; border-radius: 4px; font-size: 0.83rem; cursor: pointer; }
+    .ctrl-select:focus { outline: none; border-color: var(--dorado); }
+
+    /* ── Editor layout ── */
+    .editor-layout { display: grid; grid-template-columns: 280px 1fr; gap: 1.2rem; align-items: start; }
+
+    /* ── Panel izquierdo ── */
+    .panel-lotes { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; position: sticky; top: 1rem; }
+    .panel-lotes-head { padding: 0.9rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .panel-lotes-titulo { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gris); }
+    .panel-lotes-stats { font-size: 0.7rem; color: var(--gris); }
+    .panel-lotes-stats span { color: var(--verde); font-weight: 600; }
+
+    /* ── Zona selector ── */
+    .zona-selector { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .zona-selector label { font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gris); width: 100%; margin-bottom: 0.2rem; }
+    .zona-btn { padding: 0.3rem 0.6rem; border-radius: 999px; border: 1px solid var(--border); background: none; color: var(--gris); font-size: 0.66rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .zona-btn:hover { border-color: currentColor; }
+    .zona-btn.activo { color: #fff; border-color: transparent; }
+    .zona-btn[data-zona="Laguna"].activo    { background: #7ec8d4; }
+    .zona-btn[data-zona="Bosque"].activo    { background: #8aab78; }
+    .zona-btn[data-zona="Río"].activo       { background: #6aabb4; }
+    .zona-btn[data-zona="Complejo turístico"].activo { background: #c8bfa8; color: #333; }
+
+    /* ── Lista de lotes ── */
+    .lotes-lista { max-height: 520px; overflow-y: auto; }
+    .lote-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 1rem; cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.12s;
+    }
+    .lote-item:hover { background: rgba(255,255,255,0.03); }
+    .lote-item.seleccionado { background: rgba(201,168,76,0.1); }
+    .lote-item.seleccionado .lote-num { color: var(--dorado); }
+    .lote-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.3); }
+    .lote-num { font-size: 0.78rem; font-weight: 500; min-width: 28px; }
+    .lote-tipo { font-size: 0.65rem; color: var(--gris); flex: 1; }
+    .lote-estado-badge { font-size: 0.6rem; padding: 0.15rem 0.4rem; border-radius: 3px; }
+    .lote-estado-badge.disponible { background: rgba(76,201,130,0.15); color: var(--verde); }
+    .lote-estado-badge.reservado  { background: rgba(201,168,76,0.15); color: var(--dorado); }
+    .lote-estado-badge.vendido    { background: rgba(201,76,76,0.15); color: var(--rojo); }
+    .lote-pos-ok { color: var(--verde); font-size: 0.7rem; }
+    .lote-pos-no { color: rgba(255,255,255,0.15); font-size: 0.7rem; }
+
+    /* ── Canvas ── */
+    .canvas-area { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .canvas-toolbar { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .canvas-toolbar-info { font-size: 0.75rem; color: var(--gris); flex: 1; }
+    .canvas-toolbar-info strong { color: var(--dorado); }
+
+    /* ── Upload ── */
+    .upload-area { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; cursor: pointer; border: 2px dashed var(--border); margin: 1rem; border-radius: 6px; transition: border-color 0.2s; gap: 0.8rem; }
+    .upload-area:hover { border-color: var(--dorado); }
+    .upload-icon { font-size: 2.5rem; opacity: 0.4; }
+    .upload-texto { font-size: 0.8rem; color: var(--gris); text-align: center; }
+    .upload-link { color: var(--dorado); text-decoration: underline; cursor: pointer; }
+
+    /* ── Map wrapper ── */
+    .map-canvas-wrap {
+      position: relative; margin: 0; cursor: crosshair; user-select: none;
+      display: none;
+    }
+    .map-canvas-wrap.activo { display: block; }
+    .map-canvas-img { width: 100%; display: block; }
+    .map-svg-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    .map-svg-overlay.editable { pointer-events: all; }
+
+    /* ── Lote circles en SVG ── */
+    .ml-edit-lot { cursor: pointer; }
+    .ml-edit-lot circle { transition: r 0.1s; }
+    .ml-edit-lot.dragging circle { filter: drop-shadow(0 0 6px rgba(201,168,76,0.8)); }
+    .ml-edit-lot.selected circle { stroke: var(--dorado) !important; stroke-width: 3 !important; }
+
+    /* ── Instrucción flotante ── */
+    .instruccion-flotante {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(201,168,76,0.9); color: #000; font-size: 0.72rem;
+      padding: 0.4rem 0.9rem; border-radius: 999px; white-space: nowrap;
+      pointer-events: none; display: none; z-index: 20;
+    }
+    .instruccion-flotante.visible { display: block; }
+
+    /* ── Botones ── */
+    .btn { padding: 0.5rem 1.1rem; border-radius: 4px; font-size: 0.78rem; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+    .btn-primario { background: var(--dorado); color: #000; font-weight: 600; }
+    .btn-primario:hover { background: #e2c87a; }
+    .btn-primario:disabled { opacity: 0.5; pointer-events: none; }
+    .btn-secundario { background: none; border: 1px solid var(--border); color: var(--text); }
+    .btn-secundario:hover { border-color: var(--text); }
+    .btn-peligro { background: none; border: 1px solid var(--rojo); color: var(--rojo); }
+    .btn-peligro:hover { background: rgba(201,76,76,0.1); }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 0.7rem 1.2rem; font-size: 0.8rem; transform: translateY(6px); opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 999; }
+    .toast.show { transform: none; opacity: 1; }
+    .toast.ok  { border-color: var(--verde); color: var(--verde); }
+    .toast.err { border-color: var(--rojo); color: var(--rojo); }
+
+    /* ── Empty state ── */
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--gris); font-size: 0.82rem; }
+
+    /* ── Leyenda ── */
+    .leyenda { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; padding: 0.8rem 1rem; border-top: 1px solid var(--border); }
+    .leg-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.65rem; color: var(--gris); }
+    .leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Propiedades</a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Proyectos</a>
+      <a href="nuevo-proyecto.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Nuevo proyecto</a>
+      <a href="mapa-lotes.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>Mapa de lotes</a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Consultas</a>
+      <a href="crm.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>CRM</a>
+      <a href="canales.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Canales</a>
+      <a href="campanas.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Campañas</a>
+      <a href="tour360.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>Tour 360°</a>
+      <a href="trafico.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Tráfico</a>
+      <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>Apariencia</a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Generar PDF</a>
+      <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Usuarios</a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Ver sitio</a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <div class="page-header">
+      <h1 class="page-titulo">Mapa de <span>lotes</span></h1>
+      <button class="btn btn-primario" id="btnGuardar" onclick="guardarTodo()" disabled>Guardar mapa</button>
+    </div>
+
+    <!-- Selector de proyecto -->
+    <div class="controles-top">
+      <span class="ctrl-label">Proyecto</span>
+      <select class="ctrl-select" id="proyectoSelect" onchange="cargarProyecto()">
+        <option value="">— Seleccioná un proyecto —</option>
+      </select>
+      <span id="proyectoInfo" style="font-size:0.75rem;color:var(--gris);"></span>
+    </div>
+
+    <!-- Editor -->
+    <div class="editor-layout" id="editorLayout" style="display:none;">
+
+      <!-- Panel izquierdo: lista de lotes -->
+      <div class="panel-lotes">
+        <div class="panel-lotes-head">
+          <span class="panel-lotes-titulo">Lotes</span>
+          <span class="panel-lotes-stats"><span id="posicionados">0</span> posicionados</span>
+        </div>
+
+        <!-- Selector de zona/tipo -->
+        <div class="zona-selector">
+          <label>Tipo de zona (para lote seleccionado)</label>
+          <button class="zona-btn" data-zona="Laguna" onclick="setZonaActual('Laguna')">Laguna</button>
+          <button class="zona-btn" data-zona="Bosque" onclick="setZonaActual('Bosque')">Bosque</button>
+          <button class="zona-btn" data-zona="Río" onclick="setZonaActual('Río')">Río</button>
+          <button class="zona-btn" data-zona="Complejo turístico" onclick="setZonaActual('Complejo turístico')">Complejo</button>
+        </div>
+
+        <!-- Lista -->
+        <div class="lotes-lista" id="lotesLista"></div>
+
+        <!-- Acciones -->
+        <div style="padding:0.8rem 1rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;">
+          <button class="btn btn-peligro" style="flex:1;font-size:0.7rem;" onclick="quitarPosicion()" id="btnQuitarPos" disabled>Quitar posición</button>
+        </div>
+
+        <!-- Leyenda -->
+        <div class="leyenda">
+          <div class="leg-item"><div class="leg-dot" style="background:#7ec8d4;"></div>Laguna</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#8aab78;"></div>Bosque</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#6aabb4;"></div>Río</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#c8bfa8;"></div>Complejo</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#c9a84c;"></div>Reservado</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#c9784c;"></div>Vendido</div>
+        </div>
+      </div>
+
+      <!-- Panel derecho: canvas -->
+      <div class="canvas-area">
+        <div class="canvas-toolbar">
+          <span class="canvas-toolbar-info" id="canvasInfo">Subí una imagen del mapa para empezar</span>
+          <input type="file" id="mapaFileInput" accept="image/*" style="display:none;" onchange="subirMapa(this)" />
+          <button class="btn btn-secundario" onclick="document.getElementById('mapaFileInput').click()">
+            📎 Subir imagen del mapa
+          </button>
+        </div>
+
+        <!-- Área de upload (visible cuando no hay imagen) -->
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('mapaFileInput').click()">
+          <div class="upload-icon">🗺️</div>
+          <div class="upload-texto">
+            Hacé clic para subir el mapa PNG del proyecto<br>
+            <span class="upload-link">Examinar archivo</span>
+          </div>
+        </div>
+
+        <!-- Canvas con imagen y SVG -->
+        <div class="map-canvas-wrap" id="mapCanvasWrap">
+          <img class="map-canvas-img" id="mapImg" src="" alt="Mapa" />
+          <svg class="map-svg-overlay editable" id="mapSvg"
+               viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet"
+               xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="instruccion-flotante" id="instruccionFlotante"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="empty-state" id="emptyState">
+      Seleccioná un proyecto para editar su mapa de lotes
+    </div>
+  </main>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { supabase } from '../js/config.js'
+
+// ── Estado ────────────────────────────────────────────────────
+let proyectoActual = null
+let lotes = []
+let loteSeleccionado = null   // numero del lote seleccionado
+let zonaActual = 'Bosque'
+let dragging = null           // { num, startX, startY, origX, origY }
+let posiciones = {}           // { [numero]: { x, y, tipo_lote } }
+let mapaUrl = null
+let svgNS = 'http://www.w3.org/2000/svg'
+
+const ZONA_COLOR = { 'Laguna':'#7ec8d4', 'Bosque':'#8aab78', 'Río':'#6aabb4', 'Complejo turístico':'#c8bfa8' }
+
+window.setZonaActual = setZonaActual
+window.quitarPosicion = quitarPosicion
+window.cargarProyecto = cargarProyecto
+window.guardarTodo = guardarTodo
+window.subirMapa = subirMapa
+
+// ── Init ─────────────────────────────────────────────────────
+;(async () => {
+  const { data: proyectos } = await supabase.from('proyectos').select('id, nombre, slug, mapa_imagen_url').order('nombre')
+  const sel = document.getElementById('proyectoSelect')
+  ;(proyectos || []).forEach(p => {
+    const opt = document.createElement('option')
+    opt.value = p.id
+    opt.textContent = p.nombre
+    opt.dataset.slug = p.slug
+    opt.dataset.mapa = p.mapa_imagen_url || ''
+    sel.appendChild(opt)
+  })
+  // auto-seleccionar si hay param en URL
+  const params = new URLSearchParams(location.search)
+  const pid = params.get('proyecto')
+  if (pid) { sel.value = pid; cargarProyecto() }
+})()
+
+// ── Cargar proyecto ──────────────────────────────────────────
+async function cargarProyecto() {
+  const sel = document.getElementById('proyectoSelect')
+  const opt = sel.options[sel.selectedIndex]
+  if (!opt || !opt.value) return
+
+  loteSeleccionado = null
+  posiciones = {}
+  proyectoActual = { id: opt.value, nombre: opt.textContent, slug: opt.dataset.slug, mapa_imagen_url: opt.dataset.mapa }
+
+  document.getElementById('emptyState').style.display = 'none'
+  document.getElementById('editorLayout').style.display = 'grid'
+  document.getElementById('proyectoInfo').textContent = proyectoActual.slug
+
+  // Cargar lotes
+  const { data } = await supabase.from('lotes').select('*').eq('proyecto_id', proyectoActual.id).order('numero')
+  lotes = data || []
+
+  // Cargar posiciones existentes
+  lotes.forEach(l => {
+    if (l.mapa_x != null && l.mapa_y != null) {
+      posiciones[l.numero] = { x: l.mapa_x, y: l.mapa_y, tipo_lote: l.tipo_lote || 'Bosque' }
+    }
+  })
+
+  renderLista()
+
+  // Cargar imagen si existe
+  if (proyectoActual.mapa_imagen_url) {
+    mostrarMapa(proyectoActual.mapa_imagen_url)
+  } else {
+    document.getElementById('uploadArea').style.display = 'flex'
+    document.getElementById('mapCanvasWrap').classList.remove('activo')
+  }
+
+  document.getElementById('btnGuardar').disabled = false
+}
+
+// ── Render lista de lotes ─────────────────────────────────────
+function renderLista() {
+  const ul = document.getElementById('lotesLista')
+  ul.innerHTML = ''
+  let posCount = 0
+  lotes.forEach(l => {
+    const pos = posiciones[l.numero]
+    if (pos) posCount++
+    const tipo = pos?.tipo_lote || l.tipo_lote || ''
+    const color = ZONA_COLOR[tipo] || '#555'
+    const item = document.createElement('div')
+    item.className = 'lote-item' + (loteSeleccionado === l.numero ? ' seleccionado' : '')
+    item.dataset.num = l.numero
+    item.innerHTML = `
+      <div class="lote-dot" style="background:${pos ? color : 'transparent'};border-color:${color};"></div>
+      <span class="lote-num">${l.numero}</span>
+      <span class="lote-tipo">${tipo || '—'}</span>
+      <span class="lote-estado-badge ${l.estado}">${l.estado}</span>
+      <span class="${pos ? 'lote-pos-ok' : 'lote-pos-no'}">${pos ? '✓' : '○'}</span>`
+    item.addEventListener('click', () => seleccionarLote(l.numero))
+    ul.appendChild(item)
+  })
+  document.getElementById('posicionados').textContent = posCount
+}
+
+// ── Seleccionar lote ─────────────────────────────────────────
+function seleccionarLote(num) {
+  loteSeleccionado = loteSeleccionado === num ? null : num
+  const pos = posiciones[num]
+  // Actualizar zona selector
+  const z = pos?.tipo_lote || zonaActual
+  setZonaActual(z, false)
+  renderLista()
+  renderSvg()
+  document.getElementById('btnQuitarPos').disabled = !pos
+  if (loteSeleccionado) {
+    const instr = document.getElementById('instruccionFlotante')
+    instr.textContent = `Lote ${loteSeleccionado} seleccionado → hacé clic en el mapa para posicionarlo`
+    instr.classList.add('visible')
+  } else {
+    document.getElementById('instruccionFlotante').classList.remove('visible')
+  }
+}
+
+// ── Set zona ─────────────────────────────────────────────────
+function setZonaActual(zona, actualizar = true) {
+  zonaActual = zona
+  document.querySelectorAll('.zona-btn').forEach(b => {
+    b.classList.toggle('activo', b.dataset.zona === zona)
+  })
+  if (actualizar && loteSeleccionado && posiciones[loteSeleccionado]) {
+    posiciones[loteSeleccionado].tipo_lote = zona
+    renderLista()
+    renderSvg()
+  }
+}
+
+// ── Quitar posición ───────────────────────────────────────────
+function quitarPosicion() {
+  if (!loteSeleccionado) return
+  delete posiciones[loteSeleccionado]
+  renderLista()
+  renderSvg()
+  document.getElementById('btnQuitarPos').disabled = true
+}
+
+// ── Subir imagen ──────────────────────────────────────────────
+async function subirMapa(input) {
+  if (!input.files[0] || !proyectoActual) return
+  const file = input.files[0]
+  const path = `mapas/${proyectoActual.slug}/mapa.${file.name.split('.').pop()}`
+  toast('Subiendo imagen...', '')
+  const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
+  if (error) { toast('Error al subir: ' + error.message, 'err'); return }
+  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
+  mapaUrl = data.publicUrl
+  proyectoActual.mapa_imagen_url = mapaUrl
+  mostrarMapa(mapaUrl)
+  toast('Imagen subida ✓', 'ok')
+}
+
+// ── Mostrar mapa ──────────────────────────────────────────────
+function mostrarMapa(url) {
+  const img = document.getElementById('mapImg')
+  const wrap = document.getElementById('mapCanvasWrap')
+  const upload = document.getElementById('uploadArea')
+  img.src = url
+  img.onload = () => {
+    wrap.classList.add('activo')
+    upload.style.display = 'none'
+    actualizarViewBox()
+    renderSvg()
+    bindCanvasEvents()
+  }
+  document.getElementById('canvasInfo').innerHTML =
+    `<strong>Lote ${loteSeleccionado || '—'}</strong> seleccionado · Hacé clic en el mapa para posicionar · Arrastrá para mover`
+}
+
+// ── ViewBox dinámico ──────────────────────────────────────────
+function actualizarViewBox() {
+  const img = document.getElementById('mapImg')
+  const svg = document.getElementById('mapSvg')
+  svg.setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`)
+}
+
+// ── Render SVG circles ────────────────────────────────────────
+function renderSvg() {
+  const svg = document.getElementById('mapSvg')
+  const img = document.getElementById('mapImg')
+  if (!img.naturalWidth) return
+  const W = img.naturalWidth
+  const H = img.naturalHeight
+  svg.innerHTML = ''
+
+  Object.entries(posiciones).forEach(([num, pos]) => {
+    const cx = (pos.x / 100) * W
+    const cy = (pos.y / 100) * H
+    const tipo = pos.tipo_lote || 'Bosque'
+    const lote = lotes.find(l => l.numero === parseInt(num))
+    const estado = lote?.estado || 'disponible'
+    const color = estado === 'vendido' ? '#c9784c' : estado === 'reservado' ? '#c9a84c' : ZONA_COLOR[tipo] || '#8aab78'
+    const opacity = (estado === 'vendido') ? 0.6 : 0.9
+    const r = tipo === 'Complejo turístico' ? Math.round(W * 0.012) : Math.round(W * 0.014)
+    const isSelected = parseInt(num) === loteSeleccionado
+
+    const g = document.createElementNS(svgNS, 'g')
+    g.setAttribute('class', 'ml-edit-lot' + (isSelected ? ' selected' : ''))
+    g.dataset.num = num
+
+    const circle = document.createElementNS(svgNS, 'circle')
+    circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', r)
+    circle.setAttribute('fill', color); circle.setAttribute('fill-opacity', opacity)
+    circle.setAttribute('stroke', isSelected ? '#c9a84c' : 'rgba(255,255,255,0.7)')
+    circle.setAttribute('stroke-width', isSelected ? Math.round(W*0.003) : Math.round(W*0.002))
+
+    const text = document.createElementNS(svgNS, 'text')
+    text.setAttribute('x', cx); text.setAttribute('y', cy)
+    text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central')
+    text.setAttribute('font-size', Math.round(W * 0.016)); text.setAttribute('font-weight', '700')
+    text.setAttribute('fill', 'white'); text.setAttribute('pointer-events', 'none')
+    text.textContent = num
+
+    g.appendChild(circle); g.appendChild(text)
+    svg.appendChild(g)
+  })
+}
+
+// ── Eventos del canvas ────────────────────────────────────────
+let eventsBound = false
+function bindCanvasEvents() {
+  if (eventsBound) return
+  eventsBound = true
+  const svg = document.getElementById('mapSvg')
+  const img = document.getElementById('mapImg')
+
+  // Click para colocar lote
+  svg.addEventListener('click', (e) => {
+    if (dragging) return
+    if (!loteSeleccionado) return
+    const pt = svgPoint(svg, e)
+    const W = img.naturalWidth, H = img.naturalHeight
+    const x = (pt.x / W) * 100
+    const y = (pt.y / H) * 100
+    posiciones[loteSeleccionado] = { x, y, tipo_lote: zonaActual }
+    renderLista()
+    renderSvg()
+    document.getElementById('btnQuitarPos').disabled = false
+    // auto-avanzar al siguiente lote sin posición
+    const sinPos = lotes.filter(l => !posiciones[l.numero])
+    if (sinPos.length > 0) seleccionarLote(sinPos[0].numero)
+    else {
+      loteSeleccionado = null
+      document.getElementById('instruccionFlotante').classList.remove('visible')
+      renderLista(); renderSvg()
+    }
+  })
+
+  // Click en círculo → seleccionar ese lote
+  svg.addEventListener('mousedown', (e) => {
+    const g = e.target.closest('.ml-edit-lot')
+    if (!g) return
+    e.stopPropagation()
+    const num = parseInt(g.dataset.num)
+    seleccionarLote(num)
+    // iniciar drag
+    const pt = svgPoint(svg, e)
+    const pos = posiciones[num]
+    dragging = { num, startX: pt.x, startY: pt.y, origX: pos.x, origY: pos.y }
+    g.classList.add('dragging')
+  })
+
+  svg.addEventListener('mousemove', (e) => {
+    if (!dragging) return
+    const pt = svgPoint(svg, e)
+    const W = img.naturalWidth, H = img.naturalHeight
+    const dx = ((pt.x - dragging.startX) / W) * 100
+    const dy = ((pt.y - dragging.startY) / H) * 100
+    posiciones[dragging.num].x = Math.max(0, Math.min(100, dragging.origX + dx))
+    posiciones[dragging.num].y = Math.max(0, Math.min(100, dragging.origY + dy))
+    renderSvg()
+  })
+
+  const endDrag = () => { dragging = null }
+  svg.addEventListener('mouseup', endDrag)
+  svg.addEventListener('mouseleave', endDrag)
+}
+
+// ── Utilidades SVG ────────────────────────────────────────────
+function svgPoint(svg, e) {
+  const pt = svg.createSVGPoint()
+  pt.x = e.clientX; pt.y = e.clientY
+  return pt.matrixTransform(svg.getScreenCTM().inverse())
+}
+
+// ── Guardar todo ──────────────────────────────────────────────
+async function guardarTodo() {
+  if (!proyectoActual) return
+  document.getElementById('btnGuardar').disabled = true
+  toast('Guardando...', '')
+
+  // Guardar mapa_imagen_url en proyecto
+  const urlGuardar = mapaUrl || proyectoActual.mapa_imagen_url
+  if (urlGuardar) {
+    await supabase.from('proyectos').update({ mapa_imagen_url: urlGuardar }).eq('id', proyectoActual.id)
+  }
+
+  // Guardar coordenadas en cada lote
+  const updates = lotes.map(l => {
+    const pos = posiciones[l.numero]
+    return supabase.from('lotes').update({
+      mapa_x: pos ? pos.x : null,
+      mapa_y: pos ? pos.y : null,
+      tipo_lote: pos ? (pos.tipo_lote || null) : (l.tipo_lote || null)
+    }).eq('id', l.id)
+  })
+
+  const results = await Promise.all(updates)
+  const errors = results.filter(r => r.error)
+  document.getElementById('btnGuardar').disabled = false
+
+  if (errors.length) {
+    toast(`${errors.length} errores al guardar`, 'err')
+  } else {
+    toast('Mapa guardado ✓', 'ok')
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg, tipo) {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.className = 'toast show ' + tipo
+  clearTimeout(t._to)
+  t._to = setTimeout(() => t.classList.remove('show'), 3000)
+}
+</script>
+</body>
+</html>
