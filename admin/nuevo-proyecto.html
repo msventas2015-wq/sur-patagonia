@@ -843,6 +843,7 @@
       <button class="form-tab" data-panel="panel-comercial">Comercial</button>
       <button class="form-tab" data-panel="panel-desarrollador">Desarrollador</button>
       <button class="form-tab" data-panel="panel-mapa" id="tabMapa">Mapa de lotes</button>
+      <button class="form-tab" data-panel="panel-rep">Representantes</button>
     </div>
 
     <!-- ══ PANEL 1: IDENTIDAD ═══════════════════════════════════════════ -->
@@ -1809,6 +1810,18 @@
       </div>
     </div>
 
+    <!-- ══ PANEL REPRESENTANTES ═════════════════════════════════════════ -->
+    <div class="form-panel" id="panel-rep">
+      <div class="form-bloque">
+        <h4 class="form-bloque-titulo">Representantes del proyecto</h4>
+        <p style="font-size:0.78rem;color:var(--gris-claro);margin-bottom:1.2rem;">
+          Agregá las inmobiliarias o agentes que comercializan este proyecto. Se mostrarán debajo del formulario de contacto en la página pública.
+        </p>
+        <button class="btn-secundario" style="font-size:0.78rem;margin-bottom:1.2rem;" onclick="repAgregar()">+ Agregar representante</button>
+        <div id="repAdminLista"></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1956,6 +1969,24 @@ ALTER TABLE proyectos
     </div>
   </div>
 </div>
+
+<!-- ══ PANEL REPRESENTANTES ══════════════════════════════════════════ -->
+<style>
+  #panel-rep { display: none; }
+  #panel-rep.activo { display: block; }
+  .rep-admin-lista-wrap { display: flex; flex-direction: column; gap: 0.75rem; }
+  .rep-admin-item { display: flex; align-items: center; gap: 0.9rem; padding: 0.8rem 1rem; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border,rgba(255,255,255,0.08)); border-radius: 8px; }
+  .rep-logo-zone { width: 90px; height: 54px; border: 1px dashed rgba(255,255,255,0.14); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; background: rgba(255,255,255,0.02); transition: border-color 0.15s; }
+  .rep-logo-zone:hover { border-color: var(--dorado,#c9a84c); }
+  .rep-logo-zone img { width: 100%; height: 100%; object-fit: contain; }
+  .rep-upload-txt { font-size: 0.6rem; color: #555; text-align: center; line-height: 1.4; padding: 0.3rem; }
+  .rep-inputs { flex: 1; display: flex; flex-direction: column; gap: 0.45rem; min-width: 0; }
+  .rep-inputs input { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.1); color: #ddd; font-size: 0.8rem; padding: 0.25rem 0; outline: none; font-family: inherit; width: 100%; }
+  .rep-inputs input:focus { border-bottom-color: var(--dorado,#c9a84c); color: var(--dorado,#c9a84c); }
+  .rep-inputs input::placeholder { color: #444; }
+  .rep-del { background: none; border: none; color: rgba(255,255,255,0.18); cursor: pointer; font-size: 1rem; padding: 0.2rem 0.4rem; flex-shrink: 0; transition: color 0.15s; }
+  .rep-del:hover { color: #c9784c; }
+</style>
 
 <!-- ══ PANEL MAPA DE LOTES (inline en el editor de proyecto) ══════════ -->
 <style>
@@ -2740,6 +2771,7 @@ ALTER TABLE proyectos
         dev_whatsapp: v('dev_whatsapp'), dev_email: v('dev_email'), dev_domicilio: v('dev_domicilio'),
         notas_internas: v('notas_internas'),
         contacto_nombre: v('contacto_nombre'), contacto_whatsapp: v('contacto_whatsapp'), contacto_email: v('contacto_email'),
+        representantes: window._getRepLista ? window._getRepLista() : [],
         updated_at: new Date().toISOString(),
       },
       lotes
@@ -2938,6 +2970,9 @@ ALTER TABLE proyectos
     set('dev_whatsapp', p.dev_whatsapp); set('dev_email', p.dev_email); set('dev_domicilio', p.dev_domicilio)
     set('notas_internas', p.notas_internas)
     set('contacto_nombre', p.contacto_nombre); set('contacto_whatsapp', p.contacto_whatsapp); set('contacto_email', p.contacto_email)
+
+    // Representantes
+    if (window._setRepLista) window._setRepLista(p.representantes)
 
     document.getElementById('slugPreview').textContent = p.slug || '—'
     document.getElementById('saveBarNombre').textContent = p.nombre || 'Sin nombre'
@@ -3410,6 +3445,68 @@ document.getElementById('tabMapa')?.addEventListener('click', async () => {
   mlRenderLista()
   if (p?.mapa_imagen_url) { _mlUrl = p.mapa_imagen_url; mlMostrarMapa(_mlUrl) }
 })
+</script>
+
+<script type="module">
+// ── Representantes del proyecto ──────────────────────────────────────────
+import { supabase } from '../js/config.js'
+
+let _repLista = []
+
+window._getRepLista = () => _repLista
+window._setRepLista = (lista) => { _repLista = Array.isArray(lista) ? [...lista] : []; repRender() }
+
+window.repAgregar = () => {
+  _repLista.push({ nombre: '', ciudad: '', logo_url: '' })
+  repRender()
+}
+
+window.repEliminar = (i) => {
+  _repLista.splice(i, 1)
+  repRender()
+}
+
+window.repActualizar = (i, campo, val) => {
+  if (_repLista[i]) _repLista[i][campo] = val
+}
+
+window.repSubirLogo = async (i, input) => {
+  const file = input.files[0]; if (!file) return
+  const pid = window._proyectoId; if (!pid) { alert('Guardá el proyecto primero.'); return }
+  const slug = document.getElementById('slug')?.value || pid
+  const ext = file.name.split('.').pop()
+  const path = `representantes/${slug}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
+  if (error) { alert('Error subiendo logo: ' + error.message); return }
+  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
+  _repLista[i].logo_url = data.publicUrl
+  repRender()
+}
+
+function repRender() {
+  const cont = document.getElementById('repAdminLista')
+  if (!cont) return
+  if (!_repLista.length) {
+    cont.innerHTML = `<div style="font-size:0.75rem;color:#555;padding:1.2rem;text-align:center;border:1px dashed rgba(255,255,255,0.07);border-radius:8px;">Ningún representante cargado. Hacé clic en "+ Agregar".</div>`
+    return
+  }
+  cont.innerHTML = `<div class="rep-admin-lista-wrap">${_repLista.map((r, i) => `
+    <div class="rep-admin-item">
+      <label class="rep-logo-zone" title="Subir logo PNG">
+        ${r.logo_url
+          ? `<img src="${r.logo_url}" alt="logo" />`
+          : `<div class="rep-upload-txt">📎<br>Logo PNG</div>`}
+        <input type="file" accept="image/*" style="display:none;" onchange="repSubirLogo(${i},this)" />
+      </label>
+      <div class="rep-inputs">
+        <input type="text" placeholder="Nombre (ej: Radatili)" value="${r.nombre || ''}" oninput="repActualizar(${i},'nombre',this.value)" />
+        <input type="text" placeholder="Ciudad / Provincia (ej: Chubut)" value="${r.ciudad || ''}" oninput="repActualizar(${i},'ciudad',this.value)" />
+      </div>
+      <button class="rep-del" onclick="repEliminar(${i})" title="Eliminar">✕</button>
+    </div>`).join('')}</div>`
+}
+
+repRender()
 </script>
 </body>
 </html>
