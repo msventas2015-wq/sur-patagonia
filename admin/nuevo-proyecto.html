@@ -3222,39 +3222,82 @@ function mlRenderSvg() {
   const svg = document.getElementById('mlMapSvg'); if (!svg) return
   const img = document.getElementById('mlMapImg'); if (!img?.naturalWidth) return
   const W = img.naturalWidth, H = img.naturalHeight
-  svg.innerHTML = ''
+  const r  = Math.round(W * 0.017)
+  const sh = Math.round(W * 0.003)
+
+  svg.innerHTML = `<defs>
+    <filter id="mlSh" x="-70%" y="-70%" width="240%" height="300%">
+      <feDropShadow dx="0" dy="${Math.round(W*0.002)}" stdDeviation="${sh}" flood-color="#000" flood-opacity="0.42"/>
+    </filter>
+  </defs>`
+
   Object.entries(_mlPos).forEach(([id, pos]) => {
-    const lote  = _mlLotes.find(l => l.id === id)
-    if (!lote) return
-    const cx    = (pos.x / 100) * W, cy = (pos.y / 100) * H
+    const lote = _mlLotes.find(l => l.id === id); if (!lote) return
+    const tipX = (pos.x / 100) * W
+    const tipY = (pos.y / 100) * H
+    const isSel = id === _mlSel
+    const rr   = isSel ? Math.round(r * 1.18) : r
+    const ccx  = tipX
+    const ccy  = tipY - rr * 1.22
+    const tw   = rr * 0.52
+    const ty   = ccy + rr * 0.62
+
     const estado = lote.estado || 'disponible'
     let color
-    if (estado === 'vendido') color = '#c9784c'
+    if (estado === 'vendido') color = '#c4734a'
     else if (estado === 'reservado') color = '#c9a84c'
     else color = mlZonaColor(pos.tipo_lote) || '#8aab78'
-    const isSel = id === _mlSel
-    const r = Math.round(W * 0.014)
+
     const g = document.createElementNS(svgNS, 'g')
     g.dataset.id = id; g.style.cursor = 'pointer'
+
+    // Sombra en el suelo
+    const ell = document.createElementNS(svgNS, 'ellipse')
+    ell.setAttribute('cx', tipX); ell.setAttribute('cy', tipY + rr * 0.22)
+    ell.setAttribute('rx', rr * 0.42); ell.setAttribute('ry', rr * 0.13)
+    ell.setAttribute('fill', 'rgba(0,0,0,0.2)'); ell.setAttribute('pointer-events','none')
+    g.appendChild(ell)
+
+    // Cola del pin
+    const tail = document.createElementNS(svgNS, 'polygon')
+    tail.setAttribute('points', `${ccx-tw},${ty} ${ccx+tw},${ty} ${tipX},${tipY}`)
+    tail.setAttribute('fill', color); tail.setAttribute('filter', 'url(#mlSh)')
+    g.appendChild(tail)
+
+    // Cuerpo del pin
     const c = document.createElementNS(svgNS, 'circle')
-    c.setAttribute('cx', cx); c.setAttribute('cy', cy)
-    c.setAttribute('r', isSel ? r * 1.3 : r)
-    c.setAttribute('fill', color); c.setAttribute('fill-opacity', 0.88)
-    c.setAttribute('stroke', isSel ? '#c9a84c' : 'rgba(255,255,255,0.7)')
-    c.setAttribute('stroke-width', Math.round(W * (isSel ? 0.004 : 0.002)))
+    c.setAttribute('cx', ccx); c.setAttribute('cy', ccy); c.setAttribute('r', rr)
+    c.setAttribute('fill', color); c.setAttribute('fill-opacity', '0.93')
+    c.setAttribute('stroke', isSel ? '#f5d78e' : 'rgba(255,255,255,0.72)')
+    c.setAttribute('stroke-width', Math.round(W * (isSel ? 0.003 : 0.0018)))
+    c.setAttribute('filter', 'url(#mlSh)')
+    g.appendChild(c)
+
+    // Anillo interior sutil
+    const ring = document.createElementNS(svgNS, 'circle')
+    ring.setAttribute('cx', ccx); ring.setAttribute('cy', ccy); ring.setAttribute('r', rr * 0.68)
+    ring.setAttribute('fill', 'none')
+    ring.setAttribute('stroke', 'rgba(255,255,255,0.28)')
+    ring.setAttribute('stroke-width', Math.round(W * 0.0012))
+    ring.setAttribute('pointer-events', 'none')
+    g.appendChild(ring)
+
+    // Label
     const t = document.createElementNS(svgNS, 'text')
-    t.setAttribute('x', cx); t.setAttribute('y', cy)
+    t.setAttribute('x', ccx); t.setAttribute('y', ccy)
     t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'central')
-    t.setAttribute('font-size', Math.round(W * 0.016)); t.setAttribute('font-weight', '700')
+    t.setAttribute('font-size', Math.round(W * 0.013)); t.setAttribute('font-weight', '600')
     t.setAttribute('fill', 'white'); t.setAttribute('pointer-events', 'none')
-    t.textContent = loteLabel(lote)   // solo el número, sin "lote "
-    g.appendChild(c); g.appendChild(t); svg.appendChild(g)
+    t.textContent = loteLabel(lote)
+    g.appendChild(t)
+
     g.addEventListener('mousedown', e => {
       e.stopPropagation()
       mlSeleccionar(id)
       const pt = svgPt(svg, e)
       _mlDrag = { id, sx: pt.x, sy: pt.y, ox: pos.x, oy: pos.y }
     })
+    svg.appendChild(g)
   })
 }
 
