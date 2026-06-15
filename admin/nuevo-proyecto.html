@@ -2743,12 +2743,41 @@ ALTER TABLE proyectos
         history.replaceState({}, '', `?id=${id}`)
       }
 
-      // Guardar lotes (borrar y reinsertar)
+      // Guardar lotes (borrar y reinsertar, preservando datos del mapa)
       if (lotes.length > 0) {
+        // 1. Guardar los datos de mapa de los lotes actuales antes de borrarlos
+        //    Fuente 1: DB (estado persistido)
+        const { data: lotesActuales } = await window._sb.from('lotes')
+          .select('numero, mapa_x, mapa_y, tipo_lote')
+          .eq('proyecto_id', id)
+        const mapaBackup = {}
+        ;(lotesActuales || []).forEach(l => {
+          if (l.mapa_x != null) mapaBackup[l.numero] = { mapa_x: l.mapa_x, mapa_y: l.mapa_y, tipo_lote: l.tipo_lote }
+        })
+        //    Fuente 2: memoria del tab mapa (puede tener posiciones no guardadas todavía)
+        const _mlPosActual   = window._getMlPos   ? window._getMlPos()   : null
+        const _mlLotesActual = window._getMlLotes ? window._getMlLotes() : null
+        if (_mlPosActual && _mlLotesActual) {
+          _mlLotesActual.forEach(l => {
+            const pos = _mlPosActual[l.id]
+            if (pos?.x != null)
+              mapaBackup[l.numero] = { mapa_x: pos.x, mapa_y: pos.y, tipo_lote: pos.tipo_lote || null }
+          })
+        }
+
+        // 2. Borrar e insertar lotes desde el formulario
         await window._sb.from('lotes').delete().eq('proyecto_id', id)
         const lotesConId = lotes.map(l => ({ ...l, proyecto_id: id }))
-        const { error: errLotes } = await window._sb.from('lotes').insert(lotesConId)
+        const { data: lotesInsertados, error: errLotes } = await window._sb.from('lotes').insert(lotesConId).select()
         if (errLotes) console.warn('Error lotes:', errLotes)
+
+        // 3. Restaurar datos del mapa en los lotes recién insertados
+        if (lotesInsertados && Object.keys(mapaBackup).length) {
+          const restoreUpdates = lotesInsertados
+            .filter(l => mapaBackup[l.numero])
+            .map(l => window._sb.from('lotes').update(mapaBackup[l.numero]).eq('id', l.id))
+          if (restoreUpdates.length) await Promise.all(restoreUpdates)
+        }
       }
 
       const isActivo = proyecto.estado === 'activo'
@@ -2991,6 +3020,9 @@ let _mlZonaActiva = null
 // ── Estado lotes ─────────────────────────────────────────────────────
 // _mlPos keyed by lote.id (UUID) — no por numero, que puede repetirse
 let _mlLotes = [], _mlPos = {}, _mlSel = null, _mlDrag = null, _mlUrl = null
+// Exponer para que guardarProyecto() (otro script) pueda acceder al estado en memoria
+window._getMlPos   = () => _mlPos
+window._getMlLotes = () => _mlLotes
 const svgNS = 'http://www.w3.org/2000/svg'
 
 // Helper: label corto para mostrar en el mapa (sin el prefijo "lote ")
@@ -3267,9 +3299,10 @@ function svgPt(svg, e) {
 // ── Cargar tab Mapa ────────────────────────────────────────────────────
 document.getElementById('tabMapa')?.addEventListener('click', async () => {
   const pid = window._proyectoId; if (!pid) return
-  if (_mlLotes.length) { mlRenderZonas(); return }
+  // Siempre recargar del DB para reflejar el estado real (evita mostrar posiciones obsoletas tras publicar)
   const { data: lotes } = await supabase.from('lotes').select('*').eq('proyecto_id', pid).order('numero')
   _mlLotes = lotes || []
+  _mlPos = {}
   // Clave: l.id (UUID único), nunca l.numero (puede repetirse)
   _mlLotes.forEach(l => {
     if (l.mapa_x != null && l.mapa_y != null)
