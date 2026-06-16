@@ -116,6 +116,23 @@
     .btn-mini:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
     .btn-mini:disabled { opacity: 0.3; cursor: not-allowed; }
 
+    /* Config card */
+    .config-card {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: var(--card-radius); padding: 1.2rem 1.5rem; margin-bottom: 1rem;
+    }
+    .config-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .config-group { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 200px; }
+    .config-label { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gris-claro); }
+    .config-select {
+      background: rgba(255,255,255,0.05); border: 1px solid var(--card-border);
+      color: var(--blanco); padding: 0.5rem 0.8rem; border-radius: 8px;
+      font-size: 0.82rem; font-family: inherit; cursor: pointer;
+      transition: border-color .18s;
+    }
+    .config-select:focus { outline: none; border-color: var(--accent); }
+    .config-hint { font-size: 0.66rem; color: var(--gris-claro); line-height: 1.4; }
+
     .empty-state { text-align: center; padding: 3rem; color: var(--gris-claro); font-size: 0.8rem; }
     .spinner {
       display: inline-block; width: 14px; height: 14px;
@@ -226,16 +243,46 @@
       </div>
     </div>
 
+    <!-- Config card -->
+    <div class="config-card">
+      <div class="config-row">
+
+        <div class="config-group">
+          <label class="config-label">Calidad</label>
+          <select class="config-select" id="selectCalidad">
+            <option value="0.95">Máxima — 0.95 (archivo grande)</option>
+            <option value="0.85" selected>Alta — 0.85 (recomendada web)</option>
+            <option value="0.80">Buena — 0.80 (balance peso/calidad)</option>
+            <option value="0.70">Ligera — 0.70 (máximo ahorro)</option>
+          </select>
+          <span class="config-hint" id="hintCalidad">Muy buena calidad visual, archivos ~50% más livianos</span>
+        </div>
+
+        <div class="config-group">
+          <label class="config-label">Resolución máxima</label>
+          <select class="config-select" id="selectResolucion">
+            <option value="16000">Sin límite (conservar original)</option>
+            <option value="3840">4K — 3840 px</option>
+            <option value="2560" selected>2K — 2560 px (recomendada web)</option>
+            <option value="1920">Full HD — 1920 px</option>
+          </select>
+          <span class="config-hint">Ancho máximo en píxeles. Alto se ajusta proporcional.</span>
+        </div>
+
+        <div class="config-group">
+          <label class="config-label">Carpeta</label>
+          <select class="config-select" id="selectCarpeta">
+            <option value="all">Todas las carpetas</option>
+          </select>
+          <span class="config-hint" id="hintCarpeta">Se carga al escanear el bucket</span>
+        </div>
+
+      </div>
+    </div>
+
     <div class="controls">
-      <button class="btn-accion" id="btnOptAll" disabled>⚡ Optimizar todo</button>
+      <button class="btn-accion" id="btnOptAll" disabled>⚡ Optimizar selección</button>
       <button class="btn-ghost" id="btnRecargar">↻ Recargar lista</button>
-      <select class="filter-select" id="filtroTipo">
-        <option value="all">Todas las carpetas</option>
-        <option value="propiedades">Propiedades</option>
-        <option value="proyectos">Proyectos</option>
-        <option value="360">360°</option>
-        <option value="otros">Otros</option>
-      </select>
     </div>
 
     <div class="progress-wrap" id="progressWrap">
@@ -283,8 +330,25 @@ document.getElementById('btnLogout').addEventListener('click', async () => {
   await supabase.auth.signOut(); window.location.href = 'login.html'
 })
 
+// ── Helpers de configuración ──────────────────────────────
+function getCalidad() { return parseFloat(document.getElementById('selectCalidad').value) }
+function getResolucion() { return parseInt(document.getElementById('selectResolucion').value) }
+function getCarpeta() { return document.getElementById('selectCarpeta').value }
+
+// Hints de calidad
+const hintsCalidad = {
+  '0.95': 'Calidad máxima — poco o ningún ahorro en archivos ya WebP',
+  '0.85': 'Muy buena calidad visual, archivos ~50% más livianos',
+  '0.80': 'Buena calidad para web, archivos ~60% más livianos',
+  '0.70': 'Calidad aceptable para web, máximo ahorro de peso'
+}
+document.getElementById('selectCalidad').addEventListener('change', e => {
+  document.getElementById('hintCalidad').textContent = hintsCalidad[e.target.value] || ''
+})
+
 // ── Estado global ─────────────────────────────────────────
 let todasLasImagenes = []
+let carpetasDetectadas = new Set()
 let pesoAhorrado = 0
 let cantOptimizadas = 0
 
@@ -377,17 +441,28 @@ async function procesarImagen(item, idx) {
 
     actualizarFila(idx, 'processing', 'Optimizando...')
 
+    const calidad = getCalidad()
+    const resolucion = getResolucion()
     const es360 = item.carpeta.includes('360')
+
     const webpFile = await optimizarImagen(archivo, {
-      maxAncho: es360 ? 16000 : 8000,
-      maxAlto:  es360 ? 8000  : 8000,
-      calidad: 0.95   // calidad visual idéntica — el ahorro viene del formato WebP
+      maxAncho: es360 ? Math.max(resolucion, 8000) : resolucion,
+      maxAlto:  es360 ? Math.max(Math.round(resolucion / 2), 4000) : resolucion,
+      calidad
     })
 
     const nuevoSize = webpFile.size
 
-    // Si ya es WebP y no hay ahorro significativo, marcar como lista
-    if (nuevoSize >= originalSize * 0.95 && item.name.toLowerCase().endsWith('.webp')) {
+    // ── PROTECCIÓN CRÍTICA: nunca subir si el resultado pesa más ──
+    // Pasa con JPEGs de WhatsApp ya muy comprimidos: al subirlos a
+    // calidad 0.95 el WebP queda más grande que el JPEG original.
+    if (nuevoSize >= originalSize) {
+      actualizarFila(idx, 'done', 'Sin ahorro — original conservado', 0)
+      return 0
+    }
+
+    // Si ya es WebP y el ahorro es menor al 2%, no vale la pena re-subir
+    if (item.name.toLowerCase().endsWith('.webp') && nuevoSize >= originalSize * 0.98) {
       actualizarFila(idx, 'done', 'Ya optimizada', 0)
       return 0
     }
@@ -443,16 +518,13 @@ function actualizarFila(idx, status, texto, ahorro) {
 }
 
 // ── Renderizar tabla ──────────────────────────────────────
-function renderTabla(filtro = 'all') {
+function renderTabla() {
+  const carpeta = getCarpeta()
   const tbody = document.getElementById('tablaBody')
   const filtradas = todasLasImagenes.filter(img => {
     if (!esImagen(img)) return false
-    if (filtro === 'all') return true
-    if (filtro === '360') return img.carpeta.includes('360')
-    if (filtro === 'propiedades') return img.carpeta.includes('propiedades')
-    if (filtro === 'proyectos') return img.carpeta.includes('proyectos')
-    if (filtro === 'otros') return !img.carpeta.includes('360') && !img.carpeta.includes('propiedades') && !img.carpeta.includes('proyectos')
-    return true
+    if (carpeta === 'all') return true
+    return img.carpeta === carpeta || img.carpeta.startsWith(carpeta + '/')
   })
 
   if (filtradas.length === 0) {
@@ -514,25 +586,32 @@ async function cargarLista() {
   const imagenes = todasLasImagenes.filter(esImagen)
   const pesoTotal = imagenes.reduce((s, i) => s + i.size, 0)
 
+  // Poblar selector de carpetas con las carpetas reales del bucket
+  const carpetas = [...new Set(imagenes.map(i => i.carpeta))].sort()
+  const sel = document.getElementById('selectCarpeta')
+  const valorActual = sel.value
+  sel.innerHTML = '<option value="all">Todas las carpetas</option>' +
+    carpetas.map(c => `<option value="${c}">${c}</option>`).join('')
+  if (carpetas.includes(valorActual)) sel.value = valorActual
+
+  document.getElementById('hintCarpeta').textContent =
+    `${carpetas.length} carpeta${carpetas.length !== 1 ? 's' : ''} detectada${carpetas.length !== 1 ? 's' : ''}`
+
   document.getElementById('statTotal').textContent = imagenes.length
   document.getElementById('statPeso').textContent = fmtBytes(pesoTotal)
   document.getElementById('statAhorrado').textContent = fmtBytes(pesoAhorrado)
   document.getElementById('btnOptAll').disabled = imagenes.length === 0
 
-  renderTabla(document.getElementById('filtroTipo').value)
+  renderTabla()
 }
 
-// ── Optimizar todo ────────────────────────────────────────
+// ── Optimizar selección ───────────────────────────────────
 document.getElementById('btnOptAll').addEventListener('click', async () => {
-  const filtro = document.getElementById('filtroTipo').value
+  const carpeta = getCarpeta()
   const imagenes = todasLasImagenes.filter(img => {
     if (!esImagen(img) || img.status === 'done') return false
-    if (filtro === 'all') return true
-    if (filtro === '360') return img.carpeta.includes('360')
-    if (filtro === 'propiedades') return img.carpeta.includes('propiedades')
-    if (filtro === 'proyectos') return img.carpeta.includes('proyectos')
-    if (filtro === 'otros') return !img.carpeta.includes('360') && !img.carpeta.includes('propiedades') && !img.carpeta.includes('proyectos')
-    return true
+    if (carpeta === 'all') return true
+    return img.carpeta === carpeta || img.carpeta.startsWith(carpeta + '/')
   })
 
   if (imagenes.length === 0) return
@@ -560,7 +639,7 @@ document.getElementById('btnOptAll').addEventListener('click', async () => {
   document.getElementById('btnRecargar').disabled = false
 })
 
-document.getElementById('filtroTipo').addEventListener('change', e => renderTabla(e.target.value))
+document.getElementById('selectCarpeta').addEventListener('change', () => renderTabla())
 document.getElementById('btnRecargar').addEventListener('click', () => {
   pesoAhorrado = 0; cantOptimizadas = 0
   document.getElementById('progressWrap').classList.remove('active')
