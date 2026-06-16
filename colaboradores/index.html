@@ -210,6 +210,40 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .divider { height: 1px; background: var(--border); margin: 1.4rem 0; }
+
+    /* ── Mensajes ── */
+    .msg-inbox { display:flex; flex-direction:column; gap:.5rem; }
+    .msg-card { background:rgba(255,255,255,.025); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .msg-card-head { display:flex; align-items:center; gap:.7rem; padding:.85rem 1rem; cursor:pointer; }
+    .msg-unread-dot { width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+    .msg-unread-dot.leido { background:transparent; }
+    .msg-card-asunto { font-size:.82rem; font-weight:600; color:var(--blanco); flex:1; }
+    .msg-card-fecha  { font-size:.62rem; color:var(--gris); white-space:nowrap; }
+    .msg-card-body   { display:none; border-top:1px solid var(--border); padding:.9rem 1rem 1rem; }
+    .msg-card-body.open { display:block; }
+    .msg-card-cuerpo { font-size:.78rem; color:rgba(255,255,255,.78); line-height:1.7; white-space:pre-wrap; margin-bottom:.8rem; }
+
+    .reply-area { margin-top:.6rem; }
+    .reply-titulo { font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gris); font-weight:600; margin-bottom:.55rem; }
+    .reply-item-colab { background:rgba(215,111,63,.07); border-radius:8px; padding:.55rem .75rem; margin-bottom:.35rem; }
+    .reply-item-colab .reply-cuerpo { font-size:.75rem; color:rgba(255,255,255,.7); }
+    .reply-item-colab .reply-meta { font-size:.6rem; color:var(--gris); margin-top:.2rem; }
+    .reply-input {
+      width:100%; padding:.5rem .7rem; background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.1); color:var(--blanco);
+      border-radius:8px; font-family:'Inter',sans-serif; font-size:.76rem;
+      resize:vertical; min-height:60px; box-sizing:border-box; margin-top:.4rem;
+    }
+    .reply-input:focus { outline:none; border-color:rgba(215,111,63,.5); }
+    .btn-reply {
+      margin-top:.5rem; padding:.42rem 1rem; background:var(--accent); color:#fff;
+      border:none; border-radius:8px; font-size:.72rem; font-weight:600;
+      cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .15s;
+    }
+    .btn-reply:hover { opacity:.85; }
+    .btn-reply:disabled { opacity:.4; cursor:not-allowed; }
+    .no-msgs { text-align:center; padding:2rem; color:var(--gris); font-size:.78rem; }
+    .badge-nuevo { font-size:.58rem; background:rgba(215,111,63,.15); color:var(--accent); border-radius:999px; padding:.1rem .5rem; flex-shrink:0; }
   </style>
 </head>
 <body>
@@ -281,19 +315,39 @@
     document.getElementById('headerCanal').innerHTML =
       `<strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}`
 
-    // ── Cargar métricas globales ───────────────────
-    const [rVisitas, rVisitas30, rContactos, rCampanas] = await Promise.all([
+    // ── Cargar métricas globales + mensajes ───────
+    const canalIds    = canales.map(c => c.id)
+    const ciudadesMias = [...new Set(canales.map(c => c.ciudad).filter(Boolean))]
+    const provinciasMias = [...new Set(canales.map(c => c.provincia).filter(Boolean))]
+
+    const [rVisitas, rVisitas30, rContactos, rCampanas, rMensajes] = await Promise.all([
       supabase.from('visitas').select('created_at, canal_via, canal_ref').in('canal_ref', codigos),
       supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigos).gte('created_at', hace30),
       supabase.from('contactos').select('*').in('canal_ref', codigos).order('created_at', { ascending: false }),
       supabase.from('campanas_canales')
         .select('canal_id, campanas(nombre, activa, fecha_inicio, fecha_fin)')
-        .in('canal_id', canales.map(c => c.id))
+        .in('canal_id', canales.map(c => c.id)),
+      supabase.from('mensajes')
+        .select('id, asunto, cuerpo, usuario_id, ciudad, provincia, tipo_acceso, created_at, mensajes_respuestas(id, usuario_id, cuerpo, created_at)')
+        .order('created_at', { ascending: false })
     ])
 
     const visitas    = rVisitas.data    || []
     const scans30    = rVisitas30.count || 0
     const contactos  = rContactos.data  || []
+
+    // Filtrar mensajes para este usuario
+    // Lógica: si usuario_id está → solo ese usuario
+    // Si no → cumplir TODOS los filtros activos (AND): ciudad, provincia, tipo_acceso
+    const userTipoAcceso = esPasivo ? 'pasivo' : 'activo'
+    const todosMsg = rMensajes.data || []
+    const misMensajes = todosMsg.filter(m => {
+      if (m.usuario_id)   return m.usuario_id === userId
+      if (m.ciudad      && !ciudadesMias.includes(m.ciudad))      return false
+      if (m.provincia   && !provinciasMias.includes(m.provincia)) return false
+      if (m.tipo_acceso && m.tipo_acceso !== userTipoAcceso)      return false
+      return true  // pasa todos los filtros activos (null = sin restricción)
+    })
     const totalScans = visitas.length
     const conv       = totalScans > 0 ? ((contactos.length / totalScans) * 100).toFixed(1) : 0
 
@@ -339,7 +393,7 @@
     main.innerHTML = `
       <div class="bienvenida">
         <h1>Bienvenido</h1>
-        <p>${canales[0].ciudad ? canales[0].ciudad + (canales[0].provincia ? ', ' + canales[0].provincia : '') : 'Tu panel de colaborador'}
+        <p>${canales[0].ciudad ? esc(canales[0].ciudad) + (canales[0].provincia ? ', ' + esc(canales[0].provincia) : '') : 'Tu panel de colaborador'}
           · <span class="tipo-pill tipo-${esPasivo ? 'pasivo':'activo'}">${esPasivo ? 'Punto de venta' : 'Inmobiliaria / Vendedor'}</span>
         </p>
       </div>
@@ -379,6 +433,35 @@
 
       <!-- Tabla de consultas -->
       ${esPasivo ? renderPasivo(contactos) : renderActivo(contactos)}
+
+      <!-- Mensajes de Sur Patagonia -->
+      <div class="seccion" id="secMensajes">
+        <div class="sec-titulo">Mensajes de Sur Patagonia${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem;">${misMensajes.length}</span>` : ''}</div>
+        <div class="msg-inbox" id="msgInbox">
+          ${misMensajes.length ? misMensajes.map((m, i) => `
+            <div class="msg-card" id="msgCard-${i}">
+              <div class="msg-card-head" onclick="toggleMsg(${i})">
+                <div class="msg-unread-dot" id="dot-${i}"></div>
+                <div class="msg-card-asunto">${esc(m.asunto)}</div>
+                <div class="msg-card-fecha">${fmt(m.created_at)}</div>
+              </div>
+              <div class="msg-card-body" id="msgBody-${i}">
+                <div class="msg-card-cuerpo">${esc(m.cuerpo)}</div>
+                ${!esPasivo ? `
+                  <div class="reply-area">
+                    <div class="reply-titulo">Tu respuesta</div>
+                    ${(m.mensajes_respuestas || []).filter(r => r.usuario_id === userId).map(r => `
+                      <div class="reply-item-colab">
+                        <div class="reply-cuerpo">${esc(r.cuerpo)}</div>
+                        <div class="reply-meta">${fmt(r.created_at)}</div>
+                      </div>`).join('')}
+                    <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
+                    <button class="btn-reply" onclick="enviarRespuesta('${m.id}', ${i}, ${JSON.stringify(canales[0]?.nombre||'')})">Enviar respuesta</button>
+                  </div>` : ''}
+              </div>
+            </div>`).join('') : '<div class="no-msgs">No tenés mensajes por ahora.</div>'}
+        </div>
+      </div>
     `
 
     function renderPasivo(contactos) {
@@ -443,6 +526,42 @@
             </table>
           </div>
         </div>`
+    }
+
+    // ── Mensajes: toggle y respuesta ──
+    window.toggleMsg = (i) => {
+      document.getElementById(`msgBody-${i}`).classList.toggle('open')
+      const dot = document.getElementById(`dot-${i}`)
+      if (dot) dot.classList.add('leido')
+    }
+
+    window.enviarRespuesta = async (mensajeId, i, canalNombre) => {
+      const input = document.getElementById(`replyInput-${i}`)
+      const cuerpo = input.value.trim()
+      if (!cuerpo) return
+      const btn = input.nextElementSibling
+      btn.disabled = true; btn.textContent = 'Enviando...'
+      const { error } = await supabase.from('mensajes_respuestas').insert({
+        mensaje_id: mensajeId,
+        usuario_id: userId,
+        usuario_nombre: session.user.email,
+        canal_nombre: canalNombre,
+        cuerpo
+      })
+      if (error) {
+        btn.textContent = 'Error — intentá de nuevo'
+        btn.disabled = false
+      } else {
+        input.value = ''
+        btn.textContent = '✓ Respuesta enviada'
+        // Mostrar respuesta en pantalla
+        const replyArea = input.parentNode
+        const newItem = document.createElement('div')
+        newItem.className = 'reply-item-colab'
+        newItem.innerHTML = `<div class="reply-cuerpo">${esc(cuerpo)}</div><div class="reply-meta">Ahora</div>`
+        replyArea.insertBefore(newItem, input)
+        setTimeout(() => { btn.textContent = 'Enviar respuesta'; btn.disabled = false }, 2000)
+      }
     }
 
   })()
