@@ -2067,7 +2067,8 @@ ALTER TABLE proyectos
 
   // ── Auth check ─────────────────────────────────────────
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) { window.location.href = 'login.html'; }
+  if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
+if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 
   // ── Logout ─────────────────────────────────────────────
   const btnLogout = document.getElementById('btnLogout')

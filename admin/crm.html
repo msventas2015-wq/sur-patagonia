@@ -231,7 +231,8 @@ import { supabase } from '../js/config.js'
 
 // ── Auth ──
 const { data: { session } } = await supabase.auth.getSession()
-if (!session) { window.location.href = 'login.html' }
+if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
+if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
 })

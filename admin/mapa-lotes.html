@@ -283,6 +283,11 @@
 <script type="module">
 import { supabase } from '../js/config.js'
 
+// ── Auth ──────────────────────────────────────────────────────
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
+if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+
 // ── Estado ────────────────────────────────────────────────────
 let proyectoActual = null
 let lotes = []

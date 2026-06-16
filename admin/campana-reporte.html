@@ -164,7 +164,8 @@
   const TIPO = { punto_venta:'Punto de venta', inmobiliaria:'Inmobiliaria', particular:'Particular', evento:'Evento' }
 
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) { location.href = 'login.html' }
+  if (!session) { location.href = 'login.html'; throw new Error('no session') }
+if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
   document.getElementById('btnLogout').addEventListener('click', async e => {
     e.preventDefault(); await supabase.auth.signOut(); location.href = 'login.html'
   })
