@@ -2481,9 +2481,9 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
     // Auto-optimizar imágenes antes de subir (saltar PDFs)
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
     const fileToUpload = isPdf ? file : await optimizarImagen(file, {
-      maxAncho: carpeta.includes('masterplan') ? 4096 : 1920,
-      maxAlto:  carpeta.includes('masterplan') ? 4096 : 1920,
-      calidad: 0.92
+      maxAncho: carpeta.includes('masterplan') ? 8000 : 8000,
+      maxAlto:  carpeta.includes('masterplan') ? 8000 : 8000,
+      calidad: 0.95  // máxima calidad — el ahorro viene del formato WebP, no de reducir calidad
     })
     const ext  = isPdf ? file.name.split('.').pop().toLowerCase() : 'webp'
     const path = `${carpeta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
@@ -3085,7 +3085,7 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
 </div>
 <script type="module">
 // ══ MAPA DE LOTES — lógica del panel inline ══════════════════════════
-import { supabase } from '../js/config.js'
+import { supabase, subirImagen } from '../js/config.js'
 
 // ── Zonas editables ───────────────────────────────────────────────────
 const ML_ZONA_DEFAULTS = [
@@ -3225,15 +3225,12 @@ window.mlSubirMapa = async (input) => {
   const file = input.files[0]; if (!file) return
   const pid = window._proyectoId; if (!pid) { alert('Guardá el proyecto primero.'); return }
   const slug = document.getElementById('slug')?.value || pid
-  const ext = file.name.split('.').pop()
-  const path = `mapas/${slug}/mapa.${ext}`
   document.getElementById('mlCanvasInfo').textContent = 'Subiendo...'
-  const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
-  if (error) { alert('Error: ' + error.message); return }
-  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
-  _mlUrl = data.publicUrl
-  mlMostrarMapa(_mlUrl)
-  document.getElementById('mlCanvasInfo').textContent = 'Imagen cargada — posicioná los lotes y guardá'
+  try {
+    _mlUrl = await subirImagen(file, `mapas/${slug}`)
+    mlMostrarMapa(_mlUrl)
+    document.getElementById('mlCanvasInfo').textContent = 'Imagen cargada — posicioná los lotes y guardá'
+  } catch(e) { alert('Error: ' + e.message) }
 }
 
 function mlMostrarMapa(url) {
@@ -3467,7 +3464,7 @@ document.getElementById('tabMapa')?.addEventListener('click', async () => {
 
 <script type="module">
 // ── Representantes del proyecto ──────────────────────────────────────────
-import { supabase } from '../js/config.js'
+import { supabase, subirImagen } from '../js/config.js'
 
 let _repLista = []
 
@@ -3492,13 +3489,10 @@ window.repSubirLogo = async (i, input) => {
   const file = input.files[0]; if (!file) return
   const pid = window._proyectoId; if (!pid) { alert('Guardá el proyecto primero.'); return }
   const slug = document.getElementById('slug')?.value || pid
-  const ext = file.name.split('.').pop()
-  const path = `representantes/${slug}/${Date.now()}.${ext}`
-  const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
-  if (error) { alert('Error subiendo logo: ' + error.message); return }
-  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
-  _repLista[i].logo_url = data.publicUrl
-  repRender()
+  try {
+    _repLista[i].logo_url = await subirImagen(file, `representantes/${slug}`)
+    repRender()
+  } catch(e) { alert('Error subiendo logo: ' + e.message) }
 }
 
 function repRender() {

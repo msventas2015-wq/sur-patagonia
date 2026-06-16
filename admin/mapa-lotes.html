@@ -281,7 +281,7 @@
 <div class="toast" id="toast"></div>
 
 <script type="module">
-import { supabase } from '../js/config.js'
+import { supabase, subirImagen } from '../js/config.js'
 
 // ── Auth ──────────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -432,15 +432,14 @@ function quitarPosicion() {
 async function subirMapa(input) {
   if (!input.files[0] || !proyectoActual) return
   const file = input.files[0]
-  const path = `mapas/${proyectoActual.slug}/mapa.${file.name.split('.').pop()}`
   toast('Subiendo imagen...', '')
-  const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
-  if (error) { toast('Error al subir: ' + error.message, 'err'); return }
-  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
-  mapaUrl = data.publicUrl
-  proyectoActual.mapa_imagen_url = mapaUrl
-  mostrarMapa(mapaUrl)
-  toast('Imagen subida ✓', 'ok')
+  try {
+    const url = await subirImagen(file, `mapas/${proyectoActual.slug}`)
+    mapaUrl = url
+    proyectoActual.mapa_imagen_url = mapaUrl
+    mostrarMapa(mapaUrl)
+    toast('Imagen subida ✓', 'ok')
+  } catch(e) { toast('Error al subir: ' + e.message, 'err') }
 }
 
 // ── Mostrar mapa ──────────────────────────────────────────────
