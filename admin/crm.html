@@ -97,6 +97,18 @@
     .crm-nota-input { width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.75rem; resize:vertical; min-height:60px; box-sizing:border-box; }
     .crm-nota-save { margin-top:0.4rem; padding:0.4rem 1rem; background:var(--accent); color:#fff; border:none; border-radius:6px; font-size:0.72rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
 
+    /* ── Log de notas ── */
+    .crm-notas-titulo { font-size:0.6rem; color:var(--gris); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem; margin-top:0.8rem; }
+    .crm-notas-log { display:flex; flex-direction:column; gap:0.4rem; max-height:210px; overflow-y:auto; margin-bottom:0.8rem; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.1) transparent; }
+    .crm-nota-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:0.55rem 0.75rem; }
+    .crm-nota-item-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.28rem; }
+    .crm-nota-item-fecha { font-size:0.6rem; color:var(--gris); }
+    .crm-nota-item-del { background:none; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size:0.65rem; padding:0; line-height:1; transition:color .15s; font-family:'Inter',sans-serif; }
+    .crm-nota-item-del:hover { color:#e05c5c; }
+    .crm-nota-item-texto { font-size:0.75rem; color:rgba(255,255,255,0.8); line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+    .crm-notas-empty { font-size:0.7rem; color:rgba(255,255,255,0.2); text-align:center; padding:0.7rem 0; }
+    .crm-nota-new-label { font-size:0.6rem; color:var(--gris); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem; }
+
     /* spinner */
     .sp { width:24px; height:24px; border:2px solid rgba(255,255,255,0.1); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin:2rem auto; }
     @keyframes spin{to{transform:rotate(360deg);}}
@@ -200,8 +212,11 @@
     <div class="crm-modal-msg" id="modalMensaje" style="display:none;"></div>
     <select class="crm-etapa-select" id="modalEtapa"></select>
     <div class="crm-nota-wrap">
-      <textarea class="crm-nota-input" id="modalNota" placeholder="Notas internas sobre este lead..."></textarea>
-      <button class="crm-nota-save" id="modalNotaSave">Guardar nota</button>
+      <div class="crm-notas-titulo">Notas internas</div>
+      <div class="crm-notas-log" id="modalNotasLog"></div>
+      <div class="crm-nota-new-label">Nueva nota</div>
+      <textarea class="crm-nota-input" id="modalNota" placeholder="Escribí tu nota..."></textarea>
+      <button class="crm-nota-save" id="modalNotaSave">+ Agregar nota</button>
     </div>
     <div class="crm-modal-actions" id="modalActions"></div>
   </div>
@@ -383,7 +398,8 @@ function abrirModal(id) {
     await supabase.from('contactos').update({ estado: nueva, leido: true }).eq('id', id)
   }
 
-  document.getElementById('modalNota').value = l.notas || ''
+  renderNotasLog(l)
+  document.getElementById('modalNota').value = ''
 
   const actions = document.getElementById('modalActions')
   actions.innerHTML = ''
@@ -413,15 +429,52 @@ document.getElementById('crmOverlay').addEventListener('click', e => {
   }
 })
 
+function renderNotasLog(lead) {
+  const cont = document.getElementById('modalNotasLog')
+  if (!cont) return
+  const lista = Array.isArray(lead.notas_log) ? lead.notas_log : []
+  if (!lista.length) {
+    cont.innerHTML = '<div class="crm-notas-empty">Sin notas aún</div>'
+    return
+  }
+  cont.innerHTML = lista.map((n, i) => {
+    const d = new Date(n.fecha)
+    const fecha = d.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' })
+      + ' ' + d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+    return `
+      <div class="crm-nota-item">
+        <div class="crm-nota-item-header">
+          <span class="crm-nota-item-fecha">${fecha}</span>
+          <button class="crm-nota-item-del" onclick="window._eliminarNota(${i})" title="Eliminar">✕</button>
+        </div>
+        <div class="crm-nota-item-texto">${esc(n.texto)}</div>
+      </div>`
+  }).join('')
+}
+
+window._eliminarNota = async (i) => {
+  if (!_modalId) return
+  const lead = _leads.find(l => l.id === _modalId)
+  if (!lead || !Array.isArray(lead.notas_log)) return
+  lead.notas_log.splice(i, 1)
+  renderNotasLog(lead)
+  await supabase.from('contactos').update({ notas_log: lead.notas_log }).eq('id', _modalId)
+}
+
 document.getElementById('modalNotaSave').addEventListener('click', async () => {
   if (!_modalId) return
-  const nota = document.getElementById('modalNota').value
+  const texto = document.getElementById('modalNota').value.trim()
+  if (!texto) return
   const lead = _leads.find(l => l.id === _modalId)
-  if (lead) lead.notas = nota
-  await supabase.from('contactos').update({ notas: nota }).eq('id', _modalId)
+  if (!lead) return
+  if (!Array.isArray(lead.notas_log)) lead.notas_log = []
+  lead.notas_log.unshift({ texto, fecha: new Date().toISOString() })
+  document.getElementById('modalNota').value = ''
+  renderNotasLog(lead)
+  await supabase.from('contactos').update({ notas_log: lead.notas_log }).eq('id', _modalId)
   const btn = document.getElementById('modalNotaSave')
-  btn.textContent = '✓ Guardado'
-  setTimeout(() => { btn.textContent = 'Guardar nota' }, 1500)
+  btn.textContent = '✓ Guardada'
+  setTimeout(() => { btn.textContent = '+ Agregar nota' }, 1200)
 })
 
 cargar()
