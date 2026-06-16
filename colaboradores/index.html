@@ -328,7 +328,7 @@
         .select('canal_id, campanas(nombre, activa, fecha_inicio, fecha_fin)')
         .in('canal_id', canales.map(c => c.id)),
       supabase.from('mensajes')
-        .select('id, asunto, cuerpo, usuario_id, ciudad, provincia, tipo_acceso, created_at, mensajes_respuestas(id, usuario_id, cuerpo, created_at)')
+        .select('id, asunto, cuerpo, usuario_id, ciudad, provincia, tipo_acceso, provincias_arr, ciudades_arr, canal_ids, created_at, mensajes_respuestas(id, usuario_id, cuerpo, created_at)')
         .order('created_at', { ascending: false })
     ])
 
@@ -338,15 +338,36 @@
 
     // Filtrar mensajes para este usuario
     // Lógica: si usuario_id está → solo ese usuario
-    // Si no → cumplir TODOS los filtros activos (AND): ciudad, provincia, tipo_acceso
+    // Si no → AND entre todos los filtros activos.
+    // Soporta tanto campos nuevos (arrays) como campos viejos (single value).
     const userTipoAcceso = esPasivo ? 'pasivo' : 'activo'
+    const misCanalesIds  = canales.map(c => c.id)
     const todosMsg = rMensajes.data || []
     const misMensajes = todosMsg.filter(m => {
-      if (m.usuario_id)   return m.usuario_id === userId
-      if (m.ciudad      && !ciudadesMias.includes(m.ciudad))      return false
-      if (m.provincia   && !provinciasMias.includes(m.provincia)) return false
-      if (m.tipo_acceso && m.tipo_acceso !== userTipoAcceso)      return false
-      return true  // pasa todos los filtros activos (null = sin restricción)
+      if (m.usuario_id) return m.usuario_id === userId
+
+      // ── Nuevos campos multi-select (arrays) ──
+      // canal_ids: alguno de los mis canales debe estar en la lista
+      if (m.canal_ids?.length) {
+        if (!m.canal_ids.some(id => misCanalesIds.includes(id))) return false
+      }
+      // provincias_arr: mi provincia debe estar en alguna de las seleccionadas
+      if (m.provincias_arr?.length) {
+        if (!m.provincias_arr.some(p => provinciasMias.includes(p))) return false
+      }
+      // ciudades_arr: mi ciudad debe estar en alguna de las seleccionadas
+      if (m.ciudades_arr?.length) {
+        if (!m.ciudades_arr.some(c => ciudadesMias.includes(c))) return false
+      }
+
+      // ── Compatibilidad con campos viejos (mensajes anteriores) ──
+      if (!m.provincias_arr && !m.ciudades_arr && !m.canal_ids) {
+        if (m.ciudad      && !ciudadesMias.includes(m.ciudad))      return false
+        if (m.provincia   && !provinciasMias.includes(m.provincia)) return false
+        if (m.tipo_acceso && m.tipo_acceso !== userTipoAcceso)      return false
+      }
+
+      return true
     })
     const totalScans = visitas.length
     const conv       = totalScans > 0 ? ((contactos.length / totalScans) * 100).toFixed(1) : 0
@@ -456,7 +477,7 @@
                         <div class="reply-meta">${fmt(r.created_at)}</div>
                       </div>`).join('')}
                     <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
-                    <button class="btn-reply" onclick="enviarRespuesta('${m.id}', ${i}, ${JSON.stringify(canales[0]?.nombre||'')})">Enviar respuesta</button>
+                    <button class="btn-reply" onclick="enviarRespuesta('${m.id}', ${i}, ${JSON.stringify(canales[0]?.nombre||'').replace(/"/g,'&quot;')})">Enviar respuesta</button>
                   </div>` : ''}
               </div>
             </div>`).join('') : '<div class="no-msgs">No tenés mensajes por ahora.</div>'}
