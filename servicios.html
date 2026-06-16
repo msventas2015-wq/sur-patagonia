@@ -31,7 +31,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Montserrat:wght@200;300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Serif+Display:ital@0;1&family=Raleway:wght@200;300;400;500&family=Josefin+Sans:wght@200;300;400&family=Lora:ital,wght@0,400;0,600;1,400&family=Nunito+Sans:wght@300;400;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Outfit:wght@200;300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Montserrat:wght@200;300;400;500;600&display=swap" rel="stylesheet" />
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
@@ -824,7 +824,7 @@
         <h2 class="section-title" style="margin-bottom:2rem;">Estamos<br><em>para ayudarte</em></h2>
         <p style="color:var(--muted);font-size:0.85rem;line-height:1.9;margin-bottom:2rem;">Ya sea que estés buscando tu próxima propiedad o querés desarrollar un proyecto en la Patagonia, nuestro equipo está listo.</p>
         <div class="c-dato"><span>📍</span> El Bolsón, Río Negro, Argentina</div>
-        <div class="c-dato"><span>📞</span> +54 9 294 400 0000</div>
+        <div class="c-dato"><span>📞</span> <a href="tel:+5492944791799" style="color:inherit;text-decoration:none;">+54 9 294 479 1799</a></div>
         <div class="c-dato"><span>✉️</span> info@surpatagonia.com.ar</div>
       </div>
       <div class="reveal-right">
@@ -891,15 +891,15 @@
     <div class="footer-col">
       <h5>Contacto</h5>
       <ul class="footer-links">
-        <li><a href="#">El Bolsón, Río Negro</a></li>
-        <li><a href="#">Argentina</a></li>
-        <li><a href="#">contacto@surpatagonia.com.ar</a></li>
+        <li>El Bolsón, Río Negro</li>
+        <li>Argentina</li>
+        <li><a href="mailto:contacto@surpatagonia.com.ar">contacto@surpatagonia.com.ar</a></li>
       </ul>
     </div>
   </div>
   <div class="footer-bottom">
     <div style="display:flex;justify-content:space-between;width:100%;">
-      <span>© 2025 Sur Patagonia. Todos los derechos reservados.</span>
+      <span>© 2026 Sur Patagonia. Todos los derechos reservados.</span>
       <span style="color:var(--gold);">Patagonia, Argentina</span>
     </div>
     <div style="font-size:0.62rem;color:var(--muted);line-height:1.6;">
@@ -910,13 +910,11 @@
 </footer>
 
 <script type="module">
-import { supabase } from './js/config.js'
+import { supabase, getRef, getRefVia, getSiteConfig } from './js/config.js'
 async function aplicarSiteConfig() {
   try {
-    const { data } = await supabase.from('site_config').select('key, value')
-    if (!data) return
-    const cfg = {}
-    data.forEach(r => cfg[r.key] = r.value)
+    const cfg = await getSiteConfig()
+    if (!cfg || !Object.keys(cfg).length) return
     if (cfg.img_acordeon_comprar) { const el = document.getElementById('bg-comprar'); if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_comprar}')` }
     if (cfg.img_acordeon_alquiler) { const el = document.getElementById('bg-alquilar'); if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_alquiler}')` }
     if (cfg.img_acordeon_prop) { const el = document.getElementById('bg-publicar'); if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_prop}')` }
@@ -1028,12 +1026,14 @@ document.getElementById('formContacto').addEventListener('submit', async functio
   btn.textContent = 'Enviando...'
   btn.disabled = true
   try {
-    const { error } = await supabase.from('consultas').insert([{
+    const { error } = await supabase.from('contactos').insert([{
       nombre: document.getElementById('cNombre').value,
       email: document.getElementById('cEmail').value,
       telefono: document.getElementById('cTelefono').value,
       mensaje: document.getElementById('cMensaje').value,
-      origen: 'servicios'
+      canal_ref: getRef(),
+      canal_via: getRefVia(),
+      fecha: new Date().toISOString()
     }])
     if (error) throw error
     alerta.innerHTML = '<div class="alerta alerta-ok">¡Mensaje enviado! Te respondemos a la brevedad.</div>'

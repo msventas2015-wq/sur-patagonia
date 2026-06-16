@@ -11,9 +11,16 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Propiedades — Sur Patagonia</title>
+  <title>Propiedades en Venta — Sur Patagonia | El Bolsón, Río Negro</title>
+  <meta name="description" content="Explorá propiedades en venta en El Bolsón y la Patagonia Argentina. Casas, terrenos y lotes con financiación. Consultoría personalizada." />
+  <link rel="canonical" href="https://surpatagonia.com.ar/propiedades.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://surpatagonia.com.ar/propiedades.html" />
+  <meta property="og:title" content="Propiedades en Venta — Sur Patagonia" />
+  <meta property="og:description" content="Explorá propiedades en venta en El Bolsón y la Patagonia Argentina. Casas, terrenos y lotes con financiación." />
+  <meta property="og:image" content="https://surpatagonia.com.ar/og-image.jpg" />
   <link rel="stylesheet" href="css/estilos.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600&family=Playfair+Display:ital,wght@0,400;1,400&family=DM+Serif+Display:ital@0;1&family=Raleway:wght@200;300;400&family=Josefin+Sans:wght@200;300;400&family=Lora:ital,wght@0,400;1,400&family=Nunito+Sans:wght@300;400&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Outfit:wght@200;300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Montserrat:wght@200;300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     body { cursor: none; }
@@ -418,7 +425,7 @@
           <h2 class="cnt-title">Estamos<br><em>para ayudarte</em></h2>
           <p class="cnt-desc">Ya sea que estés buscando tu próxima propiedad o querés desarrollar un proyecto en la Patagonia, nuestro equipo está listo.</p>
           <div class="cnt-dato"><span class="cnt-dato-icon">📍</span> El Bolsón, Río Negro, Argentina</div>
-          <div class="cnt-dato"><span class="cnt-dato-icon">📞</span> +54 9 294 400 0000</div>
+          <div class="cnt-dato"><span class="cnt-dato-icon">📞</span> <a href="tel:+5492944791799" style="color:inherit;text-decoration:none;">+54 9 294 479 1799</a></div>
           <div class="cnt-dato"><span class="cnt-dato-icon">✉️</span> info@surpatagonia.com.ar</div>
         </div>
         <div>
@@ -485,15 +492,15 @@
       <div class="ft-col">
         <h5>Contacto</h5>
         <ul class="ft-links">
-          <li><a href="#">El Bolsón, Río Negro</a></li>
-          <li><a href="#">Argentina</a></li>
-          <li><a href="#">contacto@surpatagonia.com.ar</a></li>
+          <li>El Bolsón, Río Negro</li>
+          <li>Argentina</li>
+          <li><a href="mailto:contacto@surpatagonia.com.ar">contacto@surpatagonia.com.ar</a></li>
         </ul>
       </div>
     </div>
     <div class="ft-bottom">
       <div style="display:flex;justify-content:space-between;width:100%;">
-        <span>© 2025 Sur Patagonia. Todos los derechos reservados.</span>
+        <span>© 2026 Sur Patagonia. Todos los derechos reservados.</span>
         <span style="color:#c9a84c;">Patagonia, Argentina</span>
       </div>
       <div style="font-size:0.62rem;">
@@ -543,7 +550,7 @@
   </script>
 
   <script type="module">
-    import { supabase } from './js/config.js'
+    import { supabase, getSiteConfig } from './js/config.js'
 
     const POR_PAGINA = 9
     let paginaActual = 1
@@ -614,7 +621,9 @@
       // Búsqueda por texto/voz
       const termino = document.getElementById('busquedaTexto').value.trim()
       if (termino) {
-        query = query.or(`titulo.ilike.%${termino}%,ciudad.ilike.%${termino}%,ubicacion.ilike.%${termino}%,tipo.ilike.%${termino}%,descripcion.ilike.%${termino}%`)
+        // Escapar caracteres especiales de PostgREST para evitar inyección
+        const t = termino.replace(/[%_,()'"\\]/g, c => `\\${c}`)
+        query = query.or(`titulo.ilike.%${t}%,ciudad.ilike.%${t}%,ubicacion.ilike.%${t}%,tipo.ilike.%${t}%,descripcion.ilike.%${t}%`)
       }
 
       query = query.order(ordenCol, { ascending: ordenDir === 'asc' })
@@ -1026,16 +1035,12 @@
       mapa.fitBounds(bounds, { padding: [40, 40] })
     }
 
-    // Cargar imágenes y opacidades desde site_config
-    supabase.from('site_config').select('key, value')
-      .in('key', ['img_propiedades_header', 'overlay_propiedades', 'img_propiedades_bg', 'overlay_propiedades_bg', 'font_titulos'])
-      .then(({ data }) => {
-        if (!data) {
+    // Cargar imágenes y opacidades desde site_config (cacheado en sessionStorage)
+    getSiteConfig().then(cfg => {
+        if (!cfg || !Object.keys(cfg).length) {
           document.querySelectorAll('.page-header h1').forEach(el => el.style.opacity = '1')
           return
         }
-        const cfg = {}
-        data.forEach(r => cfg[r.key] = r.value)
         if (cfg.font_titulos) document.querySelectorAll('h1, h2').forEach(el => { el.style.fontFamily = `'${cfg.font_titulos}', sans-serif` })
         document.querySelectorAll('.page-header h1').forEach(el => el.style.opacity = '1')
 

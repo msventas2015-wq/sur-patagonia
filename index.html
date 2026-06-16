@@ -135,7 +135,7 @@
   <!-- FUENTES -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Montserrat:wght@200;300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Serif+Display:ital@0;1&family=Raleway:wght@200;300;400;500&family=Josefin+Sans:wght@200;300;400&family=Lora:ital,wght@0,400;0,600;1,400&family=Nunito+Sans:wght@300;400;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Outfit:wght@200;300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Montserrat:wght@200;300;400;500;600&display=swap" rel="stylesheet" />
 
   <!-- SCRIPTS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -643,6 +643,7 @@
 
 <!-- HERO -->
 <section id="hero">
+  <h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Sur Patagonia — Propiedades y Desarrollos en El Bolsón, Patagonia Argentina</h1>
   <div id="hero-video-wrap">
     <div id="yt-bg">
       <div id="yt-player"></div>
@@ -1596,7 +1597,7 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
         <h2 class="section-title" style="margin-bottom:2rem;">Estamos<br><em>para ayudarte</em></h2>
         <p style="color:var(--muted);font-size:0.85rem;line-height:1.9;margin-bottom:2rem;">Ya sea que estés buscando tu próxima propiedad o querés desarrollar un proyecto en la Patagonia, nuestro equipo está listo.</p>
         <div class="c-dato"><span>📍</span> El Bolsón, Río Negro, Argentina</div>
-        <div class="c-dato"><span>📞</span> +54 9 294 400 0000</div>
+        <div class="c-dato"><span>📞</span> <a href="tel:+5492944791799" style="color:inherit;text-decoration:none;">+54 9 294 479 1799</a></div>
         <div class="c-dato"><span>✉️</span> info@surpatagonia.com.ar</div>
       </div>
       <div class="reveal-right">
@@ -1664,15 +1665,15 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
     <div class="footer-col">
       <h5>Contacto</h5>
       <ul class="footer-links">
-        <li><a href="#">El Bolsón, Río Negro</a></li>
-        <li><a href="#">Argentina</a></li>
-        <li><a href="#">contacto@surpatagonia.com.ar</a></li>
+        <li>El Bolsón, Río Negro</li>
+        <li>Argentina</li>
+        <li><a href="mailto:contacto@surpatagonia.com.ar">contacto@surpatagonia.com.ar</a></li>
       </ul>
     </div>
   </div>
   <div class="footer-bottom">
     <div style="display:flex;justify-content:space-between;width:100%;">
-      <span>© 2025 Sur Patagonia. Todos los derechos reservados.</span>
+      <span>© 2026 Sur Patagonia. Todos los derechos reservados.</span>
       <span style="color:var(--gold);">Patagonia, Argentina</span>
     </div>
     <div style="font-size:0.62rem;color:var(--muted);line-height:1.6;">
@@ -1683,13 +1684,11 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
 </footer>
 
 <script type="module">
-import { supabase, getRef, getRefVia } from './js/config.js'
+import { supabase, getRef, getRefVia, getSiteConfig } from './js/config.js'
 async function aplicarSiteConfig() {
   try {
-    const { data } = await supabase.from('site_config').select('key, value')
-    if (!data) return
-    const cfg = {}
-    data.forEach(r => cfg[r.key] = r.value)
+    const cfg = await getSiteConfig()
+    if (!cfg || !Object.keys(cfg).length) return
     if (cfg.img_servicios_bg) document.getElementById('sec-servicios').style.backgroundImage = `url('${cfg.img_servicios_bg}')`
     if (cfg.img_stats_bg) { const el = document.getElementById('stats-bg'); if (el) el.style.backgroundImage = `url('${cfg.img_stats_bg}')` }
     if (cfg.img_acordeon_comprar) { const el = document.getElementById('bg-comprar'); if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_comprar}')` }
@@ -2066,7 +2065,7 @@ async function cargarProyectos() {
   if (!data||!data.length) { grid.innerHTML=`<div style="grid-column:1/-1;padding:4rem;text-align:center;color:var(--muted);">Los proyectos aparecerán aquí una vez que los cargues.</div>`; return }
   grid.innerHTML = data.map(p => {
     const img = p.imagen_portada ? `<img class="proy-img" src="${p.imagen_portada}" alt="${p.titulo}" loading="lazy" />` : `<div class="proy-placeholder">🏔️</div>`
-    return `<div class="proy-card" onclick="location.href='proyectos.html#proyecto-${p.id}'">${img}<div class="proy-content"><div class="proy-type">${p.tipo||'Proyecto'} · ${p.ciudad||''}</div><div class="proy-title">${p.titulo}</div><div class="proy-desc">${(p.descripcion||'').substring(0,120)}</div></div></div>`
+    return `<div class="proy-card" onclick="location.href='${p.slug ? '/'+p.slug : 'proyectos.html'}'">${img}<div class="proy-content"><div class="proy-type">${p.tipo||'Proyecto'} · ${p.ciudad||''}</div><div class="proy-title">${p.titulo}</div><div class="proy-desc">${(p.descripcion||'').substring(0,120)}</div></div></div>`
   }).join('')
 }
 document.getElementById('formContacto').addEventListener('submit', async e => {
@@ -2423,12 +2422,12 @@ async function mostrarDesarrollos() {
         div.className = 'sp-prop-card'
         div.onclick = () => window.open(p.slug ? `/${p.slug}` : 'proyectos.html', '_blank')
         div.innerHTML = `
-          ${p.foto_portada ? `<img src="${p.foto_portada}" alt="${p.nombre}" loading="lazy" />` : ''}
+          ${p.imagen_portada ? `<img src="${p.imagen_portada}" alt="${p.titulo}" loading="lazy" />` : ''}
           <div class="sp-prop-card-body">
-            <div class="sp-prop-card-tipo">${p.categoria || 'Desarrollo'} · ${p.ciudad || ''}</div>
-            <div class="sp-prop-card-titulo">${p.nombre}</div>
-            <div class="sp-prop-card-precio">${p.precio_desde ? `Desde USD ${Number(p.precio_desde).toLocaleString()}` : 'Consultar precio'}</div>
-            <div class="sp-prop-card-loc">📍 ${p.provincia || 'Patagonia Argentina'}</div>
+            <div class="sp-prop-card-tipo">${p.tipo || 'Desarrollo'} · ${p.ciudad || ''}</div>
+            <div class="sp-prop-card-titulo">${p.titulo}</div>
+            <div class="sp-prop-card-precio">Consultar precio</div>
+            <div class="sp-prop-card-loc">📍 ${p.ciudad || 'Patagonia Argentina'}</div>
           </div>`
         msgs.appendChild(div)
         msgs.scrollTop = msgs.scrollHeight
