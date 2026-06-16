@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Colaboradores — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris:#888; --blanco:#f5f3f0; --verde:#4caf77; }
+    .admin-main { font-family:'Inter',system-ui,sans-serif; padding:1.6rem; }
+    .colabs-layout { display:grid; grid-template-columns:420px 1fr; gap:1.2rem; align-items:start; }
+    @media(max-width:1100px){ .colabs-layout { grid-template-columns:1fr; } }
+
+    .card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); padding:1.4rem 1.5rem; }
+    .card-titulo { font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--gris); font-weight:600; margin-bottom:1.3rem; }
+
+    /* Modo toggle */
+    .modo-toggle { display:flex; gap:0.5rem; margin-bottom:1.2rem; }
+    .modo-btn {
+      flex:1; padding:0.5rem; border-radius:8px; font-size:0.72rem; font-weight:600;
+      font-family:'Inter',sans-serif; cursor:pointer; transition:all .15s;
+      border:1px solid var(--card-border); background:none; color:var(--gris);
+    }
+    .modo-btn.on { background:rgba(215,111,63,.12); border-color:var(--accent); color:var(--accent); }
+
+    /* Filtros */
+    .form-field { margin-bottom:0.85rem; }
+    .form-label { display:block; font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gris); margin-bottom:0.35rem; font-weight:600; }
+    .form-input {
+      width:100%; padding:0.48rem 0.7rem; background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.1); color:var(--blanco);
+      border-radius:8px; font-family:'Inter',sans-serif; font-size:0.78rem;
+      box-sizing:border-box; transition:border-color .15s;
+    }
+    .form-input:focus { outline:none; border-color:rgba(215,111,63,.5); }
+    select.form-input { appearance:none; cursor:pointer; }
+    textarea.form-input { resize:vertical; min-height:85px; }
+
+    /* Checkboxes tipo de canal */
+    .tipo-checks { display:flex; gap:0.8rem; margin-top:0.15rem; }
+    .tipo-check-item { display:flex; align-items:center; gap:0.45rem; cursor:pointer; }
+    .tipo-check-item input[type="checkbox"] { accent-color:var(--accent); width:14px; height:14px; cursor:pointer; }
+    .tipo-check-item span { font-size:0.74rem; color:var(--blanco); }
+    .tipo-check-item small { font-size:0.62rem; color:var(--gris); display:block; }
+
+    /* Resumen destinatarios */
+    .dest-resumen {
+      margin-top:0.7rem; padding:0.55rem 0.8rem; border-radius:8px;
+      background:rgba(215,111,63,.07); border:1px solid rgba(215,111,63,.2);
+      font-size:0.72rem; color:rgba(255,255,255,.7); display:none;
+    }
+    .dest-resumen strong { color:var(--accent); }
+
+    .divider-form { height:1px; background:var(--card-border); margin:1rem 0; }
+
+    .btn-enviar {
+      width:100%; padding:0.6rem; background:var(--accent); color:#fff;
+      border:none; border-radius:8px; font-size:0.78rem; font-weight:600;
+      cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .15s; margin-top:0.4rem;
+    }
+    .btn-enviar:hover { opacity:0.88; }
+    .btn-enviar:disabled { opacity:0.4; cursor:not-allowed; }
+
+    /* Lista mensajes */
+    .msg-list { display:flex; flex-direction:column; gap:0.6rem; }
+    .msg-item { background:rgba(255,255,255,0.025); border:1px solid var(--card-border); border-radius:10px; overflow:hidden; }
+    .msg-item:hover { border-color:rgba(255,255,255,0.14); }
+    .msg-head { display:flex; align-items:center; gap:0.7rem; padding:0.85rem 1rem; cursor:pointer; }
+    .msg-badge {
+      font-size:0.55rem; padding:0.15rem 0.55rem; border-radius:999px;
+      font-weight:700; text-transform:uppercase; letter-spacing:0.05em; flex-shrink:0;
+    }
+    .badge-todos     { background:rgba(215,111,63,.12); color:var(--accent); }
+    .badge-zona      { background:rgba(139,143,255,.1);  color:#8b8fff; }
+    .badge-tipo      { background:rgba(201,168,76,.1);   color:#c9a84c; }
+    .badge-individual{ background:rgba(76,175,119,.1);   color:var(--verde); }
+    .msg-asunto { font-size:0.82rem; font-weight:600; color:var(--blanco); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .msg-fecha  { font-size:0.62rem; color:var(--gris); flex-shrink:0; }
+    .msg-replies-badge { font-size:0.62rem; background:rgba(215,111,63,.15); color:var(--accent); border-radius:999px; padding:0.1rem 0.5rem; flex-shrink:0; }
+    .msg-body   { display:none; border-top:1px solid var(--card-border); padding:1rem 1.1rem; }
+    .msg-body.open { display:block; }
+    .msg-dest-info { font-size:0.65rem; color:var(--gris); margin-bottom:0.6rem; }
+    .msg-cuerpo { font-size:0.78rem; color:rgba(255,255,255,.75); line-height:1.65; white-space:pre-wrap; margin-bottom:0.8rem; }
+    .replies-titulo { font-size:0.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gris); font-weight:600; margin-bottom:0.5rem; }
+    .reply-item { background:rgba(255,255,255,.04); border-radius:8px; padding:0.6rem 0.8rem; margin-bottom:0.35rem; }
+    .reply-header { display:flex; justify-content:space-between; margin-bottom:.25rem; }
+    .reply-autor { font-size:0.68rem; font-weight:600; color:var(--blanco); }
+    .reply-fecha { font-size:0.6rem; color:var(--gris); }
+    .reply-cuerpo { font-size:0.75rem; color:rgba(255,255,255,.7); line-height:1.5; }
+    .no-replies { font-size:0.7rem; color:rgba(255,255,255,.2); text-align:center; padding:0.7rem 0; }
+
+    .sp { width:22px; height:22px; border:2px solid rgba(255,255,255,.1); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin:2.5rem auto; display:block; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .empty-msg { text-align:center; padding:3rem 1rem; color:var(--gris); font-size:0.8rem; }
+    .toast { position:fixed; bottom:1.5rem; right:1.5rem; background:#222; border:1px solid var(--card-border); color:var(--blanco); padding:0.7rem 1.2rem; border-radius:10px; font-size:0.78rem; z-index:999; opacity:0; transition:opacity .25s; pointer-events:none; }
+    .toast.show { opacity:1; }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="nueva-propiedad.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nueva propiedad
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="nuevo-proyecto.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nuevo proyecto
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+      <a href="crm.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
+        CRM
+      </a>
+      <a href="canales.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Canales
+      </a>
+      <a href="campanas.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Campañas
+      </a>
+      <a href="tour360.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>
+        Tour 360°
+      </a>
+      <a href="trafico.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Tráfico
+      </a>
+      <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
+      <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        Apariencia
+      </a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Generar PDF
+      </a>
+      <a href="colaboradores.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+        Colaboradores
+      </a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <div style="margin-bottom:1.8rem;">
+      <h2 style="font-weight:300;font-size:1.5rem;margin:0 0 .2rem;">Mensajería · Colaboradores</h2>
+      <p style="font-size:.76rem;color:var(--gris);">Enviá mensajes a tu red. Combiná filtros para zonificar el envío.</p>
+    </div>
+
+    <div class="colabs-layout">
+
+      <!-- ── NUEVO MENSAJE ── -->
+      <div class="card">
+        <div class="card-titulo">Nuevo mensaje</div>
+
+        <!-- Modo: filtros vs individual -->
+        <div class="modo-toggle">
+          <button class="modo-btn on" id="btnModoFiltros">Por zona / tipo</button>
+          <button class="modo-btn"    id="btnModoIndividual">Usuario individual</button>
+        </div>
+
+        <!-- ── MODO FILTROS ── -->
+        <div id="secFiltros">
+          <div class="form-field">
+            <label class="form-label">Provincia</label>
+            <select class="form-input" id="selProvincia">
+              <option value="">Todas las provincias</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Ciudad</label>
+            <select class="form-input" id="selCiudad">
+              <option value="">Todas las ciudades</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Tipo de canal</label>
+            <div class="tipo-checks">
+              <label class="tipo-check-item">
+                <input type="checkbox" id="chkActivo" checked />
+                <span>Activos<small>Vendedores / Inmobiliarias</small></span>
+              </label>
+              <label class="tipo-check-item">
+                <input type="checkbox" id="chkPasivo" checked />
+                <span>Pasivos<small>Puntos de venta</small></span>
+              </label>
+            </div>
+          </div>
+          <div class="dest-resumen" id="destResumen"></div>
+        </div>
+
+        <!-- ── MODO INDIVIDUAL ── -->
+        <div id="secIndividual" style="display:none;">
+          <div class="form-field">
+            <label class="form-label">Colaborador</label>
+            <select class="form-input" id="selUsuario">
+              <option value="">— Seleccioná un colaborador —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="divider-form"></div>
+
+        <div class="form-field">
+          <label class="form-label">Asunto</label>
+          <input type="text" class="form-input" id="msgAsunto" placeholder="Ej: Nuevo proyecto disponible" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Mensaje</label>
+          <textarea class="form-input" id="msgCuerpo" placeholder="Escribí el mensaje para tus colaboradores..."></textarea>
+        </div>
+
+        <button class="btn-enviar" id="btnEnviar">Enviar mensaje</button>
+      </div>
+
+      <!-- ── MENSAJES ENVIADOS ── -->
+      <div class="card">
+        <div class="card-titulo">Mensajes enviados</div>
+        <div id="msgListaWrap"><div class="sp"></div></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { supabase } from '../js/config.js'
+
+// ── Auth ──
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html'; throw new Error('no-session') }
+document.getElementById('btnLogout').addEventListener('click', async e => {
+  e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
+})
+
+const esc     = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+const fmtCorta = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' }) : '—'
+
+function toast(msg, ms = 2400) {
+  const el = document.getElementById('toast')
+  el.textContent = msg; el.classList.add('show')
+  setTimeout(() => el.classList.remove('show'), ms)
+}
+
+// ── Cargar canales ──
+const { data: rawCanales } = await supabase.from('canales').select('id,nombre,ciudad,provincia,user_id').order('nombre')
+const canales = rawCanales || []
+
+// Datos para filtros
+const provincias = [...new Set(canales.map(c => c.provincia).filter(Boolean))].sort()
+
+// Colaboradores únicos (por user_id) con label = sus canales
+const usuariosMap = new Map()
+canales.forEach(c => {
+  if (!c.user_id) return
+  if (!usuariosMap.has(c.user_id)) usuariosMap.set(c.user_id, [])
+  usuariosMap.get(c.user_id).push(c.nombre)
+})
+const usuariosUnicos = [...usuariosMap.entries()].map(([uid, nombres]) => ({ uid, label: nombres.join(' · ') }))
+
+// ── Poblar selects ──
+const selProv   = document.getElementById('selProvincia')
+const selCiudad = document.getElementById('selCiudad')
+const selUser   = document.getElementById('selUsuario')
+
+provincias.forEach(p => selProv.insertAdjacentHTML('beforeend', `<option value="${esc(p)}">${esc(p)}</option>`))
+usuariosUnicos.forEach(u => selUser.insertAdjacentHTML('beforeend', `<option value="${esc(u.uid)}">${esc(u.label)}</option>`))
+
+function reconstruirCiudades(provinciaFiltro) {
+  const fuente = provinciaFiltro ? canales.filter(c => c.provincia === provinciaFiltro) : canales
+  const ciudades = [...new Set(fuente.map(c => c.ciudad).filter(Boolean))].sort()
+  selCiudad.innerHTML = '<option value="">Todas las ciudades</option>'
+  ciudades.forEach(c => selCiudad.insertAdjacentHTML('beforeend', `<option value="${esc(c)}">${esc(c)}</option>`))
+}
+reconstruirCiudades(null)
+
+// ── Estado del form ──
+let _modo = 'filtros'   // 'filtros' | 'individual'
+let _provincia = null, _ciudad = null
+let _chkActivo = true, _chkPasivo = true
+let _userId = null
+
+// Modo toggle
+document.getElementById('btnModoFiltros').addEventListener('click', () => {
+  _modo = 'filtros'
+  document.getElementById('btnModoFiltros').classList.add('on')
+  document.getElementById('btnModoIndividual').classList.remove('on')
+  document.getElementById('secFiltros').style.display   = 'block'
+  document.getElementById('secIndividual').style.display = 'none'
+  actualizarResumen()
+})
+document.getElementById('btnModoIndividual').addEventListener('click', () => {
+  _modo = 'individual'
+  document.getElementById('btnModoIndividual').classList.add('on')
+  document.getElementById('btnModoFiltros').classList.remove('on')
+  document.getElementById('secFiltros').style.display   = 'none'
+  document.getElementById('secIndividual').style.display = 'block'
+  document.getElementById('destResumen').style.display  = 'none'
+})
+
+// Provincia → reconstruir ciudades
+selProv.addEventListener('change', e => {
+  _provincia = e.target.value || null
+  _ciudad = null
+  reconstruirCiudades(_provincia)
+  actualizarResumen()
+})
+selCiudad.addEventListener('change', e => { _ciudad = e.target.value || null; actualizarResumen() })
+document.getElementById('chkActivo').addEventListener('change', e => { _chkActivo = e.target.checked; actualizarResumen() })
+document.getElementById('chkPasivo').addEventListener('change', e => { _chkPasivo = e.target.checked; actualizarResumen() })
+selUser.addEventListener('change', e => { _userId = e.target.value || null })
+
+// Resumen de destinatarios
+function actualizarResumen() {
+  const box = document.getElementById('destResumen')
+  if (_modo !== 'filtros') { box.style.display = 'none'; return }
+
+  const partes = []
+  if (_provincia) partes.push(`Provincia: <strong>${esc(_provincia)}</strong>`)
+  if (_ciudad)    partes.push(`Ciudad: <strong>${esc(_ciudad)}</strong>`)
+
+  if (_chkActivo && _chkPasivo) {
+    partes.push('Tipo: <strong>Todos los canales</strong>')
+  } else if (_chkActivo) {
+    partes.push('Tipo: <strong>Solo activos (vendedores / inmobiliarias)</strong>')
+  } else if (_chkPasivo) {
+    partes.push('Tipo: <strong>Solo pasivos (puntos de venta)</strong>')
+  }
+
+  if (!_provincia && !_ciudad && _chkActivo && _chkPasivo) {
+    box.innerHTML = 'Se enviará a <strong>todos los colaboradores</strong>'
+  } else {
+    box.innerHTML = partes.join(' &nbsp;·&nbsp; ')
+  }
+  box.style.display = 'block'
+}
+
+actualizarResumen()
+
+// ── Enviar ──
+document.getElementById('btnEnviar').addEventListener('click', async () => {
+  const asunto = document.getElementById('msgAsunto').value.trim()
+  const cuerpo = document.getElementById('msgCuerpo').value.trim()
+  if (!asunto) { toast('Falta el asunto'); return }
+  if (!cuerpo) { toast('Falta el mensaje'); return }
+
+  let payload = { asunto, cuerpo }
+
+  if (_modo === 'individual') {
+    if (!_userId) { toast('Seleccioná un colaborador'); return }
+    payload.usuario_id = _userId
+
+  } else {
+    if (!_chkActivo && !_chkPasivo) { toast('Seleccioná al menos un tipo de canal'); return }
+    if (_provincia)               payload.provincia   = _provincia
+    if (_ciudad)                  payload.ciudad      = _ciudad
+    if (_chkActivo && !_chkPasivo) payload.tipo_acceso = 'activo'
+    if (_chkPasivo && !_chkActivo) payload.tipo_acceso = 'pasivo'
+    // ambos chequeados → tipo_acceso null (todos)
+  }
+
+  const btn = document.getElementById('btnEnviar')
+  btn.disabled = true; btn.textContent = 'Enviando...'
+
+  const { error } = await supabase.from('mensajes').insert(payload)
+
+  if (error) {
+    toast('Error: ' + error.message, 3500)
+  } else {
+    toast('✓ Mensaje enviado')
+    // Reset form
+    document.getElementById('msgAsunto').value = ''
+    document.getElementById('msgCuerpo').value = ''
+    selProv.value = ''; selUser.value = ''
+    _provincia = null; _ciudad = null; _userId = null
+    reconstruirCiudades(null)
+    _chkActivo = true; _chkPasivo = true
+    document.getElementById('chkActivo').checked = true
+    document.getElementById('chkPasivo').checked = true
+    actualizarResumen()
+    await cargarMensajes()
+  }
+
+  btn.disabled = false; btn.textContent = 'Enviar mensaje'
+})
+
+// ── Cargar mensajes enviados ──
+async function cargarMensajes() {
+  const wrap = document.getElementById('msgListaWrap')
+  wrap.innerHTML = '<div class="sp"></div>'
+
+  const { data: msgs, error } = await supabase
+    .from('mensajes')
+    .select('*, mensajes_respuestas(id, usuario_nombre, canal_nombre, cuerpo, created_at)')
+    .order('created_at', { ascending: false })
+
+  if (error || !msgs?.length) {
+    wrap.innerHTML = '<div class="empty-msg">Todavía no enviaste ningún mensaje.</div>'
+    return
+  }
+
+  function msgBadge(m) {
+    if (m.usuario_id)            return { clase:'badge-individual', label:'Individual' }
+    if (m.ciudad || m.provincia) return { clase:'badge-zona',       label:'Zona' }
+    if (m.tipo_acceso)           return { clase:'badge-tipo',       label: m.tipo_acceso === 'activo' ? 'Activos' : 'Pasivos' }
+    return                              { clase:'badge-todos',      label:'Todos' }
+  }
+
+  function destLabel(m) {
+    if (m.usuario_id) {
+      const susCanales = canales.filter(c => c.user_id === m.usuario_id).map(c => c.nombre)
+      return '👤 ' + (susCanales.length ? susCanales.join(' · ') : 'Usuario individual')
+    }
+    const partes = []
+    if (m.provincia)   partes.push(m.provincia)
+    if (m.ciudad)      partes.push(m.ciudad)
+    if (m.tipo_acceso) partes.push(m.tipo_acceso === 'activo' ? 'Solo activos' : 'Solo pasivos')
+    return partes.length ? partes.join(' · ') : 'Todos los colaboradores'
+  }
+
+  wrap.innerHTML = `<div class="msg-list">${msgs.map(m => {
+    const { clase, label } = msgBadge(m)
+    const replies = m.mensajes_respuestas || []
+    const repliesHtml = replies.length
+      ? replies.map(r => `
+          <div class="reply-item">
+            <div class="reply-header">
+              <span class="reply-autor">${esc(r.canal_nombre || r.usuario_nombre || 'Colaborador')}</span>
+              <span class="reply-fecha">${fmtCorta(r.created_at)}</span>
+            </div>
+            <div class="reply-cuerpo">${esc(r.cuerpo)}</div>
+          </div>`).join('')
+      : '<div class="no-replies">Sin respuestas aún</div>'
+
+    return `
+      <div class="msg-item">
+        <div class="msg-head" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span class="msg-badge ${clase}">${label}</span>
+          <span class="msg-asunto">${esc(m.asunto)}</span>
+          ${replies.length ? `<span class="msg-replies-badge">${replies.length} resp.</span>` : ''}
+          <span class="msg-fecha">${fmtCorta(m.created_at)}</span>
+        </div>
+        <div class="msg-body">
+          <div class="msg-dest-info">Para: <strong>${esc(destLabel(m))}</strong></div>
+          <div class="msg-cuerpo">${esc(m.cuerpo)}</div>
+          <div class="replies-titulo">Respuestas</div>
+          ${repliesHtml}
+        </div>
+      </div>`
+  }).join('')}</div>`
+}
+
+cargarMensajes()
+</script>
+</body>
+</html>
