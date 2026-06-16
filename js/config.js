@@ -62,6 +62,23 @@ export function getRefVia() {
   } catch (e) { return null }
 }
 
+// ── Caché de site_config ──────────────────────────────────────
+// Evita múltiples queries a la misma tabla cuando el usuario navega
+// entre páginas en la misma sesión del browser.
+const SITE_CONFIG_KEY = 'sp_site_config'
+export async function getSiteConfig() {
+  try {
+    const cached = sessionStorage.getItem(SITE_CONFIG_KEY)
+    if (cached) return JSON.parse(cached)
+    const { data } = await supabase.from('site_config').select('key, value')
+    if (!data) return {}
+    const cfg = {}
+    data.forEach(r => cfg[r.key] = r.value)
+    sessionStorage.setItem(SITE_CONFIG_KEY, JSON.stringify(cfg))
+    return cfg
+  } catch (e) { return {} }
+}
+
 // ── Auto-optimizador de imágenes ──────────────────────────────
 // Convierte cualquier imagen a WebP, redimensiona si supera el máximo,
 // y mantiene la mejor calidad posible para web.
