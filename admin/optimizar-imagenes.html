@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Optimizar Imágenes — Admin Sur Patagonia</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d0d; --surface: #161616; --surface2: #1e1e1e;
+      --accent: #c9a84c; --text: #f0ede8; --muted: #888;
+      --green: #4caf50; --red: #e53935; --blue: #4a8fa8;
+      --border: rgba(255,255,255,0.07);
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+    .admin-layout { display: flex; min-height: 100vh; }
+    .admin-sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 1rem; flex-shrink: 0; }
+    .admin-sidebar-logo { font-size: 0.7rem; letter-spacing: 0.3em; font-weight: 600; color: var(--accent); margin-bottom: 2rem; }
+    .admin-nav a { display: block; padding: 0.6rem 0.8rem; color: var(--muted); text-decoration: none; border-radius: 6px; font-size: 0.82rem; margin-bottom: 2px; }
+    .admin-nav a:hover { background: var(--surface2); color: var(--text); }
+    .admin-nav a.active { background: rgba(201,168,76,0.1); color: var(--accent); }
+    .admin-main { flex: 1; padding: 2rem; overflow-y: auto; }
+    h1 { font-size: 1.4rem; font-weight: 400; margin-bottom: 0.4rem; }
+    .sub { color: var(--muted); font-size: 0.82rem; margin-bottom: 2rem; }
+
+    /* Stats bar */
+    .stats-bar { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.4rem; flex: 1; min-width: 140px; }
+    .stat-card .val { font-size: 1.6rem; font-weight: 300; color: var(--accent); }
+    .stat-card .lbl { font-size: 0.72rem; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    /* Controls */
+    .controls { display: flex; gap: 0.8rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+    .btn { padding: 0.6rem 1.2rem; border-radius: 7px; border: none; cursor: pointer; font-size: 0.82rem; font-weight: 500; transition: opacity .2s; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .filter-select { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 0.55rem 0.8rem; border-radius: 7px; font-size: 0.82rem; }
+
+    /* Progress */
+    .progress-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; display: none; }
+    .progress-wrap.active { display: block; }
+    .progress-label { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.6rem; }
+    .progress-bar-bg { background: var(--surface2); border-radius: 99px; height: 6px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; width: 0%; }
+    .progress-detail { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+
+    /* Table */
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { background: var(--surface2); padding: 0.75rem 1rem; text-align: left; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 0.7rem 1rem; font-size: 0.82rem; vertical-align: middle; }
+    .img-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 5px; background: var(--surface2); }
+    .img-thumb-placeholder { width: 44px; height: 44px; border-radius: 5px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 10px; }
+    .path-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 0.75rem; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.7rem; font-weight: 600; }
+    .badge-360 { background: rgba(74,143,168,0.15); color: var(--blue); }
+    .badge-prop { background: rgba(201,168,76,0.12); color: var(--accent); }
+    .badge-proj { background: rgba(76,175,80,0.12); color: var(--green); }
+    .badge-other { background: rgba(255,255,255,0.06); color: var(--muted); }
+    .size-cell { font-variant-numeric: tabular-nums; }
+    .size-big { color: var(--red); }
+    .size-ok { color: var(--green); }
+    .status-cell { min-width: 100px; }
+    .status-pending { color: var(--muted); }
+    .status-processing { color: var(--accent); }
+    .status-done { color: var(--green); }
+    .status-error { color: var(--red); }
+    .saving { font-size: 0.7rem; color: var(--green); margin-top: 2px; }
+    .btn-row { padding: 0.35rem 0.8rem; font-size: 0.75rem; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
+    .btn-row:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-row:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Empty / loading */
+    .empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg) } }
+
+    /* Logout */
+    .btn-logout { margin-top: auto; display: block; padding: 0.6rem 0.8rem; color: var(--muted); background: none; border: none; cursor: pointer; font-size: 0.82rem; text-align: left; width: 100%; border-radius: 6px; }
+    .btn-logout:hover { color: var(--red); background: rgba(229,57,53,0.08); }
+    .sidebar-bottom { margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span style="color:var(--text)">PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="propiedades.html">Propiedades</a>
+      <a href="proyectos.html">Proyectos</a>
+      <a href="canales.html">Canales</a>
+      <a href="contactos.html">Contactos</a>
+      <a href="trafico.html">Tráfico</a>
+      <a href="apariencia.html">Apariencia</a>
+      <a href="optimizar-imagenes.html" class="active">Optimizar Imágenes</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="btn-logout" id="btnLogout">← Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <h1>Optimizar Imágenes</h1>
+    <p class="sub">Convierte todas las imágenes existentes a WebP y reduce su peso. Las imágenes 360° conservan máxima resolución.</p>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="val" id="statTotal">—</div>
+        <div class="lbl">Total imágenes</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statPeso">—</div>
+        <div class="lbl">Peso total actual</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statAhorrado">—</div>
+        <div class="lbl">Peso ahorrado</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statOptimizadas">0</div>
+        <div class="lbl">Ya optimizadas</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="btnOptAll" disabled>⚡ Optimizar todo</button>
+      <button class="btn btn-ghost" id="btnRecargar">↻ Recargar lista</button>
+      <select class="filter-select" id="filtroTipo">
+        <option value="all">Todas las carpetas</option>
+        <option value="propiedades">Propiedades</option>
+        <option value="proyectos">Proyectos</option>
+        <option value="360">360°</option>
+        <option value="otros">Otros</option>
+      </select>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-label" id="progressLabel">Procesando...</div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <div class="progress-detail" id="progressDetail"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:54px"></th>
+            <th>Archivo</th>
+            <th>Carpeta</th>
+            <th>Tamaño</th>
+            <th>Estado</th>
+            <th style="width:80px"></th>
+          </tr>
+        </thead>
+        <tbody id="tablaBody">
+          <tr><td colspan="6" class="empty"><span class="spinner"></span> Cargando imágenes...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+const SUPABASE_URL = 'https://wajkfydxutptcvvfwrvq.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/imagenes/`
+const BUCKET = 'imagenes'
+
+// ── Auth ──────────────────────────────────────────────────
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
+if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+
+document.getElementById('btnLogout').addEventListener('click', async () => {
+  await supabase.auth.signOut(); window.location.href = 'login.html'
+})
+
+// ── Estado global ─────────────────────────────────────────
+let todasLasImagenes = []
+let pesoAhorrado = 0
+let cantOptimizadas = 0
+
+// ── Listar archivos recursivamente ────────────────────────
+async function listarArchivos(carpeta = '') {
+  const { data, error } = await supabase.storage.from(BUCKET).list(carpeta, { limit: 500, offset: 0 })
+  if (error || !data) return []
+
+  const archivos = []
+  for (const item of data) {
+    if (item.metadata) {
+      // Es un archivo
+      archivos.push({
+        path: carpeta ? `${carpeta}/${item.name}` : item.name,
+        name: item.name,
+        carpeta: carpeta || 'raíz',
+        size: item.metadata.size || 0,
+        contentType: item.metadata.mimetype || '',
+        status: 'pending',
+        savedBytes: 0
+      })
+    } else {
+      // Es una carpeta — entrar recursivamente
+      const sub = carpeta ? `${carpeta}/${item.name}` : item.name
+      const subArchivos = await listarArchivos(sub)
+      archivos.push(...subArchivos)
+    }
+  }
+  return archivos
+}
+
+// ── Formatear bytes ───────────────────────────────────────
+function fmtBytes(bytes) {
+  if (!bytes) return '—'
+  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB'
+  return bytes + ' B'
+}
+
+// ── Badge de carpeta ──────────────────────────────────────
+function badgeCarpeta(carpeta) {
+  if (carpeta.includes('360')) return `<span class="badge badge-360">360°</span>`
+  if (carpeta.includes('propiedades')) return `<span class="badge badge-prop">Propiedades</span>`
+  if (carpeta.includes('proyectos')) return `<span class="badge badge-proj">Proyectos</span>`
+  return `<span class="badge badge-other">${carpeta}</span>`
+}
+
+// ── Es imagen optimizable ─────────────────────────────────
+function esImagen(item) {
+  const ext = item.name.toLowerCase()
+  return ext.match(/\.(jpg|jpeg|png|gif|bmp|tiff|webp)$/)
+}
+
+// ── Optimizar una imagen ──────────────────────────────────
+async function optimizarImagen(archivo, opciones = {}) {
+  const { maxAncho = 1920, maxAlto = 1920, calidad = 0.92 } = opciones
+
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(archivo)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let w = img.naturalWidth, h = img.naturalHeight
+      if (w > maxAncho || h > maxAlto) {
+        const ratio = Math.min(maxAncho / w, maxAlto / h)
+        w = Math.round(w * ratio); h = Math.round(h * ratio)
+      }
+      let srcW = img.naturalWidth, srcH = img.naturalHeight, currentImg = img
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      while (srcW > w * 2 || srcH > h * 2) {
+        const stepW = Math.max(Math.round(srcW / 2), w)
+        const stepH = Math.max(Math.round(srcH / 2), h)
+        canvas.width = stepW; canvas.height = stepH
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(currentImg, 0, 0, stepW, stepH)
+        const sc = document.createElement('canvas')
+        sc.width = stepW; sc.height = stepH
+        sc.getContext('2d').drawImage(canvas, 0, 0)
+        currentImg = sc; srcW = stepW; srcH = stepH
+      }
+      canvas.width = w; canvas.height = h
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(currentImg, 0, 0, w, h)
+      canvas.toBlob(blob => {
+        if (!blob) { reject(new Error('Error al convertir')); return }
+        const nombre = archivo.name.replace(/\.[^.]+$/, '') + '.webp'
+        resolve(new File([blob], nombre, { type: 'image/webp' }))
+      }, 'image/webp', calidad)
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer')) }
+    img.src = url
+  })
+}
+
+// ── Procesar una imagen ───────────────────────────────────
+async function procesarImagen(item, idx) {
+  actualizarFila(idx, 'processing', 'Descargando...')
+
+  try {
+    // Descargar imagen original
+    const { data: blob, error: dlErr } = await supabase.storage
+      .from(BUCKET).download(item.path)
+    if (dlErr || !blob) throw new Error('Error al descargar')
+
+    const originalSize = blob.size
+    const archivo = new File([blob], item.name, { type: blob.type })
+
+    actualizarFila(idx, 'processing', 'Optimizando...')
+
+    // Configuración según tipo
+    const es360 = item.carpeta.includes('360')
+    const webpFile = await optimizarImagen(archivo, {
+      // Sin reducción de resolución — solo conversión a WebP con calidad máxima
+      // El ahorro viene del formato WebP, no de perder calidad
+      maxAncho: es360 ? 16000 : 8000,  // sin límite práctico
+      maxAlto:  es360 ? 8000  : 8000,
+      calidad:  0.95   // 0.95 = calidad visual idéntica al original
+    })
+
+    const nuevoSize = webpFile.size
+
+    // Solo re-subir si hay ahorro real (>5%)
+    if (nuevoSize >= originalSize * 0.95 && item.name.toLowerCase().endsWith('.webp')) {
+      actualizarFila(idx, 'done', 'Ya optimizada', 0)
+      return 0
+    }
+
+    actualizarFila(idx, 'processing', 'Subiendo...')
+
+    // Determinar nueva ruta (cambiar extensión a .webp)
+    const carpeta = item.path.includes('/') ? item.path.substring(0, item.path.lastIndexOf('/')) : ''
+    const nuevoNombre = item.name.replace(/\.[^.]+$/, '') + '.webp'
+    const nuevaRuta = carpeta ? `${carpeta}/${nuevoNombre}` : nuevoNombre
+
+    // Subir nueva versión WebP
+    const { error: upErr } = await supabase.storage
+      .from(BUCKET).upload(nuevaRuta, webpFile, { upsert: true, contentType: 'image/webp' })
+    if (upErr) throw new Error('Error al subir: ' + upErr.message)
+
+    // Si cambió la ruta (extensión diferente), borrar el original
+    if (nuevaRuta !== item.path) {
+      await supabase.storage.from(BUCKET).remove([item.path])
+    }
+
+    const ahorro = originalSize - nuevoSize
+    pesoAhorrado += ahorro
+    cantOptimizadas++
+    document.getElementById('statAhorrado').textContent = fmtBytes(pesoAhorrado)
+    document.getElementById('statOptimizadas').textContent = cantOptimizadas
+
+    actualizarFila(idx, 'done', `✓ ${fmtBytes(originalSize)} → ${fmtBytes(nuevoSize)}`, ahorro)
+    return ahorro
+
+  } catch (e) {
+    actualizarFila(idx, 'error', '✗ ' + e.message)
+    return 0
+  }
+}
+
+// ── Actualizar fila en tabla ──────────────────────────────
+function actualizarFila(idx, status, texto, ahorro) {
+  const row = document.querySelector(`tr[data-idx="${idx}"]`)
+  if (!row) return
+  const statusCell = row.querySelector('.status-cell')
+  const btnCell = row.querySelector('.btn-row')
+  if (status === 'processing') {
+    statusCell.innerHTML = `<span class="status-processing"><span class="spinner" style="width:12px;height:12px;border-width:1.5px"></span>${texto}</span>`
+    if (btnCell) btnCell.disabled = true
+  } else if (status === 'done') {
+    statusCell.innerHTML = `<span class="status-done">${texto}</span>${ahorro > 0 ? `<div class="saving">−${fmtBytes(ahorro)}</div>` : ''}`
+    if (btnCell) btnCell.disabled = true
+  } else if (status === 'error') {
+    statusCell.innerHTML = `<span class="status-error">${texto}</span>`
+    if (btnCell) { btnCell.disabled = false; btnCell.textContent = 'Reintentar' }
+  }
+  todasLasImagenes[idx].status = status
+}
+
+// ── Renderizar tabla ──────────────────────────────────────
+function renderTabla(filtro = 'all') {
+  const tbody = document.getElementById('tablaBody')
+  const filtradas = todasLasImagenes.filter(img => {
+    if (!esImagen(img)) return false
+    if (filtro === 'all') return true
+    if (filtro === '360') return img.carpeta.includes('360')
+    if (filtro === 'propiedades') return img.carpeta.includes('propiedades')
+    if (filtro === 'proyectos') return img.carpeta.includes('proyectos')
+    if (filtro === 'otros') return !img.carpeta.includes('360') && !img.carpeta.includes('propiedades') && !img.carpeta.includes('proyectos')
+    return true
+  })
+
+  if (filtradas.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">No hay imágenes en esta carpeta</td></tr>`
+    return
+  }
+
+  tbody.innerHTML = filtradas.map((img, i) => {
+    const realIdx = todasLasImagenes.indexOf(img)
+    const url = STORAGE_URL + img.path
+    const esGrande = img.size > 2 * 1024 * 1024
+    const sizeClass = esGrande ? 'size-big' : 'size-ok'
+    const esWp = img.name.toLowerCase().endsWith('.webp')
+
+    return `<tr data-idx="${realIdx}">
+      <td>
+        ${img.contentType?.startsWith('image') || esImagen(img)
+          ? `<img class="img-thumb" src="${url}" alt="" loading="lazy" onerror="this.style.display='none'">`
+          : `<div class="img-thumb-placeholder">?</div>`}
+      </td>
+      <td>
+        <div style="font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;" title="${img.name}">${img.name}</div>
+        ${esWp ? '<div style="font-size:0.68rem;color:var(--green);margin-top:2px">WebP ✓</div>' : '<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">No WebP</div>'}
+      </td>
+      <td>${badgeCarpeta(img.carpeta)}</td>
+      <td class="size-cell"><span class="${sizeClass}">${fmtBytes(img.size)}</span>${esGrande ? '<div style="font-size:0.68rem;color:var(--red)">Muy pesada</div>' : ''}</td>
+      <td class="status-cell">
+        ${img.status === 'done' ? '<span class="status-done">✓ Lista</span>' :
+          img.status === 'error' ? '<span class="status-error">✗ Error</span>' :
+          esWp ? '<span class="status-pending">Pendiente</span>' : '<span class="status-pending">Sin optimizar</span>'}
+      </td>
+      <td>
+        <button class="btn-row" data-idx="${realIdx}" ${img.status === 'done' ? 'disabled' : ''}>
+          ${img.status === 'done' ? '✓' : 'Optimizar'}
+        </button>
+      </td>
+    </tr>`
+  }).join('')
+
+  // Eventos botones individuales
+  tbody.querySelectorAll('.btn-row[data-idx]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.idx)
+      btn.disabled = true
+      await procesarImagen(todasLasImagenes[idx], idx)
+    })
+  })
+}
+
+// ── Cargar lista ──────────────────────────────────────────
+async function cargarLista() {
+  document.getElementById('tablaBody').innerHTML =
+    `<tr><td colspan="6" class="empty"><span class="spinner"></span> Escaneando bucket de imágenes...</td></tr>`
+  document.getElementById('btnOptAll').disabled = true
+
+  todasLasImagenes = await listarArchivos()
+  const imagenes = todasLasImagenes.filter(esImagen)
+  const pesoTotal = imagenes.reduce((s, i) => s + i.size, 0)
+
+  document.getElementById('statTotal').textContent = imagenes.length
+  document.getElementById('statPeso').textContent = fmtBytes(pesoTotal)
+  document.getElementById('statAhorrado').textContent = fmtBytes(pesoAhorrado)
+  document.getElementById('btnOptAll').disabled = imagenes.length === 0
+
+  const filtro = document.getElementById('filtroTipo').value
+  renderTabla(filtro)
+}
+
+// ── Optimizar todo ────────────────────────────────────────
+document.getElementById('btnOptAll').addEventListener('click', async () => {
+  const filtro = document.getElementById('filtroTipo').value
+  const imagenes = todasLasImagenes.filter(img => {
+    if (!esImagen(img) || img.status === 'done') return false
+    if (filtro === 'all') return true
+    if (filtro === '360') return img.carpeta.includes('360')
+    if (filtro === 'propiedades') return img.carpeta.includes('propiedades')
+    if (filtro === 'proyectos') return img.carpeta.includes('proyectos')
+    if (filtro === 'otros') return !img.carpeta.includes('360') && !img.carpeta.includes('propiedades') && !img.carpeta.includes('proyectos')
+    return true
+  })
+
+  if (imagenes.length === 0) return
+
+  document.getElementById('btnOptAll').disabled = true
+  document.getElementById('btnRecargar').disabled = true
+  const wrap = document.getElementById('progressWrap')
+  const fill = document.getElementById('progressFill')
+  const label = document.getElementById('progressLabel')
+  const detail = document.getElementById('progressDetail')
+  wrap.classList.add('active')
+
+  for (let i = 0; i < imagenes.length; i++) {
+    const img = imagenes[i]
+    const idx = todasLasImagenes.indexOf(img)
+    const pct = Math.round((i / imagenes.length) * 100)
+    fill.style.width = pct + '%'
+    label.textContent = `Procesando ${i + 1} de ${imagenes.length}...`
+    detail.textContent = img.path
+
+    await procesarImagen(img, idx)
+  }
+
+  fill.style.width = '100%'
+  label.textContent = `✓ Completado — ${imagenes.length} imágenes procesadas`
+  detail.textContent = `Peso ahorrado total: ${fmtBytes(pesoAhorrado)}`
+  document.getElementById('btnRecargar').disabled = false
+})
+
+// ── Filtro ────────────────────────────────────────────────
+document.getElementById('filtroTipo').addEventListener('change', e => {
+  renderTabla(e.target.value)
+})
+
+// ── Recargar ──────────────────────────────────────────────
+document.getElementById('btnRecargar').addEventListener('click', () => {
+  pesoAhorrado = 0; cantOptimizadas = 0
+  document.getElementById('progressWrap').classList.remove('active')
+  cargarLista()
+})
+
+// ── Init ──────────────────────────────────────────────────
+cargarLista()
+</script>
+</body>
+</html>
