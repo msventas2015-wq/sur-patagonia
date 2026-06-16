@@ -504,7 +504,7 @@
   </footer>
 
   <script type="module">
-    import { supabase as sbContact } from './js/config.js'
+    import { supabase as sbContact, getRef, getRefVia } from './js/config.js'
     // Foto contacto — espejo del index via site_config
     try {
       const { data: cfgRows } = await sbContact.from('site_config').select('key, value').eq('key', 'img_contacto_bg')
@@ -521,12 +521,14 @@
       btn.textContent = 'Enviando...'
       btn.disabled = true
       try {
-        const { error } = await sbContact.from('consultas').insert([{
+        const { error } = await sbContact.from('contactos').insert([{
           nombre: document.getElementById('cnNombre').value,
           email: document.getElementById('cnEmail').value,
           telefono: document.getElementById('cnTelefono').value,
           mensaje: document.getElementById('cnMensaje').value,
-          origen: 'propiedades'
+          canal_ref: getRef(),
+          canal_via: getRefVia(),
+          fecha: new Date().toISOString()
         }])
         if (error) throw error
         alerta.innerHTML = '<div class="cnt-alerta ok">¡Mensaje enviado! Te respondemos a la brevedad.</div>'
