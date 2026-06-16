@@ -378,11 +378,15 @@ if (!refs?.length) {
   })
 }
 
-// ── Cargar leads ───────────────────────────────────────
+// ── Cargar leads (filtrar solo por codigos del canal) ──
+const misCodigos = [
+  canal.codigo,
+  ...(refs || []).map(r => r.codigo)
+]
 const { data: leads } = await supabase
   .from('contactos')
   .select('nombre, proyecto_slug, canal_ref, created_at')
-  .not('canal_ref', 'is', null)
+  .in('canal_ref', misCodigos)
   .order('created_at', { ascending: false })
 
 const tbody = document.getElementById('tbodyLeads')
