@@ -320,10 +320,22 @@
     const ciudadesMias = [...new Set(canales.map(c => c.ciudad).filter(Boolean))]
     const provinciasMias = [...new Set(canales.map(c => c.provincia).filter(Boolean))]
 
+    // canal_ref almacena el codigo de la REFERENCIA (no del canal).
+    // El admin lo resuelve por prefijo: canal_ref.startsWith(canal.codigo + '-').
+    // Acá buscamos primero todas las referencias del canal y filtramos por esos códigos.
+    // También incluimos canal.codigo directamente como fallback (links sin referencia).
+    const { data: misRefs } = await supabase
+      .from('referencias')
+      .select('codigo, canal_id')
+      .in('canal_id', canalIds)
+    const refCodigos = misRefs?.map(r => r.codigo) || []
+    // codigos de filtrado = referencia codes + canal codes (fallback)
+    const codigosRef = [...new Set([...refCodigos, ...codigos])]
+
     const [rVisitas, rVisitas30, rContactos, rCampanas, rMensajes] = await Promise.all([
-      supabase.from('visitas').select('created_at, canal_via, canal_ref').in('canal_ref', codigos),
-      supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigos).gte('created_at', hace30),
-      supabase.from('contactos').select('*').in('canal_ref', codigos).order('created_at', { ascending: false }),
+      supabase.from('visitas').select('created_at, canal_via, canal_ref').in('canal_ref', codigosRef),
+      supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigosRef).gte('created_at', hace30),
+      supabase.from('contactos').select('*').in('canal_ref', codigosRef).order('created_at', { ascending: false }),
       supabase.from('campanas_canales')
         .select('canal_id, campanas(nombre, activa, fecha_inicio, fecha_fin)')
         .in('canal_id', canales.map(c => c.id)),
@@ -384,10 +396,16 @@
       }
     })
 
+    // Mapa refCodigo → canalId (canal_id viene en misRefs)
+    const refACanal = {}
+    ;(misRefs || []).forEach(r => { refACanal[r.codigo] = r.canal_id })
+
     // ── Cards de canales (activo) ──────────────────
     const renderCards = () => canales.map(c => {
-      const cScans    = visitas.filter(v => v.canal_ref === c.codigo).length
-      const cContacts = contactos.filter(x => x.canal_ref === c.codigo).length
+      // Todos los codigos (referencia o canal directo) que pertenecen a este canal
+      const misCodigos = new Set([c.codigo, ...(misRefs || []).filter(r => r.canal_id === c.id).map(r => r.codigo)])
+      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref)).length
+      const cContacts = contactos.filter(x => misCodigos.has(x.canal_ref)).length
       const estado    = !c.activo ? 'inactivo' : campanaActiva[c.id] ? 'campana' : 'activo'
       const estadoLabel = estado === 'inactivo' ? 'QR inactivo'
         : campanaActiva[c.id] ? `Campaña: ${campanaActiva[c.id]}`
