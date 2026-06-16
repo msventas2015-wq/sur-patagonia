@@ -38,12 +38,21 @@
     select.form-input { appearance:none; cursor:pointer; }
     textarea.form-input { resize:vertical; min-height:85px; }
 
-    /* Checkboxes tipo de canal */
-    .tipo-checks { display:flex; gap:0.8rem; margin-top:0.15rem; }
-    .tipo-check-item { display:flex; align-items:center; gap:0.45rem; cursor:pointer; }
-    .tipo-check-item input[type="checkbox"] { accent-color:var(--accent); width:14px; height:14px; cursor:pointer; }
-    .tipo-check-item span { font-size:0.74rem; color:var(--blanco); }
-    .tipo-check-item small { font-size:0.62rem; color:var(--gris); display:block; }
+    /* Check groups multi-select */
+    .filter-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.38rem; }
+    .filter-links  { display:flex; gap:0.55rem; }
+    .filter-link   { font-size:0.6rem; color:var(--accent); background:none; border:none; cursor:pointer; font-family:'Inter',sans-serif; padding:0; opacity:0.72; }
+    .filter-link:hover { opacity:1; }
+    .check-group   { max-height:110px; overflow-y:auto; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:8px; }
+    .check-group::-webkit-scrollbar { width:3px; }
+    .check-group::-webkit-scrollbar-track { background:transparent; }
+    .check-group::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); border-radius:3px; }
+    .chk-item      { display:flex; align-items:center; gap:0.5rem; padding:0.3rem 0.7rem; cursor:pointer; transition:background .1s; user-select:none; }
+    .chk-item:hover{ background:rgba(255,255,255,.04); }
+    .chk-item input[type="checkbox"] { accent-color:var(--accent); width:13px; height:13px; flex-shrink:0; cursor:pointer; }
+    .chk-label     { font-size:0.74rem; color:var(--blanco); flex:1; }
+    .chk-sub       { font-size:0.6rem; color:var(--gris); }
+    .chk-empty     { padding:0.5rem 0.7rem; font-size:0.7rem; color:var(--gris); font-style:italic; }
 
     /* Resumen destinatarios */
     .dest-resumen {
@@ -190,37 +199,49 @@
 
         <!-- Modo: filtros vs individual -->
         <div class="modo-toggle">
-          <button class="modo-btn on" id="btnModoFiltros">Por zona / tipo</button>
+          <button class="modo-btn on" id="btnModoFiltros">Por zona / canal</button>
           <button class="modo-btn"    id="btnModoIndividual">Usuario individual</button>
         </div>
 
         <!-- ── MODO FILTROS ── -->
         <div id="secFiltros">
+
+          <!-- Provincias -->
           <div class="form-field">
-            <label class="form-label">Provincia</label>
-            <select class="form-input" id="selProvincia">
-              <option value="">Todas las provincias</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label class="form-label">Ciudad</label>
-            <select class="form-input" id="selCiudad">
-              <option value="">Todas las ciudades</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label class="form-label">Tipo de canal</label>
-            <div class="tipo-checks">
-              <label class="tipo-check-item">
-                <input type="checkbox" id="chkActivo" checked />
-                <span>Activos<small>Vendedores / Inmobiliarias</small></span>
-              </label>
-              <label class="tipo-check-item">
-                <input type="checkbox" id="chkPasivo" checked />
-                <span>Pasivos<small>Puntos de venta</small></span>
-              </label>
+            <div class="filter-header">
+              <label class="form-label" style="margin-bottom:0">Provincias</label>
+              <div class="filter-links">
+                <button class="filter-link" id="btnMarcarProvs">Marcar todas</button>
+                <button class="filter-link" id="btnLimpiarProvs">Limpiar</button>
+              </div>
             </div>
+            <div class="check-group" id="grupoProvincias"></div>
           </div>
+
+          <!-- Ciudades -->
+          <div class="form-field">
+            <div class="filter-header">
+              <label class="form-label" style="margin-bottom:0">Ciudades</label>
+              <div class="filter-links">
+                <button class="filter-link" id="btnMarcarCiudades">Marcar todas</button>
+                <button class="filter-link" id="btnLimpiarCiudades">Limpiar</button>
+              </div>
+            </div>
+            <div class="check-group" id="grupoCiudades"></div>
+          </div>
+
+          <!-- Canales -->
+          <div class="form-field">
+            <div class="filter-header">
+              <label class="form-label" style="margin-bottom:0">Canales</label>
+              <div class="filter-links">
+                <button class="filter-link" id="btnMarcarCanales">Marcar todos</button>
+                <button class="filter-link" id="btnLimpiarCanales">Limpiar</button>
+              </div>
+            </div>
+            <div class="check-group" id="grupoCanales"></div>
+          </div>
+
           <div class="dest-resumen" id="destResumen"></div>
         </div>
 
@@ -286,7 +307,7 @@ const canales = rawCanales || []
 // Datos para filtros
 const provincias = [...new Set(canales.map(c => c.provincia).filter(Boolean))].sort()
 
-// Colaboradores únicos (por user_id) con label = sus canales
+// Colaboradores únicos (por user_id)
 const usuariosMap = new Map()
 canales.forEach(c => {
   if (!c.user_id) return
@@ -295,34 +316,117 @@ canales.forEach(c => {
 })
 const usuariosUnicos = [...usuariosMap.entries()].map(([uid, nombres]) => ({ uid, label: nombres.join(' · ') }))
 
-// ── Poblar selects ──
-const selProv   = document.getElementById('selProvincia')
-const selCiudad = document.getElementById('selCiudad')
-const selUser   = document.getElementById('selUsuario')
-
-provincias.forEach(p => selProv.insertAdjacentHTML('beforeend', `<option value="${esc(p)}">${esc(p)}</option>`))
+// Poblar select de usuarios (modo individual)
+const selUser = document.getElementById('selUsuario')
 usuariosUnicos.forEach(u => selUser.insertAdjacentHTML('beforeend', `<option value="${esc(u.uid)}">${esc(u.label)}</option>`))
 
-function reconstruirCiudades(provinciaFiltro) {
-  const fuente = provinciaFiltro ? canales.filter(c => c.provincia === provinciaFiltro) : canales
-  const ciudades = [...new Set(fuente.map(c => c.ciudad).filter(Boolean))].sort()
-  selCiudad.innerHTML = '<option value="">Todas las ciudades</option>'
-  ciudades.forEach(c => selCiudad.insertAdjacentHTML('beforeend', `<option value="${esc(c)}">${esc(c)}</option>`))
-}
-reconstruirCiudades(null)
-
 // ── Estado del form ──
-let _modo = 'filtros'   // 'filtros' | 'individual'
-let _provincia = null, _ciudad = null
-let _chkActivo = true, _chkPasivo = true
+let _modo   = 'filtros'   // 'filtros' | 'individual'
 let _userId = null
+const _selProvincias = new Set()
+const _selCiudades   = new Set()
+const _selCanales    = new Set()
 
-// Modo toggle
+// ── Helper: construir grupo de checkboxes ──
+function buildCheckGroup(containerId, items, selSet, onChangeFn) {
+  const container = document.getElementById(containerId)
+  if (!items.length) {
+    container.innerHTML = '<div class="chk-empty">Sin datos disponibles</div>'
+    return
+  }
+  container.innerHTML = items.map(item => `
+    <label class="chk-item">
+      <input type="checkbox" value="${esc(String(item.val))}" ${selSet.has(String(item.val)) ? 'checked' : ''} />
+      <span class="chk-label">${esc(item.txt)}</span>
+      ${item.sub ? `<span class="chk-sub">${esc(item.sub)}</span>` : ''}
+    </label>`).join('')
+  container.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+    chk.addEventListener('change', () => {
+      if (chk.checked) selSet.add(chk.value)
+      else selSet.delete(chk.value)
+      onChangeFn()
+    })
+  })
+}
+
+// ── Construir provincias ──
+function buildProvincias() {
+  buildCheckGroup('grupoProvincias',
+    provincias.map(p => ({ val: p, txt: p })),
+    _selProvincias,
+    () => { buildCiudades(); actualizarResumen() }
+  )
+}
+
+// ── Construir ciudades (dinámico desde provincias seleccionadas) ──
+function buildCiudades() {
+  const fuente = _selProvincias.size > 0
+    ? canales.filter(c => _selProvincias.has(c.provincia))
+    : canales
+  const ciudades = [...new Set(fuente.map(c => c.ciudad).filter(Boolean))].sort()
+  // limpiar selecciones que ya no existen en el contexto actual
+  _selCiudades.forEach(c => { if (!ciudades.includes(c)) _selCiudades.delete(c) })
+  buildCheckGroup('grupoCiudades',
+    ciudades.map(c => ({ val: c, txt: c })),
+    _selCiudades,
+    actualizarResumen
+  )
+}
+
+// ── Construir canales ──
+function buildCanales() {
+  buildCheckGroup('grupoCanales',
+    canales.map(c => ({
+      val: c.id,
+      txt: c.nombre,
+      sub: [c.ciudad, c.provincia].filter(Boolean).join(', ')
+    })),
+    _selCanales,
+    actualizarResumen
+  )
+}
+
+// ── Marcar todos / Limpiar ──
+function marcarTodosGrupo(containerId, selSet, afterFn) {
+  document.querySelectorAll(`#${containerId} input[type="checkbox"]`).forEach(chk => {
+    chk.checked = true; selSet.add(chk.value)
+  })
+  afterFn && afterFn()
+}
+function limpiarGrupo(containerId, selSet, afterFn) {
+  document.querySelectorAll(`#${containerId} input[type="checkbox"]`).forEach(chk => { chk.checked = false })
+  selSet.clear()
+  afterFn && afterFn()
+}
+
+document.getElementById('btnMarcarProvs').addEventListener('click', () =>
+  marcarTodosGrupo('grupoProvincias', _selProvincias, () => { buildCiudades(); actualizarResumen() }))
+document.getElementById('btnLimpiarProvs').addEventListener('click', () => {
+  limpiarGrupo('grupoProvincias', _selProvincias, null)
+  _selCiudades.clear()
+  buildCiudades()
+  actualizarResumen()
+})
+document.getElementById('btnMarcarCiudades').addEventListener('click', () =>
+  marcarTodosGrupo('grupoCiudades', _selCiudades, actualizarResumen))
+document.getElementById('btnLimpiarCiudades').addEventListener('click', () =>
+  limpiarGrupo('grupoCiudades', _selCiudades, actualizarResumen))
+document.getElementById('btnMarcarCanales').addEventListener('click', () =>
+  marcarTodosGrupo('grupoCanales', _selCanales, actualizarResumen))
+document.getElementById('btnLimpiarCanales').addEventListener('click', () =>
+  limpiarGrupo('grupoCanales', _selCanales, actualizarResumen))
+
+// ── Inicializar grupos ──
+buildProvincias()
+buildCiudades()
+buildCanales()
+
+// ── Modo toggle ──
 document.getElementById('btnModoFiltros').addEventListener('click', () => {
   _modo = 'filtros'
   document.getElementById('btnModoFiltros').classList.add('on')
   document.getElementById('btnModoIndividual').classList.remove('on')
-  document.getElementById('secFiltros').style.display   = 'block'
+  document.getElementById('secFiltros').style.display    = 'block'
   document.getElementById('secIndividual').style.display = 'none'
   actualizarResumen()
 })
@@ -330,45 +434,31 @@ document.getElementById('btnModoIndividual').addEventListener('click', () => {
   _modo = 'individual'
   document.getElementById('btnModoIndividual').classList.add('on')
   document.getElementById('btnModoFiltros').classList.remove('on')
-  document.getElementById('secFiltros').style.display   = 'none'
+  document.getElementById('secFiltros').style.display    = 'none'
   document.getElementById('secIndividual').style.display = 'block'
-  document.getElementById('destResumen').style.display  = 'none'
+  document.getElementById('destResumen').style.display   = 'none'
 })
-
-// Provincia → reconstruir ciudades
-selProv.addEventListener('change', e => {
-  _provincia = e.target.value || null
-  _ciudad = null
-  reconstruirCiudades(_provincia)
-  actualizarResumen()
-})
-selCiudad.addEventListener('change', e => { _ciudad = e.target.value || null; actualizarResumen() })
-document.getElementById('chkActivo').addEventListener('change', e => { _chkActivo = e.target.checked; actualizarResumen() })
-document.getElementById('chkPasivo').addEventListener('change', e => { _chkPasivo = e.target.checked; actualizarResumen() })
 selUser.addEventListener('change', e => { _userId = e.target.value || null })
 
-// Resumen de destinatarios
+// ── Resumen de destinatarios ──
 function actualizarResumen() {
   const box = document.getElementById('destResumen')
   if (_modo !== 'filtros') { box.style.display = 'none'; return }
 
   const partes = []
-  if (_provincia) partes.push(`Provincia: <strong>${esc(_provincia)}</strong>`)
-  if (_ciudad)    partes.push(`Ciudad: <strong>${esc(_ciudad)}</strong>`)
-
-  if (_chkActivo && _chkPasivo) {
-    partes.push('Tipo: <strong>Todos los canales</strong>')
-  } else if (_chkActivo) {
-    partes.push('Tipo: <strong>Solo activos (vendedores / inmobiliarias)</strong>')
-  } else if (_chkPasivo) {
-    partes.push('Tipo: <strong>Solo pasivos (puntos de venta)</strong>')
+  if (_selProvincias.size) partes.push(`Provincias: <strong>${[..._selProvincias].map(esc).join(', ')}</strong>`)
+  if (_selCiudades.size)   partes.push(`Ciudades: <strong>${[..._selCiudades].map(esc).join(', ')}</strong>`)
+  if (_selCanales.size) {
+    const nombres = [..._selCanales].map(id => {
+      const c = canales.find(x => x.id === id)
+      return esc(c ? c.nombre : id)
+    })
+    partes.push(`Canales: <strong>${nombres.join(', ')}</strong>`)
   }
 
-  if (!_provincia && !_ciudad && _chkActivo && _chkPasivo) {
-    box.innerHTML = 'Se enviará a <strong>todos los colaboradores</strong>'
-  } else {
-    box.innerHTML = partes.join(' &nbsp;·&nbsp; ')
-  }
+  box.innerHTML = partes.length
+    ? partes.join(' &nbsp;·&nbsp; ')
+    : 'Se enviará a <strong>todos los colaboradores</strong>'
   box.style.display = 'block'
 }
 
@@ -386,14 +476,11 @@ document.getElementById('btnEnviar').addEventListener('click', async () => {
   if (_modo === 'individual') {
     if (!_userId) { toast('Seleccioná un colaborador'); return }
     payload.usuario_id = _userId
-
   } else {
-    if (!_chkActivo && !_chkPasivo) { toast('Seleccioná al menos un tipo de canal'); return }
-    if (_provincia)               payload.provincia   = _provincia
-    if (_ciudad)                  payload.ciudad      = _ciudad
-    if (_chkActivo && !_chkPasivo) payload.tipo_acceso = 'activo'
-    if (_chkPasivo && !_chkActivo) payload.tipo_acceso = 'pasivo'
-    // ambos chequeados → tipo_acceso null (todos)
+    if (_selProvincias.size) payload.provincias_arr = [..._selProvincias]
+    if (_selCiudades.size)   payload.ciudades_arr   = [..._selCiudades]
+    if (_selCanales.size)    payload.canal_ids      = [..._selCanales]
+    // sin selección en ningún grupo = mensaje para TODOS (null en todos los campos)
   }
 
   const btn = document.getElementById('btnEnviar')
@@ -405,15 +492,11 @@ document.getElementById('btnEnviar').addEventListener('click', async () => {
     toast('Error: ' + error.message, 3500)
   } else {
     toast('✓ Mensaje enviado')
-    // Reset form
     document.getElementById('msgAsunto').value = ''
     document.getElementById('msgCuerpo').value = ''
-    selProv.value = ''; selUser.value = ''
-    _provincia = null; _ciudad = null; _userId = null
-    reconstruirCiudades(null)
-    _chkActivo = true; _chkPasivo = true
-    document.getElementById('chkActivo').checked = true
-    document.getElementById('chkPasivo').checked = true
+    selUser.value = ''; _userId = null
+    _selProvincias.clear(); _selCiudades.clear(); _selCanales.clear()
+    buildProvincias(); buildCiudades(); buildCanales()
     actualizarResumen()
     await cargarMensajes()
   }
@@ -441,10 +524,12 @@ async function cargarMensajes() {
   }
 
   function msgBadge(m) {
-    if (m.usuario_id)            return { clase:'badge-individual', label:'Individual' }
-    if (m.ciudad || m.provincia) return { clase:'badge-zona',       label:'Zona' }
-    if (m.tipo_acceso)           return { clase:'badge-tipo',       label: m.tipo_acceso === 'activo' ? 'Activos' : 'Pasivos' }
-    return                              { clase:'badge-todos',      label:'Todos' }
+    if (m.usuario_id)                    return { clase:'badge-individual', label:'Individual' }
+    if (m.canal_ids?.length)             return { clase:'badge-individual', label: m.canal_ids.length === 1 ? '1 canal' : `${m.canal_ids.length} canales` }
+    if (m.ciudades_arr?.length || m.provincias_arr?.length || m.ciudad || m.provincia)
+                                         return { clase:'badge-zona',  label:'Zona' }
+    if (m.tipo_acceso)                   return { clase:'badge-tipo',  label: m.tipo_acceso === 'activo' ? 'Activos' : 'Pasivos' }
+    return                                      { clase:'badge-todos', label:'Todos' }
   }
 
   function destLabel(m) {
@@ -452,9 +537,18 @@ async function cargarMensajes() {
       const susCanales = canales.filter(c => c.user_id === m.usuario_id).map(c => c.nombre)
       return '👤 ' + (susCanales.length ? susCanales.join(' · ') : 'Usuario individual')
     }
+    if (m.canal_ids?.length) {
+      const nombres = m.canal_ids.map(id => {
+        const c = canales.find(x => x.id === id)
+        return c ? c.nombre : '—'
+      })
+      return '📡 ' + nombres.join(' · ')
+    }
     const partes = []
-    if (m.provincia)   partes.push(m.provincia)
-    if (m.ciudad)      partes.push(m.ciudad)
+    if (m.provincias_arr?.length) partes.push(m.provincias_arr.join(', '))
+    else if (m.provincia)          partes.push(m.provincia)
+    if (m.ciudades_arr?.length)   partes.push(m.ciudades_arr.join(', '))
+    else if (m.ciudad)             partes.push(m.ciudad)
     if (m.tipo_acceso) partes.push(m.tipo_acceso === 'activo' ? 'Solo activos' : 'Solo pasivos')
     return partes.length ? partes.join(' · ') : 'Todos los colaboradores'
   }
