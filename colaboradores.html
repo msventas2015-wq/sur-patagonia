@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Colaboradores — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris:#888; --blanco:#f5f3f0; --verde:#4caf77; }
+    .admin-main { font-family:'Inter',system-ui,sans-serif; padding:1.6rem; }
+
+    .colabs-header { margin-bottom:1.8rem; }
+    .colabs-header h2 { font-weight:300; font-size:1.5rem; margin:0 0 0.2rem; }
+    .colabs-header p { font-size:0.76rem; color:var(--gris); }
+
+    .colabs-layout { display:grid; grid-template-columns:380px 1fr; gap:1.2rem; align-items:start; }
+    @media(max-width:1100px){ .colabs-layout { grid-template-columns:1fr; } }
+
+    /* ── Card genérica ── */
+    .card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); padding:1.4rem 1.5rem; }
+    .card-titulo { font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--gris); font-weight:600; margin-bottom:1.2rem; }
+
+    /* ── Form nuevo mensaje ── */
+    .dest-pills { display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem; }
+    .dest-pill {
+      background:none; border:1px solid var(--card-border); color:var(--gris);
+      padding:0.32rem 0.85rem; border-radius:999px; font-size:0.7rem; font-weight:500;
+      cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s;
+    }
+    .dest-pill.on { background:rgba(215,111,63,.12); border-color:var(--accent); color:var(--accent); }
+
+    .form-field { margin-bottom:0.9rem; }
+    .form-label { display:block; font-size:0.6rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--gris); margin-bottom:0.35rem; font-weight:600; }
+    .form-input {
+      width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.1); color:var(--blanco);
+      border-radius:8px; font-family:'Inter',sans-serif; font-size:0.78rem;
+      box-sizing:border-box; transition:border-color .15s;
+    }
+    .form-input:focus { outline:none; border-color:rgba(215,111,63,.5); }
+    .form-select { appearance:none; cursor:pointer; }
+    .form-textarea { resize:vertical; min-height:90px; }
+    .btn-enviar {
+      width:100%; padding:0.6rem; background:var(--accent); color:#fff;
+      border:none; border-radius:8px; font-size:0.78rem; font-weight:600;
+      cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .15s;
+      margin-top:0.4rem;
+    }
+    .btn-enviar:hover { opacity:0.88; }
+    .btn-enviar:disabled { opacity:0.4; cursor:not-allowed; }
+
+    /* ── Lista enviados ── */
+    .msg-list { display:flex; flex-direction:column; gap:0.6rem; }
+    .msg-item {
+      background:rgba(255,255,255,0.025); border:1px solid var(--card-border);
+      border-radius:10px; overflow:hidden; transition:border-color .15s;
+    }
+    .msg-item:hover { border-color:rgba(255,255,255,0.14); }
+    .msg-head {
+      display:flex; align-items:center; gap:0.8rem; padding:0.85rem 1rem;
+      cursor:pointer;
+    }
+    .msg-tipo-badge {
+      font-size:0.55rem; padding:0.15rem 0.55rem; border-radius:999px;
+      font-weight:700; text-transform:uppercase; letter-spacing:0.05em; flex-shrink:0;
+    }
+    .tipo-todos      { background:rgba(215,111,63,.12); color:var(--accent); }
+    .tipo-canal      { background:rgba(201,168,76,.1); color:#c9a84c; }
+    .tipo-ciudad     { background:rgba(139,143,255,.1); color:#8b8fff; }
+    .tipo-provincia  { background:rgba(74,208,196,.1); color:#4ad0c4; }
+    .tipo-usuario    { background:rgba(76,175,119,.1); color:var(--verde); }
+    .msg-asunto { font-size:0.82rem; font-weight:600; color:var(--blanco); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .msg-meta { font-size:0.62rem; color:var(--gris); flex-shrink:0; text-align:right; }
+    .msg-replies-badge {
+      font-size:0.62rem; background:rgba(215,111,63,.15); color:var(--accent);
+      border-radius:999px; padding:0.1rem 0.5rem; flex-shrink:0;
+    }
+    .msg-body-wrap { display:none; border-top:1px solid var(--card-border); padding:1rem 1.1rem; }
+    .msg-body-wrap.open { display:block; }
+    .msg-cuerpo { font-size:0.78rem; color:rgba(255,255,255,0.75); line-height:1.6; white-space:pre-wrap; margin-bottom:1rem; }
+    .msg-dest-info { font-size:0.65rem; color:var(--gris); margin-bottom:0.8rem; }
+
+    /* Respuestas */
+    .replies-titulo { font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gris); font-weight:600; margin-bottom:0.6rem; }
+    .reply-item { background:rgba(255,255,255,0.04); border-radius:8px; padding:0.65rem 0.8rem; margin-bottom:0.4rem; }
+    .reply-header { display:flex; justify-content:space-between; margin-bottom:0.3rem; }
+    .reply-autor { font-size:0.68rem; font-weight:600; color:var(--blanco); }
+    .reply-fecha { font-size:0.6rem; color:var(--gris); }
+    .reply-cuerpo { font-size:0.76rem; color:rgba(255,255,255,0.7); line-height:1.5; }
+    .no-replies { font-size:0.7rem; color:rgba(255,255,255,0.2); text-align:center; padding:0.8rem 0; }
+
+    .sp { width:22px; height:22px; border:2px solid rgba(255,255,255,.1); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin:2rem auto; display:block; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .empty-msg { text-align:center; padding:3rem 1rem; color:var(--gris); font-size:0.8rem; }
+    .toast { position:fixed; bottom:1.5rem; right:1.5rem; background:#222; border:1px solid var(--card-border); color:var(--blanco); padding:0.7rem 1.2rem; border-radius:10px; font-size:0.78rem; z-index:999; opacity:0; transition:opacity .25s; pointer-events:none; }
+    .toast.show { opacity:1; }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="nueva-propiedad.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Nueva propiedad
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+      <a href="crm.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
+        CRM
+      </a>
+      <a href="canales.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Canales
+      </a>
+      <a href="campanas.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Campañas
+      </a>
+      <a href="tour360.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>
+        Tour 360°
+      </a>
+      <a href="trafico.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Tráfico
+      </a>
+      <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
+      <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        Apariencia
+      </a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Generar PDF
+      </a>
+      <a href="colaboradores.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+        Colaboradores
+      </a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+
+    <div class="colabs-header">
+      <h2 style="font-weight:300;">Mensajería · Colaboradores</h2>
+      <p style="font-size:0.76rem;color:var(--gris);margin-top:0.2rem;">
+        Enviá mensajes individuales o masivos a tu red de colaboradores
+      </p>
+    </div>
+
+    <div class="colabs-layout">
+
+      <!-- ── NUEVO MENSAJE ── -->
+      <div class="card">
+        <div class="card-titulo">Nuevo mensaje</div>
+
+        <div class="form-field">
+          <label class="form-label">Destinatario</label>
+          <div class="dest-pills">
+            <button class="dest-pill on" data-tipo="todos">Todos</button>
+            <button class="dest-pill" data-tipo="canal">Por canal</button>
+            <button class="dest-pill" data-tipo="ciudad">Por ciudad</button>
+            <button class="dest-pill" data-tipo="provincia">Por provincia</button>
+          </div>
+          <div id="destSelector" style="display:none; margin-top:0.4rem;"></div>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Asunto</label>
+          <input type="text" class="form-input" id="msgAsunto" placeholder="Ej: Nuevo proyecto disponible" />
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">Mensaje</label>
+          <textarea class="form-input form-textarea" id="msgCuerpo" placeholder="Escribí el mensaje para tus colaboradores..."></textarea>
+        </div>
+
+        <button class="btn-enviar" id="btnEnviar">Enviar mensaje</button>
+      </div>
+
+      <!-- ── MENSAJES ENVIADOS ── -->
+      <div class="card">
+        <div class="card-titulo">Mensajes enviados</div>
+        <div id="msgListaWrap"><div class="sp"></div></div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { supabase } from '../js/config.js'
+
+// ── Auth ──
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html' }
+document.getElementById('btnLogout').addEventListener('click', async e => {
+  e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
+})
+
+const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+const fmt = iso => iso ? new Date(iso).toLocaleString('es-AR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
+const fmtShort = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' }) : '—'
+
+function toast(msg, ms = 2200) {
+  const el = document.getElementById('toast')
+  el.textContent = msg; el.classList.add('show')
+  setTimeout(() => el.classList.remove('show'), ms)
+}
+
+// ── Cargar canales para selectores ──
+const { data: todosCanales } = await supabase.from('canales').select('id,nombre,ciudad,provincia,codigo').order('nombre')
+const canales = todosCanales || []
+const ciudades   = [...new Set(canales.map(c => c.ciudad).filter(Boolean))].sort()
+const provincias = [...new Set(canales.map(c => c.provincia).filter(Boolean))].sort()
+
+// ── Tipo seleccionado ──
+let _tipo = 'todos'
+let _canalId = null, _ciudad = null, _provincia = null
+
+// Pills
+document.querySelectorAll('.dest-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.dest-pill').forEach(b => b.classList.remove('on'))
+    btn.classList.add('on')
+    _tipo = btn.dataset.tipo
+    _canalId = null; _ciudad = null; _provincia = null
+    renderDestSelector()
+  })
+})
+
+function renderDestSelector() {
+  const sel = document.getElementById('destSelector')
+  if (_tipo === 'todos') { sel.style.display = 'none'; sel.innerHTML = ''; return }
+  sel.style.display = 'block'
+
+  if (_tipo === 'canal') {
+    sel.innerHTML = `<select class="form-input form-select" id="selCanal">
+      <option value="">— Seleccioná un canal —</option>
+      ${canales.map(c => `<option value="${esc(c.id)}">${esc(c.nombre)}${c.ciudad ? ' · ' + esc(c.ciudad) : ''}</option>`).join('')}
+    </select>`
+    document.getElementById('selCanal').addEventListener('change', e => { _canalId = e.target.value || null })
+
+  } else if (_tipo === 'ciudad') {
+    if (ciudades.length) {
+      sel.innerHTML = `<select class="form-input form-select" id="selCiudad">
+        <option value="">— Seleccioná una ciudad —</option>
+        ${ciudades.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+      </select>`
+      document.getElementById('selCiudad').addEventListener('change', e => { _ciudad = e.target.value || null })
+    } else {
+      sel.innerHTML = `<input type="text" class="form-input" id="selCiudad" placeholder="Ciudad" />`
+      document.getElementById('selCiudad').addEventListener('input', e => { _ciudad = e.target.value.trim() || null })
+    }
+
+  } else if (_tipo === 'provincia') {
+    if (provincias.length) {
+      sel.innerHTML = `<select class="form-input form-select" id="selProv">
+        <option value="">— Seleccioná una provincia —</option>
+        ${provincias.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}
+      </select>`
+      document.getElementById('selProv').addEventListener('change', e => { _provincia = e.target.value || null })
+    } else {
+      sel.innerHTML = `<input type="text" class="form-input" id="selProv" placeholder="Provincia" />`
+      document.getElementById('selProv').addEventListener('input', e => { _provincia = e.target.value.trim() || null })
+    }
+  }
+}
+
+// ── Enviar mensaje ──
+document.getElementById('btnEnviar').addEventListener('click', async () => {
+  const asunto = document.getElementById('msgAsunto').value.trim()
+  const cuerpo = document.getElementById('msgCuerpo').value.trim()
+
+  if (!asunto) { toast('Falta el asunto'); return }
+  if (!cuerpo)  { toast('Falta el mensaje'); return }
+  if (_tipo === 'canal'    && !_canalId)   { toast('Seleccioná un canal'); return }
+  if (_tipo === 'ciudad'   && !_ciudad)    { toast('Ingresá una ciudad'); return }
+  if (_tipo === 'provincia'&& !_provincia) { toast('Ingresá una provincia'); return }
+
+  const btn = document.getElementById('btnEnviar')
+  btn.disabled = true; btn.textContent = 'Enviando...'
+
+  const payload = {
+    asunto, cuerpo,
+    destinatario_tipo: _tipo,
+    canal_id:   _tipo === 'canal'    ? _canalId   : null,
+    ciudad:     _tipo === 'ciudad'   ? _ciudad     : null,
+    provincia:  _tipo === 'provincia'? _provincia  : null,
+  }
+
+  const { error } = await supabase.from('mensajes').insert(payload)
+
+  if (error) {
+    toast('Error: ' + error.message, 3500)
+  } else {
+    toast('✓ Mensaje enviado')
+    document.getElementById('msgAsunto').value = ''
+    document.getElementById('msgCuerpo').value = ''
+    _tipo = 'todos'; _canalId = null; _ciudad = null; _provincia = null
+    document.querySelectorAll('.dest-pill').forEach(b => b.classList.remove('on'))
+    document.querySelector('[data-tipo="todos"]').classList.add('on')
+    document.getElementById('destSelector').style.display = 'none'
+    await cargarMensajes()
+  }
+
+  btn.disabled = false; btn.textContent = 'Enviar mensaje'
+})
+
+// ── Cargar mensajes enviados ──
+async function cargarMensajes() {
+  const wrap = document.getElementById('msgListaWrap')
+  wrap.innerHTML = '<div class="sp"></div>'
+
+  const { data: msgs, error } = await supabase
+    .from('mensajes')
+    .select('*, mensajes_respuestas(id, usuario_nombre, canal_nombre, cuerpo, created_at)')
+    .order('created_at', { ascending: false })
+
+  if (error || !msgs?.length) {
+    wrap.innerHTML = `<div class="empty-msg">Todavía no enviaste ningún mensaje.</div>`
+    return
+  }
+
+  const TIPO_LABEL = { todos:'Todos', canal:'Canal', ciudad:'Ciudad', provincia:'Provincia', usuario:'Individual' }
+  const TIPO_CLASE = { todos:'tipo-todos', canal:'tipo-canal', ciudad:'tipo-ciudad', provincia:'tipo-provincia', usuario:'tipo-usuario' }
+
+  function destLabel(m) {
+    if (m.destinatario_tipo === 'todos')     return 'Todos los colaboradores'
+    if (m.destinatario_tipo === 'canal')     { const c = canales.find(x => x.id === m.canal_id); return c ? c.nombre : m.canal_id }
+    if (m.destinatario_tipo === 'ciudad')    return m.ciudad
+    if (m.destinatario_tipo === 'provincia') return m.provincia
+    return '—'
+  }
+
+  wrap.innerHTML = `<div class="msg-list">${msgs.map(m => {
+    const replies = m.mensajes_respuestas || []
+    const repliesHtml = replies.length
+      ? replies.map(r => `
+          <div class="reply-item">
+            <div class="reply-header">
+              <span class="reply-autor">${esc(r.canal_nombre || r.usuario_nombre || 'Colaborador')}</span>
+              <span class="reply-fecha">${fmtShort(r.created_at)}</span>
+            </div>
+            <div class="reply-cuerpo">${esc(r.cuerpo)}</div>
+          </div>`).join('')
+      : '<div class="no-replies">Sin respuestas aún</div>'
+
+    return `
+      <div class="msg-item">
+        <div class="msg-head" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span class="msg-tipo-badge ${TIPO_CLASE[m.destinatario_tipo]||'tipo-todos'}">${TIPO_LABEL[m.destinatario_tipo]||m.destinatario_tipo}</span>
+          <span class="msg-asunto">${esc(m.asunto)}</span>
+          ${replies.length ? `<span class="msg-replies-badge">${replies.length} resp.</span>` : ''}
+          <span class="msg-meta">${fmtShort(m.created_at)}</span>
+        </div>
+        <div class="msg-body-wrap">
+          <div class="msg-dest-info">Para: <strong>${esc(destLabel(m))}</strong></div>
+          <div class="msg-cuerpo">${esc(m.cuerpo)}</div>
+          <div class="replies-titulo">Respuestas</div>
+          ${repliesHtml}
+        </div>
+      </div>`
+  }).join('')}</div>`
+}
+
+cargarMensajes()
+</script>
+</body>
+</html>

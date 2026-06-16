@@ -250,6 +250,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         Generar PDF
       </a>
+            <a href="colaboradores.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+        Colaboradores
+      </a>
       <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
         Ver sitio
@@ -413,10 +417,12 @@
         <select id="lstRef" class="admin-input slim"><option value="">Todos los QRs</option></select>
         <select id="lstEstado" class="admin-input slim">
           <option value="">Todos los estados</option>
-          <option value="nueva">Nuevas</option>
-          <option value="contactado">Contactadas</option>
-          <option value="cerrado">Cerradas</option>
-          <option value="descartado">Descartadas</option>
+          <option value="nueva">Nuevo lead</option>
+          <option value="contactado">Contactado</option>
+          <option value="visita">Visita coordinada</option>
+          <option value="oferta">Oferta enviada</option>
+          <option value="cerrado">Cerrado</option>
+          <option value="descartado">Descartado</option>
         </select>
         <select id="lstOrden" class="admin-input slim">
           <option value="recientes">Más recientes</option>
@@ -449,7 +455,7 @@ const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 const toSlug = str => String(str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-')
 const dia = d => new Date(d).toISOString().slice(0, 10)
 
-const ESTADOS = { nueva: 'Nueva', contactado: 'Contactado', cerrado: 'Cerrado', descartado: 'Descartado' }
+const ESTADOS = { nueva: 'Nuevo lead', contactado: 'Contactado', visita: 'Visita coordinada', oferta: 'Oferta enviada', cerrado: 'Cerrado', descartado: 'Descartado' }
 const PALETA  = ['#d76f3f','#6495ed','#50c878','#b464dc','#ffc832','#4ad0c4','#e05c5c','#9aa0a6']
 
 // Paleta exclusiva para canales: sin #6495ed (azul=link) ni #50c878 (verde=QR)
@@ -1020,7 +1026,7 @@ function renderLista(rows) {
     (!_lstEstado || l._estado === _lstEstado)
   )
   // Orden
-  const ordEst = { nueva: 0, contactado: 1, cerrado: 2, descartado: 3 }
+  const ordEst = { nueva: 0, contactado: 1, visita: 2, oferta: 3, cerrado: 4, descartado: 5 }
   if (_lstOrden === 'antiguas')    lst = [...lst].sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
   else if (_lstOrden === 'estado') lst = [...lst].sort((a,b) => (ordEst[a._estado] ?? 9) - (ordEst[b._estado] ?? 9) || new Date(b.created_at) - new Date(a.created_at))
   else if (_lstOrden === 'canal')  lst = [...lst].sort((a,b) => String(a._canal || '￿').localeCompare(String(b._canal || '￿')) || new Date(b.created_at) - new Date(a.created_at))

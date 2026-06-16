@@ -151,6 +151,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
         Apariencia
       </a>
+            <a href="colaboradores.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+        Colaboradores
+      </a>
       <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
         Ver sitio
@@ -340,6 +344,7 @@ async function cargarCanales() {
         <a href="nuevo-canal.html?id=${c.id}" class="btn-cc">Editar</a>
         <a href="contactos.html" class="btn-cc">Ver consultas</a>
         <button class="btn-cc danger" onclick="toggleActivo('${c.id}', ${c.activo})">${c.activo ? 'Desactivar' : 'Activar'}</button>
+        <button class="btn-cc danger" onclick="eliminarCanal('${c.id}', '${esc(c.nombre)}')">Eliminar</button>
       </div>
       <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
         <div>
@@ -353,6 +358,15 @@ async function cargarCanales() {
       </div>
     </div>`
   }).join('')
+}
+
+// ── Eliminar canal ────────────────────────────────────────
+window.eliminarCanal = async (id, nombre) => {
+  if (!confirm(`¿Eliminar el canal "${nombre}"?\n\nSe borrarán también sus referencias (QRs). Las consultas y visitas registradas NO se borran.`)) return
+  await supabase.from('referencias').delete().eq('canal_id', id)
+  const { error } = await supabase.from('canales').delete().eq('id', id)
+  if (error) { alert('Error al eliminar: ' + error.message); return }
+  cargarCanales()
 }
 
 // ── Toggle activo ─────────────────────────────────────────
