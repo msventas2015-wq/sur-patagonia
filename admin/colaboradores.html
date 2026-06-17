@@ -234,6 +234,18 @@
             <div class="check-group" id="grupoCiudades"></div>
           </div>
 
+          <!-- Tipo de canal -->
+          <div class="form-field">
+            <div class="filter-header">
+              <label class="form-label" style="margin-bottom:0">Tipo de canal</label>
+              <div class="filter-links">
+                <button class="filter-link" id="btnMarcarTipos">Marcar todos</button>
+                <button class="filter-link" id="btnLimpiarTipos">Limpiar</button>
+              </div>
+            </div>
+            <div class="check-group" id="grupoTipos"></div>
+          </div>
+
           <!-- Canales -->
           <div class="form-field">
             <div class="filter-header">
@@ -306,7 +318,7 @@ function toast(msg, ms = 2400) {
 }
 
 // ── Cargar canales ──
-const { data: rawCanales } = await supabase.from('canales').select('id,nombre,ciudad,provincia,user_id').order('nombre')
+const { data: rawCanales } = await supabase.from('canales').select('id,nombre,ciudad,provincia,tipo,user_id').order('nombre')
 const canales = rawCanales || []
 
 // Datos para filtros
@@ -330,7 +342,16 @@ let _modo   = 'filtros'   // 'filtros' | 'individual'
 let _userId = null
 const _selProvincias = new Set()
 const _selCiudades   = new Set()
+const _selTipos      = new Set()
 const _selCanales    = new Set()
+
+const TIPO_LABELS = {
+  inmobiliaria: 'Inmobiliaria',
+  particular:   'Vendedor particular',
+  punto_venta:  'Punto de venta',
+  'campaña':    'Campaña digital',
+  evento:       'Evento',
+}
 
 // ── Helper: construir grupo de checkboxes ──
 function buildCheckGroup(containerId, items, selSet, onChangeFn) {
@@ -369,22 +390,45 @@ function buildCiudades() {
     ? canales.filter(c => _selProvincias.has(c.provincia))
     : canales
   const ciudades = [...new Set(fuente.map(c => c.ciudad).filter(Boolean))].sort()
-  // limpiar selecciones que ya no existen en el contexto actual
   _selCiudades.forEach(c => { if (!ciudades.includes(c)) _selCiudades.delete(c) })
   buildCheckGroup('grupoCiudades',
     ciudades.map(c => ({ val: c, txt: c })),
     _selCiudades,
-    actualizarResumen
+    () => { buildTipos(); actualizarResumen() }
   )
 }
 
-// ── Construir canales ──
+// ── Construir tipos (dinámico desde provincias + ciudades) ──
+function buildTipos() {
+  const fuente = canales.filter(c => {
+    if (_selProvincias.size && !_selProvincias.has(c.provincia)) return false
+    if (_selCiudades.size   && !_selCiudades.has(c.ciudad))     return false
+    return true
+  })
+  const tipos = [...new Set(fuente.map(c => c.tipo).filter(Boolean))].sort()
+  _selTipos.forEach(t => { if (!tipos.includes(t)) _selTipos.delete(t) })
+  buildCheckGroup('grupoTipos',
+    tipos.map(t => ({ val: t, txt: TIPO_LABELS[t] || t })),
+    _selTipos,
+    () => { buildCanales(); actualizarResumen() }
+  )
+  buildCanales()
+}
+
+// ── Construir canales (filtra por provincia + ciudad + tipo) ──
 function buildCanales() {
+  const fuente = canales.filter(c => {
+    if (_selProvincias.size && !_selProvincias.has(c.provincia)) return false
+    if (_selCiudades.size   && !_selCiudades.has(c.ciudad))     return false
+    if (_selTipos.size      && !_selTipos.has(c.tipo))           return false
+    return true
+  })
+  _selCanales.forEach(id => { if (!fuente.find(c => c.id === id)) _selCanales.delete(id) })
   buildCheckGroup('grupoCanales',
-    canales.map(c => ({
+    fuente.map(c => ({
       val: c.id,
       txt: c.nombre,
-      sub: [c.ciudad, c.provincia].filter(Boolean).join(', ')
+      sub: [TIPO_LABELS[c.tipo] || c.tipo, c.ciudad, c.provincia].filter(Boolean).join(', ')
     })),
     _selCanales,
     actualizarResumen
@@ -408,14 +452,22 @@ document.getElementById('btnMarcarProvs').addEventListener('click', () =>
   marcarTodosGrupo('grupoProvincias', _selProvincias, () => { buildCiudades(); actualizarResumen() }))
 document.getElementById('btnLimpiarProvs').addEventListener('click', () => {
   limpiarGrupo('grupoProvincias', _selProvincias, null)
-  _selCiudades.clear()
+  _selCiudades.clear(); _selTipos.clear()
   buildCiudades()
   actualizarResumen()
 })
 document.getElementById('btnMarcarCiudades').addEventListener('click', () =>
-  marcarTodosGrupo('grupoCiudades', _selCiudades, actualizarResumen))
-document.getElementById('btnLimpiarCiudades').addEventListener('click', () =>
-  limpiarGrupo('grupoCiudades', _selCiudades, actualizarResumen))
+  marcarTodosGrupo('grupoCiudades', _selCiudades, () => { buildTipos(); actualizarResumen() }))
+document.getElementById('btnLimpiarCiudades').addEventListener('click', () => {
+  limpiarGrupo('grupoCiudades', _selCiudades, null)
+  _selTipos.clear()
+  buildTipos()
+  actualizarResumen()
+})
+document.getElementById('btnMarcarTipos').addEventListener('click', () =>
+  marcarTodosGrupo('grupoTipos', _selTipos, () => { buildCanales(); actualizarResumen() }))
+document.getElementById('btnLimpiarTipos').addEventListener('click', () =>
+  limpiarGrupo('grupoTipos', _selTipos, () => { buildCanales(); actualizarResumen() }))
 document.getElementById('btnMarcarCanales').addEventListener('click', () =>
   marcarTodosGrupo('grupoCanales', _selCanales, actualizarResumen))
 document.getElementById('btnLimpiarCanales').addEventListener('click', () =>
@@ -424,7 +476,7 @@ document.getElementById('btnLimpiarCanales').addEventListener('click', () =>
 // ── Inicializar grupos ──
 buildProvincias()
 buildCiudades()
-buildCanales()
+buildTipos()
 
 // ── Modo toggle ──
 document.getElementById('btnModoFiltros').addEventListener('click', () => {
@@ -500,8 +552,8 @@ document.getElementById('btnEnviar').addEventListener('click', async () => {
     document.getElementById('msgAsunto').value = ''
     document.getElementById('msgCuerpo').value = ''
     selUser.value = ''; _userId = null
-    _selProvincias.clear(); _selCiudades.clear(); _selCanales.clear()
-    buildProvincias(); buildCiudades(); buildCanales()
+    _selProvincias.clear(); _selCiudades.clear(); _selTipos.clear(); _selCanales.clear()
+    buildProvincias(); buildCiudades(); buildTipos()
     actualizarResumen()
     await cargarMensajes()
   }
