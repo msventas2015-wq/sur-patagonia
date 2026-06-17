@@ -250,20 +250,20 @@
         <div class="config-group">
           <label class="config-label">Calidad</label>
           <select class="config-select" id="selectCalidad">
-            <option value="0.95">Máxima — 0.95 (archivo grande)</option>
-            <option value="0.85" selected>Alta — 0.85 (recomendada web)</option>
-            <option value="0.80">Buena — 0.80 (balance peso/calidad)</option>
-            <option value="0.70">Ligera — 0.70 (máximo ahorro)</option>
+            <option value="0.95">Máxima — 0.95 (casi sin ahorro)</option>
+            <option value="0.90" selected>Excelente — 0.90 (recomendada)</option>
+            <option value="0.85">Alta — 0.85 (buen balance)</option>
+            <option value="0.80">Buena — 0.80 (máximo ahorro)</option>
           </select>
-          <span class="config-hint" id="hintCalidad">Muy buena calidad visual, archivos ~50% más livianos</span>
+          <span class="config-hint" id="hintCalidad">Calidad visualmente idéntica al original — diferencia imperceptible</span>
         </div>
 
         <div class="config-group">
           <label class="config-label">Resolución máxima</label>
           <select class="config-select" id="selectResolucion">
-            <option value="16000">Sin límite (conservar original)</option>
+            <option value="16000" selected>Sin límite — conservar resolución original</option>
             <option value="3840">4K — 3840 px</option>
-            <option value="2560" selected>2K — 2560 px (recomendada web)</option>
+            <option value="2560">2K — 2560 px</option>
             <option value="1920">Full HD — 1920 px</option>
           </select>
           <span class="config-hint">Ancho máximo en píxeles. Alto se ajusta proporcional.</span>
@@ -469,18 +469,13 @@ async function procesarImagen(item, idx) {
 
     actualizarFila(idx, 'processing', 'Subiendo...')
 
-    const carpetaPath = item.path.includes('/') ? item.path.substring(0, item.path.lastIndexOf('/')) : ''
-    const nuevoNombre = item.name.replace(/\.[^.]+$/, '') + '.webp'
-    const nuevaRuta = carpetaPath ? `${carpetaPath}/${nuevoNombre}` : nuevoNombre
-
+    // IMPORTANTE: siempre subir al mismo path original — nunca renombrar.
+    // Si renombramos de .jpg a .webp, la URL guardada en la BD queda rota.
+    // Supabase sirve el contenido WebP con el header correcto aunque el path
+    // tenga extensión .jpg — el navegador lo muestra igual.
     const { error: upErr } = await supabase.storage
-      .from(BUCKET).upload(nuevaRuta, webpFile, { upsert: true, contentType: 'image/webp' })
+      .from(BUCKET).upload(item.path, webpFile, { upsert: true, contentType: 'image/webp' })
     if (upErr) throw new Error('Error al subir: ' + upErr.message)
-
-    // Borrar original si cambió la extensión
-    if (nuevaRuta !== item.path) {
-      await supabase.storage.from(BUCKET).remove([item.path])
-    }
 
     const ahorro = originalSize - nuevoSize
     pesoAhorrado += ahorro
