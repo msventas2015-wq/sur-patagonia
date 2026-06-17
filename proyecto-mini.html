@@ -987,9 +987,20 @@ import { supabase, getRef, getRefVia } from './js/config.js'
   const _slug = _p.get('slug')
   if (_slug && /^[a-z0-9-]+$/.test(_slug)) {
     document.documentElement.style.visibility = 'hidden'
+    // ── Registrar visita antes de redirigir ───────────────────
+    try {
+      const _cr = _p.get('canal') || _p.get('ref') || null
+      const _cv = _cr ? (_p.get('via') === 'qr' ? 'qr' : 'link') : null
+      const _ua = navigator.userAgent
+      const _dv = /Mobi|Android/i.test(_ua) ? 'mobile' : /Tablet|iPad/i.test(_ua) ? 'tablet' : 'desktop'
+      const _rf = document.referrer ? new URL(document.referrer).hostname : 'directo'
+      await supabase.from('visitas').insert({ pagina: _slug, dispositivo: _dv, canal_ref: _cr, canal_via: _cv, referrer: _rf })
+    } catch(_e) {}
+    // ─────────────────────────────────────────────────────────
     const _keep = new URLSearchParams()
-    if (_p.get('ref')) _keep.set('ref', _p.get('ref'))
-    if (_p.get('via')) _keep.set('via', _p.get('via'))
+    if (_p.get('ref'))   _keep.set('ref',   _p.get('ref'))
+    if (_p.get('canal')) _keep.set('canal', _p.get('canal'))
+    if (_p.get('via'))   _keep.set('via',   _p.get('via'))
     location.replace(`/${_slug}${_keep.toString() ? '?' + _keep.toString() : ''}`)
     throw new Error('redirect a miniweb')
   }
