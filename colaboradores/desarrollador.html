@@ -192,6 +192,31 @@
     }
     .btn-periodo:hover, .btn-periodo.activo { border-color: var(--accent); color: var(--accent); }
 
+    /* ── Zonas ── */
+    .zonas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: .75rem;
+    }
+    .zona-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+    }
+    .zona-nombre {
+      font-size: .82rem; font-weight: 600; margin-bottom: .6rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .zona-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    .zona-total { font-size: 1.4rem; font-weight: 700; line-height: 1; margin-bottom: .5rem; color: var(--blanco); }
+    .zona-sub { font-size: .68rem; color: var(--gris); margin-bottom: .6rem; }
+    .zona-barra { display: flex; height: 5px; border-radius: 99px; overflow: hidden; gap: 1px; margin-top: .3rem; }
+    .zona-seg { height: 100%; }
+    .zona-stats { display: flex; gap: .7rem; margin-top: .5rem; }
+    .zona-stat { display: flex; align-items: center; gap: .3rem; font-size: .65rem; color: var(--gris); }
+    .zona-stat-dot { width: 7px; height: 7px; border-radius: 1px; }
+
     @media (max-width: 600px) {
       .kpi-grid { grid-template-columns: 1fr 1fr; }
       .canal-barra-wrap { display: none; }
@@ -238,6 +263,10 @@
   <!-- Canal ranking -->
   <div class="section-label">Canales por consultas</div>
   <div id="canalRanking"><div class="loading">Cargando…</div></div>
+
+  <!-- Zonas del proyecto -->
+  <div class="section-label">Inventario por zona</div>
+  <div id="zonasGrid"><div class="loading">Cargando…</div></div>
 
   <!-- Últimas consultas -->
   <div class="section-label">Últimas consultas</div>
@@ -288,10 +317,12 @@ function fmtTipo(tipo) {
 
 // ── Load proyecto ─────────────────────────────────────────
 let proyectoNombre = proyectoSlug || 'Proyecto'
+let _proyectoId    = null
 
 if (proyectoSlug) {
-  const { data: p } = await supabase.from('proyectos').select('nombre, slug').eq('slug', proyectoSlug).maybeSingle()
+  const { data: p } = await supabase.from('proyectos').select('id, nombre, slug').eq('slug', proyectoSlug).maybeSingle()
   if (p?.nombre) proyectoNombre = p.nombre
+  if (p?.id)     _proyectoId    = p.id
 }
 
 document.getElementById('hdrProyecto').textContent    = proyectoNombre
@@ -313,30 +344,40 @@ window.setPeriodo = function(btn) {
 // ── Load + render ─────────────────────────────────────────
 let _contactos = []
 let _refMap    = {}  // codigo → {nombre, tipo}
+let _lotes     = []  // lotes del proyecto para zonas
 
 async function cargarTodo() {
   if (!proyectoSlug) {
     document.getElementById('kpiGrid').innerHTML = `<div class="empty" style="grid-column:1/-1">Sin proyecto asignado.</div>`
     document.getElementById('canalRanking').innerHTML = ''
+    document.getElementById('zonasGrid').innerHTML = ''
     document.getElementById('leadsLista').innerHTML = ''
     return
   }
 
-  // Contactos del proyecto
-  const { data: contactos } = await supabase
-    .from('contactos')
-    .select('id, created_at, nombre, email, telefono, canal_ref, mensaje')
-    .eq('proyecto_slug', proyectoSlug)
-    .order('created_at', { ascending: false })
-    .limit(5000)
+  // Cargar todo en paralelo
+  const [
+    { data: contactos },
+    { data: refs },
+    { data: lotes }
+  ] = await Promise.all([
+    supabase
+      .from('contactos')
+      .select('id, created_at, nombre, email, telefono, canal_ref, mensaje')
+      .eq('proyecto_slug', proyectoSlug)
+      .order('created_at', { ascending: false })
+      .limit(5000),
+    supabase
+      .from('referencias')
+      .select('codigo, nombre, canal_id, canales(nombre, tipo)')
+      .eq('proyecto_slug', proyectoSlug),
+    _proyectoId
+      ? supabase.from('lotes').select('numero, tipo_lote, estado').eq('proyecto_id', _proyectoId)
+      : Promise.resolve({ data: [] })
+  ])
 
   _contactos = contactos || []
-
-  // Referencias del proyecto → info de canal
-  const { data: refs } = await supabase
-    .from('referencias')
-    .select('codigo, nombre, canal_id, canales(nombre, tipo)')
-    .eq('proyecto_slug', proyectoSlug)
+  _lotes     = lotes     || []
 
   _refMap = {}
   ;(refs || []).forEach(r => {
@@ -346,10 +387,8 @@ async function cargarTodo() {
     }
   })
 
-  // También mapear por canal_ref directamente si existe como canal.codigo
-  // (fallback: usar canal_ref como nombre)
-
   renderData()
+  renderZonas()
 }
 
 function renderData() {
@@ -475,6 +514,85 @@ function renderData() {
         }).join('')}
       </div>`
   }
+}
+
+// ── Render zonas ─────────────────────────────────────────
+function renderZonas() {
+  const el = document.getElementById('zonasGrid')
+  if (!_lotes.length) {
+    el.innerHTML = `<div class="empty">Sin lotes cargados para este proyecto.</div>`
+    return
+  }
+
+  // Colores por zona (sincronizan con mapa-lotes)
+  const ZONA_COLORS = {
+    'Laguna':            '#7ec8d4',
+    'Bosque':            '#8aab78',
+    'Río':               '#6aabb4',
+    'Complejo turístico':'#c8bfa8',
+  }
+  const FALLBACK_COLORS = ['#d76f3f','#c9a84c','#4db8a4','#6495ed','#c070c0','#e08060']
+  let colorIdx = 0
+  const zonasMap = {}
+
+  _lotes.forEach(l => {
+    const zona = l.tipo_lote || 'Sin zona'
+    if (!zonasMap[zona]) {
+      zonasMap[zona] = {
+        color: ZONA_COLORS[zona] || FALLBACK_COLORS[colorIdx++ % FALLBACK_COLORS.length],
+        vendido: 0, reservado: 0, disponible: 0, otro: 0, total: 0
+      }
+    }
+    const z = zonasMap[zona]
+    z.total++
+    if      (l.estado === 'vendido')   z.vendido++
+    else if (l.estado === 'reservado') z.reservado++
+    else if (l.estado === 'disponible' || !l.estado) z.disponible++
+    else z.otro++
+  })
+
+  const totalLotes = _lotes.length
+  const totalVendidos = _lotes.filter(l => l.estado === 'vendido').length
+  const totalReservados = _lotes.filter(l => l.estado === 'reservado').length
+  const totalDisp = _lotes.filter(l => l.estado === 'disponible' || !l.estado).length
+
+  const zonasSorted = Object.entries(zonasMap).sort((a, b) => b[1].total - a[1].total)
+
+  el.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.85rem 1.1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+      <div style="font-size:.75rem;font-weight:600;">${totalLotes} lotes totales</div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;"><span style="width:8px;height:8px;border-radius:1px;background:#993C1D;display:inline-block;"></span>Vendidos: <strong>${totalVendidos}</strong></div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;"><span style="width:8px;height:8px;border-radius:1px;background:#c9a84c;display:inline-block;"></span>Reservados: <strong>${totalReservados}</strong></div>
+      <div style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;"><span style="width:8px;height:8px;border-radius:1px;background:#50c878;display:inline-block;"></span>Disponibles: <strong>${totalDisp}</strong></div>
+      <div style="margin-left:auto;font-size:.72rem;color:var(--gris);">${Math.round((totalVendidos+totalReservados)/totalLotes*100)}% comercializado</div>
+    </div>
+    <div class="zonas-grid">
+      ${zonasSorted.map(([nombre, z]) => {
+        const pctVend = z.total > 0 ? Math.round(z.vendido  / z.total * 100) : 0
+        const pctRsv  = z.total > 0 ? Math.round(z.reservado / z.total * 100) : 0
+        const pctDisp = z.total > 0 ? Math.round(z.disponible / z.total * 100) : 0
+        const comerc  = pctVend + pctRsv
+        return `
+        <div class="zona-card">
+          <div class="zona-nombre">
+            <span class="zona-dot" style="background:${z.color};"></span>
+            ${esc(nombre)}
+          </div>
+          <div class="zona-total">${z.total}</div>
+          <div class="zona-sub">${comerc}% comercializado</div>
+          <div class="zona-barra">
+            ${pctVend > 0  ? `<div class="zona-seg" style="width:${pctVend}%;background:#993C1D;"></div>` : ''}
+            ${pctRsv  > 0  ? `<div class="zona-seg" style="width:${pctRsv}%;background:#c9a84c;"></div>` : ''}
+            ${pctDisp > 0  ? `<div class="zona-seg" style="width:${pctDisp}%;background:#50c878;"></div>` : ''}
+          </div>
+          <div class="zona-stats">
+            <span class="zona-stat"><span class="zona-stat-dot" style="background:#993C1D;"></span>${z.vendido} vendidos</span>
+            <span class="zona-stat"><span class="zona-stat-dot" style="background:#c9a84c;"></span>${z.reservado} reservados</span>
+            <span class="zona-stat"><span class="zona-stat-dot" style="background:#50c878;"></span>${z.disponible} disp.</span>
+          </div>
+        </div>`
+      }).join('')}
+    </div>`
 }
 
 cargarTodo()
