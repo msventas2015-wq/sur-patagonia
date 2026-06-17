@@ -777,6 +777,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         Canales
       </a>
+      <a href="salud-de-red.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Salud de Red
+      </a>
       <a href="campanas.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Campañas
@@ -805,6 +809,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
         Colaboradores
       </a>
+
       <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
         Ver sitio
@@ -2063,11 +2068,11 @@ ALTER TABLE proyectos
 
 <script type="module">
   import { supabase, optimizarImagen } from "../js/config.js"
-  window._sb = supabase
 
   // ── Auth check ─────────────────────────────────────────
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) { window.location.href = 'login.html'; }
+  if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
+if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 
   // ── Logout ─────────────────────────────────────────────
   const btnLogout = document.getElementById('btnLogout')
@@ -2480,9 +2485,9 @@ ALTER TABLE proyectos
     // Auto-optimizar imágenes antes de subir (saltar PDFs)
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
     const fileToUpload = isPdf ? file : await optimizarImagen(file, {
-      maxAncho: carpeta.includes('masterplan') ? 4096 : 1920,
-      maxAlto:  carpeta.includes('masterplan') ? 4096 : 1920,
-      calidad: 0.92
+      maxAncho: carpeta.includes('masterplan') ? 8000 : 8000,
+      maxAlto:  carpeta.includes('masterplan') ? 8000 : 8000,
+      calidad: 0.95  // máxima calidad — el ahorro viene del formato WebP, no de reducir calidad
     })
     const ext  = isPdf ? file.name.split('.').pop().toLowerCase() : 'webp'
     const path = `${carpeta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
@@ -2807,10 +2812,10 @@ ALTER TABLE proyectos
     try {
       let id = proyectoId
       if (id) {
-        const { error } = await window._sb.from('proyectos').update(proyecto).eq('id', id)
+        const { error } = await supabase.from('proyectos').update(proyecto).eq('id', id)
         if (error) throw error
       } else {
-        const { data, error } = await window._sb.from('proyectos').insert(proyecto).select().single()
+        const { data, error } = await supabase.from('proyectos').insert(proyecto).select().single()
         if (error) throw error
         id = data.id
         proyectoId = id
@@ -2822,7 +2827,7 @@ ALTER TABLE proyectos
       if (lotes.length > 0) {
         // 1. Guardar los datos de mapa de los lotes actuales antes de borrarlos
         //    Fuente 1: DB (estado persistido)
-        const { data: lotesActuales } = await window._sb.from('lotes')
+        const { data: lotesActuales } = await supabase.from('lotes')
           .select('numero, mapa_x, mapa_y, tipo_lote')
           .eq('proyecto_id', id)
         const mapaBackup = {}
@@ -2841,16 +2846,16 @@ ALTER TABLE proyectos
         }
 
         // 2. Borrar e insertar lotes desde el formulario
-        await window._sb.from('lotes').delete().eq('proyecto_id', id)
+        await supabase.from('lotes').delete().eq('proyecto_id', id)
         const lotesConId = lotes.map(l => ({ ...l, proyecto_id: id }))
-        const { data: lotesInsertados, error: errLotes } = await window._sb.from('lotes').insert(lotesConId).select()
+        const { data: lotesInsertados, error: errLotes } = await supabase.from('lotes').insert(lotesConId).select()
         if (errLotes) console.warn('Error lotes:', errLotes)
 
         // 3. Restaurar datos del mapa en los lotes recién insertados
         if (lotesInsertados && Object.keys(mapaBackup).length) {
           const restoreUpdates = lotesInsertados
             .filter(l => mapaBackup[l.numero])
-            .map(l => window._sb.from('lotes').update(mapaBackup[l.numero]).eq('id', l.id))
+            .map(l => supabase.from('lotes').update(mapaBackup[l.numero]).eq('id', l.id))
           if (restoreUpdates.length) await Promise.all(restoreUpdates)
         }
       }
@@ -2876,7 +2881,7 @@ ALTER TABLE proyectos
 
   // ── Cargar proyecto existente ──────────────────────────
   async function cargarProyecto(id) {
-    const { data: p, error } = await window._sb.from('proyectos').select('*').eq('id', id).single()
+    const { data: p, error } = await supabase.from('proyectos').select('*').eq('id', id).single()
     if (error || !p) { mostrarAlerta('error', 'Proyecto no encontrado.'); return }
 
     const set = (elId, val) => { if (document.getElementById(elId)) document.getElementById(elId).value = val || '' }
@@ -3005,7 +3010,7 @@ ALTER TABLE proyectos
     if (p.fotos) { fotosArr.splice(0); fotosArr.push(...p.fotos); renderGaleria() }
 
     // Lotes
-    const { data: lotes } = await window._sb.from('lotes').select('*').eq('proyecto_id', id).order('numero')
+    const { data: lotes } = await supabase.from('lotes').select('*').eq('proyecto_id', id).order('numero')
     if (lotes) lotes.forEach(l => agregarLote(l))
 
     if (p.estado === 'activo') {
@@ -3029,7 +3034,7 @@ ALTER TABLE proyectos
   // ── Logout ─────────────────────────────────────────────
   document.getElementById('btnLogout').addEventListener('click', async (e) => {
     e.preventDefault()
-    await window._sb.auth.signOut()
+    await supabase.auth.signOut()
     location.href = 'login.html'
   })
 
@@ -3084,7 +3089,7 @@ ALTER TABLE proyectos
 </div>
 <script type="module">
 // ══ MAPA DE LOTES — lógica del panel inline ══════════════════════════
-import { supabase } from '../js/config.js'
+import { supabase, subirImagen } from '../js/config.js'
 
 // ── Zonas editables ───────────────────────────────────────────────────
 const ML_ZONA_DEFAULTS = [
@@ -3224,15 +3229,12 @@ window.mlSubirMapa = async (input) => {
   const file = input.files[0]; if (!file) return
   const pid = window._proyectoId; if (!pid) { alert('Guardá el proyecto primero.'); return }
   const slug = document.getElementById('slug')?.value || pid
-  const ext = file.name.split('.').pop()
-  const path = `mapas/${slug}/mapa.${ext}`
   document.getElementById('mlCanvasInfo').textContent = 'Subiendo...'
-  const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
-  if (error) { alert('Error: ' + error.message); return }
-  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
-  _mlUrl = data.publicUrl
-  mlMostrarMapa(_mlUrl)
-  document.getElementById('mlCanvasInfo').textContent = 'Imagen cargada — posicioná los lotes y guardá'
+  try {
+    _mlUrl = await subirImagen(file, `mapas/${slug}`)
+    mlMostrarMapa(_mlUrl)
+    document.getElementById('mlCanvasInfo').textContent = 'Imagen cargada — posicioná los lotes y guardá'
+  } catch(e) { alert('Error: ' + e.message) }
 }
 
 function mlMostrarMapa(url) {
@@ -3466,7 +3468,7 @@ document.getElementById('tabMapa')?.addEventListener('click', async () => {
 
 <script type="module">
 // ── Representantes del proyecto ──────────────────────────────────────────
-import { supabase } from '../js/config.js'
+import { supabase, subirImagen } from '../js/config.js'
 
 let _repLista = []
 
@@ -3491,13 +3493,10 @@ window.repSubirLogo = async (i, input) => {
   const file = input.files[0]; if (!file) return
   const pid = window._proyectoId; if (!pid) { alert('Guardá el proyecto primero.'); return }
   const slug = document.getElementById('slug')?.value || pid
-  const ext = file.name.split('.').pop()
-  const path = `representantes/${slug}/${Date.now()}.${ext}`
-  const { error } = await supabase.storage.from('imagenes').upload(path, file, { upsert: true })
-  if (error) { alert('Error subiendo logo: ' + error.message); return }
-  const { data } = supabase.storage.from('imagenes').getPublicUrl(path)
-  _repLista[i].logo_url = data.publicUrl
-  repRender()
+  try {
+    _repLista[i].logo_url = await subirImagen(file, `representantes/${slug}`)
+    repRender()
+  } catch(e) { alert('Error subiendo logo: ' + e.message) }
 }
 
 function repRender() {
