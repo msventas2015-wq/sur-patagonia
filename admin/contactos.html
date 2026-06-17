@@ -193,6 +193,44 @@
     /* Mapa: provincias con hover cálido estilo Sur Patagonia */
     .prov-path { transition: fill .25s; cursor: default; }
     .prov-path:hover { fill: #271b10; filter: drop-shadow(0 0 6px rgba(215,111,63,0.45)); }
+
+    /* ── Multi-touch journey ──────────────────────────────── */
+    .journey-tag {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: rgba(240,180,41,0.12); border: 1px solid rgba(240,180,41,0.3);
+      color: #f0b429; padding: 0.16rem 0.55rem; border-radius: 999px;
+      font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      flex-shrink: 0;
+    }
+    .journey-section {
+      margin: 0.75rem 0 0.2rem;
+      background: rgba(240,180,41,0.04); border: 1px solid rgba(240,180,41,0.14);
+      border-radius: 10px; padding: 0.75rem 1rem;
+    }
+    .journey-title {
+      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #f0b429; margin-bottom: 0.65rem;
+    }
+    .journey-timeline {
+      display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+    }
+    .journey-step { display: flex; flex-direction: column; align-items: center; gap: 0.18rem; }
+    .journey-step-canal {
+      font-size: 0.67rem; font-weight: 600; color: #f5f3f0;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      padding: 0.22rem 0.6rem; border-radius: 6px;
+      white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .journey-step-canal.first { border-color: rgba(74,208,196,0.45); background: rgba(74,208,196,0.08); color: #4ad0c4; }
+    .journey-step-canal.last  { border-color: rgba(215,111,63,0.45); background: rgba(215,111,63,0.08); color: #d76f3f; }
+    .journey-step-date { font-size: 0.57rem; color: #666; }
+    .journey-arrow { color: rgba(255,255,255,0.18); font-size: 0.85rem; flex-shrink: 0; margin-bottom: 0.9rem; }
+    .journey-attr {
+      margin-top: 0.55rem; font-size: 0.64rem; color: #888;
+      border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.4rem;
+      display: flex; gap: 1.2rem; flex-wrap: wrap;
+    }
+    .journey-attr strong { color: #f0b429; }
   </style>
 </head>
 <body>
@@ -542,6 +580,7 @@ async function cargarTodo() {
   })
 
   buildColorMap()
+  buildPersonaMap()
   poblarFiltros()
   initSeries()
   render()
@@ -1053,6 +1092,9 @@ function renderLista(rows) {
     const om = ORIGEN_META[l._origen] || ORIGEN_META.directo
     const est = l._estado
     const canalColor = l._canal ? (_colorMap[l._canal] || '#9aa0a6') : null
+    const otrosLeads = getPersonaLeads(l)
+    const journeyHtml = otrosLeads.length > 0 ? renderJourney(l, otrosLeads) : ''
+    const journeyTag  = otrosLeads.length > 0 ? `<span class="journey-tag">↻ ${otrosLeads.length + 1} consultas</span>` : ''
     // Fuente de la consulta: ícono + link diferenciado por tipo
     const SOURCE_ICON = { propiedad: '🏡', proyecto: '🏢', general: '🌐' }
     const sourceIcon = SOURCE_ICON[l._sourceType] || '🌐'
@@ -1078,6 +1120,7 @@ function renderLista(rows) {
         <div class="lc-id">
           ${est === 'nueva' ? '<span class="lc-dot"></span>' : ''}
           <span class="lc-nombre">${esc(l.nombre) || '—'}</span>
+          ${journeyTag}
         </div>
         <div class="lc-right">
           <span class="lc-fecha">${fecha}</span>
@@ -1087,6 +1130,7 @@ function renderLista(rows) {
         </div>
       </div>
       <div class="lc-meta">${meta}</div>
+      ${journeyHtml}
       ${l.mensaje ? `<div class="lc-msg">${esc(l.mensaje)}</div>` : '<div style="height:0.9rem;"></div>'}
       <div class="lc-actions">
         ${l.email ? `<a class="lc-btn" href="mailto:${esc(l.email)}">✉ ${esc(l.email)}</a>` : ''}
@@ -1143,6 +1187,65 @@ $('btnExport').addEventListener('click', () => {
   a.click()
   URL.revokeObjectURL(a.href)
 })
+
+// ── Multi-touch: deduplicación por email / teléfono ───────
+let _emailMap = {}
+let _telMap   = {}
+
+function buildPersonaMap() {
+  _emailMap = {}
+  _telMap   = {}
+  _leads.forEach(l => {
+    const em  = (l.email    || '').trim().toLowerCase()
+    const tel = (l.telefono || '').replace(/\D/g, '')
+    if (em)                    { if (!_emailMap[em])  _emailMap[em]  = []; _emailMap[em].push(l)  }
+    if (tel && tel.length >= 7){ if (!_telMap[tel])   _telMap[tel]   = []; _telMap[tel].push(l)   }
+  })
+}
+
+function getPersonaLeads(lead) {
+  // Devuelve todos los otros leads de la misma persona (mismo email O mismo teléfono)
+  const em  = (lead.email    || '').trim().toLowerCase()
+  const tel = (lead.telefono || '').replace(/\D/g, '')
+  const set = new Map()
+  if (em  && _emailMap[em])                  _emailMap[em].forEach(l  => { if (l.id  !== lead.id) set.set(l.id,  l)  })
+  if (tel && tel.length >= 7 && _telMap[tel]) _telMap[tel].forEach(l => { if (l.id !== lead.id)  set.set(l.id, l) })
+  return Array.from(set.values()).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+}
+
+function renderJourney(lead, otros) {
+  // Timeline completo: otros leads + este lead, ordenados cronológicamente
+  const todos = [...otros, lead].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  const primerLead = todos[0]
+  const ultimoLead = todos[todos.length - 1]
+  const primerCanal = primerLead._canal || primerLead.canal_ref || '(sin canal)'
+  const ultimoCanal = ultimoLead._canal || ultimoLead.canal_ref || '(sin canal)'
+
+  const steps = todos.map((t, i) => {
+    const isFirst = i === 0
+    const isLast  = i === todos.length - 1 && todos.length > 1
+    const canal   = t._canal || t.canal_ref || 'sin canal'
+    const fecha   = new Date(t.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' })
+    const esteEs  = t.id === lead.id ? ' (este)' : ''
+    const cls     = isFirst ? 'first' : isLast ? 'last' : ''
+    const label   = canal.length > 16 ? canal.slice(0, 16) + '…' : canal
+    return `<div class="journey-step">
+      <div class="journey-step-canal ${cls}" title="${esc(canal)}${esteEs}">${esc(label)}</div>
+      <div class="journey-step-date">${fecha}</div>
+    </div>${i < todos.length - 1 ? '<span class="journey-arrow">→</span>' : ''}`
+  }).join('')
+
+  const mismoCanal = primerCanal === ultimoCanal
+  const atribMsg = mismoCanal
+    ? `<span><strong>Canal único:</strong> ${esc(primerCanal)}</span>`
+    : `<span><strong>Primer canal:</strong> ${esc(primerCanal)}</span><span><strong>Último canal:</strong> ${esc(ultimoCanal)}</span>`
+
+  return `<div class="journey-section">
+    <div class="journey-title">↻ Esta persona consultó ${todos.length} veces · Recorrido de canales</div>
+    <div class="journey-timeline">${steps}</div>
+    <div class="journey-attr">${atribMsg}</div>
+  </div>`
+}
 
 cargarTodo()
 </script>
