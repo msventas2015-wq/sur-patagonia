@@ -868,34 +868,51 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
 
   _canalId = data.id
 
-  // ── Crear usuario colaborador si se llenaron los campos ──
+  // ── Crear o vincular usuario colaborador si se llenaron los campos ──
   if (tieneAccesoNuevo) {
     const btn = document.getElementById('btnGuardar')
-    btn.textContent = 'Creando acceso…'
+    btn.textContent = 'Vinculando acceso…'
 
-    const { data: signUpData, error: signUpError } = await supabaseAux.auth.signUp({
-      email: emailAcceso,
-      password: passAcceso,
-    })
+    // Verificar si el usuario ya existe (creado desde admin/usuarios)
+    const { data: todosUsuarios } = await supabase.rpc('admin_listar_usuarios')
+    const usuarioExistente = todosUsuarios?.find(u => u.email === emailAcceso)
 
-    if (signUpError) {
-      alert('Canal guardado, pero hubo un error al crear el usuario: ' + signUpError.message)
+    let vinculadoUserId = null
+
+    if (usuarioExistente) {
+      // Usuario ya existe → solo vincular, no crear
+      vinculadoUserId = usuarioExistente.id
+      await supabase.rpc('admin_set_tipo_acceso', { p_user_id: vinculadoUserId, p_tipo: tipoAcceso })
+      await supabase.from('canales').update({ user_id: vinculadoUserId }).eq('id', _canalId)
+      userId = vinculadoUserId
     } else {
-      const newUserId = signUpData.user.id
+      // Usuario no existe → crear con signUp
+      const { data: signUpData, error: signUpError } = await supabaseAux.auth.signUp({
+        email: emailAcceso,
+        password: passAcceso,
+      })
 
-      // Asignar rol colaborador y tipo de acceso
-      await supabase.rpc('admin_set_user_rol',    { p_user_id: newUserId, p_rol: 'colaborador' })
-      await supabase.rpc('admin_set_tipo_acceso', { p_user_id: newUserId, p_tipo: tipoAcceso })
+      if (signUpError) {
+        alert('Canal guardado, pero hubo un error al crear el usuario: ' + signUpError.message)
+      } else {
+        vinculadoUserId = signUpData.user.id
 
-      // Vincular usuario al canal
-      await supabase.from('canales').update({ user_id: newUserId }).eq('id', _canalId)
-      userId = newUserId
+        // Asignar rol colaborador y tipo de acceso
+        await supabase.rpc('admin_set_user_rol',    { p_user_id: vinculadoUserId, p_rol: 'colaborador' })
+        await supabase.rpc('admin_set_tipo_acceso', { p_user_id: vinculadoUserId, p_tipo: tipoAcceso })
 
-      // Cerrar sesión del cliente auxiliar
-      await supabaseAux.auth.signOut()
+        // Vincular usuario al canal
+        await supabase.from('canales').update({ user_id: vinculadoUserId }).eq('id', _canalId)
+        userId = vinculadoUserId
 
-      // Mostrar info del usuario creado
-      document.getElementById('userId').value = newUserId
+        // Cerrar sesión del cliente auxiliar
+        await supabaseAux.auth.signOut()
+      }
+    }
+
+    if (vinculadoUserId) {
+      // Mostrar info del usuario vinculado
+      document.getElementById('userId').value = vinculadoUserId
       document.getElementById('accesoExistente').style.display = ''
       document.getElementById('accesoNuevo').style.display = 'none'
       document.getElementById('accesoEmail').textContent = emailAcceso
