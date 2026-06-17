@@ -179,9 +179,12 @@
     { auth: { storageKey: 'sp-colab-session' } }
   )
 
-  // Si ya está logueado como colaborador, redirigir directo
+  // Si ya está logueado como colaborador, redirigir según tipo_acceso
   const { data: { session } } = await supabase.auth.getSession()
-  if (session) location.href = 'index.html'
+  if (session) {
+    const tipo = session.user.user_metadata?.tipo_acceso
+    location.href = tipo === 'desarrollador' ? 'desarrollador.html' : 'index.html'
+  }
 
   const showError = msg => {
     const el = document.getElementById('errorMsg')
@@ -210,8 +213,16 @@
       return
     }
 
-    // Verificar que tiene un canal asociado
     const { data: { user } } = await supabase.auth.getUser()
+    const tipo = user.user_metadata?.tipo_acceso
+
+    // Desarrolladores no necesitan canal
+    if (tipo === 'desarrollador') {
+      location.href = 'desarrollador.html'
+      return
+    }
+
+    // Verificar que tiene un canal asociado (activo/pasivo)
     const { data: canal } = await supabase.from('canales').select('id').eq('user_id', user.id).maybeSingle()
 
     if (!canal) {

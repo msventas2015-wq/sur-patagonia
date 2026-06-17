@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Desarrollador — Sur Patagonia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0e0c;
+      --card: #161513;
+      --border: rgba(255,255,255,0.07);
+      --accent: #d76f3f;
+      --dorado: #c9a84c;
+      --verde: #50c878;
+      --gris: #888;
+      --blanco: #f5f3f0;
+      --rojo: #e05c5c;
+      --teal: #4db8a4;
+    }
+    body {
+      background: var(--bg);
+      color: var(--blanco);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem;
+      font-weight: 300;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .header-logo span { color: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .header-proyecto { font-size: .75rem; color: var(--gris); text-align: right; }
+    .header-proyecto strong { color: var(--blanco); display: block; font-size: .82rem; }
+    .badge-dev {
+      font-size: .58rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+      background: rgba(77,184,164,.12); color: var(--teal);
+      border: 1px solid rgba(77,184,164,.25);
+      padding: .2rem .55rem; border-radius: 999px;
+    }
+    .btn-salir {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--gris);
+      padding: .35rem .8rem;
+      border-radius: 8px;
+      font-size: .72rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .18s;
+    }
+    .btn-salir:hover { border-color: var(--rojo); color: var(--rojo); }
+
+    /* ── Layout ── */
+    .main { max-width: 980px; margin: 0 auto; padding: 2rem 1.4rem 3rem; }
+
+    .bienvenida { margin-bottom: 2rem; }
+    .bienvenida h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.9rem;
+      font-weight: 300;
+      margin-bottom: .3rem;
+    }
+    .bienvenida p { font-size: .76rem; color: var(--gris); }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: .6rem; font-weight: 700; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--gris);
+      margin-bottom: 1rem; margin-top: 2rem;
+      padding-bottom: .6rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── KPI grid ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: .75rem;
+      margin-bottom: .5rem;
+    }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.2rem;
+    }
+    .kpi-label {
+      font-size: .6rem; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--gris); margin-bottom: .5rem;
+    }
+    .kpi-valor {
+      font-size: 1.9rem; font-weight: 700; line-height: 1;
+      font-family: 'Cormorant Garamond', serif;
+    }
+    .kpi-sub { font-size: .68rem; color: var(--gris); margin-top: .3rem; }
+    .kpi-accent { color: var(--accent); }
+    .kpi-dorado { color: var(--dorado); }
+    .kpi-verde  { color: var(--verde); }
+    .kpi-teal   { color: var(--teal); }
+
+    /* ── Canal ranking ── */
+    .canal-list { display: flex; flex-direction: column; gap: .5rem; }
+    .canal-row {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: .85rem 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .canal-rank {
+      font-size: .7rem; font-weight: 700; color: var(--gris);
+      width: 1.4rem; text-align: center; flex-shrink: 0;
+    }
+    .canal-rank.top { color: var(--dorado); }
+    .canal-info { flex: 1; min-width: 0; }
+    .canal-nombre { font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .canal-tipo {
+      font-size: .6rem; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--gris); margin-top: .15rem;
+    }
+    .canal-barra-wrap { width: 120px; flex-shrink: 0; }
+    .canal-barra-bg {
+      height: 5px; background: rgba(255,255,255,.07); border-radius: 99px; overflow: hidden;
+    }
+    .canal-barra-fill {
+      height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease;
+    }
+    .canal-count {
+      font-size: .82rem; font-weight: 600; text-align: right; min-width: 2rem;
+      color: var(--accent); flex-shrink: 0;
+    }
+
+    /* ── Últimas consultas ── */
+    .leads-list { display: flex; flex-direction: column; gap: .5rem; }
+    .lead-row {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: .85rem 1.1rem;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 1rem;
+    }
+    .lead-nombre { font-size: .85rem; font-weight: 600; }
+    .lead-sub { font-size: .7rem; color: var(--gris); margin-top: .1rem; }
+    .lead-canal-badge {
+      font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+      background: rgba(215,111,63,.1); color: var(--accent);
+      border: 1px solid rgba(215,111,63,.2);
+      padding: .18rem .5rem; border-radius: 999px; white-space: nowrap;
+    }
+    .lead-fecha { font-size: .68rem; color: var(--gris); white-space: nowrap; text-align: right; }
+
+    /* ── Empty ── */
+    .empty { text-align: center; padding: 3rem; color: var(--gris); font-size: .82rem; }
+
+    /* ── Spinner ── */
+    .loading { text-align: center; padding: 3rem; color: var(--gris); font-size: .78rem; }
+
+    /* ── Periodo selector ── */
+    .periodo-row {
+      display: flex; align-items: center; gap: .5rem; margin-bottom: 1.2rem; flex-wrap: wrap;
+    }
+    .periodo-row span { font-size: .68rem; color: var(--gris); }
+    .btn-periodo {
+      background: none; border: 1px solid var(--border); color: var(--gris);
+      padding: .3rem .7rem; border-radius: 8px; font-size: .68rem; cursor: pointer;
+      font-family: inherit; transition: all .18s;
+    }
+    .btn-periodo:hover, .btn-periodo.activo { border-color: var(--accent); color: var(--accent); }
+
+    @media (max-width: 600px) {
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .canal-barra-wrap { display: none; }
+      .lead-row { grid-template-columns: 1fr auto; }
+      .lead-fecha { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">SUR <span>PATAGONIA</span></div>
+  <div class="header-right">
+    <span class="badge-dev">Desarrollador</span>
+    <div class="header-proyecto">
+      <strong id="hdrProyecto">—</strong>
+      Portal de proyecto
+    </div>
+    <button class="btn-salir" id="btnSalir">Salir</button>
+  </div>
+</header>
+
+<main class="main">
+  <div class="bienvenida">
+    <h1 id="tituloProyecto">Panel de Proyecto</h1>
+    <p id="subtituloProyecto">Cargando datos…</p>
+  </div>
+
+  <!-- Periodo -->
+  <div class="periodo-row">
+    <span>Período:</span>
+    <button class="btn-periodo activo" data-dias="30" onclick="setPeriodo(this)">30 días</button>
+    <button class="btn-periodo" data-dias="60" onclick="setPeriodo(this)">60 días</button>
+    <button class="btn-periodo" data-dias="90" onclick="setPeriodo(this)">90 días</button>
+    <button class="btn-periodo" data-dias="0"  onclick="setPeriodo(this)">Todo el tiempo</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="section-label">Resumen</div>
+  <div class="kpi-grid" id="kpiGrid">
+    <div class="loading">Cargando…</div>
+  </div>
+
+  <!-- Canal ranking -->
+  <div class="section-label">Canales por consultas</div>
+  <div id="canalRanking"><div class="loading">Cargando…</div></div>
+
+  <!-- Últimas consultas -->
+  <div class="section-label">Últimas consultas</div>
+  <div id="leadsLista"><div class="loading">Cargando…</div></div>
+</main>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+const supabase = createClient(
+  'https://wajkfydxutptcvvfwrvq.supabase.co',
+  'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s',
+  { auth: { storageKey: 'sp-colab-session' } }
+)
+
+// ── Auth ──────────────────────────────────────────────────
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { location.href = 'login.html'; throw new Error('no session') }
+
+const meta       = session.user.user_metadata || {}
+const tipoAcceso = meta.tipo_acceso
+
+if (tipoAcceso !== 'desarrollador') {
+  location.href = tipoAcceso === 'activo' || tipoAcceso === 'pasivo' ? 'index.html' : 'login.html'
+  throw new Error('not desarrollador')
+}
+
+const proyectoSlug = meta.proyecto_slug || ''
+
+document.getElementById('btnSalir').addEventListener('click', async () => {
+  await supabase.auth.signOut()
+  location.href = 'login.html'
+})
+
+// ── Helpers ───────────────────────────────────────────────
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+
+function fmtFecha(str) {
+  if (!str) return '—'
+  const d = new Date(str)
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function fmtTipo(tipo) {
+  const map = { inmobiliaria:'Inmobiliaria', particular:'Particular', punto_venta:'Punto de venta', campaña:'Campaña', evento:'Evento' }
+  return map[tipo] || tipo || '—'
+}
+
+// ── Load proyecto ─────────────────────────────────────────
+let proyectoNombre = proyectoSlug || 'Proyecto'
+
+if (proyectoSlug) {
+  const { data: p } = await supabase.from('proyectos').select('nombre, slug').eq('slug', proyectoSlug).maybeSingle()
+  if (p?.nombre) proyectoNombre = p.nombre
+}
+
+document.getElementById('hdrProyecto').textContent    = proyectoNombre
+document.getElementById('tituloProyecto').textContent = proyectoNombre
+document.getElementById('subtituloProyecto').textContent = proyectoSlug
+  ? `Proyecto: ${proyectoSlug}`
+  : 'Sin proyecto asignado. Contactá a Sur Patagonia para configurar tu acceso.'
+
+// ── Periodo state ─────────────────────────────────────────
+let _diasPeriodo = 30
+
+window.setPeriodo = function(btn) {
+  document.querySelectorAll('.btn-periodo').forEach(b => b.classList.remove('activo'))
+  btn.classList.add('activo')
+  _diasPeriodo = parseInt(btn.dataset.dias)
+  renderData()
+}
+
+// ── Load + render ─────────────────────────────────────────
+let _contactos = []
+let _refMap    = {}  // codigo → {nombre, tipo}
+
+async function cargarTodo() {
+  if (!proyectoSlug) {
+    document.getElementById('kpiGrid').innerHTML = `<div class="empty" style="grid-column:1/-1">Sin proyecto asignado.</div>`
+    document.getElementById('canalRanking').innerHTML = ''
+    document.getElementById('leadsLista').innerHTML = ''
+    return
+  }
+
+  // Contactos del proyecto
+  const { data: contactos } = await supabase
+    .from('contactos')
+    .select('id, created_at, nombre, email, telefono, canal_ref, mensaje')
+    .eq('proyecto_slug', proyectoSlug)
+    .order('created_at', { ascending: false })
+    .limit(5000)
+
+  _contactos = contactos || []
+
+  // Referencias del proyecto → info de canal
+  const { data: refs } = await supabase
+    .from('referencias')
+    .select('codigo, nombre, canal_id, canales(nombre, tipo)')
+    .eq('proyecto_slug', proyectoSlug)
+
+  _refMap = {}
+  ;(refs || []).forEach(r => {
+    _refMap[r.codigo] = {
+      nombre: r.canales?.nombre || r.nombre || r.codigo,
+      tipo:   r.canales?.tipo   || '—'
+    }
+  })
+
+  // También mapear por canal_ref directamente si existe como canal.codigo
+  // (fallback: usar canal_ref como nombre)
+
+  renderData()
+}
+
+function renderData() {
+  const ahora = new Date()
+  const desde = _diasPeriodo > 0 ? new Date(ahora.getTime() - _diasPeriodo * 86400000) : null
+
+  const filtrados = desde
+    ? _contactos.filter(c => new Date(c.created_at) >= desde)
+    : _contactos
+
+  const totalTodo   = _contactos.length
+  const totalPeriodo = filtrados.length
+
+  // Semana anterior (comparativo)
+  const semAnte = _diasPeriodo === 30
+    ? _contactos.filter(c => {
+        const d = new Date(c.created_at)
+        const hace60 = new Date(ahora.getTime() - 60 * 86400000)
+        const hace30 = new Date(ahora.getTime() - 30 * 86400000)
+        return d >= hace60 && d < hace30
+      }).length
+    : null
+
+  // Canales únicos activos (con al menos 1 lead en el periodo)
+  const canalesConLeads = new Set(filtrados.map(c => c.canal_ref).filter(Boolean))
+  const canalesTotal    = new Set(_contactos.map(c => c.canal_ref).filter(Boolean))
+
+  // Con canal_ref asignado
+  const conRef = filtrados.filter(c => c.canal_ref).length
+
+  // ── KPIs ──
+  const tendencia = semAnte !== null
+    ? (semAnte > 0
+        ? `<span style="color:${totalPeriodo >= semAnte ? 'var(--verde)':'var(--rojo)'}">
+             ${totalPeriodo >= semAnte ? '↑' : '↓'} vs. 30 días anteriores
+           </span>`
+        : '')
+    : ''
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">Consultas (${_diasPeriodo > 0 ? _diasPeriodo + ' días' : 'total'})</div>
+      <div class="kpi-valor kpi-accent">${totalPeriodo}</div>
+      <div class="kpi-sub">${tendencia || (totalTodo !== totalPeriodo ? `${totalTodo} en total` : '')}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Canales activos</div>
+      <div class="kpi-valor kpi-dorado">${canalesConLeads.size}</div>
+      <div class="kpi-sub">de ${canalesTotal.size} en el proyecto</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Con canal asignado</div>
+      <div class="kpi-valor kpi-teal">${totalPeriodo > 0 ? Math.round(conRef / totalPeriodo * 100) : 0}%</div>
+      <div class="kpi-sub">${conRef} de ${totalPeriodo} con canal_ref</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total histórico</div>
+      <div class="kpi-valor" style="color:var(--blanco);">${totalTodo}</div>
+      <div class="kpi-sub">todas las consultas</div>
+    </div>
+  `
+
+  // ── Canal ranking ──
+  const countMap = {}
+  filtrados.forEach(c => {
+    const key = c.canal_ref || '__sin_ref__'
+    countMap[key] = (countMap[key] || 0) + 1
+  })
+
+  const ranking = Object.entries(countMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+
+  const maxCount = ranking[0]?.[1] || 1
+
+  if (!ranking.length) {
+    document.getElementById('canalRanking').innerHTML = `<div class="empty">Sin consultas en este período.</div>`
+  } else {
+    document.getElementById('canalRanking').innerHTML = `
+      <div class="canal-list">
+        ${ranking.map(([ref, cnt], i) => {
+          const info    = _refMap[ref] || { nombre: ref === '__sin_ref__' ? 'Sin canal asignado' : ref, tipo: '—' }
+          const pct     = Math.round(cnt / maxCount * 100)
+          const isTop   = i < 3
+          return `
+          <div class="canal-row">
+            <span class="canal-rank ${isTop ? 'top' : ''}">${i + 1}</span>
+            <div class="canal-info">
+              <div class="canal-nombre">${esc(info.nombre)}</div>
+              <div class="canal-tipo">${esc(fmtTipo(info.tipo))}</div>
+            </div>
+            <div class="canal-barra-wrap">
+              <div class="canal-barra-bg">
+                <div class="canal-barra-fill" style="width:${pct}%"></div>
+              </div>
+            </div>
+            <span class="canal-count">${cnt}</span>
+          </div>`
+        }).join('')}
+      </div>`
+  }
+
+  // ── Últimas consultas ──
+  const ultimos = filtrados.slice(0, 30)
+
+  if (!ultimos.length) {
+    document.getElementById('leadsLista').innerHTML = `<div class="empty">Sin consultas en este período.</div>`
+  } else {
+    document.getElementById('leadsLista').innerHTML = `
+      <div class="leads-list">
+        ${ultimos.map(c => {
+          const canalInfo = c.canal_ref ? (_refMap[c.canal_ref] || { nombre: c.canal_ref }) : null
+          const contacto  = [c.email, c.telefono].filter(Boolean).join(' · ')
+          return `
+          <div class="lead-row">
+            <div>
+              <div class="lead-nombre">${esc(c.nombre || 'Sin nombre')}</div>
+              <div class="lead-sub">${esc(contacto || '—')}</div>
+            </div>
+            ${canalInfo ? `<span class="lead-canal-badge">${esc(canalInfo.nombre)}</span>` : '<span></span>'}
+            <div class="lead-fecha">${fmtFecha(c.created_at)}</div>
+          </div>`
+        }).join('')}
+      </div>`
+  }
+}
+
+cargarTodo()
+</script>
+</body>
+</html>
