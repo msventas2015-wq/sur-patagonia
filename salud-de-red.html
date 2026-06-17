@@ -424,14 +424,13 @@ import { supabase } from '../js/config.js'
 
 // ── Auth check ──────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
-if (!session) { location.href = 'login.html'; throw 0 }
-const { data: perfil } = await supabase.from('usuarios').select('rol').eq('id', session.user.id).maybeSingle()
-if (!perfil || perfil.rol !== 'admin') { location.href = 'login.html'; throw 0 }
+if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
+if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault()
   await supabase.auth.signOut()
-  location.href = 'login.html'
+  window.location.href = 'login.html'
 })
 
 // ── Tipo labels ──────────────────────────────────────────────
@@ -677,7 +676,9 @@ async function cargar() {
     // RENDER
     // ══════════════════════════════════════
     renderScore(score, pA, pB, pC, pD, pE)
-    renderEstadoGeneral(totalCanales, canalesActivos, canalesInactivos, canalesNuevosMes, canalesSinActividad30, conUserID, totalCanales)
+    const listaSinActividad = canales.filter(c => c.activo && !canalIdConVisita30.has(c.id))
+    const listaInactivos    = canales.filter(c => !c.activo)
+    renderEstadoGeneral(totalCanales, canalesActivos, canalesInactivos, canalesNuevosMes, listaSinActividad, listaInactivos, conUserID, totalCanales)
     renderActividad(totalVisitas, totalLeads, leadsConCanal, leadsSinCanal, leadsAll.length, leadsAllConCanal, leadsAllSinCanal)
     renderChart(diasLabels, visitasDia, leadsDia)
     renderRanking(ranking, maxVisitas)
@@ -727,20 +728,35 @@ function renderScore(score, pA, pB, pC, pD, pE) {
   }).join('')
 }
 
-function renderEstadoGeneral(total, activos, inactivos, nuevos, sinAct, conUser, totalC) {
+function renderEstadoGeneral(total, activos, inactivos, nuevos, listaSinAct, listaInact, conUser, totalC) {
+  const sinAct = listaSinAct.length
+
+  function miniLista(lista) {
+    if (!lista.length) return ''
+    return `<div style="margin-top:0.5rem;border-top:1px solid rgba(255,255,255,0.06);padding-top:0.4rem;">
+      ${lista.slice(0,5).map(c => `<div style="font-size:0.63rem;color:var(--blanco);padding:0.15rem 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.nombre}</div>`).join('')}
+      ${lista.length > 5 ? `<div style="font-size:0.6rem;color:var(--accent);">+${lista.length - 5} más</div>` : ''}
+    </div>`
+  }
+
   const grid = document.getElementById('kpiEstado')
-  grid.innerHTML = [
-    { l: 'Total de canales',         v: fmt(total),    s: 'En la red' },
-    { l: 'Canales activos',          v: fmt(activos),  s: `${pct(activos,total)}% del total`, cls: activos/total >= .8 ? 'up' : 'warn' },
-    { l: 'Canales inactivos',        v: fmt(inactivos),s: `${pct(inactivos,total)}% del total`, cls: inactivos > 0 ? 'dn' : 'up' },
-    { l: 'Nuevos este mes',          v: fmt(nuevos),   s: nuevos > 0 ? 'crecimiento activo' : 'sin incorporaciones', cls: nuevos > 0 ? 'up' : '' },
-    { l: 'Sin actividad (30 días)',  v: fmt(sinAct),   s: sinAct > 0 ? 'canales a revisar' : 'todos activos', cls: sinAct > 0 ? 'warn' : 'up' },
-    { l: 'Con usuario asignado',     v: fmt(conUser),  s: `${pct(conUser,total)}% tienen acceso`, cls: pct(conUser,total) >= 80 ? 'up' : 'warn' },
-  ].map(k => `
+  grid.innerHTML = ''
+
+  const cards = [
+    { l: 'Total de canales',        v: fmt(total),         s: 'En la red',                                                      cls: '' },
+    { l: 'Canales activos',         v: fmt(activos),       s: `${pct(activos,total)}% del total`,                               cls: activos/total >= .8 ? 'up' : 'warn' },
+    { l: 'Canales inactivos',       v: fmt(inactivos),     s: `${pct(inactivos,total)}% del total`,                             cls: inactivos > 0 ? 'dn' : 'up',  lista: listaInact },
+    { l: 'Nuevos este mes',         v: fmt(nuevos),        s: nuevos > 0 ? 'crecimiento activo' : 'sin incorporaciones',        cls: nuevos > 0 ? 'up' : '' },
+    { l: 'Sin actividad (30 días)', v: fmt(sinAct),        s: sinAct > 0 ? 'canales a revisar' : '✓ todos activos',             cls: sinAct > 0 ? 'warn' : 'up', lista: listaSinAct },
+    { l: 'Con usuario asignado',    v: fmt(conUser),       s: `${pct(conUser,total)}% tienen acceso`,                           cls: pct(conUser,total) >= 80 ? 'up' : 'warn' },
+  ]
+
+  grid.innerHTML = cards.map(k => `
     <div class="kpi-card">
       <div class="kpi-label">${k.l}</div>
       <div class="kpi-val">${k.v}</div>
       <div class="kpi-sub ${k.cls||''}">${k.s}</div>
+      ${k.lista ? miniLista(k.lista) : ''}
     </div>`).join('')
 }
 
