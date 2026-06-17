@@ -345,14 +345,10 @@
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-
-const SUPABASE_URL = 'https://wajkfydxutptcvvfwrvq.supabase.co'
-const SUPABASE_KEY = 'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
-
-// Cliente principal (sesión admin)
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+import { supabase, SUPABASE_URL, SUPABASE_KEY } from '../js/config.js'
 
 // Cliente secundario para crear usuarios sin afectar la sesión admin
+// (necesita persistSession:false para no sobreescribir el token del admin)
 const supabaseAux = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { storageKey: 'sp-aux-session', persistSession: false }
 })
@@ -386,7 +382,7 @@ async function cargarUsuarios() {
   ])
 
   const tbody = document.getElementById('tbodyUsuarios')
-  if (error) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error: ${error.message}</div></td></tr>`; return }
+  if (error) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error: ${esc(error.message)}</div></td></tr>`; return }
   if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
 
   // mapa userId → canal

@@ -235,13 +235,8 @@
 </div>
 
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+import { supabase } from '../js/config.js'
 import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
-
-const supabase = createClient(
-  'https://wajkfydxutptcvvfwrvq.supabase.co',
-  'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
-)
 
 const BASE_URL = 'https://surpatagonia.com.ar'
 const TIPO_LABEL = {
@@ -263,7 +258,7 @@ async function cargarCanales() {
   const [rCanales, rRefs, rLeads, rColabs] = await Promise.all([
     supabase.from('canales').select('*').order('created_at', { ascending: false }),
     supabase.from('referencias').select('codigo, canal_id, activo'),
-    supabase.from('contactos').select('canal_ref, created_at').not('canal_ref', 'is', null),
+    supabase.from('contactos').select('canal_ref, created_at').not('canal_ref', 'is', null).limit(5000),
     supabase.rpc('admin_listar_usuarios'),
   ])
 

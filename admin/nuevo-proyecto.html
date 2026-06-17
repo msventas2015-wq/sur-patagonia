@@ -2067,7 +2067,6 @@ ALTER TABLE proyectos
 
 <script type="module">
   import { supabase, optimizarImagen } from "../js/config.js"
-  window._sb = supabase
 
   // ── Auth check ─────────────────────────────────────────
   const { data: { session } } = await supabase.auth.getSession()
@@ -2812,10 +2811,10 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
     try {
       let id = proyectoId
       if (id) {
-        const { error } = await window._sb.from('proyectos').update(proyecto).eq('id', id)
+        const { error } = await supabase.from('proyectos').update(proyecto).eq('id', id)
         if (error) throw error
       } else {
-        const { data, error } = await window._sb.from('proyectos').insert(proyecto).select().single()
+        const { data, error } = await supabase.from('proyectos').insert(proyecto).select().single()
         if (error) throw error
         id = data.id
         proyectoId = id
@@ -2827,7 +2826,7 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
       if (lotes.length > 0) {
         // 1. Guardar los datos de mapa de los lotes actuales antes de borrarlos
         //    Fuente 1: DB (estado persistido)
-        const { data: lotesActuales } = await window._sb.from('lotes')
+        const { data: lotesActuales } = await supabase.from('lotes')
           .select('numero, mapa_x, mapa_y, tipo_lote')
           .eq('proyecto_id', id)
         const mapaBackup = {}
@@ -2846,16 +2845,16 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
         }
 
         // 2. Borrar e insertar lotes desde el formulario
-        await window._sb.from('lotes').delete().eq('proyecto_id', id)
+        await supabase.from('lotes').delete().eq('proyecto_id', id)
         const lotesConId = lotes.map(l => ({ ...l, proyecto_id: id }))
-        const { data: lotesInsertados, error: errLotes } = await window._sb.from('lotes').insert(lotesConId).select()
+        const { data: lotesInsertados, error: errLotes } = await supabase.from('lotes').insert(lotesConId).select()
         if (errLotes) console.warn('Error lotes:', errLotes)
 
         // 3. Restaurar datos del mapa en los lotes recién insertados
         if (lotesInsertados && Object.keys(mapaBackup).length) {
           const restoreUpdates = lotesInsertados
             .filter(l => mapaBackup[l.numero])
-            .map(l => window._sb.from('lotes').update(mapaBackup[l.numero]).eq('id', l.id))
+            .map(l => supabase.from('lotes').update(mapaBackup[l.numero]).eq('id', l.id))
           if (restoreUpdates.length) await Promise.all(restoreUpdates)
         }
       }
@@ -2881,7 +2880,7 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
 
   // ── Cargar proyecto existente ──────────────────────────
   async function cargarProyecto(id) {
-    const { data: p, error } = await window._sb.from('proyectos').select('*').eq('id', id).single()
+    const { data: p, error } = await supabase.from('proyectos').select('*').eq('id', id).single()
     if (error || !p) { mostrarAlerta('error', 'Proyecto no encontrado.'); return }
 
     const set = (elId, val) => { if (document.getElementById(elId)) document.getElementById(elId).value = val || '' }
@@ -3010,7 +3009,7 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
     if (p.fotos) { fotosArr.splice(0); fotosArr.push(...p.fotos); renderGaleria() }
 
     // Lotes
-    const { data: lotes } = await window._sb.from('lotes').select('*').eq('proyecto_id', id).order('numero')
+    const { data: lotes } = await supabase.from('lotes').select('*').eq('proyecto_id', id).order('numero')
     if (lotes) lotes.forEach(l => agregarLote(l))
 
     if (p.estado === 'activo') {
@@ -3034,7 +3033,7 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
   // ── Logout ─────────────────────────────────────────────
   document.getElementById('btnLogout').addEventListener('click', async (e) => {
     e.preventDefault()
-    await window._sb.auth.signOut()
+    await supabase.auth.signOut()
     location.href = 'login.html'
   })
 

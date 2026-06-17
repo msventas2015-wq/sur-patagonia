@@ -295,11 +295,13 @@ function fmt(n) { return Number(n).toLocaleString('es-AR') }
 async function cargar() {
   const desde = fechaDesde(_dias)
 
-  const [{ data: visitas }, { data: contactos }, { data: props }] = await Promise.all([
-    supabase.from('visitas').select('*').gte('created_at', desde),
-    supabase.from('contactos').select('id, created_at').gte('created_at', desde),
-    supabase.from('propiedades').select('id, titulo')
+  const [{ data: visitas, count: totalVisitas }, { data: contactos }, { data: props }] = await Promise.all([
+    supabase.from('visitas').select('pagina, propiedad_id, dispositivo, canal_ref, canal_via, created_at', { count: 'exact' }).gte('created_at', desde).limit(10000),
+    supabase.from('contactos').select('id, created_at').gte('created_at', desde).limit(5000),
+    supabase.from('propiedades').select('id, titulo').limit(500)
   ])
+  // Advertir si se alcanzó el límite (datos incompletos)
+  if (totalVisitas > 10000) console.warn(`[Tráfico] ${totalVisitas} visitas en el período — mostrando las primeras 10.000`)
 
   const vs = visitas || []
   const cs = contactos || []
