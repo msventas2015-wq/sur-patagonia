@@ -371,26 +371,32 @@ async function cargarTodo() {
     return
   }
 
-  // Fase 1: referencias (necesito los códigos para filtrar visitas)
+  // Fase 1: referencias sin embedded join (RLS de canales bloquea el join para el desarrollador)
   const { data: refs } = await supabase
     .from('referencias')
-    .select('id, codigo, nombre, activo, canal_id, canales(id, nombre, codigo, tipo, ciudad, provincia, activo)')
+    .select('id, codigo, nombre, activo, canal_id')
     .eq('proyecto_slug', proyectoSlug)
 
   _refs = refs || []
   const refCodes = _refs.map(r => r.codigo).filter(Boolean)
 
+  // Cargar canales por separado (visible gracias a "Desarrollador ve canales de su proyecto")
+  const canalIds = [...new Set(_refs.map(r => r.canal_id).filter(Boolean))]
+  const { data: canalesData } = canalIds.length > 0
+    ? await supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, activo').in('id', canalIds)
+    : { data: [] }
+
   // Construir mapas
   _canalMap   = {}
   _refToCanal = {}
+  canalesData?.forEach(c => {
+    _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, refCodes:[], clicks:0, leads:0 }
+  })
   _refs.forEach(r => {
-    const c = r.canales
-    if (!c) return
-    _refToCanal[r.codigo] = c.id
-    if (!_canalMap[c.id]) {
-      _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, refCodes:[], clicks:0, leads:0 }
+    if (r.canal_id && _canalMap[r.canal_id]) {
+      _refToCanal[r.codigo] = r.canal_id
+      _canalMap[r.canal_id].refCodes.push(r.codigo)
     }
-    _canalMap[c.id].refCodes.push(r.codigo)
   })
 
   // Fase 2: paralelo
