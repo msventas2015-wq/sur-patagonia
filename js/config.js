@@ -26,7 +26,7 @@ const REF_RE   = /^[a-z0-9-]{2,80}$/
 ;(function capturarRef() {
   try {
     const p   = new URLSearchParams(location.search)
-    const ref = p.get('ref')
+    const ref = p.get('ref') || p.get('canal')
     if (ref && REF_RE.test(ref)) {
       // via: 'qr' si vino por redirect /r/ (QR físico), 'link' si vino por link directo
       const via = p.get('via') === 'qr' ? 'qr' : 'link'
@@ -38,7 +38,7 @@ const REF_RE   = /^[a-z0-9-]{2,80}$/
 // Devuelve el código de referido vigente (URL primero, después localStorage), o null.
 export function getRef() {
   try {
-    const urlRef = new URLSearchParams(location.search).get('ref')
+    const urlRef = new URLSearchParams(location.search).get('ref') || new URLSearchParams(location.search).get('canal')
     if (urlRef && REF_RE.test(urlRef)) return urlRef
     const raw = localStorage.getItem(REF_KEY)
     if (!raw) return null
