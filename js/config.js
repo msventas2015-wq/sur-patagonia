@@ -162,7 +162,14 @@ export async function subirImagen(archivo, carpeta = 'propiedades') {
     calidad:  0.92,
   })
 
-  const nombre = `${carpeta}/${Date.now()}_${archivoOptimizado.name.replace(/\s/g, '_')}`
+  // Sanitizar nombre: quitar tildes, ñ, paréntesis y cualquier carácter inválido
+  // Supabase Storage solo acepta letras, números, guiones, puntos y barras
+  const nombreLimpio = archivoOptimizado.name
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // quitar tildes (á→a, é→e, ñ→n…)
+    .replace(/[^a-zA-Z0-9._-]/g, '_')                // reemplazar todo lo demás con _
+    .replace(/_+/g, '_')                              // colapsar múltiples _ seguidos
+    .replace(/^_|_$/g, '')                            // quitar _ al inicio y final
+  const nombre = `${carpeta}/${Date.now()}_${nombreLimpio}`
   const { data, error } = await supabase.storage
     .from('imagenes')
     .upload(nombre, archivoOptimizado)
