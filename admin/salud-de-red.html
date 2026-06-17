@@ -424,14 +424,13 @@ import { supabase } from '../js/config.js'
 
 // ── Auth check ──────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
-if (!session) { location.href = 'login.html'; throw 0 }
-const { data: perfil } = await supabase.from('usuarios').select('rol').eq('id', session.user.id).maybeSingle()
-if (!perfil || perfil.rol !== 'admin') { location.href = 'login.html'; throw 0 }
+if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
+if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault()
   await supabase.auth.signOut()
-  location.href = 'login.html'
+  window.location.href = 'login.html'
 })
 
 // ── Tipo labels ──────────────────────────────────────────────
