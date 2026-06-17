@@ -355,22 +355,14 @@
 
       <!-- Crear nuevo acceso -->
       <div id="accesoNuevo">
+        <p style="font-size:.78rem;color:var(--gris-claro);margin-bottom:.8rem;">
+          Se usará el email de Contacto y notificaciones como acceso al portal.
+        </p>
         <div class="form-row">
-          <div>
-            <label class="admin-label">Email del colaborador</label>
-            <input type="email" id="accesoEmailInput" class="admin-input" placeholder="inmo@ejemplo.com" />
-          </div>
           <div>
             <label class="admin-label">Contraseña temporal</label>
             <input type="password" id="accesoPass" class="admin-input" placeholder="Mínimo 6 caracteres" />
           </div>
-        </div>
-        <div class="form-row-1" style="margin-top:.8rem;">
-          <label class="admin-label">Tipo de acceso</label>
-          <select id="accesoTipo" class="admin-input">
-            <option value="pasivo">Pasivo — Solo métricas (punto de venta, cafetería)</option>
-            <option value="activo">Activo — Métricas + consultas + CRM (inmo, vendedor)</option>
-          </select>
         </div>
       </div>
 
@@ -818,18 +810,17 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const activo_v = esActivo(tipo)
   const destino  = activo_v ? '/' : getDestinoUrl()
 
-  // Datos de acceso externo
-  const emailAcceso = document.getElementById('accesoEmailInput').value.trim()
+  // Datos de acceso externo — usa el mismo email de Contacto y notificaciones
+  const emailAcceso = document.getElementById('email').value.trim()
   const passAcceso  = document.getElementById('accesoPass').value
-  const tipoAcceso  = document.getElementById('accesoTipo').value
-  const tieneAccesoNuevo = emailAcceso && passAcceso && document.getElementById('accesoNuevo').style.display !== 'none'
+  const tieneAccesoNuevo = passAcceso && document.getElementById('accesoNuevo').style.display !== 'none'
 
-  if (emailAcceso && !passAcceso) {
-    alert('Si ingresás un email de colaborador, también tenés que poner una contraseña temporal.')
+  if (passAcceso && passAcceso.length < 6) {
+    alert('La contraseña temporal debe tener al menos 6 caracteres.')
     return
   }
-  if (emailAcceso && passAcceso.length < 6) {
-    alert('La contraseña temporal debe tener al menos 6 caracteres.')
+  if (passAcceso && !emailAcceso) {
+    alert('Completá el email en Contacto y notificaciones antes de asignar acceso.')
     return
   }
 
