@@ -7,6 +7,9 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = 'https://wajkfydxutptcvvfwrvq.supabase.co'
 const SUPABASE_KEY = 'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
 
+// Exportar credenciales para archivos que necesitan crear clientes auxiliares (ej: usuarios.html)
+export { SUPABASE_URL, SUPABASE_KEY }
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 // URL pública del bucket de imágenes
