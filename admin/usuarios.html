@@ -411,10 +411,12 @@ onRolChange()
 
 // ── Cargar lista de usuarios ──────────────────────────────
 async function cargarUsuarios() {
-  const [{ data: usuarios, error }, { data: canales }] = await Promise.all([
+  const [{ data: usuarios, error }, { data: canales }, { data: proyectosData }] = await Promise.all([
     supabase.rpc('admin_listar_usuarios'),
     supabase.from('canales').select('id, nombre, codigo, user_id').not('user_id', 'is', null),
+    supabase.from('proyectos').select('id, nombre, slug').order('nombre'),
   ])
+  if (proyectosData) _proyectos = proyectosData
 
   const tbody = document.getElementById('tbodyUsuarios')
   if (error) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error: ${esc(error.message)}</div></td></tr>`; return }
