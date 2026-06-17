@@ -1,469 +1,617 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- Google Analytics GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZTDBZP6R96"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-ZTDBZP6R96', { anonymize_ip: true });
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Proyectos — Sur Patagonia Admin</title>
-  <link rel="stylesheet" href="../css/estilos.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <title>Proyectos de Desarrollo — Sur Patagonia | El Bolsón, Río Negro</title>
+  <meta name="description" content="Conocé nuestros proyectos de desarrollo inmobiliario en la Patagonia Argentina. Urbanizaciones, loteos y desarrollos exclusivos en El Bolsón." />
+  <link rel="canonical" href="https://surpatagonia.com.ar/proyectos.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://surpatagonia.com.ar/proyectos.html" />
+  <meta property="og:title" content="Proyectos de Desarrollo — Sur Patagonia" />
+  <meta property="og:description" content="Proyectos de desarrollo inmobiliario en la Patagonia Argentina. Urbanizaciones, loteos y desarrollos exclusivos en El Bolsón." />
+  <meta property="og:image" content="https://surpatagonia.com.ar/og-image.jpg" />
+  <link rel="stylesheet" href="css/estilos.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Montserrat:wght@200;300;400;500;600&display=swap" rel="stylesheet" />
   <style>
-    :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; }
-    .admin-main { font-family:'Inter',system-ui,sans-serif; }
-
-    /* ── Filtros ── */
-    .filtros {
-      display: flex;
-      gap: 0.4rem;
-      margin-bottom: 1.8rem;
-      flex-wrap: wrap;
-    }
-    .filtro-btn {
-      font-size: 0.65rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 0.42rem 1.1rem;
-      border-radius: 999px;
-      border: 1px solid var(--card-border);
-      background: none;
-      color: var(--gris-claro);
-      cursor: pointer;
-      transition: all .18s;
-      font-family: 'Inter', sans-serif;
-    }
-    .filtro-btn.activo, .filtro-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: rgba(215,111,63,.07);
-    }
-
-    /* ── Grid de cards ── */
-    .proyectos-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-      gap: 1rem;
-    }
-
-    .proyecto-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: var(--card-radius);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      transition: transform .18s, border-color .18s;
-    }
-    .proyecto-card:hover { transform: translateY(-2px); border-color: rgba(215,111,63,.3); }
-
-    .card-thumb {
-      width: 100%;
-      aspect-ratio: 16/9;
-      object-fit: cover;
-      display: block;
-    }
-    .card-thumb-placeholder {
-      width: 100%;
-      aspect-ratio: 16/9;
-      background: rgba(255,255,255,0.03);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--gris);
-      font-size: 0.65rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    .card-body { padding: 1.2rem 1.3rem; flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
-
-    .card-nombre {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.25rem;
-      font-weight: 400;
-      color: var(--blanco);
-      line-height: 1.15;
-    }
-    .card-slug { font-size: 0.65rem; color: var(--gris-claro); }
-    .card-slug span { color: var(--dorado); }
-
-    .card-meta { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 0.2rem; }
-    .card-meta-item { font-size: 0.68rem; color: var(--gris-claro); }
-    .card-meta-item strong { color: var(--blanco); font-weight: 600; }
-
-    .badge-estado {
-      display: inline-block;
-      padding: 0.2rem 0.65rem;
-      border-radius: 999px;
-      font-size: 0.58rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      font-family: 'Inter', sans-serif;
-      white-space: nowrap;
-    }
-    .badge-activo  { background: rgba(80,200,120,.12);  color: #5ec98a; border: 1px solid rgba(80,200,120,.2); }
-    .badge-borrador{ background: rgba(150,150,150,.1);  color: var(--gris-claro); border: 1px solid rgba(255,255,255,0.08); }
-    .badge-pausado { background: rgba(215,111,63,.12);  color: var(--accent); border: 1px solid rgba(215,111,63,.2); }
-
-    .card-actions {
-      display: flex;
-      gap: 0.5rem;
-      padding: 0.9rem 1.3rem;
-      border-top: 1px solid var(--card-border);
-      flex-wrap: wrap;
-    }
-    .btn-accion {
-      font-size: 0.63rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      padding: 0.38rem 0.9rem;
-      border-radius: 999px;
-      border: 1px solid var(--card-border);
-      background: none;
-      color: var(--gris-claro);
-      cursor: pointer;
-      text-decoration: none;
-      transition: all .18s;
-      font-family: 'Inter', sans-serif;
-    }
-    .btn-accion:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-accion.danger:hover { border-color: #e05c5c; color: #e05c5c; }
-    .btn-accion.primary { border-color: var(--dorado); color: var(--dorado); }
-    .btn-accion.primary:hover { background: rgba(201,168,76,.08); }
-
-    /* ── Estado vacío ── */
-    .empty-state {
-      grid-column: 1/-1;
+    body { cursor: none; }
+    #cur { position:fixed; z-index:9999; pointer-events:none; width:7px; height:7px; border-radius:50%; background:var(--dorado); transform:translate(-50%,-50%); transition:width .3s,height .3s,background .3s,border .3s; will-change:transform; }
+    #cur.big { width:40px; height:40px; background:transparent; border:1px solid rgba(201,168,76,0.6); }
+    a,button,[onclick],select,input,label { cursor: none; }
+    .page-header-proyectos {
+      padding: 10rem 0 5rem;
+      background: linear-gradient(135deg, #090909 0%, #0a0a1e 100%);
+      background-size: cover;
+      background-position: center;
       text-align: center;
-      padding: 5rem 2rem;
-      color: var(--gris-claro);
+      position: relative;
+      overflow: hidden;
     }
-    .empty-state h3 {
+    .page-header-proyectos::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(201,168,76,0.08) 0%, transparent 70%);
+    }
+    .audiovisual-hero {
+      padding: 6rem 0;
+      background: var(--negro-2);
+      border-top: 1px solid var(--gris-oscuro);
+      border-bottom: 1px solid var(--gris-oscuro);
+    }
+    .audiovisual-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+    }
+    .servicios-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 4rem;
+    }
+    .servicio-card {
+      background: var(--negro-2);
+      border: 1px solid var(--gris-oscuro);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      transition: all 0.35s ease;
+    }
+    .servicio-card:hover {
+      border-color: var(--dorado);
+      transform: translateY(-4px);
+    }
+    .servicio-icono {
+      font-size: 2.5rem;
+      margin-bottom: 1.2rem;
+    }
+    .servicio-titulo {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 1.6rem;
-      font-weight: 300;
+      font-size: 1.3rem;
       color: var(--blanco);
       margin-bottom: 0.8rem;
     }
-    .empty-state p { font-size: 0.82rem; margin-bottom: 2rem; }
-
-    /* ── Modal ── */
-    .modal-overlay {
+    .servicio-desc {
+      font-size: 0.82rem;
+      color: var(--gris-claro);
+      line-height: 1.7;
+    }
+    .modal-video {
       display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.8);
-      z-index: 500;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.97);
+      z-index: 999;
       align-items: center;
       justify-content: center;
     }
-    .modal-overlay.open { display: flex; }
-    .modal-box {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 2.5rem;
-      max-width: 420px;
-      width: 90%;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+    .modal-video.abierto { display: flex; }
+    .modal-video-inner {
+      position: relative;
+      width: 90vw;
+      max-width: 900px;
     }
-    .modal-box h3 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.4rem;
-      color: var(--blanco);
-      margin-bottom: 0.8rem;
+    .modal-video iframe,
+    .modal-video video {
+      width: 100%;
+      aspect-ratio: 16/9;
     }
-    .modal-box p { font-size: 0.82rem; color: var(--gris-claro); margin-bottom: 2rem; line-height: 1.6; }
-    .modal-btns { display: flex; gap: 0.8rem; }
-    .btn-cancel {
-      padding: 0.7rem 1.4rem;
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
+    .modal-video-cerrar {
+      position: absolute;
+      top: -2.5rem;
+      right: 0;
       background: none;
-      color: var(--gris-claro);
-      font-size: 0.68rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      transition: border-color .18s;
-    }
-    .btn-cancel:hover { border-color: rgba(255,255,255,0.2); color: var(--blanco); }
-    .btn-delete {
-      padding: 0.7rem 1.4rem;
       border: none;
-      border-radius: 8px;
-      background: #c0392b;
-      color: #fff;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      color: var(--blanco);
+      font-size: 1.8rem;
       cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      transition: opacity .18s;
     }
-    .btn-delete:hover { opacity: 0.85; }
+    @media (max-width: 768px) {
+      .audiovisual-grid { grid-template-columns: 1fr; gap: 3rem; }
+      .servicios-grid { grid-template-columns: 1fr; }
+    }
 
-    .btn-nuevo {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.6rem 1.3rem;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      font-family: 'Inter', sans-serif;
-      text-decoration: none;
-      cursor: pointer;
-      transition: opacity .18s;
-    }
-    .btn-nuevo:hover { opacity: 0.85; color: #fff; }
+  /* ── NAV ── */
+  #nav-main { position: fixed; top: 0; left: 0; right: 0; z-index: 1001; display: flex; align-items: center; justify-content: space-between; padding: 0.93rem 3rem; background: rgba(8,8,8,0.95); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 1px 0 rgba(255,255,255,0.04); }
+  .nav-logo { display: flex; align-items: center; }
+  .nav-logo img { height: 44px; display: block; }
+  .nav-links-main { display: flex; align-items: center; gap: 0.2rem; }
+  .nav-link { font-size: 0.68rem; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(240,237,232,0.55); padding: 0.5rem 1rem; transition: color 0.2s; text-decoration: none; }
+  .nav-link:hover, .nav-link.active { color: #f0ede8; }
+  .nav-sep { width: 1px; height: 14px; background: rgba(255,255,255,0.1); margin: 0 0.5rem; }
+  .nav-cta { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #080808 !important; background: #c9a84c; padding: 0.55rem 1.4rem; margin-left: 0.5rem; transition: background 0.2s; text-decoration: none; display: inline-block; }
+  .nav-cta:hover { background: #e8c97a; }
+  /* Hamburger */
+  .nav-burger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; z-index: 1002; }
+  .nav-burger span { display: block; width: 22px; height: 1px; background: #f0ede8; transition: all 0.3s; }
+  .nav-burger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .nav-burger.open span:nth-child(2) { opacity: 0; }
+  .nav-burger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .nav-close-btn { display: none; }
+  .nav-mob-header-logo { display: none; }
+  @media (max-width: 768px) {
+    #nav-main { padding: 1rem 1.5rem; }
+    .nav-links-main { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(8,8,8,0.97); flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 12vh; padding-top: 12dvh; gap: 1.5rem; z-index: 999; text-align: center; }
+    .nav-links-main.abierto { display: flex; }
+    .nav-link { font-size: 1.1rem; letter-spacing: 0.18em; color: #f0ede8 !important; display: flex; align-items: center; justify-content: center; padding: 0.3rem 1rem; }
+    .nav-sep { display: none; }
+    .nav-cta { margin-top: 0.5rem; padding: 0.9rem 3rem; font-size: 0.75rem; color: #080808 !important; }
+    .nav-burger { display: flex; }
+    .nav-close-btn { display: block; position: absolute; top: 1.2rem; right: 1.5rem; background: none; border: none; color: #f0ede8; font-size: 1.4rem; cursor: pointer; padding: 0.5rem; line-height: 1; z-index: 1000; }
+    .nav-mob-header-logo { display: block; width: 108px; height: auto; margin-bottom: 0.5rem; opacity: 0.82; }
+  }
   </style>
 </head>
 <body>
-<div class="admin-layout">
+<div id="cur"></div>
 
-  <aside class="admin-sidebar">
-    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
-    <nav class="admin-nav">
-      <a href="dashboard.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        Dashboard
-      </a>
-      <a href="propiedades.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-        Propiedades
-      </a>
-      <a href="nueva-propiedad.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Nueva propiedad
-      </a>
-      <a href="proyectos.html" class="admin-nav-item activo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-        Proyectos
-      </a>
-      <a href="nuevo-proyecto.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Nuevo proyecto
-      </a>
-      <a href="contactos.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        Consultas
-      </a>
-      <a href="crm.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
-        CRM
-      </a>
-      <a href="canales.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-        Canales
-      </a>
-      <a href="salud-de-red.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Salud de Red
-      </a>
-      <a href="campanas.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        Campañas
-      </a>
-      <a href="tour360.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>
-        Tour 360°
-      </a>
-      <a href="trafico.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Tráfico
-      </a>
-      <a href="apariencia.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
-        Apariencia
-      </a>
-      <a href="generador-pdf.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        Generar PDF
-      </a>
-      <a href="usuarios.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-        Usuarios
-      </a>
-            <a href="colaboradores.html" class="admin-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
-        Colaboradores
-      </a>
-
-      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
-        Ver sitio
-      </a>
-      <a href="#" class="admin-nav-item" id="btnLogout">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Salir
-      </a>
-    </nav>
-  </aside>
-
-  <main class="admin-main">
-    <div class="admin-header">
-      <div>
-        <h2 style="font-weight:300; font-size:1.7rem; font-family:'Cormorant Garamond',serif;">Proyectos</h2>
-        <p style="font-size:0.76rem; color:var(--gris-claro); font-family:'Inter',sans-serif;">Administrá los desarrollos inmobiliarios y sus miniwebs</p>
-      </div>
-      <a href="nuevo-proyecto.html" class="btn-nuevo">+ Nuevo proyecto</a>
+  <!-- NAV -->
+  <nav id="nav-main">
+    <a href="index.html" class="nav-logo"><picture><source srcset="logohorizontal.webp" type="image/webp"><img src="logohorizontal.png" alt="Sur Patagonia"></picture></a>
+    <div class="nav-links-main" id="navLinks">
+      <button class="nav-close-btn" id="navClose" aria-label="Cerrar menú">✕</button>
+      <picture><source srcset="picos.webp" type="image/webp"><img src="picos.png" class="nav-mob-header-logo" alt="Sur Patagonia"></picture>
+      <a href="index.html" class="nav-link">Inicio</a>
+      <a href="propiedades.html" class="nav-link">Propiedades</a>
+      <a href="proyectos.html" class="nav-link active">Proyectos</a>
+      <a href="servicios.html" class="nav-link">Servicios</a>
+      <div class="nav-sep"></div>
+      <a href="index.html#contacto" class="nav-cta">Contacto</a>
     </div>
+    <button class="nav-burger" id="menuBtn" aria-label="Menú"><span></span><span></span><span></span></button>
+  </nav>
 
-    <div class="filtros">
-      <button class="filtro-btn activo" data-f="todos">Todos</button>
-      <button class="filtro-btn" data-f="activo">Activos</button>
-      <button class="filtro-btn" data-f="borrador">Borradores</button>
-      <button class="filtro-btn" data-f="pausado">Pausados</button>
-    </div>
-
-    <div class="proyectos-grid" id="proyectosGrid">
-      <div class="empty-state">
-        <p style="color:var(--gris-claro);font-size:0.8rem;">Cargando proyectos...</p>
-      </div>
-    </div>
-  </main>
-</div>
-
-<!-- Modal confirmar borrado -->
-<div class="modal-overlay" id="modalBorrar">
-  <div class="modal-box">
-    <h3>Eliminar proyecto</h3>
-    <p id="modalTexto">¿Seguro que querés eliminar este proyecto? Esta acción no se puede deshacer.</p>
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-delete" id="btnConfirmarBorrar">Eliminar</button>
+  <!-- HEADER -->
+  <div class="page-header-proyectos">
+    <div class="contenedor" style="position:relative;z-index:1;">
+      <p style="color:var(--dorado);font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;margin-bottom:1rem;">Desarrollos & producción audiovisual</p>
+      <h1 style="color:var(--blanco-puro);">Proyectos</h1>
+      <div class="linea-dorada"></div>
+      <p style="color:var(--gris-claro);max-width:600px;margin:1rem auto 0;font-size:0.9rem;">
+        Loteos, desarrollos inmobiliarios y producción audiovisual profesional para potenciar tus inversiones en la Patagonia.
+      </p>
     </div>
   </div>
-</div>
+
+  <!-- PROYECTOS INMOBILIARIOS -->
+  <section class="seccion">
+    <div class="contenedor">
+      <div class="titulo-seccion">
+        <p>Desarrollos en cartera</p>
+        <h2>Proyectos Inmobiliarios</h2>
+        <div class="linea-dorada"></div>
+      </div>
+      <div class="proyectos-grid" id="listaProyectos">
+        <div class="estado-cargando" style="grid-column:1/-1">
+          <div class="spinner"></div>
+          <p>Cargando proyectos...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN AUDIOVISUAL -->
+  <section class="audiovisual-hero" id="audiovisual">
+    <div class="contenedor">
+      <div class="audiovisual-grid">
+        <div>
+          <p style="color:var(--dorado);font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;margin-bottom:1rem;">Producción audiovisual</p>
+          <h2 style="margin-bottom:1.5rem;">Hacemos que tu proyecto<br><em style="color:var(--dorado); font-style:italic;">se vea increíble</em></h2>
+          <p style="color:var(--gris-claro);margin-bottom:1.5rem;font-size:0.9rem;line-height:1.9;">
+            Somos productores audiovisuales especializados en bienes raíces. Creamos videos cinematográficos, contenido de drone y material digital para que los desarrolladores inmobiliarios vendan más y mejor.
+          </p>
+          <p style="color:var(--gris-claro);margin-bottom:2rem;font-size:0.9rem;line-height:1.9;">
+            Si tenés un loteo, un barrio privado o un emprendimiento en la Patagonia, nosotros producimos el material visual que necesitás para presentarlo a inversores y compradores.
+          </p>
+          <a href="index.html#contacto" class="btn btn-dorado">Hablemos de tu proyecto</a>
+        </div>
+        <div>
+          <div style="aspect-ratio:16/9; background:var(--negro-3); border:1px solid var(--gris-oscuro); display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+            <div style="text-align:center;color:var(--gris-claro);">
+              <div style="font-size:4rem;margin-bottom:1rem;">🎬</div>
+              <p style="font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;">Showreel próximamente</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICIOS -->
+  <section class="seccion" style="background:var(--negro);">
+    <div class="contenedor">
+      <div class="titulo-seccion">
+        <p>Lo que hacemos</p>
+        <h2>Servicios Audiovisuales</h2>
+        <div class="linea-dorada"></div>
+      </div>
+      <div class="servicios-grid">
+        <div class="servicio-card">
+          <div class="servicio-icono">🎥</div>
+          <h3 class="servicio-titulo">Video Cinematográfico</h3>
+          <p class="servicio-desc">Producción de video profesional para tus propiedades y proyectos. Calidad cinematográfica que genera impacto y diferencia tu emprendimiento.</p>
+        </div>
+        <div class="servicio-card">
+          <div class="servicio-icono">🚁</div>
+          <h3 class="servicio-titulo">Tomas Aéreas con Drone</h3>
+          <p class="servicio-desc">Capturas aéreas de alta resolución para mostrar la escala, el entorno y los detalles únicos de tu loteo o desarrollo en la Patagonia.</p>
+        </div>
+        <div class="servicio-card">
+          <div class="servicio-icono">📸</div>
+          <h3 class="servicio-titulo">Fotografía Profesional</h3>
+          <p class="servicio-desc">Sesiones fotográficas de interiores y exteriores con técnicas de iluminación y edición de nivel internacional para destacar cada propiedad.</p>
+        </div>
+        <div class="servicio-card">
+          <div class="servicio-icono">✂️</div>
+          <h3 class="servicio-titulo">Edición & Post-producción</h3>
+          <p class="servicio-desc">Color grading, motion graphics, música y locución. Entregamos el material listo para redes sociales, sitios web y presentaciones a inversores.</p>
+        </div>
+        <div class="servicio-card">
+          <div class="servicio-icono">📱</div>
+          <h3 class="servicio-titulo">Contenido para Redes</h3>
+          <p class="servicio-desc">Reels, stories y contenido adaptado para Instagram, YouTube y TikTok. Estrategia visual completa para posicionar tu marca inmobiliaria.</p>
+        </div>
+        <div class="servicio-card">
+          <div class="servicio-icono">🏙️</div>
+          <h3 class="servicio-titulo">Tours Virtuales</h3>
+          <p class="servicio-desc">Recorridos virtuales 360° para que los compradores puedan explorar propiedades y loteos desde cualquier parte del mundo.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    /* ─── CONTACTO + FOOTER COMPLETO ─── */
+    #contacto-nuevo { background: linear-gradient(to bottom, rgba(8,8,8,0.88) 0%, rgba(8,8,8,0.92) 100%), url('assets/17.webp') center/cover no-repeat scroll; border-top: 1px solid #2a2a2e; padding: 8rem 2rem; position: relative; z-index: 2; isolation: isolate; }
+    .cnt-inner { max-width: 1280px; margin: 0 auto; }
+    .cnt-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 6rem; align-items: start; }
+    .cnt-eyebrow { display: flex; align-items: center; gap: 1rem; font-size: 0.65rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; color: #c9a84c; margin-bottom: 1.2rem; }
+    .cnt-eyebrow::before { content: ''; display: block; width: 30px; height: 1px; background: #c9a84c; }
+    .cnt-title { font-family: 'Montserrat', sans-serif; font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 200; line-height: 1.05; letter-spacing: -0.02em; color: #f0ede8; margin-bottom: 2rem; }
+    .cnt-title em { font-style: normal; color: #c9a84c; }
+    .cnt-desc { color: #777; font-size: 0.85rem; line-height: 1.9; margin-bottom: 2rem; }
+    .cnt-dato { display: flex; align-items: center; gap: 1rem; font-size: 0.78rem; color: #777; margin-bottom: 0.8rem; }
+    .cnt-dato-icon { color: #c9a84c; }
+    .cnt-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .cnt-row.full { grid-template-columns: 1fr; }
+    .cnt-field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .cnt-field label { font-size: 0.6rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: #777; }
+    .cnt-field input, .cnt-field textarea { background: rgba(255,255,255,0.03); border: 1px solid #2a2a2e; color: #f0ede8; padding: 0.8rem 1rem; font-family: 'Montserrat', sans-serif; font-size: 0.82rem; font-weight: 300; outline: none; transition: border-color 0.2s; resize: vertical; }
+    .cnt-field input:focus, .cnt-field textarea:focus { border-color: #c9a84c; }
+    .cnt-submit { width: 100%; margin-top: 0.5rem; background: #c9a84c; color: #080808; padding: 0.95rem; font-family: 'Montserrat', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; border: none; cursor: pointer; transition: background 0.3s; }
+    .cnt-submit:hover { background: #e8c97a; }
+    .cnt-alerta { padding: 0.8rem 1rem; margin-bottom: 1rem; font-size: 0.8rem; }
+    .cnt-alerta.ok { background: rgba(39,174,96,0.08); border-left: 3px solid #27ae60; color: #27ae60; }
+    .cnt-alerta.err { background: rgba(192,57,43,0.08); border-left: 3px solid #c0392b; color: #c0392b; }
+    footer.footer-new { background: #080808; border-top: 1px solid #2a2a2e; padding: 3rem 0 2rem; overflow: hidden; }
+    .mq-wrap { overflow: hidden; margin-bottom: 3rem; display: flex; flex-direction: column; }
+    .mq-row { border-top: 1px solid #2a2a2e; padding: 0.9rem 0; overflow: hidden; }
+    .mq-row:last-child { border-bottom: 1px solid #2a2a2e; }
+    @keyframes mqScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .mq-track { display: flex; width: max-content; white-space: nowrap; align-items: center; animation: mqScroll 30s linear infinite; }
+    .mq-row:last-child .mq-track { animation-duration: 22s; }
+    .mq-row:first-child .mq-text { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; font-size: clamp(2rem, 4vw, 3.5rem); color: rgba(240,237,232,0.1); padding: 0 2.5rem; line-height: 1; }
+    .mq-row:first-child .mq-text em { font-style: normal; color: rgba(201,168,76,0.3); }
+    .mq-row:last-child .mq-text { font-family: 'Montserrat', sans-serif; font-weight: 500; font-size: 0.62rem; letter-spacing: 0.35em; text-transform: uppercase; color: rgba(240,237,232,0.14); padding: 0 3rem; }
+    .mq-row:last-child .mq-text em { font-style: normal; color: rgba(201,168,76,0.35); }
+    .mq-sep { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: #c9a84c; opacity: 0.25; margin: 0 1.5rem; vertical-align: middle; }
+    .ft-inner { max-width: 1280px; margin: 0 auto; padding: 0 2rem; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 4rem; margin-bottom: 3rem; }
+    .ft-logo { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 300; letter-spacing: 0.08em; margin-bottom: 1rem; color: #f0ede8; }
+    .ft-logo span { color: #c9a84c; }
+    .ft-desc { font-size: 0.8rem; color: #777; line-height: 1.9; }
+    .ft-col h5 { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #c9a84c; margin-bottom: 1.2rem; }
+    .ft-links { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+    .ft-links a { font-size: 0.8rem; color: #777; text-decoration: none; transition: color 0.2s; }
+    .ft-links a:hover { color: #f0ede8; }
+    .ft-bottom { max-width: 1280px; margin: 0 auto; padding: 1.5rem 2rem 0; border-top: 1px solid #2a2a2e; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.7rem; color: #777; }
+    @media (max-width: 900px) { .cnt-grid { grid-template-columns: 1fr; gap: 3rem; } .ft-inner { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 768px) { .cnt-row { grid-template-columns: 1fr; } .ft-inner { grid-template-columns: 1fr; gap: 2rem; } }
+  </style>
+
+  <!-- CONTACTO -->
+  <section id="contacto-nuevo">
+    <div class="cnt-inner">
+      <div class="cnt-grid">
+        <div>
+          <div class="cnt-eyebrow">Escribinos</div>
+          <h2 class="cnt-title">Estamos<br><em>para ayudarte</em></h2>
+          <p class="cnt-desc">Ya sea que estés buscando tu próxima propiedad o querés desarrollar un proyecto en la Patagonia, nuestro equipo está listo.</p>
+          <div class="cnt-dato"><span class="cnt-dato-icon">📍</span> El Bolsón, Río Negro, Argentina</div>
+          <div class="cnt-dato"><span class="cnt-dato-icon">📞</span> <a href="tel:+5492944791799" style="color:inherit;text-decoration:none;">+54 9 294 479 1799</a></div>
+          <div class="cnt-dato"><span class="cnt-dato-icon">✉️</span> info@surpatagonia.com.ar</div>
+        </div>
+        <div>
+          <div id="alertaContactoNew"></div>
+          <form id="formContactoNew">
+            <div class="cnt-row">
+              <div class="cnt-field"><label>Nombre</label><input type="text" id="cnNombre" placeholder="Tu nombre" required /></div>
+              <div class="cnt-field"><label>Email</label><input type="email" id="cnEmail" placeholder="tu@email.com" required /></div>
+            </div>
+            <div class="cnt-row">
+              <div class="cnt-field"><label>Teléfono</label><input type="tel" id="cnTelefono" placeholder="+54 9 ..." /></div>
+            </div>
+            <div class="cnt-row full">
+              <div class="cnt-field"><label>Mensaje</label><textarea id="cnMensaje" rows="5" placeholder="¿En qué te podemos ayudar?" required></textarea></div>
+            </div>
+            <button type="submit" class="cnt-submit">Enviar mensaje</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER COMPLETO -->
+  <footer class="footer-new">
+    <div class="mq-wrap">
+      <div class="mq-row">
+        <div class="mq-track">
+          <span class="mq-text">Sur Patagonia <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">Propiedades &amp; Desarrollos <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">El Bolsón, Patagonia <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">Sur Patagonia <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">Propiedades &amp; Desarrollos <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">El Bolsón, Patagonia <em>·</em></span><span class="mq-sep"></span>
+        </div>
+      </div>
+      <div class="mq-row">
+        <div class="mq-track">
+          <span class="mq-text">PROPIEDADES <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">PROYECTOS <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">SERVICIOS <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">AUDIOVISUAL <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">PROPIEDADES <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">PROYECTOS <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">SERVICIOS <em>·</em></span><span class="mq-sep"></span>
+          <span class="mq-text">AUDIOVISUAL <em>·</em></span><span class="mq-sep"></span>
+        </div>
+      </div>
+    </div>
+    <div class="ft-inner">
+      <div>
+        <div class="ft-logo">Sur <span>Patagonia</span></div>
+        <p class="ft-desc">Propiedades y desarrollos exclusivos en los paisajes más extraordinarios de la Patagonia argentina.</p>
+      </div>
+      <div class="ft-col">
+        <h5>Navegación</h5>
+        <ul class="ft-links">
+          <li><a href="index.html">Inicio</a></li>
+          <li><a href="propiedades.html">Propiedades</a></li>
+          <li><a href="proyectos.html">Proyectos</a></li>
+          <li><a href="servicios.html">Servicios</a></li>
+          <li><a href="#contacto-nuevo">Contacto</a></li>
+        </ul>
+      </div>
+      <div class="ft-col">
+        <h5>Contacto</h5>
+        <ul class="ft-links">
+          <li>El Bolsón, Río Negro</li>
+          <li>Argentina</li>
+          <li><a href="mailto:contacto@surpatagonia.com.ar">contacto@surpatagonia.com.ar</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ft-bottom">
+      <div style="display:flex;justify-content:space-between;width:100%;">
+        <span>© 2026 Sur Patagonia. Todos los derechos reservados.</span>
+        <span style="color:#c9a84c;">Patagonia, Argentina</span>
+      </div>
+      <div style="font-size:0.62rem;">
+        Mariana Ayelén García — Martillera y Corredora Pública Mat. 271-RP-18 F°350 T°II &nbsp;·&nbsp;
+        La disponibilidad y los precios publicados están sujetos a posibles modificaciones sin previo aviso.
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase as sbContact, getRef, getRefVia } from './js/config.js'
+    // Foto contacto — espejo del index via site_config
+    try {
+      const { data: cfgRows } = await sbContact.from('site_config').select('key, value').eq('key', 'img_contacto_bg')
+      const imgBg = cfgRows?.[0]?.value
+      if (imgBg) {
+        const el = document.getElementById('contacto-nuevo')
+        if (el) el.style.background = `linear-gradient(to bottom, rgba(8,8,8,0.88) 0%, rgba(8,8,8,0.92) 100%), url('${imgBg}') center/cover no-repeat scroll`
+      }
+    } catch(e) {}
+    document.getElementById('formContactoNew').addEventListener('submit', async function(e) {
+      e.preventDefault()
+      const alerta = document.getElementById('alertaContactoNew')
+      const btn = this.querySelector('.cnt-submit')
+      btn.textContent = 'Enviando...'
+      btn.disabled = true
+      try {
+        const { error } = await sbContact.from('contactos').insert([{
+          nombre: document.getElementById('cnNombre').value,
+          email: document.getElementById('cnEmail').value,
+          telefono: document.getElementById('cnTelefono').value,
+          mensaje: document.getElementById('cnMensaje').value,
+          canal_ref: getRef(),
+          canal_via: getRefVia(),
+          fecha: new Date().toISOString()
+        }])
+        if (error) throw error
+        alerta.innerHTML = '<div class="cnt-alerta ok">¡Mensaje enviado! Te respondemos a la brevedad.</div>'
+        this.reset()
+      } catch(err) {
+        alerta.innerHTML = '<div class="cnt-alerta err">Error al enviar. Escribinos a info@surpatagonia.com.ar</div>'
+      } finally {
+        btn.textContent = 'Enviar mensaje'
+        btn.disabled = false
+      }
+    })
+  </script>
+
+  <!-- MODAL VIDEO -->
+  <div class="modal-video" id="modalVideo">
+    <div class="modal-video-inner">
+      <button class="modal-video-cerrar" id="modalVideoCerrar">✕</button>
+      <div id="modalVideoContenido"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, getSiteConfig } from './js/config.js'
+
+    const menuBtn = document.getElementById('menuBtn')
+    const navLinks = document.getElementById('navLinks')
+    const navClose = document.getElementById('navClose')
+    if (menuBtn && navLinks) {
+      menuBtn.addEventListener('click', () => { menuBtn.classList.toggle('open'); navLinks.classList.toggle('abierto') })
+    }
+    if (navClose && navLinks && menuBtn) {
+      navClose.addEventListener('click', () => { menuBtn.classList.remove('open'); navLinks.classList.remove('abierto') })
+    }
+
+    async function cargarProyectos() {
+      const contenedor = document.getElementById('listaProyectos')
+      const { data, error } = await supabase
+        .from('proyectos')
+        .select('*')
+        .eq('activo', true)
+        .order('created_at', { ascending: false })
+
+      if (error || !data || data.length === 0) {
+        contenedor.innerHTML = `
+          <div class="estado-vacio" style="grid-column:1/-1; text-align:center; padding:4rem;">
+            <p style="color:var(--gris-claro); margin-bottom:2rem;">Los proyectos se cargarán próximamente.</p>
+            <a href="index.html#contacto" class="btn btn-outline">Consultar proyectos</a>
+          </div>`
+        return
+      }
+
+      contenedor.innerHTML = data.map(p => {
+        const img = p.imagen_portada
+          ? `<img src="${p.imagen_portada}" alt="${p.titulo}" loading="lazy" />`
+          : `<div style="width:100%;height:100%;background:linear-gradient(135deg,var(--negro-3),var(--gris-oscuro));display:flex;align-items:center;justify-content:center;font-size:4rem;">🏔️</div>`
+
+        return `
+          <div class="card-proyecto" id="proyecto-${p.id}">
+            <div class="card-proyecto-imagen">
+              ${img}
+              <div class="card-proyecto-overlay">
+                <div>
+                  <p style="font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--dorado);margin-bottom:0.3rem;">${p.tipo || 'Proyecto'}</p>
+                  <h3 style="color:var(--blanco-puro);font-size:1.5rem;">${p.titulo}</h3>
+                </div>
+              </div>
+              ${p.video_url ? `
+                <div class="play-btn" data-video="${p.video_url}">
+                  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </div>` : ''}
+            </div>
+            <div class="card-proyecto-info">
+              <p style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--dorado);margin-bottom:0.8rem;">
+                ${[p.ciudad, p.ubicacion].filter(Boolean).join(' · ')}
+                <span style="margin-left:0.8rem;padding:0.2rem 0.6rem;background:rgba(201,168,76,0.15);color:var(--dorado);">${p.estado === 'en_venta' ? 'En venta' : p.estado === 'vendido' ? 'Vendido' : 'En desarrollo'}</span>
+              </p>
+              <p style="font-size:0.85rem;color:var(--gris-claro);line-height:1.7;">${(p.descripcion || '').substring(0, 200)}${p.descripcion && p.descripcion.length > 200 ? '...' : ''}</p>
+              <a href="index.html#contacto" class="btn btn-outline" style="margin-top:1.5rem;font-size:0.7rem;">Consultar proyecto</a>
+            </div>
+          </div>`
+      }).join('')
+
+      // Play buttons
+      document.querySelectorAll('.play-btn[data-video]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          abrirVideo(btn.dataset.video)
+        })
+      })
+    }
+
+    function abrirVideo(url) {
+      const modal = document.getElementById('modalVideo')
+      const contenido = document.getElementById('modalVideoContenido')
+      // Detectar si es YouTube, Vimeo o directo
+      let embedHtml = ''
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        const videoId = url.match(/(?:v=|youtu\.be\/)([^&\n?]+)/)?.[1]
+        embedHtml = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allowfullscreen allow="autoplay"></iframe>`
+      } else if (url.includes('vimeo.com')) {
+        const videoId = url.match(/vimeo\.com\/(\d+)/)?.[1]
+        embedHtml = `<iframe src="https://player.vimeo.com/video/${videoId}?autoplay=1" frameborder="0" allowfullscreen allow="autoplay"></iframe>`
+      } else {
+        embedHtml = `<video src="${url}" controls autoplay style="width:100%;aspect-ratio:16/9;"></video>`
+      }
+      contenido.innerHTML = embedHtml
+      modal.classList.add('abierto')
+    }
+
+    document.getElementById('modalVideoCerrar').addEventListener('click', () => {
+      document.getElementById('modalVideo').classList.remove('abierto')
+      document.getElementById('modalVideoContenido').innerHTML = ''
+    })
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.getElementById('modalVideo').classList.remove('abierto')
+        document.getElementById('modalVideoContenido').innerHTML = ''
+      }
+    })
+
+    cargarProyectos()
+
+    // Cargar imagen y opacidad del header desde site_config (cacheado en sessionStorage)
+    getSiteConfig().then(cfg => {
+        if (!cfg || !Object.keys(cfg).length) return
+        if (cfg.font_titulos) document.querySelectorAll('h1, h2').forEach(el => { el.style.fontFamily = `'${cfg.font_titulos}', sans-serif` })
+        const img = cfg['img_proyectos_header']
+        const op = parseInt(cfg['overlay_proyectos'] || '70') / 100
+        if (img) {
+          const header = document.querySelector('.page-header-proyectos')
+          header.style.backgroundImage =
+            `linear-gradient(to bottom, rgba(8,8,8,${Math.min(op+0.1,1)}) 0%, rgba(8,8,8,${op}) 60%, rgba(8,8,8,1) 100%), url('${img}')`
+          header.style.backgroundSize = 'cover'
+          header.style.backgroundPosition = 'center'
+        }
+      })
+
+    // Scroll al anchor si viene con #proyecto-xxx
+    if (window.location.hash.startsWith('#proyecto-')) {
+      setTimeout(() => {
+        const el = document.querySelector(window.location.hash)
+        if (el) el.scrollIntoView({ behavior: 'smooth' })
+      }, 800)
+    }
+  </script>
+  <script>
+    const cur = document.getElementById('cur')
+    document.addEventListener('mousemove', e => {
+      cur.style.left = e.clientX + 'px'
+      cur.style.top  = e.clientY + 'px'
+    })
+    document.addEventListener('mouseleave', () => cur.style.opacity = '0')
+    document.addEventListener('mouseenter', () => cur.style.opacity = '1')
+    document.querySelectorAll('a,button,[onclick],select,input,label').forEach(el => {
+      el.addEventListener('mouseenter', () => cur.classList.add('big'))
+      el.addEventListener('mouseleave', () => cur.classList.remove('big'))
+    })
+  </script>
 
 <script type="module">
-import { supabase } from '../js/config.js'
-
-const { data: { session } } = await supabase.auth.getSession()
-if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
-
-document.getElementById('btnLogout').addEventListener('click', async (e) => {
-  e.preventDefault()
-  await supabase.auth.signOut()
-  window.location.href = 'login.html'
-})
-
-let todosLosProyectos = []
-let idABorrar = null
-
-async function cargar() {
-  const { data, error } = await supabase
-    .from('proyectos')
-    .select('id, nombre, slug, estado, categoria, foto_portada, hectareas_total, cantidad_lotes, precio_desde, created_at')
-    .order('created_at', { ascending: false })
-
-  if (error || !data) {
-    document.getElementById('proyectosGrid').innerHTML = `
-      <div class="empty-state">
-        <h3>Error al cargar</h3>
-        <p>No se pudieron cargar los proyectos. Verificá la conexión con Supabase.</p>
-      </div>`
-    return
-  }
-
-  todosLosProyectos = data
-  renderGrid(data)
-}
-
-function renderGrid(proyectos) {
-  const grid = document.getElementById('proyectosGrid')
-
-  if (!proyectos.length) {
-    grid.innerHTML = `
-      <div class="empty-state">
-        <h3>Sin proyectos aún</h3>
-        <p>Todavía no cargaste ningún proyecto. Empezá creando el primero.</p>
-        <a href="nuevo-proyecto.html" class="btn-nuevo">+ Nuevo proyecto</a>
-      </div>`
-    return
-  }
-
-  grid.innerHTML = proyectos.map(p => {
-    const badgeClass = p.estado === 'activo' ? 'badge-activo' : p.estado === 'pausado' ? 'badge-pausado' : 'badge-borrador'
-    const badgeText  = p.estado === 'activo' ? 'Activo' : p.estado === 'pausado' ? 'Pausado' : 'Borrador'
-    const thumb = p.foto_portada
-      ? `<img class="card-thumb" src="${p.foto_portada}" alt="${p.nombre}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="card-thumb-placeholder" style="display:none">Sin imagen</div>`
-      : `<div class="card-thumb-placeholder">Sin imagen</div>`
-
-    return `
-    <div class="proyecto-card" data-estado="${p.estado}">
-      ${thumb}
-      <div class="card-body">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
-          <div class="card-nombre">${p.nombre}</div>
-          <span class="badge-estado ${badgeClass}">${badgeText}</span>
-        </div>
-        <div class="card-slug">surpatagonia.com.ar/<span>${p.slug}</span></div>
-        <div class="card-meta">
-          ${p.hectareas_total ? `<div class="card-meta-item"><strong>${p.hectareas_total}</strong> ha</div>` : ''}
-          ${p.cantidad_lotes  ? `<div class="card-meta-item"><strong>${p.cantidad_lotes}</strong> lotes</div>` : ''}
-          ${p.precio_desde    ? `<div class="card-meta-item">desde <strong>USD ${Number(p.precio_desde).toLocaleString()}</strong></div>` : ''}
-          ${p.categoria       ? `<div class="card-meta-item">${p.categoria.replace(/_/g,' ')}</div>` : ''}
-        </div>
-      </div>
-      <div class="card-actions">
-        <a href="nuevo-proyecto.html?id=${p.id}" class="btn-accion primary">Editar</a>
-        <a href="../${p.slug}" target="_blank" class="btn-accion">Ver miniweb</a>
-        ${p.estado !== 'activo'
-          ? `<button class="btn-accion" onclick="publicar('${p.id}')">Publicar</button>`
-          : `<button class="btn-accion" onclick="pausar('${p.id}')">Pausar</button>`}
-        <button class="btn-accion danger" onclick="confirmarBorrar('${p.id}', '${p.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
-      </div>
-    </div>`
-  }).join('')
-}
-
-document.querySelectorAll('.filtro-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('activo'))
-    btn.classList.add('activo')
-    const f = btn.dataset.f
-    renderGrid(f === 'todos' ? todosLosProyectos : todosLosProyectos.filter(p => p.estado === f))
-  })
-})
-
-window.publicar = async (id) => {
-  await supabase.from('proyectos').update({ estado: 'activo' }).eq('id', id)
-  cargar()
-}
-window.pausar = async (id) => {
-  await supabase.from('proyectos').update({ estado: 'pausado' }).eq('id', id)
-  cargar()
-}
-
-window.confirmarBorrar = (id, nombre) => {
-  idABorrar = id
-  document.getElementById('modalTexto').textContent = `¿Seguro que querés eliminar "${nombre}"? Esta acción no se puede deshacer.`
-  document.getElementById('modalBorrar').classList.add('open')
-}
-window.cerrarModal = () => {
-  document.getElementById('modalBorrar').classList.remove('open')
-  idABorrar = null
-}
-document.getElementById('btnConfirmarBorrar').addEventListener('click', async () => {
-  if (!idABorrar) return
-  await supabase.from('proyectos').delete().eq('id', idABorrar)
-  cerrarModal()
-  cargar()
-})
-
-cargar()
+  // ── Tracker de visitas Sur Patagonia ──
+  try {
+    const { supabase } = await import('./js/config.js').catch(() => ({ supabase: null }))
+    if (!supabase) throw new Error('no supabase')
+    const pagina = window.location.pathname.replace(/\/$/,'').split('/').pop() || 'home'
+    const params = new URLSearchParams(window.location.search)
+    const propId = params.get('id') || null
+    const ref = document.referrer ? new URL(document.referrer).hostname : 'directo'
+    const ua = navigator.userAgent
+    const dispositivo = /Mobi|Android/i.test(ua) ? 'mobile' : /Tablet|iPad/i.test(ua) ? 'tablet' : 'desktop'
+    const canalRef = params.get('ref') || null
+    const canalVia  = params.get('via') || null
+    await supabase.from('visitas').insert({ pagina, propiedad_id: propId, referrer: ref, dispositivo, canal_ref: canalRef, canal_via: canalVia })
+  } catch(e) {}
 </script>
 </body>
 </html>
