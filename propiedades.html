@@ -1081,22 +1081,7 @@
   </script>
 
 <script type="module">
-  // ── Tracker de visitas Sur Patagonia ──
-  try {
-    const { supabase } = await import('./js/config.js').catch(() => ({ supabase: null }))
-    if (!supabase) throw new Error('no supabase')
-    const pagina = window.location.pathname.replace(/\/$/,'').split('/').pop() || 'home'
-    const params = new URLSearchParams(window.location.search)
-    const propId = params.get('id') || null
-    const ref = document.referrer ? new URL(document.referrer).hostname : 'directo'
-    const ua = navigator.userAgent
-    const dispositivo = /Mobi|Android/i.test(ua) ? 'mobile' : /Tablet|iPad/i.test(ua) ? 'tablet' : 'desktop'
-    const _REF_RE = /^[a-z0-9-]{2,80}$/
-    const _rawRef = params.get('ref') || params.get('canal')
-    const canalRef = (_rawRef && _REF_RE.test(_rawRef)) ? _rawRef : null
-    const canalVia = (canalRef && params.get('via') === 'qr') ? 'qr' : (canalRef ? 'link' : null)
-    await supabase.from('visitas').insert({ pagina, propiedad_id: propId, referrer: ref, dispositivo, canal_ref: canalRef, canal_via: canalVia })
-  } catch(e) {}
+  import('./js/config.js').then(m => m.registrarVisita?.()).catch(() => {})
 </script>
 </body>
 </html>

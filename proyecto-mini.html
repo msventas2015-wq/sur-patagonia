@@ -981,26 +981,16 @@ import { supabase, getRef, getRefVia } from './js/config.js'
 // Esta página quedó como template viejo. La miniweb oficial de cada
 // proyecto es /{slug} (404.html), con la personalización completa.
 // Para que nunca haya dos versiones visuales del mismo proyecto,
-// cualquier visita acá redirige a la miniweb, conservando ref y via.
+// cualquier visita acá redirige a la miniweb, conservando canal/ref y via.
 {
   const _p    = new URLSearchParams(location.search)
   const _slug = _p.get('slug')
   if (_slug && /^[a-z0-9-]+$/.test(_slug)) {
     document.documentElement.style.visibility = 'hidden'
-    // ── Registrar visita antes de redirigir ───────────────────
-    try {
-      const _cr = _p.get('canal') || _p.get('ref') || null
-      const _cv = _cr ? (_p.get('via') === 'qr' ? 'qr' : 'link') : null
-      const _ua = navigator.userAgent
-      const _dv = /Mobi|Android/i.test(_ua) ? 'mobile' : /Tablet|iPad/i.test(_ua) ? 'tablet' : 'desktop'
-      const _rf = document.referrer ? new URL(document.referrer).hostname : 'directo'
-      await supabase.from('visitas').insert({ pagina: _slug, dispositivo: _dv, canal_ref: _cr, canal_via: _cv, referrer: _rf })
-    } catch(_e) {}
-    // ─────────────────────────────────────────────────────────
     const _keep = new URLSearchParams()
-    if (_p.get('ref'))   _keep.set('ref',   _p.get('ref'))
     if (_p.get('canal')) _keep.set('canal', _p.get('canal'))
-    if (_p.get('via'))   _keep.set('via',   _p.get('via'))
+    else if (_p.get('ref')) _keep.set('ref', _p.get('ref'))
+    if (_p.get('via')) _keep.set('via', _p.get('via'))
     location.replace(`/${_slug}${_keep.toString() ? '?' + _keep.toString() : ''}`)
     throw new Error('redirect a miniweb')
   }
@@ -2061,23 +2051,5 @@ async function fetchQR(data) {
 }
 </script>
 
-<script type="module">
-  // ── Tracker de visitas Sur Patagonia ──
-  try {
-    const { supabase } = await import('./js/config.js').catch(() => ({ supabase: null }))
-    if (!supabase) throw new Error('no supabase')
-    const pagina = window.location.pathname.replace(/\/$/,'').split('/').pop() || 'home'
-    const params = new URLSearchParams(window.location.search)
-    const propId = params.get('id') || null
-    const ref = document.referrer ? new URL(document.referrer).hostname : 'directo'
-    const ua = navigator.userAgent
-    const dispositivo = /Mobi|Android/i.test(ua) ? 'mobile' : /Tablet|iPad/i.test(ua) ? 'tablet' : 'desktop'
-    const _REF_RE = /^[a-z0-9-]{2,80}$/
-    const _rawRef = params.get('ref') || params.get('canal')
-    const canalRef = (_rawRef && _REF_RE.test(_rawRef)) ? _rawRef : null
-    const canalVia = (canalRef && params.get('via') === 'qr') ? 'qr' : (canalRef ? 'link' : null)
-    await supabase.from('visitas').insert({ pagina, propiedad_id: propId, referrer: ref, dispositivo, canal_ref: canalRef, canal_via: canalVia })
-  } catch(e) {}
-</script>
 </body>
 </html>
