@@ -384,8 +384,11 @@ window.verQRBtn = (btn) => {
 
 window.verQR = (codigo, nombre, tipo, destino) => {
   const linkQR      = `${BASE_URL}/r/${codigo}`
-  const sep         = destino.includes('?') ? '&' : '?'
-  const linkDirecto = `${BASE_URL}${destino}${sep}canal=${codigo}`
+  const hashIdx     = destino.indexOf('#')
+  const destBase    = hashIdx >= 0 ? destino.slice(0, hashIdx) : destino
+  const destHash    = hashIdx >= 0 ? destino.slice(hashIdx) : ''
+  const sep         = destBase.includes('?') ? '&' : '?'
+  const linkDirecto = `${BASE_URL}${destBase}${sep}canal=${encodeURIComponent(codigo)}${destHash}`
   document.getElementById('modalNombre').textContent      = nombre
   document.getElementById('modalTipo').textContent        = TIPO_LABEL[tipo] || tipo
   document.getElementById('modalLinkQR').textContent      = linkQR
