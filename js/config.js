@@ -22,7 +22,25 @@ const REF_KEY       = 'sp_ref'
 const REF_DIAS      = 30
 const REF_RE        = /^[a-z0-9-]{2,80}$/
 const VISITA_KEY    = 'sp_ultima_visita'
-const VISITA_DEDUPE = 2500
+const VISITA_DEDUPE = 10000
+
+// Defensa central: cualquier archivo viejo que todavía haga
+// supabase.from('visitas').insert(...) pasa por este filtro.
+const supabaseFrom = supabase.from.bind(supabase)
+supabase.from = function(table) {
+  const query = supabaseFrom(table)
+  if (table !== 'visitas' || !query?.insert) return query
+
+  const insertOriginal = query.insert.bind(query)
+  query.insert = function(values, options) {
+    const fila = Array.isArray(values) ? values[0] : values
+    if (fila && esVisitaDuplicada(claveVisita(fila))) {
+      return Promise.resolve({ data: null, error: null, count: null, status: 200, statusText: 'OK', skipped: true })
+    }
+    return insertOriginal(values, options)
+  }
+  return query
+}
 
 function normalizarRef(ref) {
   const clean = String(ref || '').trim().toLowerCase()
@@ -87,6 +105,19 @@ function referrerActual() {
   } catch (e) { return 'directo' }
 }
 
+function valorClave(v) {
+  return v == null ? '' : String(v)
+}
+
+function claveVisita(v) {
+  return JSON.stringify({
+    pagina: valorClave(v.pagina),
+    propiedad_id: valorClave(v.propiedad_id),
+    canal_ref: valorClave(v.canal_ref),
+    canal_via: valorClave(v.canal_via),
+  })
+}
+
 function esVisitaDuplicada(key) {
   const now = Date.now()
   if (window.__spVisitKey === key) return true
@@ -106,25 +137,16 @@ export async function registrarVisita(opciones = {}) {
     const propiedadId = opciones.propiedadId ?? params.get('id') ?? null
     const canalRef = getRef()
     const canalVia = getRefVia()
-    const dedupeKey = JSON.stringify({
-      path: window.location.pathname,
-      search: window.location.search,
-      pagina,
-      propiedadId,
-      canalRef,
-      canalVia,
-    })
-
-    if (esVisitaDuplicada(dedupeKey)) return { skipped: true }
-
-    const { data, error } = await supabase.from('visitas').insert({
+    const visita = {
       pagina,
       propiedad_id: propiedadId,
       referrer: referrerActual(),
       dispositivo: dispositivoActual(),
       canal_ref: canalRef,
       canal_via: canalVia,
-    })
+    }
+
+    const { data, error } = await supabase.from('visitas').insert(visita)
     if (error) throw error
     return { ok: true, data }
   } catch (error) {
