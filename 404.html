@@ -1039,13 +1039,20 @@
 <script type="module">
 // Ruta ABSOLUTA: esta página se sirve en cualquier profundidad de URL
 // (/aldea-los-huemules, /r/codigo, etc.) y una ruta relativa rompería en /r/
-import { supabase, getRef, getRefVia } from '/js/config.js'
+import { supabase, getRef, getRefVia, registrarVisita } from '/js/config.js'
 
 // ── Redirect de QRs: /r/{codigo} ──────────────────────────────────────
 // Los QRs impresos apuntan a surpatagonia.com.ar/r/{codigo}. Como esta
 // página es el fallback universal de Cloudflare, resolvemos acá:
-// buscamos la referencia y redirigimos a su destino con ?ref=.
+// buscamos la referencia y redirigimos a su destino con ?canal=.
 const _rMatch = location.pathname.match(/^\/r\/([a-z0-9-]{2,80})\/?$/)
+function agregarTrackingDestino(destino, codigo, via) {
+  const hashIdx = destino.indexOf('#')
+  const base = hashIdx >= 0 ? destino.slice(0, hashIdx) : destino
+  const hash = hashIdx >= 0 ? destino.slice(hashIdx) : ''
+  const sep = base.includes('?') ? '&' : '?'
+  return `${base}${sep}canal=${encodeURIComponent(codigo)}&via=${encodeURIComponent(via)}${hash}`
+}
 if (_rMatch) {
   document.documentElement.style.visibility = 'hidden'
   const { data: _r } = await supabase
@@ -1070,12 +1077,11 @@ if (_rMatch) {
         .sort((a, b) => (b.fecha_inicio || '').localeCompare(a.fecha_inicio || ''))[0]
       if (_camp) _dest = _camp.url_destino
     }
-    const _sep = _dest.includes('?') ? '&' : '?'
-    location.replace(`${_dest}${_sep}canal=${encodeURIComponent(_r.codigo)}&via=qr`)
+    location.replace(agregarTrackingDestino(_dest, _r.codigo, 'qr'))
   } else {
     location.replace('/')
   }
-  throw new Error('redirect ref') // corta la ejecución del resto del módulo
+  throw new Error('redirect canal') // corta la ejecución del resto del módulo
 }
 
 // ── Utils ─────────────────────────────────────────────────────────────
@@ -1325,6 +1331,8 @@ async function init() {
       </div>`)
     return
   }
+
+  await registrarVisita({ pagina: slug })
 
   applyTema(p.tema)
   // Guardar tema en cache para la próxima visita (evita flash en el loading)
