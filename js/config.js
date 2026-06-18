@@ -16,53 +16,120 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 export const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/imagenes/`
 
 // ── Sistema de referidos (canales de venta) ──────────────────
-// Captura ?ref= del URL y lo persiste 30 días en localStorage.
-// Así la atribución sobrevive aunque el visitante navegue por el
-// sitio o vuelva días después por otra vía.
-const REF_KEY  = 'sp_ref'
-const REF_DIAS = 30
-const REF_RE   = /^[a-z0-9-]{2,80}$/
+// Captura ?canal= o ?ref= del URL y lo persiste 30 días en localStorage.
+// Así la atribución sobrevive aunque el visitante navegue por el sitio.
+const REF_KEY       = 'sp_ref'
+const REF_DIAS      = 30
+const REF_RE        = /^[a-z0-9-]{2,80}$/
+const VISITA_KEY    = 'sp_ultima_visita'
+const VISITA_DEDUPE = 2500
+
+function normalizarRef(ref) {
+  const clean = String(ref || '').trim().toLowerCase()
+  return REF_RE.test(clean) ? clean : null
+}
+
+function leerRefUrl() {
+  try {
+    const p = new URLSearchParams(location.search)
+    const ref = normalizarRef(p.get('canal') || p.get('ref'))
+    if (!ref) return null
+    return { ref, via: p.get('via') === 'qr' ? 'qr' : 'link' }
+  } catch (e) { return null }
+}
+
+function leerRefGuardado() {
+  try {
+    const raw = localStorage.getItem(REF_KEY)
+    if (!raw) return null
+    const { ref, via, ts } = JSON.parse(raw)
+    const clean = normalizarRef(ref)
+    if (!clean || Date.now() - ts > REF_DIAS * 86400000) {
+      localStorage.removeItem(REF_KEY)
+      return null
+    }
+    return { ref: clean, via: via === 'qr' ? 'qr' : 'link', ts }
+  } catch (e) { return null }
+}
 
 ;(function capturarRef() {
   try {
-    const p   = new URLSearchParams(location.search)
-    const ref = p.get('ref') || p.get('canal')
-    if (ref && REF_RE.test(ref)) {
-      // via: 'qr' si vino por redirect /r/ (QR físico), 'link' si vino por link directo
-      const via = p.get('via') === 'qr' ? 'qr' : 'link'
-      localStorage.setItem(REF_KEY, JSON.stringify({ ref, via, ts: Date.now() }))
-    }
+    const actual = leerRefUrl()
+    if (actual) localStorage.setItem(REF_KEY, JSON.stringify({ ...actual, ts: Date.now() }))
   } catch (e) { /* localStorage bloqueado: seguimos sin persistencia */ }
 })()
 
 // Devuelve el código de referido vigente (URL primero, después localStorage), o null.
 export function getRef() {
-  try {
-    const urlRef = new URLSearchParams(location.search).get('ref') || new URLSearchParams(location.search).get('canal')
-    if (urlRef && REF_RE.test(urlRef)) return urlRef
-    const raw = localStorage.getItem(REF_KEY)
-    if (!raw) return null
-    const { ref, ts } = JSON.parse(raw)
-    if (!ref || !REF_RE.test(ref) || Date.now() - ts > REF_DIAS * 86400000) {
-      localStorage.removeItem(REF_KEY)
-      return null
-    }
-    return ref
-  } catch (e) { return null }
+  return leerRefUrl()?.ref || leerRefGuardado()?.ref || null
 }
 
 // Devuelve cómo llegó el referido: 'qr', 'link', o null si no hay ref vigente.
 export function getRefVia() {
+  return leerRefUrl()?.via || leerRefGuardado()?.via || null
+}
+
+function paginaActual() {
+  const limpia = window.location.pathname.replace(/\/$/, '')
+  return limpia.split('/').pop() || 'home'
+}
+
+function dispositivoActual() {
+  const ua = navigator.userAgent
+  if (/Mobi|Android/i.test(ua)) return 'mobile'
+  if (/Tablet|iPad/i.test(ua)) return 'tablet'
+  return 'desktop'
+}
+
+function referrerActual() {
   try {
-    const p      = new URLSearchParams(location.search)
-    const urlRef = p.get('ref')
-    if (urlRef && REF_RE.test(urlRef)) return p.get('via') === 'qr' ? 'qr' : 'link'
-    const raw = localStorage.getItem(REF_KEY)
-    if (!raw) return null
-    const { ref, via, ts } = JSON.parse(raw)
-    if (!ref || !REF_RE.test(ref) || Date.now() - ts > REF_DIAS * 86400000) return null
-    return via || 'link'
-  } catch (e) { return null }
+    return document.referrer ? new URL(document.referrer).hostname : 'directo'
+  } catch (e) { return 'directo' }
+}
+
+function esVisitaDuplicada(key) {
+  const now = Date.now()
+  if (window.__spVisitKey === key) return true
+  window.__spVisitKey = key
+  try {
+    const prev = JSON.parse(sessionStorage.getItem(VISITA_KEY) || 'null')
+    if (prev?.key === key && now - prev.ts < VISITA_DEDUPE) return true
+    sessionStorage.setItem(VISITA_KEY, JSON.stringify({ key, ts: now }))
+  } catch (e) {}
+  return false
+}
+
+export async function registrarVisita(opciones = {}) {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const pagina = opciones.pagina || paginaActual()
+    const propiedadId = opciones.propiedadId ?? params.get('id') ?? null
+    const canalRef = getRef()
+    const canalVia = getRefVia()
+    const dedupeKey = JSON.stringify({
+      path: window.location.pathname,
+      search: window.location.search,
+      pagina,
+      propiedadId,
+      canalRef,
+      canalVia,
+    })
+
+    if (esVisitaDuplicada(dedupeKey)) return { skipped: true }
+
+    const { data, error } = await supabase.from('visitas').insert({
+      pagina,
+      propiedad_id: propiedadId,
+      referrer: referrerActual(),
+      dispositivo: dispositivoActual(),
+      canal_ref: canalRef,
+      canal_via: canalVia,
+    })
+    if (error) throw error
+    return { ok: true, data }
+  } catch (error) {
+    return { ok: false, error }
+  }
 }
 
 // ── Caché de site_config ──────────────────────────────────────
