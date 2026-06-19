@@ -222,7 +222,7 @@
         <div class="kpi-sub">consultas en estado "nueva"</div>
       </a>
       <a href="canales.html" class="kpi">
-        <div class="kpi-label">Vía canales 30 días</div>
+        <div class="kpi-label">Clicks canales 30 días</div>
         <div class="kpi-valor" id="kVia">—</div>
         <div class="kpi-sub" id="kViaSub"></div>
       </a>
@@ -250,7 +250,7 @@
         <div class="chart-wrap"><canvas id="chEvolucion"></canvas></div>
       </div>
       <div class="chart-card">
-        <h4>Origen (30 días)</h4>
+        <h4>Origen de visitas — 30 días</h4>
         <div class="chart-wrap"><canvas id="chOrigen"></canvas></div>
       </div>
     </div>
@@ -295,9 +295,11 @@ $('saludo').textContent = (hora < 13 ? 'Buen día' : hora < 20 ? 'Buenas tardes'
 async function cargar() {
   const hace60 = new Date(); hace60.setDate(hace60.getDate() - 60)
 
-  const [rLeads60, rCanales, rRefs, rProps, rNumProps, rNumProy, rNuevas] = await Promise.all([
+  const [rLeads60, rVisitas60, rCanales, rRefs, rProps, rNumProps, rNumProy, rNuevas] = await Promise.all([
     supabase.from('contactos').select('nombre, mensaje, canal_ref, canal_via, proyecto_slug, estado, leido, created_at, propiedades(titulo)')
       .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }),
+    supabase.from('visitas').select('canal_ref, canal_via, created_at')
+      .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }).limit(50000),
     supabase.from('canales').select('id, nombre, codigo, activo'),
     supabase.from('referencias').select('codigo, canal_id'),
     supabase.from('propiedades').select('id, titulo, precio, moneda, operacion, imagenes, activa').order('created_at', { ascending: false }).limit(8),
@@ -307,6 +309,7 @@ async function cargar() {
   ])
 
   const leads60 = rLeads60.data || []
+  const visitas60 = rVisitas60.data || []
   const canales = rCanales.data || []
   const refs    = rRefs.data || []
 
@@ -321,6 +324,7 @@ async function cargar() {
   const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
   const l30  = leads60.filter(l => new Date(l.created_at) >= hace30)
   const lPrev = leads60.filter(l => new Date(l.created_at) < hace30)
+  const v30 = visitas60.filter(v => new Date(v.created_at) >= hace30)
 
   // KPIs
   $('k30').textContent = l30.length
@@ -332,10 +336,11 @@ async function cargar() {
   }
   $('k30Sub').textContent = `vs ${lPrev.length} en los 30 días previos`
   $('kNuevas').textContent = rNuevas.count ?? 0
-  const via30 = l30.filter(l => l.canal_ref)
-  $('kVia').textContent = via30.length
-  const qr30 = via30.filter(l => l.canal_via === 'qr').length
-  $('kViaSub').textContent = `${qr30} por QR · ${via30.length - qr30} por link`
+  const vCan30 = v30.filter(v => v.canal_ref)
+  $('kVia').textContent = vCan30.length
+  const qrClicks30 = vCan30.filter(v => v.canal_via === 'qr').length
+  const linkClicks30 = vCan30.length - qrClicks30
+  $('kViaSub').textContent = `${qrClicks30} por QR · ${linkClicks30} por link · ${v30.length} visitas totales`
   $('kProps').textContent = rNumProps.count ?? 0
   $('kProy').textContent  = rNumProy.count ?? 0
   $('kCan').textContent   = canales.length
@@ -370,9 +375,9 @@ async function cargar() {
     }
   })
 
-  const qr = l30.filter(l => l.canal_ref && l.canal_via === 'qr').length
-  const li = l30.filter(l => l.canal_ref && l.canal_via !== 'qr').length
-  const di = l30.length - qr - li
+  const qr = vCan30.filter(v => v.canal_via === 'qr').length
+  const li = vCan30.length - qr
+  const di = Math.max(v30.length - qr - li, 0)
   new Chart($('chOrigen'), {
     type: 'doughnut',
     data: { labels: ['QR físico','Link directo','Directas'],

@@ -194,6 +194,11 @@
         <div class="kpi-sub">referencias generadas</div>
       </div>
       <div class="kpi">
+        <div class="kpi-label">Clicks vía canales</div>
+        <div class="kpi-valor" id="kClicks">—</div>
+        <div class="kpi-sub" id="kClicksSub"></div>
+      </div>
+      <div class="kpi">
         <div class="kpi-label">Consultas vía canales</div>
         <div class="kpi-valor" id="kLeads">—</div>
         <div class="kpi-sub" id="kLeadsSub"></div>
@@ -256,10 +261,11 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
 
 // ── Cargar canales + métricas ─────────────────────────────
 async function cargarCanales() {
-  const [rCanales, rRefs, rLeads, rColabs] = await Promise.all([
+  const [rCanales, rRefs, rLeads, rVisitas, rColabs] = await Promise.all([
     supabase.from('canales').select('*').order('created_at', { ascending: false }),
     supabase.from('referencias').select('codigo, canal_id, activo'),
     supabase.from('contactos').select('canal_ref, created_at').not('canal_ref', 'is', null).limit(5000),
+    supabase.from('visitas').select('canal_ref, canal_via, created_at').not('canal_ref', 'is', null).limit(50000),
     supabase.rpc('admin_listar_usuarios'),
   ])
 
@@ -276,21 +282,38 @@ async function cargarCanales() {
 
   const refs    = rRefs.data   || []
   const leads   = rLeads.data  || []
+  const visitas = rVisitas.data || []
   const colabs  = (rColabs.data || []).filter(u => u.rol === 'colaborador')
 
   // Métricas por canal
   const canalDeRef = {}
   refs.forEach(r => { canalDeRef[r.codigo] = r.canal_id })
   const stats = {}
-  canales.forEach(c => { stats[c.id] = { leads: 0, refs: 0, ultimo: null } })
+  canales.forEach(c => { stats[c.id] = { clicks: 0, clicksQr: 0, clicksLink: 0, leads: 0, refs: 0, ultimo: null } })
   refs.forEach(r => { if (stats[r.canal_id] && r.activo) stats[r.canal_id].refs++ })
-  leads.forEach(l => {
-    let cid = canalDeRef[l.canal_ref]
+
+  function canalIdPorRef(canalRef) {
+    if (!canalRef) return null
+    let cid = canalDeRef[canalRef]
     if (!cid) {
-      // fallback por prefijo de código
-      const c = canales.find(k => l.canal_ref === k.codigo || l.canal_ref.startsWith(k.codigo + '-'))
+      const c = canales.find(k => canalRef === k.codigo || canalRef.startsWith(k.codigo + '-'))
       cid = c?.id
     }
+    return cid
+  }
+
+  visitas.forEach(v => {
+    const cid = canalIdPorRef(v.canal_ref)
+    if (cid && stats[cid]) {
+      stats[cid].clicks++
+      if (v.canal_via === 'qr') stats[cid].clicksQr++
+      else stats[cid].clicksLink++
+      if (!stats[cid].ultimo || v.created_at > stats[cid].ultimo) stats[cid].ultimo = v.created_at
+    }
+  })
+
+  leads.forEach(l => {
+    const cid = canalIdPorRef(l.canal_ref)
     if (cid && stats[cid]) {
       stats[cid].leads++
       if (!stats[cid].ultimo || l.created_at > stats[cid].ultimo) stats[cid].ultimo = l.created_at
@@ -302,13 +325,16 @@ async function cargarCanales() {
   document.getElementById('kCanales').textContent    = canales.length
   document.getElementById('kCanalesSub').textContent = `${activos} activo${activos === 1 ? '' : 's'}`
   document.getElementById('kRefs').textContent       = refs.filter(r => r.activo).length
+  document.getElementById('kClicks').textContent     = visitas.length
+  const clicksQr = visitas.filter(v => v.canal_via === 'qr').length
+  document.getElementById('kClicksSub').textContent  = `${clicksQr} por QR · ${visitas.length - clicksQr} por link`
   document.getElementById('kLeads').textContent      = leads.length
   const mes = new Date(); mes.setDate(mes.getDate() - 30)
   const leadsMes = leads.filter(l => new Date(l.created_at) >= mes).length
   document.getElementById('kLeadsSub').textContent   = `${leadsMes} en los últimos 30 días`
-  const top = canales.map(c => ({ c, n: stats[c.id].leads })).sort((a,b) => b.n - a.n)[0]
+  const top = canales.map(c => ({ c, n: stats[c.id].clicks, leads: stats[c.id].leads })).sort((a,b) => b.n - a.n)[0]
   document.getElementById('kTop').textContent    = top && top.n > 0 ? top.c.nombre : '—'
-  document.getElementById('kTopSub').textContent = top && top.n > 0 ? `${top.n} consulta${top.n === 1 ? '' : 's'}` : 'sin consultas aún'
+  document.getElementById('kTopSub').textContent = top && top.n > 0 ? `${top.n} click${top.n === 1 ? '' : 's'} · ${top.leads} consulta${top.leads === 1 ? '' : 's'}` : 'sin clicks aún'
 
   const esActivo = t => t === 'inmobiliaria' || t === 'particular'
 
@@ -332,9 +358,13 @@ async function cargarCanales() {
         <span class="tipo-badge tipo-${esc(c.tipo)}">${TIPO_LABEL[c.tipo] || esc(c.tipo)}</span>
       </div>
       <div class="cc-stats">
+        <div class="cc-stat"><b>${st.clicks}</b><span>Clicks</span></div>
         <div class="cc-stat"><b>${st.leads}</b><span>Consultas</span></div>
         <div class="cc-stat"><b>${st.refs}</b><span>QRs activos</span></div>
-        <div class="cc-stat"><b style="font-size:0.85rem; padding-top:0.25rem;">${ultimo}</b><span>Última</span></div>
+      </div>
+      <div style="font-size:.66rem;color:var(--gris-claro);display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap;">
+        <span>Clicks: ${st.clicksQr} QR · ${st.clicksLink} links</span>
+        <span>Última act.: ${ultimo}</span>
       </div>
       <div class="cc-meta">
         <span><span class="estado-dot ${c.activo ? 'activo' : 'inactivo'}"></span>${c.activo ? 'Activo' : 'Inactivo'}</span>
