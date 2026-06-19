@@ -47,6 +47,34 @@ function normalizarRef(ref) {
   return REF_RE.test(clean) ? clean : null
 }
 
+function leerStorage(key) {
+  try { return localStorage.getItem(key) } catch (e) {}
+  try { return sessionStorage.getItem(key) } catch (e) {}
+  try {
+    const safeKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const match = document.cookie.match(new RegExp('(?:^|; )' + safeKey + '=([^;]*)'))
+    return match ? decodeURIComponent(match[1]) : null
+  } catch (e) { return null }
+}
+
+function guardarStorage(key, value) {
+  let ok = false
+  try { localStorage.setItem(key, value); ok = true } catch (e) {}
+  try { sessionStorage.setItem(key, value); ok = true } catch (e) {}
+  try {
+    const secure = location.protocol === 'https:' ? '; Secure' : ''
+    document.cookie = `${key}=${encodeURIComponent(value)}; Max-Age=${REF_DIAS * 86400}; Path=/; SameSite=Lax${secure}`
+    ok = true
+  } catch (e) {}
+  return ok
+}
+
+function borrarStorage(key) {
+  try { localStorage.removeItem(key) } catch (e) {}
+  try { sessionStorage.removeItem(key) } catch (e) {}
+  try { document.cookie = `${key}=; Max-Age=0; Path=/; SameSite=Lax` } catch (e) {}
+}
+
 function leerRefUrl() {
   try {
     const p = new URLSearchParams(location.search)
@@ -58,12 +86,12 @@ function leerRefUrl() {
 
 function leerRefGuardado() {
   try {
-    const raw = localStorage.getItem(REF_KEY)
+    const raw = leerStorage(REF_KEY)
     if (!raw) return null
     const { ref, via, ts } = JSON.parse(raw)
     const clean = normalizarRef(ref)
     if (!clean || Date.now() - ts > REF_DIAS * 86400000) {
-      localStorage.removeItem(REF_KEY)
+      borrarStorage(REF_KEY)
       return null
     }
     return { ref: clean, via: via === 'qr' ? 'qr' : 'link', ts }
@@ -73,8 +101,8 @@ function leerRefGuardado() {
 ;(function capturarRef() {
   try {
     const actual = leerRefUrl()
-    if (actual) localStorage.setItem(REF_KEY, JSON.stringify({ ...actual, ts: Date.now() }))
-  } catch (e) { /* localStorage bloqueado: seguimos sin persistencia */ }
+    if (actual) guardarStorage(REF_KEY, JSON.stringify({ ...actual, ts: Date.now() }))
+  } catch (e) { /* storage bloqueado: seguimos con la referencia de la URL */ }
 })()
 
 // Devuelve el código de referido vigente (URL primero, después localStorage), o null.
