@@ -445,8 +445,8 @@ const BASE_URL = 'https://surpatagonia.com.ar'
 const params   = new URLSearchParams(location.search)
 const editId   = params.get('id')
 
-let _canalId   = editId || null
-let _proyectos = []
+let _canalId            = editId || null
+let _proyectos          = []
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -528,6 +528,22 @@ function getDestinoUrl() {
   }
   if (tipo === 'custom') return document.getElementById('destinoCustom').value || '/'
   return '/'
+}
+
+function getProyectoSlugDestino(destino) {
+  const normalizar = valor => {
+    try {
+      const url = new URL(valor || '/', BASE_URL)
+      const path = url.pathname.replace(/\/+$/, '') || '/'
+      return `${path}${url.search}`
+    } catch {
+      return null
+    }
+  }
+
+  const destinoNormalizado = normalizar(destino)
+  const item = _proyectos.find(p => normalizar(p.destino) === destinoNormalizado)
+  return item?.slug || null
 }
 
 // ── Cargar destinos disponibles (proyectos + propiedades) ─
@@ -628,7 +644,7 @@ async function cargarDestinos() {
 
   actualizarDestinoPreview()
 }
-cargarDestinos()
+const destinosListos = cargarDestinos()
 
 // ── REFERENCIAS ───────────────────────────────────────────
 async function cargarReferencias() {
@@ -783,11 +799,14 @@ if (editId) {
     onTipoChange()
 
     if (!esActivo(c.tipo)) {
+      await destinosListos
       const dest = c.destino || '/'
+      const selector = document.getElementById('destinoProyecto')
+      const estaListado = [...selector.options].some(o => o.value === dest)
       if (dest === '/') document.getElementById('tipoDestino').value = 'home'
-      else if (!dest.includes('?')) {
+      else if (estaListado) {
         document.getElementById('tipoDestino').value = 'proyecto'
-        setTimeout(() => { document.getElementById('destinoProyecto').value = dest }, 600)
+        selector.value = dest
       } else {
         document.getElementById('tipoDestino').value = 'custom'
         document.getElementById('destinoCustom').value = dest
@@ -812,14 +831,14 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const tipo     = document.getElementById('tipo').value
   const activo_v = esActivo(tipo)
   const destino  = activo_v ? '/' : getDestinoUrl()
-  const tipoAcceso = activo_v ? 'activo' : 'pasivo'
-  const canalActualId = _canalId || editId
+  const proyectoSlugDestino = activo_v
+    ? null
+    : getProyectoSlugDestino(destino)
 
   // Datos de acceso externo — usa el mismo email de Contacto y notificaciones
   const emailAcceso = document.getElementById('email').value.trim()
   const passAcceso  = document.getElementById('accesoPass').value
-  const accesoNuevoVisible = document.getElementById('accesoNuevo').style.display !== 'none'
-  const tieneAccesoNuevo = Boolean(passAcceso && accesoNuevoVisible)
+  const tieneAccesoNuevo = passAcceso && document.getElementById('accesoNuevo').style.display !== 'none'
 
   if (passAcceso && passAcceso.length < 6) {
     alert('La contraseña temporal debe tener al menos 6 caracteres.')
@@ -831,24 +850,6 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
 
   let userId = document.getElementById('userId').value.trim() || null
-  let usuarioExistentePorEmail = null
-
-  if (accesoNuevoVisible && emailAcceso) {
-    const { data: todosUsuarios, error: usuariosError } = await supabase.rpc('admin_listar_usuarios')
-    if (usuariosError) {
-      alert('No pude verificar si el usuario ya existe: ' + usuariosError.message)
-      return
-    }
-
-    usuarioExistentePorEmail = todosUsuarios?.find(u => (u.email || '').toLowerCase() === emailAcceso.toLowerCase()) || null
-
-    if (usuarioExistentePorEmail) {
-      userId = usuarioExistentePorEmail.id
-    } else if (!passAcceso) {
-      alert('No encontré un usuario con ese email. Si querés crear el acceso ahora, completá una contraseña temporal.')
-      return
-    }
-  }
 
   // Coordenadas: acepta el formato que copia Google Maps ("lat, lng")
   let latitud = null, longitud = null
@@ -873,36 +874,33 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
 
   let data, error
-  if (canalActualId) {
-    ;({ data, error } = await supabase.from('canales').update(payload).eq('id', canalActualId).select().single())
+  if (_canalId) {
+    ;({ data, error } = await supabase.from('canales').update(payload).eq('id', _canalId).select().single())
   } else {
     ;({ data, error } = await supabase.from('canales').insert(payload).select().single())
   }
 
-  if (error) {
-    if (error.code === '23505' && error.message.includes('canales_codigo_key')) {
-      alert('Ya existe otro canal con ese código. Cambiá el código o recargá la página si el canal ya se había guardado.')
-    } else {
-      alert('Error al guardar: ' + error.message)
-    }
-    return
-  }
+  if (error) { alert('Error al guardar: ' + error.message); return }
 
   _canalId = data.id
 
   // ── Crear o vincular usuario colaborador si se llenaron los campos ──
-  if (accesoNuevoVisible && emailAcceso) {
+  if (tieneAccesoNuevo) {
     const btn = document.getElementById('btnGuardar')
     btn.textContent = 'Vinculando acceso…'
 
+    // Verificar si el usuario ya existe (creado desde admin/usuarios)
+    const { data: todosUsuarios } = await supabase.rpc('admin_listar_usuarios')
+    const usuarioExistente = todosUsuarios?.find(u => u.email === emailAcceso)
+
     let vinculadoUserId = null
 
-    if (usuarioExistentePorEmail) {
+    if (usuarioExistente) {
       // Usuario ya existe → solo vincular, NO tocar tipo_acceso (ya está seteado en Usuarios)
-      vinculadoUserId = usuarioExistentePorEmail.id
+      vinculadoUserId = usuarioExistente.id
       await supabase.from('canales').update({ user_id: vinculadoUserId }).eq('id', _canalId)
       userId = vinculadoUserId
-    } else if (tieneAccesoNuevo) {
+    } else {
       // Usuario no existe → crear con signUp
       const { data: signUpData, error: signUpError } = await supabaseAux.auth.signUp({
         email: emailAcceso,
@@ -938,15 +936,35 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
 
   // Para canales pasivos: crear/actualizar la referencia única automáticamente
   if (!activo_v) {
-    const refExistente = await supabase.from('referencias').select('id').eq('canal_id', _canalId).maybeSingle()
-    if (!refExistente.data) {
-      await supabase.from('referencias').insert({
-        canal_id: _canalId, nombre, codigo, proyecto_slug: null,
+    const { data: refExistente, error: refConsultaError } = await supabase
+      .from('referencias')
+      .select('id')
+      .eq('canal_id', _canalId)
+      .maybeSingle()
+
+    if (refConsultaError) {
+      alert('Canal guardado, pero no se pudo consultar su referencia: ' + refConsultaError.message)
+      return
+    }
+
+    let refError = null
+    if (!refExistente) {
+      ;({ error: refError } = await supabase.from('referencias').insert({
+        canal_id: _canalId, nombre, codigo,
+        proyecto_slug: proyectoSlugDestino,
         destino, activo: true,
-      })
+      }))
     } else {
       // Actualizar también el código para que la referencia siga coincidiendo con el QR
-      await supabase.from('referencias').update({ destino, nombre, codigo }).eq('canal_id', _canalId)
+      ;({ error: refError } = await supabase.from('referencias').update({
+        destino, nombre, codigo,
+        proyecto_slug: proyectoSlugDestino,
+      }).eq('canal_id', _canalId))
+    }
+
+    if (refError) {
+      alert('Canal guardado, pero no se pudo actualizar su referencia: ' + refError.message)
+      return
     }
     // Mostrar QR del canal pasivo
     verQR(codigo, encodeURIComponent(nombre), encodeURIComponent(destino))
@@ -958,7 +976,7 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     document.getElementById('seccionReferencias').scrollIntoView({ behavior: 'smooth' })
   }
 
-  if (!canalActualId) history.replaceState({}, '', `?id=${_canalId}`)
+  if (!editId) history.replaceState({}, '', `?id=${_canalId}`)
   document.getElementById('btnGuardar').textContent = '✓ Guardado'
   setTimeout(() => {
     document.getElementById('btnGuardar').textContent = _canalId ? 'Guardar cambios' : 'Guardar canal'
