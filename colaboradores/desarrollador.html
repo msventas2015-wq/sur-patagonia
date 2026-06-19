@@ -602,33 +602,23 @@ async function cargarTodo() {
     _lotes     = lotes     || []
 
     // Capa 2 — canales históricos desvinculados
-    // Busca canal_ref en contactos del proyecto que ya no están en _refToCanal actual
+    // Para canales pasivos: canal_ref === canal.codigo, así que buscamos directamente
+    // en la tabla canales sin pasar por referencias (evita el bloqueo de RLS)
     const refsHistoricas = [...new Set(
       (_contactos).map(c => c.canal_ref).filter(Boolean)
     )].filter(ref => !_refToCanal[ref])
 
     if (refsHistoricas.length > 0) {
-      const { data: refsDes } = await supabase
-        .from('referencias')
-        .select('id, codigo, canal_id')
+      const { data: canalesDes } = await supabase
+        .from('canales')
+        .select('id, nombre, codigo, tipo, ciudad, provincia, activo, latitud, longitud')
         .in('codigo', refsHistoricas)
-      const canalIdsDes = [...new Set((refsDes || []).map(r => r.canal_id).filter(Boolean))]
-        .filter(id => !_canalMap[id])
-      if (canalIdsDes.length > 0) {
-        const { data: canalesDes } = await supabase
-          .from('canales')
-          .select('id, nombre, codigo, tipo, ciudad, provincia, activo, latitud, longitud')
-          .in('id', canalIdsDes)
-        ;(canalesDes || []).forEach(c => {
-          _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, latitud:c.latitud||null, longitud:c.longitud||null, refCodes:[], clicks:0, leads:0, desvinculado:true }
-        })
-        ;(refsDes || []).forEach(r => {
-          if (r.canal_id && _canalMap[r.canal_id]) {
-            _refToCanal[r.codigo] = r.canal_id
-            _canalMap[r.canal_id].refCodes.push(r.codigo)
-          }
-        })
-      }
+      ;(canalesDes || []).forEach(c => {
+        if (!_canalMap[c.id]) {
+          _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, latitud:c.latitud||null, longitud:c.longitud||null, refCodes:[c.codigo], clicks:0, leads:0, desvinculado:true }
+          _refToCanal[c.codigo] = c.id
+        }
+      })
     }
 
     renderInventario()
