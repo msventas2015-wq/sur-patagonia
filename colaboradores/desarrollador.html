@@ -143,6 +143,18 @@
     .flt-btn { font-size:.6rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:.28rem .68rem; border-radius:6px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.05); color:rgba(255,255,255,.5); cursor:pointer; font-family:inherit; transition:all .2s; }
     .flt-btn:hover { border-color:rgba(201,168,76,.35); color:var(--dorado); }
     .flt-btn.activo { background:linear-gradient(135deg,rgba(201,168,76,.2),rgba(201,168,76,.08)); border-color:rgba(201,168,76,.4); color:var(--dorado); }
+    .evol-hdr { display:block; }
+    .evol-hdr .sec-t { margin-bottom:.75rem; }
+    .evol-controls { display:flex; gap:.35rem; flex-wrap:wrap; }
+    .evol-rango { display:none; grid-template-columns:minmax(120px,1fr) minmax(120px,1fr) auto; align-items:end; gap:.6rem; margin-bottom:1rem; padding:.8rem; border-radius:8px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); }
+    .evol-rango.visible { display:grid; }
+    .evol-campo { display:flex; flex-direction:column; gap:.3rem; }
+    .evol-campo span { font-size:.56rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--gris); }
+    .evol-fecha { width:100%; min-width:0; height:32px; padding:0 .55rem; border-radius:6px; border:1px solid rgba(255,255,255,.1); background:#111113; color:var(--blanco); color-scheme:dark; font:500 .68rem 'Inter',sans-serif; outline:none; }
+    .evol-fecha:focus { border-color:rgba(201,168,76,.45); box-shadow:0 0 0 2px rgba(201,168,76,.08); }
+    .evol-aplicar { height:32px; padding:0 .8rem; border:0; border-radius:7px; background:linear-gradient(135deg,#c9a84c,#e8c96a); color:#0c0c0e; font:700 .62rem 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
+    .evol-error { display:none; grid-column:1/-1; color:#d76f3f; font-size:.65rem; }
+    @media(max-width:520px){ .evol-rango { grid-template-columns:1fr 1fr; } .evol-aplicar { grid-column:1/-1; } }
     #feedWrap { padding:1rem 1.2rem; }
     #feedWrap .sec-hdr { margin-bottom:.6rem; }
     #feedWrap .sec-t { font-size:.6rem; }
@@ -367,13 +379,22 @@
       <div class="chart-wrap"><canvas id="chartCanales"></canvas></div>
     </div>
     <div class="sec-blk">
-      <div class="sec-hdr">
+      <div class="sec-hdr evol-hdr">
         <div class="sec-t">Evolución de actividad</div>
-        <div style="display:flex;gap:.4rem">
-          <button class="flt-btn" data-semanas="8" onclick="cambiarVentana(8)">2 meses</button>
-          <button class="flt-btn activo" data-semanas="12" onclick="cambiarVentana(12)">3 meses</button>
-          <button class="flt-btn" data-semanas="24" onclick="cambiarVentana(24)">6 meses</button>
+        <div class="evol-controls" role="group" aria-label="Período del gráfico">
+          <button class="flt-btn" data-evol-periodo="dia" onclick="cambiarPeriodoEvolucion('dia')">Diario</button>
+          <button class="flt-btn" data-evol-periodo="semana" onclick="cambiarPeriodoEvolucion('semana')">Semanal</button>
+          <button class="flt-btn activo" data-evol-periodo="mes" onclick="cambiarPeriodoEvolucion('mes')">Mensual</button>
+          <button class="flt-btn" data-evol-periodo="3m" onclick="cambiarPeriodoEvolucion('3m')">3 meses</button>
+          <button class="flt-btn" data-evol-periodo="6m" onclick="cambiarPeriodoEvolucion('6m')">6 meses</button>
+          <button class="flt-btn" data-evol-periodo="personalizado" onclick="cambiarPeriodoEvolucion('personalizado')">Personalizado</button>
         </div>
+      </div>
+      <div class="evol-rango" id="evolRango">
+        <label class="evol-campo"><span>Desde</span><input class="evol-fecha" id="evolDesde" type="date" /></label>
+        <label class="evol-campo"><span>Hasta</span><input class="evol-fecha" id="evolHasta" type="date" /></label>
+        <button class="evol-aplicar" type="button" onclick="aplicarRangoEvolucion()">Aplicar</button>
+        <div class="evol-error" id="evolRangoError"></div>
       </div>
       <div class="chart-wrap"><canvas id="chartEvolucion"></canvas></div>
       <div id="evolucionDelta" style="text-align:center;font-size:.72rem;color:var(--gris);margin-top:.5rem"></div>
@@ -500,7 +521,9 @@ let _refToCanal  = {}   // ref.codigo → canal_id
 let _chartInst   = null
 let _chartEvol   = null
 let _mapaLeaflet = null
-let _semanasVentana = 12
+let _periodoEvolucion = 'mes'
+let _evolDesde = null
+let _evolHasta = null
 let _cargandoDatos = false
 
 window.setPeriodo = function(btn) {
@@ -510,11 +533,62 @@ window.setPeriodo = function(btn) {
   renderDynamic()
 }
 
-window.cambiarVentana = function(semanas) {
-  _semanasVentana = semanas
-  document.querySelectorAll('[data-semanas]').forEach(b => b.classList.toggle('activo', +b.dataset.semanas === semanas))
+function fechaParaInput(fecha) {
+  const y = fecha.getFullYear()
+  const m = String(fecha.getMonth() + 1).padStart(2, '0')
+  const d = String(fecha.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+window.cambiarPeriodoEvolucion = function(periodo) {
+  _periodoEvolucion = periodo
+  document.querySelectorAll('[data-evol-periodo]').forEach(b => b.classList.toggle('activo', b.dataset.evolPeriodo === periodo))
+
+  const rango = document.getElementById('evolRango')
+  const error = document.getElementById('evolRangoError')
+  rango?.classList.toggle('visible', periodo === 'personalizado')
+  if (error) { error.style.display = 'none'; error.textContent = '' }
+
+  if (periodo === 'personalizado') {
+    const desdeInput = document.getElementById('evolDesde')
+    const hastaInput = document.getElementById('evolHasta')
+    const hoy = new Date()
+    const hace30 = new Date(hoy)
+    hace30.setDate(hace30.getDate() - 29)
+    if (!desdeInput.value) desdeInput.value = fechaParaInput(hace30)
+    if (!hastaInput.value) hastaInput.value = fechaParaInput(hoy)
+    return
+  }
+
   renderEvolucion()
 }
+
+window.aplicarRangoEvolucion = function() {
+  const desdeValor = document.getElementById('evolDesde')?.value
+  const hastaValor = document.getElementById('evolHasta')?.value
+  const error = document.getElementById('evolRangoError')
+
+  if (!desdeValor || !hastaValor) {
+    if (error) { error.textContent = 'Seleccioná las dos fechas.'; error.style.display = 'block' }
+    return
+  }
+
+  const desde = new Date(`${desdeValor}T00:00:00`)
+  const hasta = new Date(`${hastaValor}T00:00:00`)
+  if (desde > hasta) {
+    if (error) { error.textContent = 'La fecha Desde debe ser anterior a Hasta.'; error.style.display = 'block' }
+    return
+  }
+
+  _evolDesde = desde
+  _evolHasta = hasta
+  if (error) { error.style.display = 'none'; error.textContent = '' }
+  renderEvolucion()
+}
+
+const hoyEvolucion = fechaParaInput(new Date())
+document.getElementById('evolDesde').max = hoyEvolucion
+document.getElementById('evolHasta').max = hoyEvolucion
 
 function setSyncStatus(txt) {
   const el = document.getElementById('syncStatus')
@@ -807,19 +881,65 @@ function crearGradienteBarra(ctx, desde, hasta) {
   return grad
 }
 
-function renderEvolucion() {
+function obtenerRangoEvolucion() {
+  const DIA = 86400000
   const ahora = new Date()
-  const semanas = _semanasVentana
+  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate())
+  const finHoy = new Date(inicioHoy.getTime() + DIA)
+  let inicio, fin, paso, formato
+
+  if (_periodoEvolucion === 'dia') {
+    fin = ahora
+    inicio = new Date(ahora.getTime() - DIA)
+    paso = 3 * 3600000
+    formato = 'hora'
+  } else if (_periodoEvolucion === 'semana') {
+    fin = finHoy
+    inicio = new Date(inicioHoy.getTime() - 6 * DIA)
+    paso = DIA
+    formato = 'dia'
+  } else if (_periodoEvolucion === '3m') {
+    fin = finHoy
+    inicio = new Date(inicioHoy.getTime() - 89 * DIA)
+    paso = 7 * DIA
+    formato = 'dia'
+  } else if (_periodoEvolucion === '6m') {
+    fin = finHoy
+    inicio = new Date(inicioHoy.getTime() - 179 * DIA)
+    paso = 7 * DIA
+    formato = 'dia'
+  } else if (_periodoEvolucion === 'personalizado' && _evolDesde && _evolHasta) {
+    inicio = new Date(_evolDesde)
+    fin = new Date(_evolHasta.getTime() + DIA)
+    const dias = Math.max(1, Math.ceil((fin - inicio) / DIA))
+    paso = dias <= 60 ? DIA : dias <= 210 ? 7 * DIA : 30 * DIA
+    formato = dias > 210 ? 'mes' : 'dia'
+  } else {
+    fin = finHoy
+    inicio = new Date(inicioHoy.getTime() - 29 * DIA)
+    paso = DIA
+    formato = 'dia'
+  }
+
+  return { inicio, fin, paso, formato }
+}
+
+function renderEvolucion() {
+  const { inicio, fin, paso, formato } = obtenerRangoEvolucion()
   const labels = []
   const dataV = []
   const dataC = []
 
-  for (let i = semanas - 1; i >= 0; i--) {
-    const fin = new Date(ahora - i * 7 * 86400000)
-    const ini = new Date(fin - 7 * 86400000)
-    labels.push(fin.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
-    dataV.push(_visitas.filter(v => { const d = new Date(v.created_at); return d >= ini && d < fin }).length)
-    dataC.push(_contactos.filter(c => { const d = new Date(c.created_at); return d >= ini && d < fin }).length)
+  for (let cursor = new Date(inicio); cursor < fin; cursor = new Date(cursor.getTime() + paso)) {
+    const siguiente = new Date(Math.min(cursor.getTime() + paso, fin.getTime()))
+    const label = formato === 'hora'
+      ? cursor.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+      : formato === 'mes'
+        ? cursor.toLocaleDateString('es-AR', { month:'short', year:'2-digit' })
+        : cursor.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' })
+    labels.push(label)
+    dataV.push(_visitas.filter(v => { const d = new Date(v.created_at); return d >= cursor && d < siguiente }).length)
+    dataC.push(_contactos.filter(c => { const d = new Date(c.created_at); return d >= cursor && d < siguiente }).length)
   }
 
   const deltaEl = document.getElementById('evolucionDelta')
@@ -827,9 +947,11 @@ function renderEvolucion() {
   const prevV = dataV[dataV.length - 2] || 0
   const delta = prevV > 0 ? Math.round((lastV - prevV) / prevV * 100) : null
   if (deltaEl) {
+    const hastaVisible = new Date(fin.getTime() - 1)
+    const rangoTexto = `${inicio.toLocaleDateString('es-AR')} — ${hastaVisible.toLocaleDateString('es-AR')}`
     deltaEl.textContent = delta !== null
-      ? `Última semana: ${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)}% en visualizaciones vs semana anterior`
-      : ''
+      ? `${rangoTexto} · Último tramo: ${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)}% en visualizaciones`
+      : rangoTexto
   }
 
   if (_chartEvol) { _chartEvol.destroy(); _chartEvol = null }
