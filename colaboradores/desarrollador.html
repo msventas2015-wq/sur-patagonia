@@ -601,26 +601,6 @@ async function cargarTodo() {
     _contactos = contactos || []
     _lotes     = lotes     || []
 
-    // Capa 2 — canales históricos desvinculados
-    // Para canales pasivos: canal_ref === canal.codigo, así que buscamos directamente
-    // en la tabla canales sin pasar por referencias (evita el bloqueo de RLS)
-    const refsHistoricas = [...new Set(
-      (_contactos).map(c => c.canal_ref).filter(Boolean)
-    )].filter(ref => !_refToCanal[ref])
-
-    if (refsHistoricas.length > 0) {
-      const { data: canalesDes } = await supabase
-        .from('canales')
-        .select('id, nombre, codigo, tipo, ciudad, provincia, activo, latitud, longitud')
-        .in('codigo', refsHistoricas)
-      ;(canalesDes || []).forEach(c => {
-        if (!_canalMap[c.id]) {
-          _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, latitud:c.latitud||null, longitud:c.longitud||null, refCodes:[c.codigo], clicks:0, leads:0, desvinculado:true }
-          _refToCanal[c.codigo] = c.id
-        }
-      })
-    }
-
     renderInventario()
     renderDynamic()
     setSyncStatus(`Actualizado ${fmtHoraActualizacion()}`)
@@ -1106,11 +1086,9 @@ function renderDynamic() {
   filtV.forEach(v => { const id=_refToCanal[v.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].clicks++ })
   filtC.forEach(c => { const id=_refToCanal[c.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].leads++ })
 
-  const canales          = Object.values(_canalMap)
-  const canalesVinculados   = canales.filter(c => !c.desvinculado)
-  const canalesDesvinculados = canales.filter(c => c.desvinculado)
-  const nCanales    = canalesVinculados.length
-  const nActivos    = canalesVinculados.filter(c=>c.clicks>0||c.leads>0).length
+  const canales     = Object.values(_canalMap)
+  const nCanales    = canales.length
+  const nActivos    = canales.filter(c=>c.clicks>0||c.leads>0).length
   const totalClicks = filtV.length
   const totalLeads  = filtC.length
   const conv        = totalClicks>0 ? Math.round(totalLeads/totalClicks*100) : 0
@@ -1154,28 +1132,21 @@ function renderDynamic() {
 
   // ── Tabla canales ──
   document.getElementById('canalBadge').textContent = `${nCanales} canales`
-  const sorted    = [...canalesVinculados].sort((a,b)=>(b.clicks+b.leads)-(a.clicks+a.leads))
-  const sortedDes = [...canalesDesvinculados].sort((a,b)=>(b.clicks+b.leads)-(a.clicks+a.leads))
+  const sorted = [...canales].sort((a,b)=>(b.clicks+b.leads)-(a.clicks+a.leads))
   const maxClicks = Math.max(...canales.map(c=>c.clicks), 1)
 
-  const fmtFila = (c, desvinculado=false) => {
+  const fmtFila = c => {
     const tipoCls = `tipo-${(c.tipo||'otro').replace(' ','_').replace('ñ','n')}`
     const geo = [c.ciudad, c.provincia].filter(Boolean).join(', ') || '—'
     const cv = c.clicks>0 ? Math.round(c.leads/c.clicks*100) : 0
     const cvW = Math.round(c.clicks/maxClicks*100)
-    const estadoHtml = desvinculado
-      ? `<span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.66rem;color:#555">
-           <span style="width:6px;height:6px;border-radius:50%;background:#333"></span>
-           Desvinculado
-         </span>`
-      : `<span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.66rem;color:${c.activo ? '#50c878' : '#555'}">
-           <span style="width:6px;height:6px;border-radius:50%;background:${c.activo ? '#50c878' : '#444'};${c.activo ? 'box-shadow:0 0 6px rgba(80,200,120,.6)' : ''}"></span>
-           ${c.activo ? 'Activo' : 'Inactivo'}
-         </span>`
-    return `<tr style="${desvinculado ? 'opacity:.55' : ''}">
+    return `<tr>
       <td>
         <div class="c-nombre">${esc(c.nombre||'—')}</div>
-        ${estadoHtml}
+        <span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.66rem;color:${c.activo ? '#50c878' : '#555'}">
+          <span style="width:6px;height:6px;border-radius:50%;background:${c.activo ? '#50c878' : '#444'};${c.activo ? 'box-shadow:0 0 6px rgba(80,200,120,.6)' : ''}"></span>
+          ${c.activo ? 'Activo' : 'Inactivo'}
+        </span>
       </td>
       <td><div class="c-geo">${esc(geo)}</div></td>
       <td><span class="tipo-badge ${tipoCls}">${esc(fmtTipo(c.tipo))}</span></td>
@@ -1183,18 +1154,14 @@ function renderDynamic() {
       <td class="num-r">${c.leads}</td>
       <td>
         <div class="conv-bar-wrap">
-          <div class="conv-bar"><div class="conv-bar-fill" style="width:${cvW}%${desvinculado?';opacity:.4':''}"></div></div>
+          <div class="conv-bar"><div class="conv-bar-fill" style="width:${cvW}%"></div></div>
           <span class="conv-pct">${cv}%</span>
         </div>
       </td>
     </tr>`
   }
 
-  const separador = sortedDes.length > 0
-    ? `<tr><td colspan="6" style="padding:.5rem .75rem;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#444;border-top:1px solid rgba(255,255,255,.05)">Canales desvinculados — historial</td></tr>`
-    : ''
-
-  document.getElementById('canalTablaWrap').innerHTML = (sorted.length || sortedDes.length)
+  document.getElementById('canalTablaWrap').innerHTML = sorted.length
     ? `<div style="overflow-x:auto"><table class="canal-tbl">
         <thead><tr>
           <th>Canal</th>
@@ -1204,11 +1171,7 @@ function renderDynamic() {
           <th class="r">Leads</th>
           <th style="min-width:100px">Conversión</th>
         </tr></thead>
-        <tbody>
-          ${sorted.map(c => fmtFila(c, false)).join('')}
-          ${separador}
-          ${sortedDes.map(c => fmtFila(c, true)).join('')}
-        </tbody>
+        <tbody>${sorted.map(fmtFila).join('')}</tbody>
       </table></div>`
     : `<div class="empty-msg">No hay canales registrados para este proyecto.<br><span style="font-size:.7rem">Asegurá que las referencias tengan proyecto_slug = "${esc(proyectoSlug)}".</span></div>`
 
