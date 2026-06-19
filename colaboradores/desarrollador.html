@@ -6,13 +6,14 @@
   <title>Panel Desarrollador — Sur Patagonia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:     #0a0908;
-      --card:   #111010;
-      --card2:  #161513;
+      --bg:     #0c0c0e;
+      --card:   rgba(255,255,255,0.025);
+      --card2:  rgba(255,255,255,0.04);
       --border: rgba(255,255,255,0.07);
       --accent: #d76f3f;
       --dorado: #c9a84c;
@@ -23,13 +24,13 @@
       --azul:   #6495ed;
       --gris:   #888;
       --gris2:  #444;
-      --blanco: #f5f3f0;
+      --blanco: #f0f0f0;
     }
     body { background:var(--bg); color:var(--blanco); font-family:'Inter',system-ui,sans-serif; min-height:100vh; }
 
     /* ── Header ── */
     .header {
-      background:rgba(10,9,8,.96); backdrop-filter:blur(14px);
+      background:rgba(12,12,14,.96); backdrop-filter:blur(14px);
       border-bottom:1px solid var(--border);
       padding:.85rem 2rem; display:flex; align-items:center;
       justify-content:space-between; position:sticky; top:0; z-index:100;
@@ -60,24 +61,45 @@
     .hero h1 { font-family:'Cormorant Garamond',serif; font-size:2.6rem; font-weight:300; letter-spacing:.07em; text-transform:uppercase; line-height:1.1; margin-bottom:.3rem; }
     .hero-sub { font-size:.67rem; color:var(--gris); letter-spacing:.1em; text-transform:uppercase; margin-bottom:1.3rem; }
     .periodo-bar { display:flex; gap:.4rem; flex-wrap:wrap; }
-    .btn-p { font-size:.63rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:.36rem .88rem; border-radius:999px; border:1px solid var(--border); background:none; color:var(--gris); cursor:pointer; font-family:inherit; transition:all .18s; }
-    .btn-p:hover { border-color:var(--accent); color:var(--accent); }
-    .btn-p.activo { background:var(--accent); border-color:var(--accent); color:#fff; }
-    .btn-refresh { font-size:.63rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:.36rem .88rem; border-radius:999px; border:1px solid rgba(100,149,237,.35); background:rgba(100,149,237,.08); color:#8fb2ff; cursor:pointer; font-family:inherit; transition:all .18s; }
-    .btn-refresh:hover { border-color:#6495ed; color:#fff; }
+    .btn-p { font-size:.63rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:.36rem .88rem; border-radius:8px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.05); color:rgba(255,255,255,.5); cursor:pointer; font-family:inherit; transition:all .2s; }
+    .btn-p:hover { border-color:rgba(201,168,76,.35); color:var(--dorado); background:rgba(201,168,76,.08); }
+    .btn-p.activo { background:linear-gradient(135deg,rgba(201,168,76,.22),rgba(201,168,76,.08)); border-color:rgba(201,168,76,.42); color:#e8c96a; box-shadow:0 0 14px rgba(201,168,76,.12); }
+    .btn-refresh { font-size:.63rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:.36rem .88rem; border-radius:8px; border:1px solid rgba(100,149,237,.25); background:linear-gradient(135deg,rgba(100,149,237,.15),rgba(100,149,237,.05)); color:#8fb2ff; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .btn-refresh:hover { border-color:rgba(100,149,237,.42); color:#fff; background:linear-gradient(135deg,rgba(100,149,237,.25),rgba(100,149,237,.1)); box-shadow:0 0 12px rgba(100,149,237,.2); }
     .btn-refresh:disabled { opacity:.5; cursor:wait; }
     .sync-status { align-self:center; font-size:.63rem; color:var(--gris); letter-spacing:.04em; }
+
+    /* ── Hero proyecto ── */
+    .proy-hero {
+      position:relative; height:200px; border-radius:12px; overflow:hidden;
+      background:#111; margin-bottom:1.5rem; display:flex; align-items:flex-end;
+      background-size:cover; background-position:center;
+    }
+    .proy-hero-overlay {
+      position:absolute; inset:0;
+      background:linear-gradient(to top, rgba(0,0,0,.86) 0%, rgba(0,0,0,.3) 100%);
+    }
+    .proy-hero-content { position:relative; z-index:1; padding:1.2rem 1.5rem; flex:1; min-width:0; }
+    .proy-hero-nombre { font-size:1.55rem; font-weight:300; color:#f0f0f0; letter-spacing:.02em; }
+    .proy-hero-slug { font-size:.65rem; color:rgba(255,255,255,.42); letter-spacing:.2em; text-transform:uppercase; margin-top:.22rem; }
+    .proy-hero-badge {
+      position:relative; z-index:1; margin:1.2rem 1.5rem; padding:.45rem .85rem;
+      border:1px solid rgba(255,255,255,.12); border-radius:999px;
+      font-size:.64rem; font-weight:600; letter-spacing:.15em; text-transform:uppercase;
+      color:var(--dorado); background:rgba(0,0,0,.35); backdrop-filter:blur(8px);
+      white-space:nowrap;
+    }
 
     /* ── KPI row ── */
     .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin-bottom:1.5rem; }
     @media(max-width:700px){ .kpi-row{ grid-template-columns:repeat(2,1fr); } }
-    .kpi { background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:1.1rem 1.2rem; position:relative; overflow:hidden; }
-    .kpi::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--c,var(--accent)) 0%,transparent 100%); }
-    .kpi-lbl { font-size:.6rem; text-transform:uppercase; letter-spacing:.1em; color:var(--gris); font-weight:600; margin-bottom:.55rem; }
-    .kpi-n { font-size:2.1rem; font-weight:700; color:var(--c,var(--blanco)); line-height:1; margin-bottom:.3rem; letter-spacing:-.02em; }
+    .kpi { background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,.02) 100%); border:1px solid rgba(255,255,255,.08); border-top:1px solid rgba(255,255,255,.14); border-radius:14px; padding:1.4rem 1.6rem; position:relative; overflow:hidden; }
+    .kpi::before { content:''; position:absolute; left:0; top:20%; bottom:20%; width:2px; background:linear-gradient(to bottom,transparent,var(--c,var(--accent)),transparent); border-radius:99px; }
+    .kpi-lbl { font-size:.58rem; text-transform:uppercase; letter-spacing:.22em; color:rgba(255,255,255,.4); font-weight:600; margin-bottom:.55rem; }
+    .kpi-n { font-size:2.45rem; font-weight:300; background:linear-gradient(135deg,#fff,rgba(255,255,255,.7)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; line-height:1; margin-bottom:.35rem; letter-spacing:0; }
     .kpi-m { font-size:.67rem; color:var(--gris); line-height:1.4; }
-    .delta-up { color:var(--verde); font-weight:600; }
-    .delta-dn { color:var(--rojo-v); font-weight:600; }
+    .delta-up { color:var(--verde); font-size:.7rem; font-weight:600; }
+    .delta-dn { color:var(--accent); font-size:.7rem; font-weight:600; }
 
     /* ── Section header ── */
     .sec { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
@@ -85,7 +107,7 @@
     .sec-b { font-size:.58rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--gris2); border:1px solid var(--border); padding:.14rem .5rem; border-radius:4px; }
 
     /* ── Card ── */
-    .card { background:var(--card2); border:1px solid var(--border); border-radius:14px; padding:1.4rem; margin-bottom:1.2rem; }
+    .card { background:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%); border:1px solid rgba(255,255,255,.07); border-top:1px solid rgba(255,255,255,.12); border-radius:14px; padding:1.4rem; margin-bottom:1.2rem; backdrop-filter:blur(4px); }
     .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.2rem; }
     @media(max-width:768px){ .grid-2{ grid-template-columns:1fr; } }
 
@@ -114,6 +136,59 @@
 
     /* ── Chart container ── */
     .chart-wrap { position:relative; height:200px; }
+
+    /* ── Nuevos módulos comerciales ── */
+    .sec-blk { background:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%); border:1px solid rgba(255,255,255,.07); border-top:1px solid rgba(255,255,255,.12); border-radius:14px; padding:1.4rem 1.6rem; margin-bottom:1.2rem; backdrop-filter:blur(4px); }
+    .sec-hdr { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+    .flt-btn { font-size:.6rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:.28rem .68rem; border-radius:6px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.05); color:rgba(255,255,255,.5); cursor:pointer; font-family:inherit; transition:all .2s; }
+    .flt-btn:hover { border-color:rgba(201,168,76,.35); color:var(--dorado); }
+    .flt-btn.activo { background:linear-gradient(135deg,rgba(201,168,76,.2),rgba(201,168,76,.08)); border-color:rgba(201,168,76,.4); color:var(--dorado); }
+    .feed-row { display:flex; align-items:center; gap:.8rem; padding:.58rem .75rem; border-radius:0 9px 9px 0; background:linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.01) 100%); border-left:2px solid rgba(201,168,76,.3); transition:background .2s; }
+    .feed-row.lead { border-left-color:rgba(215,111,63,.45); }
+    .feed-row:hover { background:linear-gradient(90deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.02) 100%); }
+    .feed-kind { width:38px; flex-shrink:0; font-size:.58rem; text-align:center; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gris); border:1px solid var(--border); border-radius:999px; padding:.14rem .25rem; }
+    .feed-kind.lead { color:var(--accent); border-color:rgba(215,111,63,.25); background:rgba(215,111,63,.07); }
+    .feed-kind.scan { color:var(--azul); border-color:rgba(100,149,237,.25); background:rgba(100,149,237,.07); }
+    .feed-main { flex:1; min-width:0; }
+    .feed-title { font-size:.75rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .feed-meta { font-size:.65rem; color:var(--gris); margin-top:.08rem; }
+    .feed-time { font-size:.65rem; color:var(--gris); flex-shrink:0; }
+
+    /* ── Mapa Argentina ── */
+    .termometro-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .termometro-dot.alto { background:#50c878; box-shadow:0 0 10px rgba(80,200,120,.6),0 0 20px rgba(80,200,120,.3); }
+    .termometro-dot.activo { background:#c9a84c; box-shadow:0 0 10px rgba(201,168,76,.6),0 0 20px rgba(201,168,76,.3); }
+    .termometro-dot.creciendo { background:#6495ed; box-shadow:0 0 10px rgba(100,149,237,.6),0 0 20px rgba(100,149,237,.3); }
+    .termometro-dot.inicial { background:#888; box-shadow:none; }
+    .termometro-dot.sin-mov { background:#444; box-shadow:none; }
+
+    #mapaLeaflet { background:#0b0b0d; }
+    #mapaLeaflet .leaflet-control-zoom a { background:rgba(12,12,14,.94); color:#c9a84c; border-color:rgba(255,255,255,.08); }
+    #mapaLeaflet .leaflet-control-zoom a:hover { background:#171719; color:#e8c96a; }
+    #mapaLeaflet .leaflet-control-attribution { background:rgba(8,8,8,.72); color:#666; }
+    #mapaLeaflet .leaflet-control-attribution a { color:#888; }
+    .leaflet-popup-content-wrapper { background:rgba(8,8,8,.94) !important; border:1px solid rgba(201,168,76,.22) !important; border-radius:8px !important; box-shadow:0 8px 26px rgba(0,0,0,.42) !important; backdrop-filter:blur(6px); }
+    .leaflet-popup-tip { background:rgba(8,8,8,.94) !important; }
+    .leaflet-popup-content { margin:.85rem 1rem !important; }
+    .leaflet-popup-close-button { color:#888 !important; }
+
+    /* ── Mapa lotes dashboard ── */
+    .ml-map-wrap-dash { position:relative; overflow:hidden; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,.03); }
+    .ml-map-img-dash { width:100%; display:block; border-radius:10px; }
+    .ml-svg-overlay-dash { position:absolute; top:0; left:0; width:100%; height:100%; }
+    .ml-lot-dash { cursor:pointer; }
+    .ml-lot-dash circle, .ml-lot-dash polygon, .ml-lot-dash rect { transition:fill-opacity .12s, transform .12s; }
+    .ml-lot-dash:hover circle { fill-opacity:1 !important; }
+    .ml-lot-dash text { font-size:15px; font-weight:700; fill:white; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
+    .ml-popup-dash { position:absolute; background:rgba(8,8,8,.94); border:1px solid rgba(201,168,76,.22); border-radius:8px; padding:.85rem 1rem; min-width:175px; pointer-events:none; opacity:0; transition:opacity .16s; z-index:10; box-shadow:0 8px 26px rgba(0,0,0,.42); backdrop-filter:blur(6px); }
+    .ml-popup-dash.visible { opacity:1; }
+    .ml-popup-lote { font-size:.6rem; letter-spacing:.18em; text-transform:uppercase; color:var(--dorado); font-weight:700; margin-bottom:.25rem; }
+    .ml-popup-zona { font-size:.66rem; color:var(--gris); margin-bottom:.55rem; }
+    .ml-popup-badge { display:inline-block; margin-top:.25rem; padding:.18rem .6rem; border-radius:999px; font-size:.58rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    .ml-popup-badge.disponible { background:rgba(80,200,120,.15); color:var(--verde); }
+    .ml-popup-badge.reservado { background:rgba(201,168,76,.15); color:var(--dorado); }
+    .ml-popup-badge.vendido { background:rgba(180,80,60,.15); color:#c97060; }
+    .ml-popup-badge.complejo { background:rgba(160,155,140,.15); color:#a09b8c; }
 
     /* ── Provincias ── */
     .prov-list { display:flex; flex-direction:column; gap:.55rem; }
@@ -193,6 +268,10 @@
     @media(max-width:520px){
       .hero h1 { font-size:1.8rem; }
       .kpi-n { font-size:1.75rem; }
+      .proy-hero { height:180px; flex-direction:column; align-items:flex-start; justify-content:flex-end; }
+      .proy-hero-content { width:100%; padding:1rem 1rem .3rem; }
+      .proy-hero-nombre { font-size:1.2rem; }
+      .proy-hero-badge { margin:.35rem 1rem 1rem; }
       .canal-tbl th:nth-child(2),.canal-tbl td:nth-child(2) { display:none; }
     }
   </style>
@@ -231,9 +310,49 @@
     </div>
   </div>
 
+  <!-- Hero del proyecto -->
+  <div class="proy-hero" id="proyHero">
+    <div class="proy-hero-overlay"></div>
+    <div class="proy-hero-content">
+      <div class="proy-hero-nombre" id="proyHeroNombre">—</div>
+      <div class="proy-hero-slug" id="proyHeroSlug"></div>
+    </div>
+    <div class="proy-hero-badge" id="proyHeroBadge">—</div>
+  </div>
+
   <!-- KPIs -->
   <div class="kpi-row" id="kpiRow">
     <div class="kpi"><div class="kpi-lbl">Cargando…</div><div class="kpi-n" style="font-size:1.2rem;color:var(--gris)">—</div></div>
+  </div>
+
+  <!-- Termómetro comercial -->
+  <div class="sec-blk" id="termometroWrap">
+    <div class="sec-t">Temperatura comercial</div>
+    <div id="termometroInner"></div>
+  </div>
+
+  <!-- Feed de actividad -->
+  <div class="sec-blk" id="feedWrap">
+    <div class="sec-hdr">
+      <div class="sec-t">Actividad reciente</div>
+    </div>
+    <div id="feedInner"></div>
+  </div>
+
+  <!-- Inventario + Lotes -->
+  <div class="card">
+    <div class="sec">
+      <div class="sec-t">Inventario por zona</div>
+      <div class="sec-b" id="pctBadge">—</div>
+    </div>
+    <div id="invTop"></div>
+    <div id="zonasStack"></div>
+  </div>
+
+  <!-- Mapa interactivo de lotes -->
+  <div class="sec-blk" id="mapaLotesWrap" style="display:none">
+    <div class="sec-t">Mapa del proyecto</div>
+    <div id="mapaLotesDashInner"></div>
   </div>
 
   <!-- Canales del proyecto (tabla) -->
@@ -245,7 +364,7 @@
     <div id="canalTablaWrap"><div class="empty-msg">Cargando…</div></div>
   </div>
 
-  <!-- Chart + Provincias -->
+  <!-- Ranking + Evolución -->
   <div class="grid-2">
     <div class="card">
       <div class="sec">
@@ -253,12 +372,29 @@
       </div>
       <div class="chart-wrap"><canvas id="chartCanales"></canvas></div>
     </div>
-    <div class="card">
-      <div class="sec">
-        <div class="sec-t">Distribución geográfica</div>
-        <div class="sec-b" id="provBadge">—</div>
+    <div class="sec-blk">
+      <div class="sec-hdr">
+        <div class="sec-t">Evolución de actividad</div>
+        <div style="display:flex;gap:.4rem">
+          <button class="flt-btn" data-semanas="8" onclick="cambiarVentana(8)">2 meses</button>
+          <button class="flt-btn activo" data-semanas="12" onclick="cambiarVentana(12)">3 meses</button>
+          <button class="flt-btn" data-semanas="24" onclick="cambiarVentana(24)">6 meses</button>
+        </div>
       </div>
-      <div id="provList"><div class="empty-msg">Cargando…</div></div>
+      <div class="chart-wrap"><canvas id="chartEvolucion"></canvas></div>
+      <div id="evolucionDelta" style="text-align:center;font-size:.72rem;color:var(--gris);margin-top:.5rem"></div>
+    </div>
+  </div>
+
+  <!-- Mapa Argentina -->
+  <div class="card">
+    <div class="sec">
+      <div class="sec-t">Presencia territorial</div>
+      <div class="sec-b" id="provBadge">—</div>
+    </div>
+    <div id="mapaArgWrap">
+      <p id="mapaImpacto" style="font-size:.78rem;color:var(--gris);margin-bottom:1rem;text-align:center"></p>
+      <div id="mapaLeaflet" style="height:340px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.07);"></div>
     </div>
   </div>
 
@@ -271,21 +407,10 @@
     <div id="pipelineWrap"></div>
   </div>
 
-  <!-- Inventario + Lotes -->
-  <div class="grid-2">
-    <div class="card">
-      <div class="sec">
-        <div class="sec-t">Inventario por zona</div>
-        <div class="sec-b" id="pctBadge">—</div>
-      </div>
-      <div id="invTop"></div>
-      <div id="zonasStack"></div>
-    </div>
-    <!-- Embudo -->
-    <div class="card">
-      <div class="sec"><div class="sec-t">Embudo comercial</div></div>
-      <div id="funnelWrap"></div>
-    </div>
+  <!-- Embudo -->
+  <div class="card">
+    <div class="sec"><div class="sec-t">Embudo comercial</div></div>
+    <div id="funnelWrap"></div>
   </div>
 
   <!-- Últimas consultas -->
@@ -299,6 +424,7 @@
 
 </main>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
@@ -340,9 +466,11 @@ const PIPE_COLORS = {
 // ── Load proyecto ─────────────────────────────────────────────
 let proyectoNombre = proyectoSlug || 'Proyecto'
 let _proyectoId    = null
+let _proyectoData  = null
 
 if (proyectoSlug) {
-  const { data: p } = await supabase.from('proyectos').select('id, nombre').eq('slug', proyectoSlug).maybeSingle()
+  const { data: p } = await supabase.from('proyectos').select('id, nombre, foto_fondo, mapa_imagen_url, mapa_activo, mapa_pin_estilo').eq('slug', proyectoSlug).maybeSingle()
+  _proyectoData = p || null
   if (p?.nombre) proyectoNombre = p.nombre
   if (p?.id)     _proyectoId    = p.id
 }
@@ -353,6 +481,8 @@ document.getElementById('subtitulo').textContent = proyectoSlug
   ? `Proyecto: ${proyectoSlug}`
   : 'Sin proyecto asignado. Contactá a Sur Patagonia.'
 
+renderProyectoHero()
+
 // ── State ─────────────────────────────────────────────────────
 let _diasPeriodo = 30
 let _refs        = []
@@ -362,6 +492,9 @@ let _lotes       = []
 let _canalMap    = {}   // canal_id → {nombre, tipo, ciudad, provincia, activo, refCodes[]}
 let _refToCanal  = {}   // ref.codigo → canal_id
 let _chartInst   = null
+let _chartEvol   = null
+let _mapaLeaflet = null
+let _semanasVentana = 12
 let _cargandoDatos = false
 
 window.setPeriodo = function(btn) {
@@ -369,6 +502,12 @@ window.setPeriodo = function(btn) {
   btn.classList.add('activo')
   _diasPeriodo = parseInt(btn.dataset.dias)
   renderDynamic()
+}
+
+window.cambiarVentana = function(semanas) {
+  _semanasVentana = semanas
+  document.querySelectorAll('[data-semanas]').forEach(b => b.classList.toggle('activo', +b.dataset.semanas === semanas))
+  renderEvolucion()
 }
 
 function setSyncStatus(txt) {
@@ -381,6 +520,21 @@ function fmtHoraActualizacion() {
 }
 
 document.getElementById('btnRefresh').addEventListener('click', () => cargarTodo())
+
+function renderProyectoHero() {
+  const hero = document.getElementById('proyHero')
+  const nombre = document.getElementById('proyHeroNombre')
+  const slug = document.getElementById('proyHeroSlug')
+  const badge = document.getElementById('proyHeroBadge')
+  if (!hero) return
+
+  hero.style.backgroundImage = ''
+  const foto = String(_proyectoData?.foto_fondo || '').replace(/['"\\]/g, '').trim()
+  if (foto) hero.style.backgroundImage = `url('${foto}')`
+  if (nombre) nombre.textContent = proyectoNombre || 'Proyecto'
+  if (slug) slug.textContent = proyectoSlug || 'Sin proyecto asignado'
+  if (badge) badge.textContent = 'Calculando'
+}
 
 // ── Load ──────────────────────────────────────────────────────
 async function cargarTodo() {
@@ -410,14 +564,14 @@ async function cargarTodo() {
     // Cargar canales por separado (visible gracias a "Desarrollador ve canales de su proyecto")
     const canalIds = [...new Set(_refs.map(r => r.canal_id).filter(Boolean))]
     const { data: canalesData } = canalIds.length > 0
-      ? await supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, activo').in('id', canalIds)
+      ? await supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, activo, latitud, longitud').in('id', canalIds)
       : { data: [] }
 
     // Construir mapas
     _canalMap   = {}
     _refToCanal = {}
     canalesData?.forEach(c => {
-      _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, refCodes:[], clicks:0, leads:0 }
+      _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, latitud:c.latitud||null, longitud:c.longitud||null, refCodes:[], clicks:0, leads:0 }
     })
     _refs.forEach(r => {
       if (r.canal_id && _canalMap[r.canal_id]) {
@@ -433,7 +587,7 @@ async function cargarTodo() {
         : Promise.resolve({ data: [] }),
       supabase.from('contactos').select('id, created_at, nombre, canal_ref, estado').eq('proyecto_slug', proyectoSlug).order('created_at',{ascending:false}).limit(5000),
       _proyectoId
-        ? supabase.from('lotes').select('numero, tipo_lote, estado').eq('proyecto_id', _proyectoId)
+        ? supabase.from('lotes').select('numero, tipo_lote, estado, mapa_x, mapa_y').eq('proyecto_id', _proyectoId)
         : Promise.resolve({ data: [] })
     ])
 
@@ -466,6 +620,7 @@ function renderInventario() {
   if (!total) {
     document.getElementById('invTop').innerHTML = `<div class="empty-msg" style="padding:.5rem 0">Sin lotes cargados.</div>`
     document.getElementById('zonasStack').innerHTML = ''
+    renderMapaLotesDash()
     return
   }
 
@@ -511,6 +666,405 @@ function renderInventario() {
         }).join('')}</div>
       </div>`).join('')
   }</div>`
+  renderMapaLotesDash()
+}
+
+// ── NUEVOS MÓDULOS COMERCIALES ───────────────────────────────
+function calcularTermometro() {
+  const el = document.getElementById('termometroInner')
+  if (!el) return
+
+  const ahora = new Date()
+  const hace30 = new Date(ahora - 30 * 86400000)
+  const hace60 = new Date(ahora - 60 * 86400000)
+
+  const v30 = _visitas.filter(v => new Date(v.created_at) >= hace30).length
+  const c30 = _contactos.filter(c => new Date(c.created_at) >= hace30).length
+  const vAnterior = _visitas.filter(v => {
+    const d = new Date(v.created_at)
+    return d >= hace60 && d < hace30
+  }).length
+  const cAnterior = _contactos.filter(c => {
+    const d = new Date(c.created_at)
+    return d >= hace60 && d < hace30
+  }).length
+
+  const canalesActivos = new Set()
+  _visitas.forEach(v => { if (new Date(v.created_at) >= hace30 && _refToCanal[v.canal_ref]) canalesActivos.add(_refToCanal[v.canal_ref]) })
+  _contactos.forEach(c => { if (new Date(c.created_at) >= hace30 && _refToCanal[c.canal_ref]) canalesActivos.add(_refToCanal[c.canal_ref]) })
+
+  const score = (v30 * 1) + (c30 * 5) + (canalesActivos.size * 3)
+  const scoreAnterior = (vAnterior * 1) + (cAnterior * 5) + (canalesActivos.size * 3)
+  const crecimiento = scoreAnterior > 0 ? Math.round((score - scoreAnterior) / scoreAnterior * 100) : null
+
+  let estado, color, descripcion
+  let clase
+  if (score === 0)       { estado = 'Sin movimiento';    color = '#555';    clase = 'sin-mov';    descripcion = 'No se registró actividad en los últimos 30 días.' }
+  else if (score < 20)   { estado = 'Actividad inicial'; color = '#888';    clase = 'inicial';    descripcion = 'El proyecto comienza a generar interés.' }
+  else if (score < 60)   { estado = 'En crecimiento';    color = '#6495ed'; clase = 'creciendo'; descripcion = 'La actividad comercial está aumentando.' }
+  else if (score < 150)  { estado = 'Activo';            color = '#c9a84c'; clase = 'activo';     descripcion = 'El proyecto tiene una dinámica comercial sostenida.' }
+  else                   { estado = 'Alta actividad';    color = '#50c878'; clase = 'alto';       descripcion = 'Excelente movimiento comercial este período.' }
+
+  const crecHtml = crecimiento !== null
+    ? `<span style="color:${crecimiento >= 0 ? '#50c878' : '#c97060'};font-size:.72rem;margin-left:.6rem">${crecimiento >= 0 ? '↑' : '↓'} ${Math.abs(crecimiento)}% vs período anterior</span>`
+    : ''
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:1.2rem;padding:.8rem 0">
+      <div class="termometro-dot ${clase}"></div>
+      <div>
+        <div style="font-size:1rem;font-weight:600;color:${color}">${estado}${crecHtml}</div>
+        <div style="font-size:.72rem;color:var(--gris);margin-top:.2rem">${descripcion} · ${v30} visualizaciones · ${c30} consultas · ${canalesActivos.size} canales activos</div>
+      </div>
+    </div>`
+
+  const heroBadge = document.getElementById('proyHeroBadge')
+  if (heroBadge) {
+    heroBadge.textContent = estado
+    heroBadge.style.color = color
+    heroBadge.style.borderColor = `${color}66`
+    heroBadge.style.background = `linear-gradient(135deg,${color}22,rgba(0,0,0,.35))`
+    heroBadge.style.boxShadow = clase === 'sin-mov' || clase === 'inicial'
+      ? 'none'
+      : `0 0 18px ${color}33`
+  }
+}
+
+function renderFeed() {
+  const el = document.getElementById('feedInner')
+  if (!el) return
+
+  const eventos = []
+  _visitas.slice(-200).forEach(v => {
+    const canalId = _refToCanal[v.canal_ref]
+    const canal = canalId ? _canalMap[canalId] : null
+    eventos.push({
+      tipo:'scan',
+      ts:new Date(v.created_at),
+      canal:canal?.nombre || '—',
+      ciudad:canal?.ciudad || null,
+      prov:canal?.provincia || null
+    })
+  })
+  _contactos.slice(0, 100).forEach(c => {
+    const canalId = _refToCanal[c.canal_ref]
+    const canal = canalId ? _canalMap[canalId] : null
+    eventos.push({
+      tipo:'consulta',
+      ts:new Date(c.created_at),
+      canal:canal?.nombre || '—',
+      ciudad:canal?.ciudad || null,
+      prov:canal?.provincia || null
+    })
+  })
+
+  eventos.sort((a, b) => b.ts - a.ts)
+  const ultimos = eventos.slice(0, 12)
+  const tiempoRelativo = ts => {
+    const mins = Math.round((Date.now() - ts.getTime()) / 60000)
+    if (mins < 1) return 'Ahora mismo'
+    if (mins < 60) return `Hace ${mins} min`
+    const hs = Math.round(mins / 60)
+    if (hs < 24) return `Hace ${hs} h`
+    const ds = Math.round(hs / 24)
+    return `Hace ${ds} día${ds !== 1 ? 's' : ''}`
+  }
+
+  el.innerHTML = ultimos.length
+    ? `<div style="display:flex;flex-direction:column;gap:.5rem">${ultimos.map(e => {
+        const geo = [e.ciudad, e.prov].filter(Boolean).join(', ')
+        const accion = e.tipo === 'scan' ? 'Escaneo QR' : 'Nueva consulta'
+        const kind = e.tipo === 'scan' ? 'scan' : 'lead'
+        return `<div class="feed-row ${kind === 'lead' ? 'lead' : ''}">
+          <span class="feed-kind ${kind}">${e.tipo === 'scan' ? 'QR' : 'Lead'}</span>
+          <div class="feed-main">
+            <div class="feed-title">${accion} — ${esc(e.canal)}</div>
+            ${geo ? `<div class="feed-meta">${esc(geo)}</div>` : ''}
+          </div>
+          <div class="feed-time">${tiempoRelativo(e.ts)}</div>
+        </div>`
+      }).join('')}</div>`
+    : `<div class="empty-msg">Sin actividad reciente.</div>`
+}
+
+function crearGradiente(ctx, rgb, alto = .3) {
+  const grad = ctx.createLinearGradient(0, 0, 0, 200)
+  grad.addColorStop(0, rgb.replace('rgb', 'rgba').replace(')', `, ${alto})`))
+  grad.addColorStop(1, rgb.replace('rgb', 'rgba').replace(')', ', 0)'))
+  return grad
+}
+
+function crearGradienteBarra(ctx, desde, hasta) {
+  const grad = ctx.createLinearGradient(0, 0, 0, 200)
+  grad.addColorStop(0, desde)
+  grad.addColorStop(1, hasta)
+  return grad
+}
+
+function renderEvolucion() {
+  const ahora = new Date()
+  const semanas = _semanasVentana
+  const labels = []
+  const dataV = []
+  const dataC = []
+
+  for (let i = semanas - 1; i >= 0; i--) {
+    const fin = new Date(ahora - i * 7 * 86400000)
+    const ini = new Date(fin - 7 * 86400000)
+    labels.push(fin.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
+    dataV.push(_visitas.filter(v => { const d = new Date(v.created_at); return d >= ini && d < fin }).length)
+    dataC.push(_contactos.filter(c => { const d = new Date(c.created_at); return d >= ini && d < fin }).length)
+  }
+
+  const deltaEl = document.getElementById('evolucionDelta')
+  const lastV = dataV[dataV.length - 1]
+  const prevV = dataV[dataV.length - 2] || 0
+  const delta = prevV > 0 ? Math.round((lastV - prevV) / prevV * 100) : null
+  if (deltaEl) {
+    deltaEl.textContent = delta !== null
+      ? `Última semana: ${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)}% en visualizaciones vs semana anterior`
+      : ''
+  }
+
+  if (_chartEvol) { _chartEvol.destroy(); _chartEvol = null }
+  const ctx = document.getElementById('chartEvolucion')?.getContext('2d')
+  if (!ctx) return
+
+  _chartEvol = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {
+          label:'Visualizaciones',
+          data:dataV,
+          borderColor:'#6495ed',
+          borderWidth:1.5,
+          backgroundColor:crearGradiente(ctx, 'rgb(100,149,237)'),
+          tension:.4,
+          fill:true,
+          pointRadius:0,
+          pointHoverRadius:4,
+          pointHoverBackgroundColor:'#6495ed',
+          pointHoverBorderColor:'#fff',
+          pointHoverBorderWidth:1.5
+        },
+        {
+          label:'Consultas',
+          data:dataC,
+          borderColor:'#d76f3f',
+          borderWidth:1.5,
+          backgroundColor:crearGradiente(ctx, 'rgb(215,111,63)'),
+          tension:.4,
+          fill:true,
+          pointRadius:0,
+          pointHoverRadius:4,
+          pointHoverBackgroundColor:'#d76f3f',
+          pointHoverBorderColor:'#fff',
+          pointHoverBorderWidth:1.5
+        }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#888', font:{size:11}, boxWidth:10 } } },
+      scales:{
+        x:{ ticks:{ color:'#666', font:{ size:9 }, maxTicksLimit:8 }, grid:{ color:'rgba(255,255,255,.04)' } },
+        y:{ ticks:{ color:'#666', font:{ size:10 } }, grid:{ color:'rgba(255,255,255,.04)' } }
+      }
+    }
+  })
+}
+
+function renderMapaArgentina() {
+  const canales = Object.values(_canalMap)
+  const conCoords = canales.filter(c =>
+    c.latitud !== null && c.latitud !== '' &&
+    c.longitud !== null && c.longitud !== '' &&
+    Number.isFinite(Number(c.latitud)) && Number.isFinite(Number(c.longitud))
+  )
+  const provincias = new Set(canales.map(c => c.provincia).filter(Boolean))
+  const ciudades = new Set(canales.map(c => c.ciudad).filter(Boolean))
+  const totalProv = provincias.size
+
+  const impacto = document.getElementById('mapaImpacto')
+  if (impacto) {
+    impacto.textContent = totalProv > 0
+      ? `Tu proyecto tiene presencia comercial en ${totalProv} provincia${totalProv !== 1 ? 's' : ''} y ${ciudades.size} ciudad${ciudades.size !== 1 ? 'es' : ''}`
+      : 'Sin presencia territorial registrada aún'
+  }
+  const badge = document.getElementById('provBadge')
+  if (badge) badge.textContent = `${totalProv} provincias`
+
+  if (_mapaLeaflet) {
+    _mapaLeaflet.remove()
+    _mapaLeaflet = null
+  }
+
+  const container = document.getElementById('mapaLeaflet')
+  if (!container) return
+
+  if (!conCoords.length) {
+    container.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--gris);font-size:.78rem;">Sin coordenadas cargadas en los canales</div>'
+    return
+  }
+
+  if (typeof L === 'undefined') {
+    container.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--gris);font-size:.78rem;">No se pudo cargar el mapa</div>'
+    return
+  }
+
+  container.innerHTML = ''
+  const coords = conCoords.map(c => ({ ...c, latitud:Number(c.latitud), longitud:Number(c.longitud) }))
+  const centro = coords.length > 1
+    ? [
+        coords.reduce((s, c) => s + c.latitud, 0) / coords.length,
+        coords.reduce((s, c) => s + c.longitud, 0) / coords.length
+      ]
+    : [-40.5, -68.5]
+
+  _mapaLeaflet = L.map('mapaLeaflet', {
+    zoomControl:true,
+    scrollWheelZoom:false
+  }).setView(centro, coords.length > 1 ? 6 : 9)
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution:'© OpenStreetMap © CARTO',
+    subdomains:'abcd',
+    maxZoom:19
+  }).addTo(_mapaLeaflet)
+
+  const maxActividad = Math.max(1, ...canales.map(c => c.clicks + c.leads))
+
+  coords.forEach(c => {
+    const actividad = c.clicks + c.leads
+    const intensidad = actividad / maxActividad
+    const r = Math.round(100 + (101 * intensidad))
+    const g = Math.round(149 + (19 * intensidad))
+    const b = Math.round(237 - (161 * intensidad))
+    const color = `rgb(${r},${g},${b})`
+    const size = Math.round(10 + (14 * intensidad))
+    const glow = actividad > 0 ? `box-shadow:0 0 ${Math.round(8 + 10 * intensidad)}px ${color}88;` : ''
+
+    const icon = L.divIcon({
+      className:'',
+      html:`<div style="width:${size}px;height:${size}px;background:${color};border:2px solid ${color}88;border-radius:50%;${glow}opacity:${actividad > 0 ? .92 : .35};transition:transform .15s" onmouseenter="this.style.transform='scale(1.3)'" onmouseleave="this.style.transform='scale(1)'"></div>`,
+      iconSize:[size, size],
+      iconAnchor:[size / 2, size / 2]
+    })
+
+    const geo = [c.ciudad, c.provincia].filter(Boolean).join(', ')
+    L.marker([c.latitud, c.longitud], { icon })
+      .bindPopup(`
+        <div style="font-family:Inter,sans-serif;min-width:160px">
+          <div style="font-size:.75rem;font-weight:600;color:#f0f0f0;margin-bottom:.3rem">${esc(c.nombre)}</div>
+          <div style="font-size:.65rem;color:#888;margin-bottom:.4rem">${esc(geo)}</div>
+          <div style="font-size:.7rem;color:#6495ed">${c.clicks} visualizaciones</div>
+          <div style="font-size:.7rem;color:#d76f3f">${c.leads} consultas</div>
+        </div>`)
+      .addTo(_mapaLeaflet)
+  })
+
+  if (coords.length > 1) {
+    _mapaLeaflet.fitBounds(L.latLngBounds(coords.map(c => [c.latitud, c.longitud])), { padding:[40, 40] })
+  }
+}
+
+function renderMapaLotesDash() {
+  const wrap = document.getElementById('mapaLotesWrap')
+  const inner = document.getElementById('mapaLotesDashInner')
+  if (!wrap || !inner) return
+  wrap.style.display = 'none'
+  inner.innerHTML = ''
+
+  if (!_proyectoData?.mapa_imagen_url || _proyectoData.mapa_activo === false) return
+  const lotesConPos = _lotes.filter(l => l.mapa_x != null && l.mapa_y != null)
+  if (!lotesConPos.length) return
+
+  wrap.style.display = ''
+  inner.innerHTML = `
+    <div class="ml-map-wrap-dash" id="mlMapWrap-dash">
+      <img src="${esc(_proyectoData.mapa_imagen_url)}" id="mlMapImg-dash" class="ml-map-img-dash" alt="Mapa del proyecto" />
+      <svg id="mlSvg-dash" class="ml-svg-overlay-dash" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+      <div id="mlPopup-dash" class="ml-popup-dash"></div>
+    </div>
+    <div style="display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;margin-top:.9rem;font-size:.65rem;color:var(--gris)">
+      <span>Disponible</span><span>Reservado</span><span>Vendido</span>
+    </div>`
+
+  const img = document.getElementById('mlMapImg-dash')
+  const svg = document.getElementById('mlSvg-dash')
+  const popup = document.getElementById('mlPopup-dash')
+  const mapWrap = document.getElementById('mlMapWrap-dash')
+  if (!img || !svg || !popup || !mapWrap) return
+
+  function dibujar() {
+    const W = img.naturalWidth || img.clientWidth || 1000
+    const H = img.naturalHeight || img.clientHeight || 700
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+    const r = Math.max(Math.round(W * .014), 8)
+    const estilo = _proyectoData.mapa_pin_estilo || 'gotita'
+    svg.innerHTML = ''
+    const ns = 'http://www.w3.org/2000/svg'
+    const mk = tag => document.createElementNS(ns, tag)
+
+    lotesConPos.forEach(l => {
+      const tipX = (l.mapa_x / 100) * W
+      const tipY = (l.mapa_y / 100) * H
+      const zona = l.tipo_lote || 'Bosque'
+      const estado = l.estado || 'disponible'
+      const color = estado === 'disponible' ? (zonaColor(zona) || '#8aab78') : estado === 'reservado' ? '#c9a84c' : '#c4734a'
+      const muted = estado === 'vendido'
+      const g = mk('g')
+      g.setAttribute('class', 'ml-lot-dash')
+      let ccx = tipX, ccy = tipY
+
+      if (estilo === 'circulo') {
+        const c = mk('circle')
+        c.setAttribute('cx', tipX); c.setAttribute('cy', tipY); c.setAttribute('r', r)
+        c.setAttribute('fill', color); c.setAttribute('fill-opacity', muted ? '.62' : '.93')
+        c.setAttribute('stroke', 'rgba(255,255,255,.7)'); c.setAttribute('stroke-width', Math.max(W * .0015, 1))
+        g.appendChild(c)
+      } else {
+        ccy = tipY - r * 2
+        const tail = mk('polygon')
+        tail.setAttribute('points', `${tipX-r*.42},${ccy+r} ${tipX+r*.42},${ccy+r} ${tipX},${tipY}`)
+        tail.setAttribute('fill', color); tail.setAttribute('fill-opacity', muted ? '.62' : '.9')
+        g.appendChild(tail)
+        const c = mk('circle')
+        c.setAttribute('cx', tipX); c.setAttribute('cy', ccy); c.setAttribute('r', r)
+        c.setAttribute('fill', color); c.setAttribute('fill-opacity', muted ? '.62' : '.93')
+        c.setAttribute('stroke', 'rgba(255,255,255,.7)'); c.setAttribute('stroke-width', Math.max(W * .0015, 1))
+        g.appendChild(c)
+      }
+
+      const t = mk('text')
+      t.setAttribute('x', tipX); t.setAttribute('y', ccy)
+      t.textContent = String(l.numero || '').replace(/^lote\s+/i, '')
+      g.appendChild(t)
+
+      g.addEventListener('mouseenter', () => {
+        const svgR = svg.getBoundingClientRect()
+        const wrapR = mapWrap.getBoundingClientRect()
+        const sx = svgR.width / W
+        const sy = svgR.height / H
+        let px = (ccx * sx) + (svgR.left - wrapR.left) + 16
+        let py = (ccy * sy) + (svgR.top - wrapR.top) - 22
+        if (px + 195 > wrapR.width) px -= 210
+        if (py < 0) py += 48
+        const eLabel = estado === 'disponible' ? 'Disponible' : estado === 'reservado' ? 'Reservado' : 'Vendido'
+        popup.innerHTML = `<div class="ml-popup-lote">Lote ${esc(l.numero || '—')}</div><div class="ml-popup-zona">${esc(zona)}</div><span class="ml-popup-badge ${esc(estado)}">${eLabel}</span>`
+        popup.style.left = px + 'px'
+        popup.style.top = py + 'px'
+        popup.classList.add('visible')
+      })
+      g.addEventListener('mouseleave', () => popup.classList.remove('visible'))
+      svg.appendChild(g)
+    })
+  }
+
+  if (img.complete && img.naturalWidth) dibujar()
+  else img.addEventListener('load', dibujar, { once:true })
 }
 
 // ── DYNAMIC (cambia con periodo) ──────────────────────────────
@@ -620,8 +1174,26 @@ function renderDynamic() {
       data: {
         labels: top8.map(c => c.nombre?.length>14 ? c.nombre.slice(0,14)+'…' : c.nombre||'—'),
         datasets: [
-          { label:'Clicks', data:top8.map(c=>c.clicks), backgroundColor:'rgba(100,149,237,.7)', borderRadius:4 },
-          { label:'Leads',  data:top8.map(c=>c.leads),  backgroundColor:'rgba(215,111,63,.85)',  borderRadius:4 }
+          {
+            label:'Clicks',
+            data:top8.map(c=>c.clicks),
+            backgroundColor:ctx2 => {
+              const chartCtx = ctx2.chart.ctx
+              return crearGradienteBarra(chartCtx, 'rgba(100,149,237,.9)', 'rgba(100,149,237,.2)')
+            },
+            borderRadius:6,
+            borderSkipped:false
+          },
+          {
+            label:'Leads',
+            data:top8.map(c=>c.leads),
+            backgroundColor:ctx2 => {
+              const chartCtx = ctx2.chart.ctx
+              return crearGradienteBarra(chartCtx, 'rgba(215,111,63,.9)', 'rgba(215,111,63,.2)')
+            },
+            borderRadius:6,
+            borderSkipped:false
+          }
         ]
       },
       options: {
@@ -637,27 +1209,7 @@ function renderDynamic() {
     document.getElementById('chartCanales').getContext('2d').clearRect(0,0,999,999)
   }
 
-  // ── Provincias ──
-  const provincias = {}
-  canales.forEach(c => {
-    const p = c.provincia || 'Sin provincia'
-    if (!provincias[p]) provincias[p] = { canales:0, clicks:0, leads:0 }
-    provincias[p].canales++
-    provincias[p].clicks += c.clicks
-    provincias[p].leads  += c.leads
-  })
-  const provSorted = Object.entries(provincias).sort((a,b)=>(b[1].clicks+b[1].leads)-(a[1].clicks+a[1].leads))
-  const maxProv = Math.max(...provSorted.map(([,v])=>v.clicks), 1)
-  document.getElementById('provBadge').textContent = `${provSorted.length} provincias`
-  document.getElementById('provList').innerHTML = provSorted.length
-    ? `<div class="prov-list">${provSorted.map(([prov,d])=>`
-        <div class="prov-row">
-          <div class="prov-nm" title="${esc(prov)}">${esc(prov)}</div>
-          <div class="prov-bar-bg"><div class="prov-bar-fill" style="width:${Math.round(d.clicks/maxProv*100)}%"></div></div>
-          <div class="prov-n">${d.clicks}<span style="display:block;font-size:.58rem;color:var(--gris)">${d.leads} leads</span></div>
-          <div class="prov-sub">${d.canales} canal${d.canales!==1?'es':''}</div>
-        </div>`).join('')}</div>`
-    : `<div class="empty-msg">Sin datos geográficos.</div>`
+  renderMapaArgentina()
 
   // ── Pipeline CRM ──
   const PIPE_STAGES = [
@@ -731,6 +1283,10 @@ function renderDynamic() {
         }).join('')}</tbody>
       </table>`
     : `<div class="empty-msg">Sin consultas en este período.</div>`
+
+  calcularTermometro()
+  renderFeed()
+  renderEvolucion()
 }
 
 cargarTodo()
