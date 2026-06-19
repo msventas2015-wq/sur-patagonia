@@ -22,7 +22,7 @@ const REF_KEY       = 'sp_ref'
 const REF_DIAS      = 30
 const REF_RE        = /^[a-z0-9-]{2,80}$/
 const VISITA_KEY    = 'sp_ultima_visita'
-const VISITA_DEDUPE = 10000
+const VISITA_DEDUPE = 1500
 
 // Defensa central: cualquier archivo viejo que todavía haga
 // supabase.from('visitas').insert(...) pasa por este filtro.
