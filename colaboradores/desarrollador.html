@@ -63,6 +63,10 @@
     .btn-p { font-size:.63rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:.36rem .88rem; border-radius:999px; border:1px solid var(--border); background:none; color:var(--gris); cursor:pointer; font-family:inherit; transition:all .18s; }
     .btn-p:hover { border-color:var(--accent); color:var(--accent); }
     .btn-p.activo { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .btn-refresh { font-size:.63rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:.36rem .88rem; border-radius:999px; border:1px solid rgba(100,149,237,.35); background:rgba(100,149,237,.08); color:#8fb2ff; cursor:pointer; font-family:inherit; transition:all .18s; }
+    .btn-refresh:hover { border-color:#6495ed; color:#fff; }
+    .btn-refresh:disabled { opacity:.5; cursor:wait; }
+    .sync-status { align-self:center; font-size:.63rem; color:var(--gris); letter-spacing:.04em; }
 
     /* ── KPI row ── */
     .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin-bottom:1.5rem; }
@@ -222,6 +226,8 @@
       <button class="btn-p"        data-dias="60"  onclick="setPeriodo(this)">60 días</button>
       <button class="btn-p"        data-dias="90"  onclick="setPeriodo(this)">90 días</button>
       <button class="btn-p"        data-dias="0"   onclick="setPeriodo(this)">Todo el tiempo</button>
+      <button class="btn-refresh" id="btnRefresh" type="button">Actualizar</button>
+      <span class="sync-status" id="syncStatus">—</span>
     </div>
   </div>
 
@@ -356,6 +362,7 @@ let _lotes       = []
 let _canalMap    = {}   // canal_id → {nombre, tipo, ciudad, provincia, activo, refCodes[]}
 let _refToCanal  = {}   // ref.codigo → canal_id
 let _chartInst   = null
+let _cargandoDatos = false
 
 window.setPeriodo = function(btn) {
   document.querySelectorAll('.btn-p').forEach(b => b.classList.remove('activo'))
@@ -364,58 +371,86 @@ window.setPeriodo = function(btn) {
   renderDynamic()
 }
 
+function setSyncStatus(txt) {
+  const el = document.getElementById('syncStatus')
+  if (el) el.textContent = txt
+}
+
+function fmtHoraActualizacion() {
+  return new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+}
+
+document.getElementById('btnRefresh').addEventListener('click', () => cargarTodo())
+
 // ── Load ──────────────────────────────────────────────────────
 async function cargarTodo() {
+  if (_cargandoDatos) return
+  _cargandoDatos = true
+  const btnRefresh = document.getElementById('btnRefresh')
+  if (btnRefresh) btnRefresh.disabled = true
+  setSyncStatus('Actualizando...')
+
   if (!proyectoSlug) {
     document.getElementById('kpiRow').innerHTML = `<div class="kpi" style="grid-column:1/-1"><div class="empty-msg">Sin proyecto asignado.</div></div>`
+    _cargandoDatos = false
+    if (btnRefresh) btnRefresh.disabled = false
     return
   }
 
-  // Fase 1: referencias sin embedded join (RLS de canales bloquea el join para el desarrollador)
-  const { data: refs } = await supabase
-    .from('referencias')
-    .select('id, codigo, nombre, activo, canal_id')
-    .eq('proyecto_slug', proyectoSlug)
+  try {
+    // Fase 1: referencias sin embedded join (RLS de canales bloquea el join para el desarrollador)
+    const { data: refs } = await supabase
+      .from('referencias')
+      .select('id, codigo, nombre, activo, canal_id')
+      .eq('proyecto_slug', proyectoSlug)
 
-  _refs = refs || []
-  const refCodes = _refs.map(r => r.codigo).filter(Boolean)
+    _refs = refs || []
+    const refCodes = _refs.map(r => r.codigo).filter(Boolean)
 
-  // Cargar canales por separado (visible gracias a "Desarrollador ve canales de su proyecto")
-  const canalIds = [...new Set(_refs.map(r => r.canal_id).filter(Boolean))]
-  const { data: canalesData } = canalIds.length > 0
-    ? await supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, activo').in('id', canalIds)
-    : { data: [] }
+    // Cargar canales por separado (visible gracias a "Desarrollador ve canales de su proyecto")
+    const canalIds = [...new Set(_refs.map(r => r.canal_id).filter(Boolean))]
+    const { data: canalesData } = canalIds.length > 0
+      ? await supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, activo').in('id', canalIds)
+      : { data: [] }
 
-  // Construir mapas
-  _canalMap   = {}
-  _refToCanal = {}
-  canalesData?.forEach(c => {
-    _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, refCodes:[], clicks:0, leads:0 }
-  })
-  _refs.forEach(r => {
-    if (r.canal_id && _canalMap[r.canal_id]) {
-      _refToCanal[r.codigo] = r.canal_id
-      _canalMap[r.canal_id].refCodes.push(r.codigo)
-    }
-  })
+    // Construir mapas
+    _canalMap   = {}
+    _refToCanal = {}
+    canalesData?.forEach(c => {
+      _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, refCodes:[], clicks:0, leads:0 }
+    })
+    _refs.forEach(r => {
+      if (r.canal_id && _canalMap[r.canal_id]) {
+        _refToCanal[r.codigo] = r.canal_id
+        _canalMap[r.canal_id].refCodes.push(r.codigo)
+      }
+    })
 
-  // Fase 2: paralelo
-  const [{ data: visitas }, { data: contactos }, { data: lotes }] = await Promise.all([
-    refCodes.length > 0
-      ? supabase.from('visitas').select('canal_ref, created_at').in('canal_ref', refCodes).limit(50000)
-      : Promise.resolve({ data: [] }),
-    supabase.from('contactos').select('id, created_at, nombre, canal_ref, estado').eq('proyecto_slug', proyectoSlug).order('created_at',{ascending:false}).limit(5000),
-    _proyectoId
-      ? supabase.from('lotes').select('numero, tipo_lote, estado').eq('proyecto_id', _proyectoId)
-      : Promise.resolve({ data: [] })
-  ])
+    // Fase 2: paralelo
+    const [{ data: visitas }, { data: contactos }, { data: lotes }] = await Promise.all([
+      refCodes.length > 0
+        ? supabase.from('visitas').select('canal_ref, created_at').in('canal_ref', refCodes).limit(50000)
+        : Promise.resolve({ data: [] }),
+      supabase.from('contactos').select('id, created_at, nombre, canal_ref, estado').eq('proyecto_slug', proyectoSlug).order('created_at',{ascending:false}).limit(5000),
+      _proyectoId
+        ? supabase.from('lotes').select('numero, tipo_lote, estado').eq('proyecto_id', _proyectoId)
+        : Promise.resolve({ data: [] })
+    ])
 
-  _visitas   = visitas   || []
-  _contactos = contactos || []
-  _lotes     = lotes     || []
+    _visitas   = visitas   || []
+    _contactos = contactos || []
+    _lotes     = lotes     || []
 
-  renderInventario()
-  renderDynamic()
+    renderInventario()
+    renderDynamic()
+    setSyncStatus(`Actualizado ${fmtHoraActualizacion()}`)
+  } catch (err) {
+    console.error('Error al actualizar dashboard', err)
+    setSyncStatus('Error al actualizar')
+  } finally {
+    _cargandoDatos = false
+    if (btnRefresh) btnRefresh.disabled = false
+  }
 }
 
 // ── INVENTARIO (estático) ──────────────────────────────────────
@@ -699,6 +734,9 @@ function renderDynamic() {
 }
 
 cargarTodo()
+setInterval(() => {
+  if (!document.hidden) cargarTodo()
+}, 30000)
 </script>
 </body>
 </html>
