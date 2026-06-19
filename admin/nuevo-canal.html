@@ -812,11 +812,14 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const tipo     = document.getElementById('tipo').value
   const activo_v = esActivo(tipo)
   const destino  = activo_v ? '/' : getDestinoUrl()
+  const tipoAcceso = activo_v ? 'activo' : 'pasivo'
+  const canalActualId = _canalId || editId
 
   // Datos de acceso externo — usa el mismo email de Contacto y notificaciones
   const emailAcceso = document.getElementById('email').value.trim()
   const passAcceso  = document.getElementById('accesoPass').value
-  const tieneAccesoNuevo = passAcceso && document.getElementById('accesoNuevo').style.display !== 'none'
+  const accesoNuevoVisible = document.getElementById('accesoNuevo').style.display !== 'none'
+  const tieneAccesoNuevo = Boolean(passAcceso && accesoNuevoVisible)
 
   if (passAcceso && passAcceso.length < 6) {
     alert('La contraseña temporal debe tener al menos 6 caracteres.')
@@ -828,6 +831,24 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
 
   let userId = document.getElementById('userId').value.trim() || null
+  let usuarioExistentePorEmail = null
+
+  if (accesoNuevoVisible && emailAcceso) {
+    const { data: todosUsuarios, error: usuariosError } = await supabase.rpc('admin_listar_usuarios')
+    if (usuariosError) {
+      alert('No pude verificar si el usuario ya existe: ' + usuariosError.message)
+      return
+    }
+
+    usuarioExistentePorEmail = todosUsuarios?.find(u => (u.email || '').toLowerCase() === emailAcceso.toLowerCase()) || null
+
+    if (usuarioExistentePorEmail) {
+      userId = usuarioExistentePorEmail.id
+    } else if (!passAcceso) {
+      alert('No encontré un usuario con ese email. Si querés crear el acceso ahora, completá una contraseña temporal.')
+      return
+    }
+  }
 
   // Coordenadas: acepta el formato que copia Google Maps ("lat, lng")
   let latitud = null, longitud = null
@@ -852,33 +873,36 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
 
   let data, error
-  if (editId) {
-    ;({ data, error } = await supabase.from('canales').update(payload).eq('id', editId).select().single())
+  if (canalActualId) {
+    ;({ data, error } = await supabase.from('canales').update(payload).eq('id', canalActualId).select().single())
   } else {
     ;({ data, error } = await supabase.from('canales').insert(payload).select().single())
   }
 
-  if (error) { alert('Error al guardar: ' + error.message); return }
+  if (error) {
+    if (error.code === '23505' && error.message.includes('canales_codigo_key')) {
+      alert('Ya existe otro canal con ese código. Cambiá el código o recargá la página si el canal ya se había guardado.')
+    } else {
+      alert('Error al guardar: ' + error.message)
+    }
+    return
+  }
 
   _canalId = data.id
 
   // ── Crear o vincular usuario colaborador si se llenaron los campos ──
-  if (tieneAccesoNuevo) {
+  if (accesoNuevoVisible && emailAcceso) {
     const btn = document.getElementById('btnGuardar')
     btn.textContent = 'Vinculando acceso…'
 
-    // Verificar si el usuario ya existe (creado desde admin/usuarios)
-    const { data: todosUsuarios } = await supabase.rpc('admin_listar_usuarios')
-    const usuarioExistente = todosUsuarios?.find(u => u.email === emailAcceso)
-
     let vinculadoUserId = null
 
-    if (usuarioExistente) {
+    if (usuarioExistentePorEmail) {
       // Usuario ya existe → solo vincular, NO tocar tipo_acceso (ya está seteado en Usuarios)
-      vinculadoUserId = usuarioExistente.id
+      vinculadoUserId = usuarioExistentePorEmail.id
       await supabase.from('canales').update({ user_id: vinculadoUserId }).eq('id', _canalId)
       userId = vinculadoUserId
-    } else {
+    } else if (tieneAccesoNuevo) {
       // Usuario no existe → crear con signUp
       const { data: signUpData, error: signUpError } = await supabaseAux.auth.signUp({
         email: emailAcceso,
@@ -934,10 +958,10 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     document.getElementById('seccionReferencias').scrollIntoView({ behavior: 'smooth' })
   }
 
-  if (!editId) history.replaceState({}, '', `?id=${_canalId}`)
+  if (!canalActualId) history.replaceState({}, '', `?id=${_canalId}`)
   document.getElementById('btnGuardar').textContent = '✓ Guardado'
   setTimeout(() => {
-    document.getElementById('btnGuardar').textContent = editId ? 'Guardar cambios' : 'Guardar canal'
+    document.getElementById('btnGuardar').textContent = _canalId ? 'Guardar cambios' : 'Guardar canal'
   }, 2000)
 })
 
