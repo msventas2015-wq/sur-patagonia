@@ -423,6 +423,7 @@
       transition: background 0.2s, transform 0.15s;
     }
     .btn-primario:hover { background: #e2c87a; transform: translateY(-1px); }
+    .btn-primario:disabled { opacity:.42; cursor:not-allowed; transform:none; }
 
     .btn-secundario {
       display: inline-flex; align-items: center;
@@ -436,6 +437,7 @@
       text-decoration: none;
     }
     .btn-secundario:hover { border-color: var(--dorado); color: var(--dorado); }
+    .btn-secundario:disabled { opacity:.42; cursor:not-allowed; }
 
     /* ── Diálogo picker de color ──────────────────────── */
     #cpDialog {
@@ -1730,8 +1732,8 @@
         Estado: <strong id="saveBarEstado">Borrador</strong>
       </div>
       <div class="save-actions">
-        <button class="btn-secundario" onclick="guardarBorrador()">Guardar borrador</button>
-        <button class="btn-primario" onclick="publicarProyecto()">Publicar proyecto</button>
+        <button class="btn-secundario" id="btnGuardarBorrador" onclick="guardarBorrador()">Guardar borrador</button>
+        <button class="btn-primario" id="btnPublicarProyecto" onclick="publicarProyecto()">Publicar proyecto</button>
       </div>
     </div>
 
@@ -2088,15 +2090,48 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
   let proyectoId = null
   window._proyectoId = null
   const lotesData = []
+  let modoDuplicar = false
+  let duplicacionLista = true
+  let guardandoProyecto = false
 
-  // Leer ?id= para modo edición
+  async function generarSlugUnico(base) {
+    const raiz = String(base || 'proyecto')
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'proyecto'
+
+    for (let i = 1; i <= 50; i++) {
+      const candidato = `${raiz}-copia${i === 1 ? '' : `-${i}`}`
+      const { data, error } = await supabase
+        .from('proyectos')
+        .select('id')
+        .eq('slug', candidato)
+        .maybeSingle()
+      if (error) throw error
+      if (!data) return candidato
+    }
+    return `${raiz}-copia-${Date.now()}`
+  }
+
+  // Leer parámetros para edición o duplicación
   const params = new URLSearchParams(location.search)
-  if (params.get('id')) {
-    proyectoId = params.get('id')
+  const editId = params.get('id')
+  const duplicarId = editId ? null : params.get('duplicar')
+  if (editId) {
+    proyectoId = editId
     window._proyectoId = proyectoId
     cargarProyecto(proyectoId)
     document.getElementById('tituloPagina').textContent = 'Editar proyecto'
     document.getElementById('subtituloPagina').textContent = 'Modificá los datos del proyecto y guardá los cambios'
+  } else if (duplicarId) {
+    modoDuplicar = true
+    duplicacionLista = false
+    document.getElementById('tituloPagina').textContent = 'Duplicar proyecto'
+    document.getElementById('subtituloPagina').textContent = 'Revisá la copia y guardala como un nuevo borrador'
+    document.getElementById('btnPublicarProyecto').disabled = true
+    cargarProyecto(duplicarId, { duplicar: true })
   }
 
   // ── Tabs ───────────────────────────────────────────────
@@ -2801,16 +2836,29 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
 
   // ── Guardar / Publicar ─────────────────────────────────
   async function guardar(estadoForzado) {
+    if (guardandoProyecto) return
+    if (modoDuplicar && !duplicacionLista) {
+      mostrarAlerta('error', 'La copia todavía no terminó de cargar. Esperá unos segundos y volvé a intentar.')
+      return
+    }
+
     const { proyecto, lotes } = getDatos()
     if (!proyecto.nombre || !proyecto.slug) {
       mostrarAlerta('error', 'El nombre y el slug son obligatorios.')
       document.querySelector('[data-panel="panel-identidad"]').click()
       return
     }
-    if (estadoForzado) proyecto.estado = estadoForzado
+    const creandoCopia = modoDuplicar && !proyectoId
+    if (creandoCopia) proyecto.estado = 'borrador'
+    else if (estadoForzado) proyecto.estado = estadoForzado
 
+    guardandoProyecto = true
+    document.getElementById('btnGuardarBorrador').disabled = true
+    document.getElementById('btnPublicarProyecto').disabled = true
+
+    let id = proyectoId
+    let proyectoCreado = false
     try {
-      let id = proyectoId
       if (id) {
         const { error } = await supabase.from('proyectos').update(proyecto).eq('id', id)
         if (error) throw error
@@ -2818,46 +2866,66 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
         const { data, error } = await supabase.from('proyectos').insert(proyecto).select().single()
         if (error) throw error
         id = data.id
+        proyectoCreado = true
+      }
+
+      // Guardar lotes (borrar y reinsertar, preservando datos del mapa)
+      if (lotes.length > 0) {
+        const mapaBackup = {}
+        if (!proyectoCreado) {
+          // Preservar el mapa únicamente al editar; una copia empieza sin mapa.
+          const { data: lotesActuales, error: lotesActualesError } = await supabase.from('lotes')
+            .select('numero, mapa_x, mapa_y, tipo_lote')
+            .eq('proyecto_id', id)
+          if (lotesActualesError) throw lotesActualesError
+          ;(lotesActuales || []).forEach(l => {
+            if (l.mapa_x != null) mapaBackup[l.numero] = { mapa_x: l.mapa_x, mapa_y: l.mapa_y, tipo_lote: l.tipo_lote }
+          })
+
+          const _mlPosActual   = window._getMlPos   ? window._getMlPos()   : null
+          const _mlLotesActual = window._getMlLotes ? window._getMlLotes() : null
+          if (_mlPosActual && _mlLotesActual) {
+            _mlLotesActual.forEach(l => {
+              const pos = _mlPosActual[l.id]
+              if (pos?.x != null)
+                mapaBackup[l.numero] = { mapa_x: pos.x, mapa_y: pos.y, tipo_lote: pos.tipo_lote || null }
+            })
+          }
+
+          const { error: deleteError } = await supabase.from('lotes').delete().eq('proyecto_id', id)
+          if (deleteError) throw deleteError
+        }
+
+        const lotesConId = lotes.map(l => ({ ...l, proyecto_id: id }))
+        const { data: lotesInsertados, error: errLotes } = await supabase.from('lotes').insert(lotesConId).select()
+        if (errLotes) throw errLotes
+
+        if (lotesInsertados && Object.keys(mapaBackup).length) {
+          const restoreUpdates = lotesInsertados
+            .filter(l => mapaBackup[l.numero])
+            .map(l => supabase.from('lotes').update(mapaBackup[l.numero]).eq('id', l.id))
+          if (restoreUpdates.length) {
+            const resultados = await Promise.all(restoreUpdates)
+            const restoreError = resultados.find(r => r.error)?.error
+            if (restoreError) throw restoreError
+          }
+        }
+      } else if (!proyectoCreado) {
+        const { error: deleteError } = await supabase.from('lotes').delete().eq('proyecto_id', id)
+        if (deleteError) throw deleteError
+      }
+
+      if (proyectoCreado) {
         proyectoId = id
         window._proyectoId = id
         history.replaceState({}, '', `?id=${id}`)
       }
 
-      // Guardar lotes (borrar y reinsertar, preservando datos del mapa)
-      if (lotes.length > 0) {
-        // 1. Guardar los datos de mapa de los lotes actuales antes de borrarlos
-        //    Fuente 1: DB (estado persistido)
-        const { data: lotesActuales } = await supabase.from('lotes')
-          .select('numero, mapa_x, mapa_y, tipo_lote')
-          .eq('proyecto_id', id)
-        const mapaBackup = {}
-        ;(lotesActuales || []).forEach(l => {
-          if (l.mapa_x != null) mapaBackup[l.numero] = { mapa_x: l.mapa_x, mapa_y: l.mapa_y, tipo_lote: l.tipo_lote }
-        })
-        //    Fuente 2: memoria del tab mapa (puede tener posiciones no guardadas todavía)
-        const _mlPosActual   = window._getMlPos   ? window._getMlPos()   : null
-        const _mlLotesActual = window._getMlLotes ? window._getMlLotes() : null
-        if (_mlPosActual && _mlLotesActual) {
-          _mlLotesActual.forEach(l => {
-            const pos = _mlPosActual[l.id]
-            if (pos?.x != null)
-              mapaBackup[l.numero] = { mapa_x: pos.x, mapa_y: pos.y, tipo_lote: pos.tipo_lote || null }
-          })
-        }
-
-        // 2. Borrar e insertar lotes desde el formulario
-        await supabase.from('lotes').delete().eq('proyecto_id', id)
-        const lotesConId = lotes.map(l => ({ ...l, proyecto_id: id }))
-        const { data: lotesInsertados, error: errLotes } = await supabase.from('lotes').insert(lotesConId).select()
-        if (errLotes) console.warn('Error lotes:', errLotes)
-
-        // 3. Restaurar datos del mapa en los lotes recién insertados
-        if (lotesInsertados && Object.keys(mapaBackup).length) {
-          const restoreUpdates = lotesInsertados
-            .filter(l => mapaBackup[l.numero])
-            .map(l => supabase.from('lotes').update(mapaBackup[l.numero]).eq('id', l.id))
-          if (restoreUpdates.length) await Promise.all(restoreUpdates)
-        }
+      if (creandoCopia) {
+        modoDuplicar = false
+        document.getElementById('btnPublicarProyecto').disabled = false
+        document.getElementById('tituloPagina').textContent = 'Editar proyecto'
+        document.getElementById('subtituloPagina').textContent = 'La copia se guardó como borrador y ya puede editarse o publicarse'
       }
 
       const isActivo = proyecto.estado === 'activo'
@@ -2872,7 +2940,21 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
       }
 
     } catch (err) {
-      mostrarAlerta('error', 'Error al guardar: ' + err.message)
+      let rollbackError = null
+      if (proyectoCreado && id) {
+        const rollback = await supabase.from('proyectos').delete().eq('id', id)
+        rollbackError = rollback.error
+      }
+      const detalle = err?.code === '23505'
+        ? 'Ya existe un proyecto con ese slug. Elegí otro y volvé a guardar.'
+        : 'Error al guardar: ' + err.message
+      mostrarAlerta('error', rollbackError
+        ? `${detalle} Además, no se pudo eliminar la copia incompleta: ${rollbackError.message}`
+        : detalle)
+    } finally {
+      guardandoProyecto = false
+      document.getElementById('btnGuardarBorrador').disabled = false
+      document.getElementById('btnPublicarProyecto').disabled = modoDuplicar
     }
   }
 
@@ -2880,9 +2962,31 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
   window.publicarProyecto = () => guardar('activo')
 
   // ── Cargar proyecto existente ──────────────────────────
-  async function cargarProyecto(id) {
-    const { data: p, error } = await supabase.from('proyectos').select('*').eq('id', id).single()
-    if (error || !p) { mostrarAlerta('error', 'Proyecto no encontrado.'); return }
+  async function cargarProyecto(id, opciones = {}) {
+    const { duplicar = false } = opciones
+    const { data: original, error } = await supabase.from('proyectos').select('*').eq('id', id).single()
+    if (error || !original) { mostrarAlerta('error', 'Proyecto no encontrado.'); return }
+
+    let p = original
+    if (duplicar) {
+      try {
+        const slugNuevo = await generarSlugUnico(original.slug || original.nombre)
+        p = {
+          ...original,
+          nombre: `${original.nombre} (Copia)`,
+          slug: slugNuevo,
+          estado: 'borrador',
+          destacado: false,
+          mapa_activo: false,
+          mapa_imagen_url: null,
+          mapa_zonas: null,
+          mapa_pin_estilo: 'gotita',
+        }
+      } catch (slugError) {
+        mostrarAlerta('error', 'No se pudo generar un slug para la copia: ' + slugError.message)
+        return
+      }
+    }
 
     const set = (elId, val) => { if (document.getElementById(elId)) document.getElementById(elId).value = val || '' }
     const chk = (elId, val) => { if (document.getElementById(elId)) document.getElementById(elId).checked = !!val }
@@ -2995,6 +3099,7 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
 
     // Representantes
     if (window._setRepLista) window._setRepLista(p.representantes)
+    else window._repListaPendiente = p.representantes
 
     document.getElementById('slugPreview').textContent = p.slug || '—'
     document.getElementById('saveBarNombre').textContent = p.nombre || 'Sin nombre'
@@ -3010,8 +3115,20 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
     if (p.fotos) { fotosArr.splice(0); fotosArr.push(...p.fotos); renderGaleria() }
 
     // Lotes
-    const { data: lotes } = await supabase.from('lotes').select('*').eq('proyecto_id', id).order('numero')
-    if (lotes) lotes.forEach(l => agregarLote(l))
+    const { data: lotes, error: lotesError } = await supabase.from('lotes').select('*').eq('proyecto_id', id).order('numero')
+    if (lotesError) {
+      mostrarAlerta('error', 'No se pudieron cargar los lotes del proyecto original.')
+      return
+    }
+    if (lotes) lotes.forEach(l => agregarLote(duplicar ? {
+      ...l,
+      estado: 'disponible',
+      mapa_x: null,
+      mapa_y: null,
+      tipo_lote: null,
+    } : l))
+
+    if (duplicar) duplicacionLista = true
 
     if (p.estado === 'activo') {
       const link = document.getElementById('linkMiniweb')
@@ -3474,6 +3591,10 @@ let _repLista = []
 
 window._getRepLista = () => _repLista
 window._setRepLista = (lista) => { _repLista = Array.isArray(lista) ? [...lista] : []; repRender() }
+if (window._repListaPendiente) {
+  window._setRepLista(window._repListaPendiente)
+  delete window._repListaPendiente
+}
 
 window.repAgregar = () => {
   _repLista.push({ nombre: '', ciudad: '', logo_url: '' })
