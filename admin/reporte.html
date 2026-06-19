@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reporte de Campaña — Sur Patagonia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0e0c; --card: #161513; --border: rgba(255,255,255,0.07);
+      --accent: #d76f3f; --dorado: #c9a84c; --blanco: #f5f3f0; --gris: #888;
+      --verde: #50c878; --radius: 14px;
+    }
+    body { background: var(--bg); color: var(--blanco); font-family: 'Inter', system-ui, sans-serif; font-weight: 300; min-height: 100vh; }
+
+    /* Header */
+    .rp-header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.4rem 2rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    }
+    .rp-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; letter-spacing: .12em; font-weight: 400; }
+    .rp-logo span { color: var(--dorado); }
+    .rp-badge { font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: var(--gris); border: 1px solid var(--border); border-radius: 999px; padding: .25rem .7rem; }
+
+    /* Hero campaña */
+    .rp-hero { padding: 2.5rem 2rem 2rem; border-bottom: 1px solid var(--border); }
+    .rp-campana-nombre { font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; font-weight: 300; margin-bottom: .4rem; }
+    .rp-campana-desc { font-size: .82rem; color: var(--gris); margin-bottom: 1rem; }
+    .rp-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .rp-meta-item { font-size: .72rem; color: var(--gris); }
+    .rp-meta-item strong { color: var(--blanco); font-weight: 500; display: block; margin-bottom: .1rem; }
+    .estado-pill { display: inline-flex; align-items: center; gap: .35rem; font-size: .65rem; font-weight: 600; padding: .25rem .7rem; border-radius: 999px; }
+    .estado-activa { background: rgba(80,200,120,.12); color: var(--verde); }
+    .estado-finalizada { background: rgba(136,136,136,.12); color: var(--gris); }
+    .estado-programada { background: rgba(201,168,76,.12); color: var(--dorado); }
+    .estado-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* KPIs */
+    .rp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .8rem; padding: 2rem; border-bottom: 1px solid var(--border); }
+    .kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; text-align: center; }
+    .kpi-n { font-size: 2.2rem; font-weight: 700; line-height: 1; color: var(--blanco); margin-bottom: .4rem; }
+    .kpi-n.accent { color: var(--accent); }
+    .kpi-n.dorado { color: var(--dorado); }
+    .kpi-n.verde { color: var(--verde); }
+    .kpi-label { font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--gris); font-weight: 600; }
+
+    /* Secciones */
+    .rp-section { padding: 2rem; border-bottom: 1px solid var(--border); }
+    .rp-section-titulo { font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: var(--gris); font-weight: 600; margin-bottom: 1.2rem; }
+
+    /* Mapa */
+    #mapaReporte { height: 340px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+    .leaflet-container { background: #1a1814; }
+
+    /* Tabla canales */
+    .rp-tabla { width: 100%; border-collapse: collapse; }
+    .rp-tabla th { font-size: .6rem; text-transform: uppercase; letter-spacing: .08em; color: var(--gris); font-weight: 600; padding: .6rem .8rem; border-bottom: 1px solid var(--border); text-align: left; }
+    .rp-tabla td { font-size: .78rem; color: var(--blanco); padding: .7rem .8rem; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    .rp-tabla tr:last-child td { border-bottom: none; }
+    .canal-nombre-col { font-weight: 500; }
+    .canal-codigo-col { font-family: monospace; font-size: .65rem; color: var(--accent); display: block; }
+    .tipo-badge { display: inline-block; padding: .15rem .5rem; border-radius: 999px; font-size: .58rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+    .tipo-punto_venta { background: rgba(80,200,120,.12); color: var(--verde); }
+    .tipo-inmobiliaria { background: rgba(100,149,237,.12); color: #6495ed; }
+    .tipo-particular { background: rgba(215,111,63,.12); color: var(--accent); }
+    .tipo-evento { background: rgba(201,168,76,.12); color: var(--dorado); }
+    .num-col { font-weight: 700; font-size: .9rem; }
+    .bar-wrap { background: rgba(255,255,255,.05); border-radius: 4px; height: 4px; width: 80px; display: inline-block; vertical-align: middle; margin-left: .5rem; }
+    .bar-fill { height: 4px; border-radius: 4px; background: var(--accent); }
+
+    /* Provincias */
+    .prov-grid { display: flex; flex-wrap: wrap; gap: .6rem; }
+    .prov-chip { background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: .35rem .9rem; font-size: .74rem; display: flex; align-items: center; gap: .5rem; }
+    .prov-chip b { color: var(--accent); font-size: .85rem; }
+
+    /* Footer */
+    .rp-footer { padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .8rem; }
+    .rp-footer-marca { font-family: 'Cormorant Garamond', serif; font-size: .85rem; color: var(--gris); }
+    .rp-footer-marca span { color: var(--dorado); }
+    .rp-footer-ts { font-size: .65rem; color: rgba(255,255,255,.25); }
+
+    /* Loading / error */
+    .loading { text-align: center; padding: 5rem 2rem; color: var(--gris); }
+    .sp { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,.1); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg { text-align: center; padding: 4rem 2rem; color: var(--gris); }
+    .error-msg h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; margin-bottom: .5rem; color: var(--blanco); }
+
+    @media (max-width: 600px) {
+      .rp-hero { padding: 1.5rem 1rem 1.2rem; }
+      .rp-kpis { padding: 1.2rem 1rem; }
+      .rp-section { padding: 1.5rem 1rem; }
+      .rp-campana-nombre { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loadingState" class="loading">
+  <div class="sp"></div>
+  <p>Cargando reporte…</p>
+</div>
+
+<div id="appContent" style="display:none;">
+
+  <!-- Header -->
+  <header class="rp-header">
+    <div class="rp-logo">SUR <span>PATAGONIA</span></div>
+    <span class="rp-badge">Reporte de campaña</span>
+  </header>
+
+  <!-- Hero -->
+  <div class="rp-hero">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+      <div>
+        <h1 class="rp-campana-nombre" id="rpNombre">—</h1>
+        <p class="rp-campana-desc" id="rpDesc"></p>
+        <div class="rp-meta">
+          <div class="rp-meta-item"><strong id="rpInicio">—</strong>Inicio</div>
+          <div class="rp-meta-item"><strong id="rpFin">—</strong>Fin</div>
+          <div class="rp-meta-item"><strong id="rpDestino" style="font-family:monospace;font-size:.7rem;"></strong>Destino</div>
+        </div>
+      </div>
+      <div id="rpEstado"></div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="rp-kpis">
+    <div class="kpi"><div class="kpi-n accent" id="kScans">0</div><div class="kpi-label">Scans QR</div></div>
+    <div class="kpi"><div class="kpi-n dorado" id="kLeads">0</div><div class="kpi-label">Consultas generadas</div></div>
+    <div class="kpi"><div class="kpi-n verde" id="kCanales">0</div><div class="kpi-label">Puntos activos</div></div>
+    <div class="kpi"><div class="kpi-n" id="kCiudades">0</div><div class="kpi-label">Ciudades</div></div>
+    <div class="kpi"><div class="kpi-n" id="kProvincias">0</div><div class="kpi-label">Provincias</div></div>
+    <div class="kpi"><div class="kpi-n" id="kConversion" style="font-size:1.6rem;">0%</div><div class="kpi-label">Tasa de conversión</div></div>
+  </div>
+
+  <!-- Mapa -->
+  <div class="rp-section">
+    <div class="rp-section-titulo">Cobertura geográfica</div>
+    <div id="mapaReporte"></div>
+  </div>
+
+  <!-- Provincias alcanzadas -->
+  <div class="rp-section">
+    <div class="rp-section-titulo">Provincias alcanzadas</div>
+    <div class="prov-grid" id="provGrid"></div>
+  </div>
+
+  <!-- Tabla de canales -->
+  <div class="rp-section">
+    <div class="rp-section-titulo">Rendimiento por punto</div>
+    <div style="overflow-x:auto;">
+      <table class="rp-tabla">
+        <thead>
+          <tr>
+            <th>Canal</th>
+            <th>Tipo</th>
+            <th>Ubicación</th>
+            <th>Scans</th>
+            <th>Consultas</th>
+          </tr>
+        </thead>
+        <tbody id="tablaCanalesReporte"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="rp-footer">
+    <div class="rp-footer-marca">SUR <span>PATAGONIA</span> — Red de distribución física</div>
+    <div class="rp-footer-ts" id="rpTimestamp"></div>
+  </footer>
+
+</div>
+
+<div id="errorState" class="error-msg" style="display:none;">
+  <h2>Reporte no disponible</h2>
+  <p>El link puede haber vencido o no existe.</p>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+  const SUPA_URL = 'https://wajkfydxutptcvvfwrvq.supabase.co'
+  const SUPA_KEY = 'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
+  const supabase = createClient(SUPA_URL, SUPA_KEY)
+
+  const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  const fmt = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : 'Sin fecha'
+
+  const params  = new URLSearchParams(location.search)
+  const campId  = params.get('campana')
+
+  function mostrarError() {
+    document.getElementById('loadingState').style.display = 'none'
+    document.getElementById('errorState').style.display = 'block'
+  }
+
+  if (!campId) { mostrarError() } else { init() }
+
+  async function init() {
+    // Cargar campaña
+    const { data: camp } = await supabase.from('campanas').select('*').eq('id', campId).maybeSingle()
+    if (!camp) { mostrarError(); return }
+
+    // Cargar canales de la campaña
+    const { data: ccRows } = await supabase.from('campanas_canales').select('canal_id').eq('campana_id', campId)
+    const canalIds = (ccRows || []).map(r => r.canal_id)
+    if (!canalIds.length) {
+      document.getElementById('loadingState').style.display = 'none'
+      renderCampanaInfo(camp)
+      renderVacio()
+      document.getElementById('appContent').style.display = 'block'
+      return
+    }
+
+    const { data: canales } = await supabase.from('canales').select('*').in('id', canalIds)
+    const codigos = (canales || []).map(c => c.codigo).filter(Boolean)
+
+    // Scans y leads filtrados por fechas de campaña
+    let qVisitas = supabase.from('visitas').select('canal_ref', { count: 'exact', head: false }).in('canal_ref', codigos)
+    let qLeads   = supabase.from('contactos').select('canal_ref', { count: 'exact', head: false }).in('canal_ref', codigos)
+    if (camp.fecha_inicio) { qVisitas = qVisitas.gte('created_at', camp.fecha_inicio); qLeads = qLeads.gte('created_at', camp.fecha_inicio) }
+    if (camp.fecha_fin)    { qVisitas = qVisitas.lte('created_at', camp.fecha_fin);    qLeads = qLeads.lte('created_at', camp.fecha_fin) }
+
+    const [rVisitas, rLeads, rVisitasDetalle, rLeadsDetalle] = await Promise.all([
+      qVisitas,
+      qLeads,
+      supabase.from('visitas').select('canal_ref').in('canal_ref', codigos).limit(10000),
+      supabase.from('contactos').select('canal_ref').in('canal_ref', codigos).limit(5000),
+    ])
+
+    // Scans por canal
+    const scansPorCodigo = {}
+    const leadsPorCodigo = {}
+    codigos.forEach(c => { scansPorCodigo[c] = 0; leadsPorCodigo[c] = 0 })
+    ;(rVisitasDetalle.data || []).forEach(v => { if (scansPorCodigo[v.canal_ref] !== undefined) scansPorCodigo[v.canal_ref]++ })
+    ;(rLeadsDetalle.data  || []).forEach(l => { if (leadsPorCodigo[l.canal_ref] !== undefined) leadsPorCodigo[l.canal_ref]++ })
+
+    const totalScans = Object.values(scansPorCodigo).reduce((a,b)=>a+b,0)
+    const totalLeads = Object.values(leadsPorCodigo).reduce((a,b)=>a+b,0)
+    const maxScans   = Math.max(1, ...Object.values(scansPorCodigo))
+
+    renderCampanaInfo(camp)
+    renderKPIs(camp, canales || [], totalScans, totalLeads)
+    renderMapa(canales || [], scansPorCodigo)
+    renderProvincias(canales || [], scansPorCodigo)
+    renderTabla(canales || [], scansPorCodigo, leadsPorCodigo, maxScans)
+
+    document.getElementById('rpTimestamp').textContent = 'Generado el ' + new Date().toLocaleString('es-AR')
+    document.getElementById('loadingState').style.display = 'none'
+    document.getElementById('appContent').style.display = 'block'
+  }
+
+  function estadoCampana(c) {
+    const now = new Date(), ini = c.fecha_inicio ? new Date(c.fecha_inicio) : null, fin = c.fecha_fin ? new Date(c.fecha_fin) : null
+    if (!c.activa) return 'finalizada'
+    if (ini && ini > now) return 'programada'
+    if (fin && fin < now) return 'finalizada'
+    return 'activa'
+  }
+
+  function renderCampanaInfo(camp) {
+    document.title = camp.nombre + ' — Sur Patagonia'
+    document.getElementById('rpNombre').textContent  = camp.nombre
+    document.getElementById('rpDesc').textContent    = camp.descripcion || ''
+    document.getElementById('rpInicio').textContent  = fmt(camp.fecha_inicio) || 'Inmediato'
+    document.getElementById('rpFin').textContent     = camp.fecha_fin ? fmt(camp.fecha_fin) : 'Sin vencimiento'
+    document.getElementById('rpDestino').textContent = camp.url_destino
+    const est = estadoCampana(camp)
+    const label = est === 'activa' ? 'Activa' : est === 'programada' ? 'Programada' : 'Finalizada'
+    document.getElementById('rpEstado').innerHTML = `<span class="estado-pill estado-${est}"><span class="estado-dot"></span>${label}</span>`
+  }
+
+  function renderKPIs(camp, canales, totalScans, totalLeads) {
+    const ciudades   = new Set(canales.map(c=>c.ciudad).filter(Boolean)).size
+    const provincias = new Set(canales.map(c=>c.provincia).filter(Boolean)).size
+    const conv = totalScans > 0 ? ((totalLeads/totalScans)*100).toFixed(1) : 0
+    document.getElementById('kScans').textContent      = totalScans.toLocaleString('es-AR')
+    document.getElementById('kLeads').textContent      = totalLeads.toLocaleString('es-AR')
+    document.getElementById('kCanales').textContent    = canales.length
+    document.getElementById('kCiudades').textContent   = ciudades
+    document.getElementById('kProvincias').textContent = provincias
+    document.getElementById('kConversion').textContent = conv + '%'
+  }
+
+  function renderMapa(canales, scansPorCodigo) {
+    const conCoords = canales.filter(c => c.latitud && c.longitud)
+    const centro = conCoords.length
+      ? [conCoords.reduce((s,c)=>s+c.latitud,0)/conCoords.length, conCoords.reduce((s,c)=>s+c.longitud,0)/conCoords.length]
+      : [-40.5, -68.5]
+
+    const mapa = L.map('mapaReporte', { zoomControl: true }).setView(centro, conCoords.length > 1 ? 6 : 9)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 19
+    }).addTo(mapa)
+
+    const mkIcon = scans => L.divIcon({
+      className: '',
+      html: `<div style="width:${scans>0?16:10}px;height:${scans>0?16:10}px;background:${scans>0?'#d76f3f':'#555'};border:2px solid ${scans>0?'rgba(215,111,63,.4)':'rgba(255,255,255,.2)'};border-radius:50%;"></div>`,
+      iconSize: [20, 20], iconAnchor: [10, 10]
+    })
+
+    conCoords.forEach(c => {
+      const scans = scansPorCodigo[c.codigo] || 0
+      L.marker([c.latitud, c.longitud], { icon: mkIcon(scans) })
+        .bindPopup(`<b style="color:#f5f3f0">${c.nombre}</b><br><span style="color:#888;font-size:11px">${[c.ciudad,c.provincia].filter(Boolean).join(', ')}</span><br><span style="color:#d76f3f;font-weight:700">${scans} scans</span>`)
+        .addTo(mapa)
+    })
+
+    if (conCoords.length > 1) {
+      const bounds = L.latLngBounds(conCoords.map(c=>[c.latitud,c.longitud]))
+      mapa.fitBounds(bounds, { padding: [40,40] })
+    }
+  }
+
+  function renderProvincias(canales, scansPorCodigo) {
+    const porProv = {}
+    canales.forEach(c => {
+      if (!c.provincia) return
+      if (!porProv[c.provincia]) porProv[c.provincia] = { canales: 0, scans: 0 }
+      porProv[c.provincia].canales++
+      porProv[c.provincia].scans += scansPorCodigo[c.codigo] || 0
+    })
+    const html = Object.entries(porProv)
+      .sort((a,b) => b[1].scans - a[1].scans)
+      .map(([prov, d]) => `<div class="prov-chip"><b>${d.scans}</b><span>${esc(prov)} · ${d.canales} punto${d.canales!==1?'s':''}</span></div>`)
+      .join('')
+    document.getElementById('provGrid').innerHTML = html || '<span style="color:var(--gris);font-size:.8rem;">Sin datos de provincia</span>'
+  }
+
+  function renderTabla(canales, scansPorCodigo, leadsPorCodigo, maxScans) {
+    const TIPO = { punto_venta:'Punto de venta', inmobiliaria:'Inmobiliaria', particular:'Particular', evento:'Evento' }
+    const sorted = [...canales].sort((a,b) => (scansPorCodigo[b.codigo]||0) - (scansPorCodigo[a.codigo]||0))
+    document.getElementById('tablaCanalesReporte').innerHTML = sorted.map(c => {
+      const scans = scansPorCodigo[c.codigo] || 0
+      const leads = leadsPorCodigo[c.codigo] || 0
+      const pct   = Math.round((scans / maxScans) * 100)
+      return `<tr>
+        <td><span class="canal-nombre-col">${esc(c.nombre)}</span><span class="canal-codigo-col">${esc(c.codigo)}</span></td>
+        <td><span class="tipo-badge tipo-${esc(c.tipo)}">${esc(TIPO[c.tipo]||c.tipo)}</span></td>
+        <td style="font-size:.72rem;color:var(--gris);">${[c.ciudad,c.provincia].filter(Boolean).map(esc).join(', ')||'—'}</td>
+        <td><span class="num-col">${scans}</span><span class="bar-wrap"><span class="bar-fill" style="width:${pct}%"></span></span></td>
+        <td><span class="num-col" style="color:var(--dorado)">${leads}</span></td>
+      </tr>`
+    }).join('')
+  }
+
+  function renderVacio() {
+    document.getElementById('kScans').textContent = '0'
+    document.getElementById('kLeads').textContent = '0'
+    document.getElementById('kCanales').textContent = '0'
+    document.getElementById('kCiudades').textContent = '0'
+    document.getElementById('kProvincias').textContent = '0'
+    document.getElementById('kConversion').textContent = '0%'
+    document.getElementById('tablaCanalesReporte').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--gris);">Sin canales asignados aún.</td></tr>'
+    document.getElementById('provGrid').innerHTML = ''
+    document.getElementById('mapaReporte').innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--gris);">Sin puntos con coordenadas</div>'
+  }
+</script>
+</body>
+</html>
