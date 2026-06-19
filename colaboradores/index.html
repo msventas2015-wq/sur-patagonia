@@ -50,6 +50,23 @@
     .header-right { display: flex; align-items: center; gap: 1rem; }
     .header-canal { font-size: .75rem; color: var(--gris); }
     .header-canal strong { color: var(--blanco); display: block; font-size: .82rem; }
+    .btn-refresh {
+      font-size:.63rem;
+      font-weight:600;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      padding:.36rem .88rem;
+      border-radius:999px;
+      border:1px solid rgba(100,149,237,.35);
+      background:rgba(100,149,237,.08);
+      color:#8fb2ff;
+      cursor:pointer;
+      font-family:inherit;
+      transition:all .18s;
+    }
+    .btn-refresh:hover { border-color:#6495ed; color:#fff; }
+    .btn-refresh:disabled { opacity:.5; cursor:wait; }
+    .sync-status { font-size:.63rem; color:var(--gris); min-width:92px; }
     .btn-salir {
       background: none;
       border: 1px solid var(--border);
@@ -253,6 +270,8 @@
   <div class="header-logo">SUR <span>PATAGONIA</span></div>
   <div class="header-right">
     <div class="header-canal" id="headerCanal"></div>
+    <button class="btn-refresh" id="btnRefresh" type="button" onclick="actualizarPanel()">Actualizar</button>
+    <span class="sync-status" id="syncStatus">—</span>
     <button class="btn-salir" onclick="salir()">Salir</button>
   </div>
 </header>
@@ -276,6 +295,13 @@
     location.href = 'login.html'
   }
 
+  function setSyncStatus(text) {
+    const el = document.getElementById('syncStatus')
+    if (el) el.textContent = text
+  }
+
+  window.actualizarPanel = () => cargarPanel()
+
   const esc  = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
   const fmt  = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
   const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
@@ -290,7 +316,12 @@
     return [...partes.slice(0, -1), codApellido].join(' ')
   }
 
-  ;(async () => {
+  async function cargarPanel() {
+    const btnRefresh = document.getElementById('btnRefresh')
+    if (btnRefresh) btnRefresh.disabled = true
+    setSyncStatus('Actualizando...')
+
+    try {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { location.href = 'login.html'; return }
 
@@ -303,6 +334,7 @@
     if (!canales?.length) {
       document.getElementById('mainContent').innerHTML =
         '<div class="empty-msg">No tenés canales asignados. Contactá a Sur Patagonia.</div>'
+      setSyncStatus('Sin canales')
       return
     }
 
@@ -603,7 +635,16 @@
       }
     }
 
-  })()
+      setSyncStatus('Actualizado ' + new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }))
+    } catch (err) {
+      console.error('Error al actualizar panel colaborador', err)
+      setSyncStatus('Error al actualizar')
+    } finally {
+      if (btnRefresh) btnRefresh.disabled = false
+    }
+  }
+
+  cargarPanel()
 </script>
 </body>
 </html>
