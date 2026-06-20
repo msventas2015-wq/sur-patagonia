@@ -340,6 +340,24 @@
     .pv-sec-titulo { color:var(--gris); font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
     .pv-sec-sub { margin-top:.35rem; color:rgba(255,255,255,.45); font-size:.66rem; }
     .pv-chart-wrap { position:relative; height:270px; }
+
+    /* ── GLM-5.2 · Curva de rendimiento ── */
+    .pv-rnd-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .pv-rnd-legend { display:flex; align-items:center; gap:1.1rem; flex-wrap:wrap; }
+    .pv-rnd-leg-item { display:inline-flex; align-items:center; gap:.45rem; color:rgba(255,255,255,.62); font-size:.66rem; letter-spacing:.04em; font-weight:500; }
+    .pv-rnd-leg-mark { width:18px; height:5px; border-radius:3px; }
+    .pv-rnd-leg-mark.solid { background:linear-gradient(90deg,#7aaeff,#5e92f5); box-shadow:0 0 7px rgba(122,174,255,.35); }
+    .pv-rnd-leg-mark.dashed { background:repeating-linear-gradient(90deg,#e8c96a 0 4px,transparent 4px 7px); }
+    .pv-rnd-leg-mark.conver { background:#6ee89a; box-shadow:0 0 7px rgba(110,232,154,.4); }
+    .pv-rnd-stats { display:flex; align-items:center; gap:.5rem; }
+    .pv-rnd-badge { display:inline-flex; align-items:center; gap:.3rem; padding:.32rem .7rem; border-radius:999px; font-size:.6rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; border:1px solid transparent; backdrop-filter:blur(4px); }
+    .pv-rnd-badge.up   { color:#6ee89a; background:rgba(110,232,154,.1); border-color:rgba(110,232,154,.3); }
+    .pv-rnd-badge.down { color:#e98b6a; background:rgba(233,139,106,.1); border-color:rgba(233,139,106,.3); }
+    .pv-rnd-badge.flat { color:rgba(255,255,255,.5); background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.14); }
+    .pv-rnd-peak { display:inline-flex; align-items:center; gap:.4rem; padding:.32rem .7rem; border-radius:999px; font-size:.58rem; font-weight:600; letter-spacing:.06em; color:#e8c96a; background:rgba(232,201,106,.08); border:1px solid rgba(232,201,106,.28); }
+    .pv-rnd-peak-dot { width:6px; height:6px; border-radius:50%; background:#e8c96a; box-shadow:0 0 7px rgba(232,201,106,.7); }
+    .pv-rnd-canvas-wrap { position:relative; height:320px; }
+    @media(max-width:560px){ .pv-rnd-canvas-wrap{height:260px}.pv-rnd-head{gap:.6rem}.pv-rnd-leg-item{font-size:.6rem}.pv-rnd-badge,.pv-rnd-peak{font-size:.55rem;padding:.26rem .55rem} }
     .pv-opt-label { font-size:.55rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.35); margin-bottom:.65rem; padding-bottom:.5rem; border-bottom:1px solid rgba(255,255,255,.06); }
     .pv-flt-bar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
     .pv-flt-btn { min-height:32px; padding:.36rem .88rem; border:1px solid rgba(255,255,255,.09); border-radius:8px; background:rgba(255,255,255,.05); color:rgba(255,255,255,.5); font:600 .63rem 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:all .2s; }
@@ -550,7 +568,7 @@
     const visitas    = rVisitas.data    || []
     const scans30    = rVisitas30.count || 0
     const contactos  = rContactos.data  || []
-    let _pvChart = null, _pvChart2 = null, _pvChart3 = null
+    let _pvChart = null, _pvChart2 = null, _pvChart3 = null, _pvChart4 = null
 
     // Filtrar mensajes para este usuario
     // Lógica: si usuario_id está → solo ese usuario
@@ -934,6 +952,11 @@
               <div class="pv-opt-label">Opción 3 — Barras + tendencia (ChatGPT)</div>
               <div class="pv-chart-wrap"><canvas id="pvChartEvol3"></canvas></div>
             </div>
+            <div>
+              <div class="pv-opt-label">Opción 4 — Curva de rendimiento (GLM-5.2)</div>
+              <div id="pvRndHead" class="pv-rnd-head"></div>
+              <div class="pv-rnd-canvas-wrap"><canvas id="pvChartEvol4"></canvas></div>
+            </div>
           </div>
         </div>
 
@@ -1162,6 +1185,172 @@
             scales: {
               x:{ grid:{display:false}, border:{display:false}, ticks:{color:'#666',maxRotation:0,autoSkip:true,font:{family:'Inter',size:10}} },
               y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.045)'}, border:{display:false}, ticks:{color:'#666',precision:0,padding:8,font:{family:'Inter',size:10}} }
+            }
+          }
+        })
+      }
+
+      // ── OPCIÓN 4: GLM-5.2 — Curva de rendimiento ───────────────────────
+      // Concepto: continuity-first area chart con media móvil de tendencia
+      // y marcado de pico. Pensado como dashboard de growth/SaaS premium.
+      if (_pvChart4) { _pvChart4.destroy(); _pvChart4 = null }
+
+      const s4 = (dataScans || []).map(v => Number(v) || 0)
+      const c4 = (dataConsultas || []).map(v => Number(v) || 0)
+      const n4 = s4.length
+
+      // Media móvil 3-puntos de interacciones → línea de tendencia
+      const ventana = Math.min(3, n4)
+      const trend4 = s4.map((_, i) => {
+        let ini = i - Math.floor(ventana / 2)
+        ini = Math.max(0, Math.min(ini, n4 - ventana))
+        let sum = 0
+        for (let k = 0; k < ventana; k++) sum += s4[ini + k]
+        return ventana > 0 ? sum / ventana : 0
+      })
+
+      // Pico de actividad total
+      const totalPorDia4 = s4.map((v, i) => v + c4[i])
+      const peakVal4 = Math.max(...totalPorDia4, 0)
+      const peakIdx4 = totalPorDia4.indexOf(peakVal4)
+
+      // Stats para la cabecera: tendencia comparando primer tercio vs último tercio
+      const tercio = Math.max(1, Math.floor(n4 / 3))
+      const pri4 = s4.slice(0, tercio).reduce((a, b) => a + b, 0)
+      const ult4 = s4.slice(n4 - tercio).reduce((a, b) => a + b, 0)
+      let deltaPct = null
+      if (pri4 > 0) deltaPct = Math.round((ult4 - pri4) / pri4 * 100)
+      else if (ult4 > 0) deltaPct = 100
+      const claseTend = deltaPct === null ? 'flat' : deltaPct > 0 ? 'up' : deltaPct < 0 ? 'down' : 'flat'
+      const flecha = claseTend === 'up' ? '↑' : claseTend === 'down' ? '↓' : '→'
+      const txtTend = deltaPct === null ? 'Sin historial' : `${flecha} ${Math.abs(deltaPct)}% tendencia`
+
+      const headEl = document.getElementById('pvRndHead')
+      if (headEl) {
+        const peakFecha = labelsEvol[peakIdx4] || '—'
+        headEl.innerHTML = `
+          <div class="pv-rnd-legend">
+            <span class="pv-rnd-leg-item"><span class="pv-rnd-leg-mark solid"></span>Interacciones</span>
+            <span class="pv-rnd-leg-item"><span class="pv-rnd-leg-mark dashed"></span>Tendencia</span>
+            <span class="pv-rnd-leg-item"><span class="pv-rnd-leg-mark conver"></span>Oportunidades</span>
+          </div>
+          <div class="pv-rnd-stats">
+            ${peakVal4 > 0 ? `<span class="pv-rnd-peak"><span class="pv-rnd-peak-dot"></span>Pico ${esc(String(peakFecha))}</span>` : ''}
+            <span class="pv-rnd-badge ${claseTend}">${txtTend}</span>
+          </div>`
+      }
+
+      const ctx4 = document.getElementById('pvChartEvol4')?.getContext('2d')
+      if (ctx4) {
+        _pvChart4 = new Chart(ctx4, {
+          type: 'line',
+          data: {
+            labels: labelsEvol,
+            datasets: [
+              {
+                // Interacciones: área sólida premium
+                label: 'Interacciones', data: s4, order: 3,
+                borderColor: '#7aaeff', borderWidth: 2.5,
+                cubicInterpolationMode: 'monotone', tension: 0.4, fill: true,
+                backgroundColor: (ctx) => {
+                  const { ctx: cc, chartArea } = ctx.chart
+                  if (!chartArea) return 'rgba(122,174,255,.3)'
+                  const g = cc.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+                  g.addColorStop(0, 'rgba(122,174,255,.42)')
+                  g.addColorStop(0.55, 'rgba(122,174,255,.14)')
+                  g.addColorStop(1, 'rgba(122,174,255,0)')
+                  return g
+                },
+                pointRadius: 0, pointHoverRadius: 6,
+                pointHoverBackgroundColor: '#7aaeff', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2,
+                spanGaps: true
+              },
+              {
+                // Tendencia: media móvil, línea punteada dorada (narrativa comercial)
+                label: 'Tendencia', data: trend4, order: 2,
+                borderColor: 'rgba(232,201,106,.85)', borderWidth: 2,
+                borderDash: [5, 4], cubicInterpolationMode: 'monotone', tension: 0.4,
+                fill: false, pointRadius: 0, pointHoverRadius: 5,
+                pointHoverBackgroundColor: '#e8c96a', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2,
+                spanGaps: true
+              },
+              {
+                // Oportunidades: línea verde con glow sobre picos
+                label: 'Oportunidades', data: c4, order: 1,
+                borderColor: '#6ee89a', borderWidth: 2.5,
+                cubicInterpolationMode: 'monotone', tension: 0.4, fill: false,
+                pointRadius: (ctx) => Number(ctx.raw) > 0 ? 3 : 0,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#0f0e0c', pointBorderColor: '#6ee89a', pointBorderWidth: 2,
+                pointHoverBackgroundColor: '#6ee89a', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2,
+                spanGaps: true
+              }
+            ]
+          },
+          plugins: [
+            // Banda del pico: resalta el día de mayor actividad total
+            {
+              id: 'pvPeakBand4',
+              beforeDatasetsDraw(chart) {
+                const { ctx: cc, chartArea, scales } = chart
+                if (!chartArea || peakVal4 <= 0 || !labelsEvol.length) return
+                const x = scales.x.getPixelForValue(peakIdx4)
+                const prevX = peakIdx4 > 0 ? scales.x.getPixelForValue(peakIdx4 - 1) : x - 28
+                const nextX = peakIdx4 < labelsEvol.length - 1 ? scales.x.getPixelForValue(peakIdx4 + 1) : x + 28
+                const w = Math.max(40, Math.min(x - prevX, nextX - x) * 1.5)
+                const g = cc.createLinearGradient(x - w / 2, 0, x + w / 2, 0)
+                g.addColorStop(0, 'rgba(232,201,106,0)')
+                g.addColorStop(0.5, 'rgba(232,201,106,.10)')
+                g.addColorStop(1, 'rgba(232,201,106,0)')
+                cc.save()
+                cc.fillStyle = g
+                cc.fillRect(x - w / 2, chartArea.top, w, chartArea.bottom - chartArea.top)
+                cc.setLineDash([3, 5])
+                cc.strokeStyle = 'rgba(232,201,106,.32)'
+                cc.lineWidth = 1
+                cc.beginPath()
+                cc.moveTo(x, chartArea.top)
+                cc.lineTo(x, chartArea.bottom)
+                cc.stroke()
+                cc.restore()
+              }
+            },
+            // Glow sutil en la línea de oportunidades
+            {
+              id: 'pvConvGlow4',
+              beforeDatasetDraw(chart, args) { if (args.index !== 2) return; chart.ctx.save(); chart.ctx.shadowColor = 'rgba(110,232,154,.5)'; chart.ctx.shadowBlur = 10 },
+              afterDatasetDraw(chart, args) { if (args.index !== 2) return; chart.ctx.restore() }
+            }
+          ],
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            animation: { duration: 900, easing: 'easeOutQuart' },
+            layout: { padding: { top: 16, right: 12, bottom: 4, left: 4 } },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                enabled: true, displayColors: true, usePointStyle: true, padding: 13, cornerRadius: 10, caretSize: 6,
+                backgroundColor: 'rgba(15,14,12,.97)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
+                titleColor: '#ffffff', bodyColor: 'rgba(255,255,255,.78)',
+                titleFont: { size: 12, weight: '600' }, bodyFont: { size: 12 },
+                filter: (item) => item.dataset.label !== 'Tendencia',
+                callbacks: {
+                  label(ctx) { return ` ${ctx.dataset.label}: ${Number(ctx.raw || 0).toLocaleString('es-AR')}` },
+                  footer(items) { const total = items.reduce((s, i) => s + Number(i.raw || 0), 0); return `Actividad total: ${total.toLocaleString('es-AR')}` }
+                }
+              }
+            },
+            scales: {
+              x: {
+                offset: true, border: { display: false }, grid: { display: false },
+                ticks: { color: 'rgba(255,255,255,.42)', maxRotation: 0, autoSkip: true, maxTicksLimit: 8, padding: 10, font: { size: 10, weight: '500' } }
+              },
+              y: {
+                beginAtZero: true, grace: '12%', border: { display: false },
+                grid: { color: 'rgba(255,255,255,.05)', drawTicks: false },
+                ticks: { color: 'rgba(255,255,255,.38)', precision: 0, padding: 10, font: { size: 10 }, callback: (v) => Number(v).toLocaleString('es-AR') }
+              }
             }
           }
         })
