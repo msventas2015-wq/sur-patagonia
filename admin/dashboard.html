@@ -108,6 +108,15 @@
     .badge-directo { background: rgba(150,150,150,.1);  color: #888; border: 1px solid rgba(255,255,255,.08); }
     .badge-nueva   { background: rgba(255,255,255,.08); color: var(--blanco); border: 1px solid rgba(255,255,255,.18); }
 
+    /* Tabla canales */
+    .canales-tabla { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .canales-tabla th { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris-claro); font-weight: 600; text-align: left; padding: 0 0.8rem 0.7rem; }
+    .canales-tabla td { padding: 0.75rem 0.8rem; border-top: 1px solid var(--card-border); color: #c8c5bf; }
+    .canales-tabla tr:hover td { background: rgba(255,255,255,0.02); }
+    .canal-nombre { font-weight: 600; color: var(--blanco); }
+    .canal-activo { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--c-verde); margin-right: 0.5rem; }
+    .conv-bar { display: inline-block; height: 4px; border-radius: 2px; background: var(--accent); opacity: 0.7; vertical-align: middle; margin-left: 0.5rem; }
+
     /* Propiedades recientes */
     .props-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.8rem; padding-bottom: 2rem; }
     .prop-card {
@@ -269,6 +278,25 @@
       </div>
     </div>
 
+    <!-- CANALES ACTIVOS -->
+    <div class="sec-header">
+      <h3>Canales activos — rendimiento 30 días</h3>
+      <a href="canales.html" class="sec-link">Ver todos →</a>
+    </div>
+    <div class="chart-card" style="margin-bottom:1.4rem; overflow-x:auto;">
+      <table class="canales-tabla">
+        <thead>
+          <tr>
+            <th>Canal</th>
+            <th style="text-align:right">Clics</th>
+            <th style="text-align:right">Leads</th>
+            <th style="text-align:right">Conversión</th>
+          </tr>
+        </thead>
+        <tbody id="tablaCanales"><tr><td colspan="4" style="color:var(--gris-claro);padding:1rem 0.8rem">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+
     <!-- ÚLTIMAS CONSULTAS -->
     <div class="sec-header">
       <h3>Últimas consultas</h3>
@@ -398,6 +426,48 @@ async function cargar() {
       datasets: [{ data: [qr, li, di], backgroundColor: ['#50c878','#6495ed','#5a5a55'], borderWidth: 0 }] },
     options: { cutout: '68%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } } }, maintainAspectRatio: false }
   })
+
+  // ── Canales activos — rendimiento 30 días ───────────────
+  const canalesActivos = canales.filter(c => c.activo)
+
+  const canalRefDeVisita = v => {
+    if (!v.canal_ref) return null
+    const porRef = canalPorRef[v.canal_ref]
+    if (porRef) return porRef
+    const directo = canales.find(k => v.canal_ref === k.codigo || v.canal_ref.startsWith(k.codigo + '-'))
+    return directo?.nombre || null
+  }
+
+  const clicksPorCanal = {}
+  const leadsPorCanal  = {}
+  canalesActivos.forEach(c => { clicksPorCanal[c.nombre] = 0; leadsPorCanal[c.nombre] = 0 })
+
+  v30.filter(v => v.canal_ref).forEach(v => {
+    const nombre = canalRefDeVisita(v)
+    if (nombre && clicksPorCanal[nombre] !== undefined) clicksPorCanal[nombre]++
+  })
+  l30.filter(l => l.canal_ref).forEach(l => {
+    const nombre = canalDe(l)
+    if (nombre && leadsPorCanal[nombre] !== undefined) leadsPorCanal[nombre]++
+  })
+
+  const filas = canalesActivos
+    .map(c => ({ nombre: c.nombre, clics: clicksPorCanal[c.nombre] || 0, leads: leadsPorCanal[c.nombre] || 0 }))
+    .sort((a, b) => b.clics - a.clics)
+
+  const maxClics = Math.max(...filas.map(f => f.clics), 1)
+  document.getElementById('tablaCanales').innerHTML = filas.length
+    ? filas.map(f => {
+        const conv = f.clics > 0 ? ((f.leads / f.clics) * 100).toFixed(1) : '—'
+        const barW = Math.round((f.clics / maxClics) * 60)
+        return `<tr>
+          <td><span class="canal-activo"></span><span class="canal-nombre">${esc(f.nombre)}</span></td>
+          <td style="text-align:right">${f.clics}<span class="conv-bar" style="width:${barW}px"></span></td>
+          <td style="text-align:right">${f.leads}</td>
+          <td style="text-align:right">${conv !== '—' ? conv + '%' : '—'}</td>
+        </tr>`
+      }).join('')
+    : '<tr><td colspan="4" style="color:var(--gris-claro)">Sin canales activos.</td></tr>'
 
   // ── Últimas consultas (6) ───────────────────────────────
   const ult = leads60.slice(0, 6)
