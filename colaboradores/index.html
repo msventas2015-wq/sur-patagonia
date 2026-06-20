@@ -457,20 +457,18 @@
     .pv-live-stat-n { font-size:1.15rem; font-weight:700; line-height:1; font-family:'Inter',sans-serif; }
     .pv-live-stat-n.blue { color:#9fc0ff; }
     .pv-live-stat-n.gold { color:#e8c96a; }
+    .pv-live-stat-n.com { color:#6ee89a; }
+    .pv-live-bar .pv-live-stat.com { padding-left:1rem; border-left:1px solid rgba(110,232,154,.18); }
     .pv-live-stat-l { font-size:.5rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.4); margin-top:.2rem; }
-    .pv-live-wrap { position:relative; height:270px; }
-    .pv-live-hint { font-size:.58rem; color:rgba(255,255,255,.4); margin:.85rem .2rem 0; line-height:1.5; }
+    .pv-live-hint { font-size:.58rem; color:rgba(255,255,255,.4); margin:.6rem .2rem 0; line-height:1.5; }
     .pv-live-hint strong { color:#e8c96a; font-weight:600; }
-    .pv-live-bar .pv-live-stat.com { margin-left:.4rem; padding-left:1rem; border-left:1px solid rgba(110,232,154,.18); }
-    .pv-live-bar .pv-live-stat-n.com { color:#6ee89a; }
-    .pv-mini-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; margin-top:1rem; }
-    .pv-mini-card { padding:.7rem .7rem .55rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:10px; background:linear-gradient(155deg,rgba(255,255,255,.04),rgba(255,255,255,.012)); }
-    .pv-mini-label { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:.4rem; }
-    .pv-mini-label span:first-child { font-size:.5rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.42); }
-    .pv-mini-label span:last-child { font-size:.74rem; font-weight:600; color:#e8c96a; }
-    .pv-mini-wrap { position:relative; height:60px; }
+    .pv-live-wrap { position:relative; height:270px; }
+    .pv4-rango { display:flex; align-items:flex-end; gap:.6rem; flex-wrap:wrap; margin:.4rem 0 1rem; padding:.7rem; border-radius:8px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); }
+    .pv4-rango label { display:flex; flex-direction:column; gap:.3rem; color:rgba(255,255,255,.4); font-size:.5rem; text-transform:uppercase; letter-spacing:.1em; }
+    .pv4-aplicar { min-height:31px; padding:.35rem 1rem; border:0; border-radius:7px; background:#6ee89a; color:#0c0e0c; font:700 .6rem 'Inter',sans-serif; cursor:pointer; }
+    .pv4-sub { font-size:.52rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.32); margin:1.8rem 0 .5rem; padding-bottom:.5rem; border-bottom:1px solid rgba(255,255,255,.06); }
     @media(max-width:560px){
-      .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.9rem}
+      .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.8rem}
     }
   </style>
 </head>
@@ -582,9 +580,8 @@
     const scans30    = rVisitas30.count || 0
     const contactos  = rContactos.data  || []
     let _pvChart = null, _pvChart2 = null, _pvChart3 = null
-    let _pvChart4 = null, _pvChart4a = null, _pvChart4b = null, _pvChart4c = null
-    let _pvLiveRAF = null   // loop de animación del "pulso en vivo" (opción 4)
-    let _pvLiveTimer = null // refresco automático minuto a minuto (opción 4)
+    let _pvChart4 = null, _pvChart4c = null   // Opción 4: sube/baja (4) + solo crece (4c)
+    let _pvLiveRAF = null
 
     // Filtrar mensajes para este usuario
     // Lógica: si usuario_id está → solo ese usuario
@@ -973,16 +970,16 @@
               <div id="pvLiveBar4" class="pv-live-bar">
                 <div class="pv-live-left">
                   <span class="pv-live-dot"></span>
-                  <span class="pv-live-tag">En vivo · minuto a minuto</span>
+                  <span class="pv-live-tag">En vivo</span>
                 </div>
                 <div class="pv-live-right">
                   <div class="pv-live-stat">
                     <div class="pv-live-stat-n blue" id="pvLiveScans4">0</div>
-                    <div class="pv-live-stat-l">Hoy · interacciones</div>
+                    <div class="pv-live-stat-l">Interacciones</div>
                   </div>
                   <div class="pv-live-stat">
                     <div class="pv-live-stat-n gold" id="pvLiveConsultas4">0</div>
-                    <div class="pv-live-stat-l">Hoy · consultas</div>
+                    <div class="pv-live-stat-l">Consultas</div>
                   </div>
                   <div class="pv-live-stat com">
                     <div class="pv-live-stat-n com" id="pvLiveComisiones4">0</div>
@@ -990,22 +987,16 @@
                   </div>
                 </div>
               </div>
-              <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
-              <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad de comisión</strong>: si compra una propiedad en los próximos 15 meses, cobrás. Mientras más registres, más chances de cobrar en el futuro.</div>
-              <div class="pv-mini-grid">
-                <div class="pv-mini-card">
-                  <div class="pv-mini-label"><span>Ayer</span><span id="pvMiniAyerN">0</span></div>
-                  <div class="pv-mini-wrap"><canvas id="pvMiniAyer"></canvas></div>
-                </div>
-                <div class="pv-mini-card">
-                  <div class="pv-mini-label"><span>Últimos 7 días</span><span id="pvMiniSemN">0</span></div>
-                  <div class="pv-mini-wrap"><canvas id="pvMiniSem"></canvas></div>
-                </div>
-                <div class="pv-mini-card">
-                  <div class="pv-mini-label"><span>Últimos 30 días</span><span id="pvMiniMesN">0</span></div>
-                  <div class="pv-mini-wrap"><canvas id="pvMiniMes"></canvas></div>
-                </div>
+              <div class="pv4-rango">
+                <label>Desde<input type="date" id="pv4Desde" class="pv-fecha-input"></label>
+                <label>Hasta<input type="date" id="pv4Hasta" class="pv-fecha-input"></label>
+                <button class="pv4-aplicar" onclick="pv4Aplicar()">Aplicar rango</button>
               </div>
+              <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad de comisión</strong>: si compra una propiedad en los próximos 15 meses, cobrás. Mientras más registres, más chances de cobrar en el futuro.</div>
+              <div class="pv4-sub">Actividad diaria — sube y baja</div>
+              <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
+              <div class="pv4-sub">Crecimiento de consultas — solo crece</div>
+              <div class="pv-live-wrap"><canvas id="pvChartEvol4c"></canvas></div>
             </div>
           </div>
         </div>
@@ -1240,109 +1231,67 @@
         })
       }
 
-      // ── OPCIÓN 4: Pulso en vivo (GLM-5.2) ────────────────────────────────
-      // Concepto: dato MINUTO A MINUTO de hoy (curva acumulada suave y no lineal),
-      // pulso radar "vivo" sobre el último punto + pico destacado (tensión/recompensa),
-      // contador en vivo arriba + mini gráficos (ayer / 7d / 30d).
-      // Refresco automático cada 30s → sensación de actividad en tiempo real.
-      if (_pvChart4) { _pvChart4.destroy(); _pvChart4 = null }
-      ;[_pvChart4a, _pvChart4b, _pvChart4c].forEach(ch => { if (ch) { ch.destroy() } })
-      _pvChart4a = _pvChart4b = _pvChart4c = null
+      // ════════════════════════════════════════════════════════════════════
+      // OPCIÓN 4 — Pulso en vivo (GLM-5.2)
+      //   (A) Actividad diaria: SUBE Y BAJA (curva suave, no lineal, picos/valles)
+      //   (B) Crecimiento de consultas: SOLO CRECE (acumulado)
+      //   Rango de fechas editable propio.
+      // ════════════════════════════════════════════════════════════════════
+      if (_pvChart4)  { _pvChart4.destroy();  _pvChart4  = null }
+      if (_pvChart4c) { _pvChart4c.destroy(); _pvChart4c = null }
       if (_pvLiveRAF) { cancelAnimationFrame(_pvLiveRAF); _pvLiveRAF = null }
-      if (_pvLiveTimer) { clearInterval(_pvLiveTimer); _pvLiveTimer = null }
 
+      // Rango editable (fallback: últimos 30 días)
+      const f4D = document.getElementById('pv4Desde')?.value
+      const f4H = document.getElementById('pv4Hasta')?.value
+      const hasta4 = f4H ? new Date(`${f4H}T23:59:59`) : new Date()
+      const desde4 = f4D ? new Date(`${f4D}T00:00:00`) : new Date(hasta4.getTime() - 29*86400000)
+
+      // Datos diarios reales (sube y baja)
+      const diasR = Math.max(1, Math.round((hasta4 - desde4) / 86400000) + 1)
+      const lblsR = [], scansR = [], consR = []
+      for (let i = 0; i < diasR; i++) {
+        const ini = new Date(desde4.getTime() + i*86400000); ini.setHours(0,0,0,0)
+        const fin = new Date(ini.getTime() + 86400000 - 1)
+        lblsR.push(ini.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
+        scansR.push(visitas.filter(v => { const d = new Date(v.created_at); return d >= ini && d <= fin }).length)
+        consR.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= ini && d <= fin }).length)
+      }
+      // Acumulado de consultas (solo crece)
+      const accCons = []; let run = 0
+      consR.forEach(v => { run += v; accCons.push(run) })
+
+      // Pico del período (tensión visual)
+      const totPorDia = scansR.map((s,i) => s + consR[i])
+      const peakVal = Math.max(...totPorDia, 0)
+      const peakIdx = peakVal > 0 ? totPorDia.indexOf(peakVal) : -1
+
+      const gradFill = (chart, rgb, top=0.5) => {
+        const { ctx: cc, chartArea } = chart.chart
+        if (!chartArea) return `rgba(${rgb},${top})`
+        const g = cc.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+        g.addColorStop(0, `rgba(${rgb},${top})`); g.addColorStop(0.5, `rgba(${rgb},${top*0.3})`); g.addColorStop(1, `rgba(${rgb},0)`)
+        return g
+      }
+
+      // ── (A) Sube y baja ──
       const ctx4 = document.getElementById('pvChartEvol4')?.getContext('2d')
       if (ctx4) {
-        // ── Bucketeo de HOY por minuto (resolución minuto a minuto) ──
-        const hoyB0 = new Date(); hoyB0.setHours(0,0,0,0)
-        const ahoraMin = new Date()
-        const minutosDelDia = ahoraMin.getHours()*60 + ahoraMin.getMinutes() + 1
-        const bucketScans = new Array(minutosDelDia).fill(0)
-        const bucketCons = new Array(minutosDelDia).fill(0)
-        const inHoy = (iso) => { const d = new Date(iso); return d >= hoyB0 && d <= ahoraMin }
-        visitas.forEach(v => { if (!inHoy(v.created_at)) return; const d = new Date(v.created_at); const m = d.getHours()*60 + d.getMinutes(); if (m < minutosDelDia) bucketScans[m]++ })
-        contactos.forEach(c => { if (!inHoy(c.created_at)) return; const d = new Date(c.created_at); const m = d.getHours()*60 + d.getMinutes(); if (m < minutosDelDia) bucketCons[m]++ })
-
-        // Acumulado suave (no lineal) → la línea siempre sube, con microvariaciones reales
-        const accScans = [], accConsultas = []
-        let rs = 0, rc = 0
-        bucketScans.forEach((v, i) => { rs += v; accScans.push(rs); rc += bucketCons[i]; accConsultas.push(rc) })
-
-        // Labels cada N minutos (para no saturar el eje)
-        const lbls = []
-        const step = minutosDelDia <= 360 ? 30 : minutosDelDia <= 720 ? 60 : 90
-        for (let m = 0; m < minutosDelDia; m += 1) {
-          const hh = String(Math.floor(m/60)).padStart(2,'0'), mm = String(m%60).padStart(2,'0')
-          lbls.push(m % step === 0 ? `${hh}:${mm}` : '')
-        }
-
-        // Pico de hoy (minuto con más actividad)
-        const totalPorMin = bucketScans.map((s,i) => s + bucketCons[i])
-        const peakVal = Math.max(...totalPorMin, 0)
-        const peakIdx = peakVal > 0 ? totalPorMin.indexOf(peakVal) : -1
-
-        const fmtMin = (m) => { const hh = String(Math.floor(m/60)).padStart(2,'0'); const mm = String(m%60).padStart(2,'0'); return `${hh}:${mm}` }
-
         _pvChart4 = new Chart(ctx4, {
           type: 'line',
-          data: {
-            labels: lbls,
-            datasets: [
-              {
-                label: 'Interacciones (acumulado)', data: accScans, order: 2,
-                borderColor: '#7aaeff', borderWidth: 2.5, tension: 0.4, fill: true,
-                cubicInterpolationMode: 'monotone',
-                backgroundColor: (c) => {
-                  const { ctx: cc, chartArea } = c.chart
-                  if (!chartArea) return 'rgba(122,174,255,.2)'
-                  const g = cc.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-                  g.addColorStop(0, 'rgba(122,174,255,.5)'); g.addColorStop(0.5, 'rgba(122,174,255,.16)'); g.addColorStop(1, 'rgba(122,174,255,0)')
-                  return g
-                },
-                pointRadius: 0, pointHoverRadius: 6,
-                pointHoverBackgroundColor: '#7aaeff', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2
-              },
-              {
-                label: 'Consultas (acumulado)', data: accConsultas, order: 1,
-                borderColor: '#e8c96a', borderWidth: 3, tension: 0.4, fill: false,
-                cubicInterpolationMode: 'monotone', spanGaps: true,
-                pointRadius: 0, pointHoverRadius: 7,
-                pointBackgroundColor: '#0c0c0e', pointBorderColor: '#e8c96a', pointBorderWidth: 2,
-                pointHoverBackgroundColor: '#e8c96a', pointHoverBorderColor: '#fff4c4', pointHoverBorderWidth: 3
-              }
-            ]
-          },
+          data: { labels: lblsR, datasets: [
+            { label: 'Interacciones', data: scansR, order: 2,
+              borderColor: '#7aaeff', borderWidth: 2.5, tension: 0.4, fill: true, cubicInterpolationMode: 'monotone',
+              backgroundColor: (c) => gradFill(c, '122,174,255', 0.5),
+              pointRadius: 0, pointHoverRadius: 6, pointHoverBackgroundColor: '#7aaeff', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2 },
+            { label: 'Consultas', data: consR, order: 1,
+              borderColor: '#e8c96a', borderWidth: 3, tension: 0.4, fill: true, cubicInterpolationMode: 'monotone', spanGaps: true,
+              backgroundColor: (c) => gradFill(c, '232,201,106', 0.35),
+              pointRadius: 0, pointHoverRadius: 7, pointBackgroundColor: '#0c0c0e', pointBorderColor: '#e8c96a', pointBorderWidth: 2,
+              pointHoverBackgroundColor: '#e8c96a', pointHoverBorderColor: '#fff4c4', pointHoverBorderWidth: 3 }
+          ]},
           plugins: [
-            {
-              // Pulso radar "vivo" sobre el último punto de cada serie
-              id: 'pvLivePulse4',
-              afterDatasetsDraw(chart) {
-                const { ctx: c, data } = chart
-                const t = (Date.now() % 1600) / 1600
-                const pulse = (1 - t) * 14
-                const alpha = (1 - t) * 0.55
-                const lastIdx = (data.labels || []).length - 1
-                if (lastIdx < 0) return
-                const drawPulse = (di, color) => {
-                  const meta = chart.getDatasetMeta(di)
-                  if (!meta || !meta.data || !meta.data.length) return
-                  const pt = meta.data[lastIdx]
-                  if (!pt) return
-                  c.save()
-                  c.beginPath(); c.arc(pt.x, pt.y, pulse, 0, Math.PI*2)
-                  c.strokeStyle = color.replace('ALPHA', alpha.toFixed(3)); c.lineWidth = 1.5; c.stroke()
-                  c.beginPath(); c.arc(pt.x, pt.y, 4, 0, Math.PI*2)
-                  c.fillStyle = color.replace('ALPHA', '1'); c.shadowColor = color.replace('ALPHA', '.8'); c.shadowBlur = 12; c.fill()
-                  c.restore()
-                }
-                drawPulse(0, 'rgba(122,174,255,ALPHA)')
-                drawPulse(1, 'rgba(232,201,106,ALPHA)')
-              }
-            },
-            {
-              // Tensión visual: marca vertical + halo dorado en el pico del día
-              id: 'pvPeakMark4',
-              beforeDatasetsDraw(chart) {
+            { id: 'pvPeakMark4', beforeDatasetsDraw(chart) {
                 const { ctx: c, chartArea, scales } = chart
                 if (!chartArea || peakIdx < 0) return
                 const x = scales.x.getPixelForValue(peakIdx)
@@ -1352,106 +1301,67 @@
                 c.save(); c.fillStyle = g; c.fillRect(x-40, chartArea.top, 80, chartArea.bottom-chartArea.top)
                 c.beginPath(); c.setLineDash([4,6]); c.strokeStyle='rgba(232,201,106,.35)'; c.lineWidth=1
                 c.moveTo(x, chartArea.top); c.lineTo(x, chartArea.bottom); c.stroke(); c.restore()
-              }
-            },
-            {
-              id: 'pvGoldGlow4',
-              beforeDatasetDraw(chart, args) { if (args.index !== 1) return; chart.ctx.save(); chart.ctx.shadowColor = 'rgba(232,201,106,.5)'; chart.ctx.shadowBlur = 10 },
-              afterDatasetDraw(chart, args) { if (args.index !== 1) return; chart.ctx.restore() }
-            }
+            }},
+            { id: 'pvGoldGlow4', beforeDatasetDraw(chart, args) { if (args.index !== 1) return; chart.ctx.save(); chart.ctx.shadowColor = 'rgba(232,201,106,.5)'; chart.ctx.shadowBlur = 10 },
+                          afterDatasetDraw(chart, args)  { if (args.index !== 1) return; chart.ctx.restore() } }
           ],
           options: {
-            responsive: true, maintainAspectRatio: false,
-            animation: { duration: 900, easing: 'easeOutQuart' },
-            interaction: { mode: 'index', intersect: false },
-            layout: { padding: { top: 14, right: 16, bottom: 2, left: 2 } },
+            responsive: true, maintainAspectRatio: false, animation: { duration: 900, easing: 'easeOutQuart' },
+            interaction: { mode: 'index', intersect: false }, layout: { padding: { top: 14, right: 16, bottom: 2, left: 2 } },
             plugins: {
-              legend: {
-                position: 'top', align: 'end',
-                labels: { color: 'rgba(255,255,255,.7)', usePointStyle: true, pointStyle: 'circle', boxWidth: 7, boxHeight: 7, padding: 16, font: { size: 11, weight: '500', family: 'Inter' } }
-              },
-              tooltip: {
-                enabled: true, displayColors: true, usePointStyle: true, padding: 12, cornerRadius: 10, caretSize: 6,
-                backgroundColor: 'rgba(18,18,21,.96)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
-                titleColor: '#fff', bodyColor: 'rgba(255,255,255,.76)',
-                titleFont: { size: 12, weight: '600' }, bodyFont: { size: 12 },
-                callbacks: {
-                  title(items) { const i = items[0]?.dataIndex || 0; return fmtMin(i) },
-                  label(ctx) { return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` }
-                }
-              }
+              legend: { position: 'top', align: 'end', labels: { color: 'rgba(255,255,255,.7)', usePointStyle: true, pointStyle: 'circle', boxWidth: 7, boxHeight: 7, padding: 16, font: { size: 11, weight: '500', family: 'Inter' } } },
+              tooltip: { enabled: true, displayColors: true, usePointStyle: true, padding: 12, cornerRadius: 10, caretSize: 6,
+                backgroundColor: 'rgba(18,18,21,.96)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1, titleColor: '#fff', bodyColor: 'rgba(255,255,255,.76)', titleFont: { size: 12, weight: '600' }, bodyFont: { size: 12 },
+                callbacks: { label(ctx) { return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } } }
             },
             scales: {
-              x: { offset: true, border: { display: false }, grid: { display: false },
-                   ticks: { color: 'rgba(255,255,255,.4)', maxRotation: 0, autoSkip: false, padding: 10, font: { size: 10, family: 'Inter' }, callback: (v,i) => lbls[i] || '' } },
-              y: { beginAtZero: true, grace: '8%', border: { display: false },
-                   grid: { color: 'rgba(255,255,255,.05)', drawTicks: false },
-                   ticks: { color: 'rgba(255,255,255,.35)', precision: 0, padding: 10, font: { size: 10, family: 'Inter' }, callback: (v) => Number(v).toLocaleString('es-AR') } }
+              x: { offset: true, border: { display: false }, grid: { display: false }, ticks: { color: 'rgba(255,255,255,.4)', maxRotation: 0, autoSkip: true, maxTicksLimit: 10, padding: 10, font: { size: 10, family: 'Inter' } } },
+              y: { beginAtZero: true, grace: '8%', border: { display: false }, grid: { color: 'rgba(255,255,255,.05)', drawTicks: false }, ticks: { color: 'rgba(255,255,255,.35)', precision: 0, padding: 10, font: { size: 10, family: 'Inter' }, callback: (v) => Number(v).toLocaleString('es-AR') } }
             }
           }
         })
-
-        // ── Mini gráficos (ayer / 7d / 30d) ──
-        const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
-        const ayer0 = new Date(hoy0 - 86400000), ayerFin = new Date(hoy0 - 1)
-        const sem0 = new Date(hoy0 - 7*86400000), mes0 = new Date(hoy0 - 30*86400000)
-        const enRango = (iso, a, b) => { const d = new Date(iso); return d >= a && d <= b }
-        const accPorDia = (arr, desde, hasta) => {
-          const dias = Math.max(1, Math.round((hasta - desde) / 86400000) + 1)
-          const out = new Array(dias).fill(0)
-          arr.forEach(x => { if (!enRango(x.created_at, desde, hasta)) return; const idx = Math.floor((new Date(x.created_at) - desde) / 86400000); if (idx >= 0 && idx < dias) out[idx]++ })
-          let run = 0; return out.map(v => { run += v; return run })
-        }
-        const miniCfg = (data, color) => ({
-          type: 'line',
-          data: { labels: data.map((_,i) => i), datasets: [{ data, borderColor: color, borderWidth: 2, tension: 0.4, fill: true, pointRadius: 0, cubicInterpolationMode: 'monotone',
-            backgroundColor: (c) => { const { ctx: cc, chartArea } = c.chart; if (!chartArea) return 'rgba(232,201,106,.1)'; const g = cc.createLinearGradient(0, chartArea.top, 0, chartArea.bottom); g.addColorStop(0, color.replace('1)','0.4)')); g.addColorStop(1, color.replace('1)','0)')); return g } }] },
-          options: { responsive: true, maintainAspectRatio: false, animation: { duration: 600 }, plugins: { legend: { display: false }, tooltip: { enabled: false } },
-            scales: { x: { display: false }, y: { display: false } } }
-        })
-        const dAyerS = accPorDia(visitas, ayer0, ayerFin), dAyerC = accPorDia(contactos, ayer0, ayerFin)
-        const semAll = (() => { const dias = 7; const outS = new Array(dias).fill(0), outC = new Array(dias).fill(0)
-          visitas.forEach(v => { if (!enRango(v.created_at, sem0, new Date())) return; const i = Math.floor((new Date(v.created_at) - sem0)/86400000); if (i>=0&&i<dias) outS[i]++ })
-          contactos.forEach(c => { if (!enRango(c.created_at, sem0, new Date())) return; const i = Math.floor((new Date(c.created_at) - sem0)/86400000); if (i>=0&&i<dias) outC[i]++ })
-          let rs2=0, rc2=0; return { s: outS.map(v=>{rs2+=v;return rs2}), c: outC.map(v=>{rc2+=v;return rc2}) } })()
-        const mesAll = (() => { const dias = 30; const outS = new Array(dias).fill(0), outC = new Array(dias).fill(0)
-          visitas.forEach(v => { if (!enRango(v.created_at, mes0, new Date())) return; const i = Math.floor((new Date(v.created_at) - mes0)/86400000); if (i>=0&&i<dias) outS[i]++ })
-          contactos.forEach(c => { if (!enRango(c.created_at, mes0, new Date())) return; const i = Math.floor((new Date(c.created_at) - mes0)/86400000); if (i>=0&&i<dias) outC[i]++ })
-          let rs2=0, rc2=0; return { s: outS.map(v=>{rs2+=v;return rs2}), c: outC.map(v=>{rc2+=v;return rc2}) } })()
-
-        const ca = document.getElementById('pvMiniAyer')?.getContext('2d')
-        const cb = document.getElementById('pvMiniSem')?.getContext('2d')
-        const cc = document.getElementById('pvMiniMes')?.getContext('2d')
-        if (ca) _pvChart4a = new Chart(ca, miniCfg(dAyerS.map((s,i)=>s+dAyerC[i]), 'rgba(232,201,106,1)'))
-        if (cb) _pvChart4b = new Chart(cb, miniCfg(semAll.s.map((s,i)=>s+semAll.c[i]), 'rgba(122,174,255,1)'))
-        if (cc) _pvChart4c = new Chart(cc, miniCfg(mesAll.s.map((s,i)=>s+mesAll.c[i]), 'rgba(110,232,154,1)'))
-
-        // Números de los mini cards (total del período)
-        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v.toLocaleString('es-AR') }
-        setText('pvMiniAyerN', (dAyerS[dAyerS.length-1]||0) + (dAyerC[dAyerC.length-1]||0))
-        setText('pvMiniSemN', (semAll.s[semAll.s.length-1]||0) + (semAll.c[semAll.c.length-1]||0))
-        setText('pvMiniMesN', (mesAll.s[mesAll.s.length-1]||0) + (mesAll.c[mesAll.c.length-1]||0))
-
-        // ── Loop de animación del pulso (independiente) ──
         const loopLive = () => { if (_pvChart4 && _pvChart4.canvas) { _pvChart4.draw(); _pvLiveRAF = requestAnimationFrame(loopLive) } else { _pvLiveRAF = null } }
         setTimeout(() => { if (_pvChart4 && !_pvLiveRAF) loopLive() }, 950)
-
-        // ── Contadores "en vivo" de HOY + comisiones activas ──
-        const refrescarContadores = () => {
-          const hoy = new Date(); hoy.setHours(0,0,0,0)
-          const scansHoy = visitas.filter(v => new Date(v.created_at) >= hoy).length
-          const consultasHoy = contactos.filter(v => new Date(v.created_at) >= hoy).length
-          setText('pvLiveScans4', scansHoy)
-          setText('pvLiveConsultas4', consultasHoy)
-          setText('pvLiveComisiones4', contactos.length) // cada contacto = chance de comisión
-        }
-        refrescarContadores()
-
-        // ── Refresco automático cada 30s (re-dibuja el "hoy" con datos nuevos) ──
-        _pvLiveTimer = setInterval(() => {
-          renderGraficoPasivo(contactos, dias, desdeCustom, hastaCustom)
-        }, 30000)
       }
+
+      // ── (B) Solo crece ──
+      const ctx4c = document.getElementById('pvChartEvol4c')?.getContext('2d')
+      if (ctx4c) {
+        _pvChart4c = new Chart(ctx4c, {
+          type: 'line',
+          data: { labels: lblsR, datasets: [
+            { label: 'Consultas acumuladas (crecimiento)', data: accCons, order: 1,
+              borderColor: '#6ee89a', borderWidth: 3, tension: 0.4, fill: true, cubicInterpolationMode: 'monotone', spanGaps: true,
+              backgroundColor: (c) => gradFill(c, '110,232,154', 0.4),
+              pointRadius: 0, pointHoverRadius: 7, pointBackgroundColor: '#0c0c0e', pointBorderColor: '#6ee89a', pointBorderWidth: 2,
+              pointHoverBackgroundColor: '#6ee89a', pointHoverBorderColor: '#c4ffd4', pointHoverBorderWidth: 3 }
+          ]},
+          plugins: [
+            { id: 'pvGreenGlow4c', beforeDatasetDraw(chart, args) { if (args.index !== 0) return; chart.ctx.save(); chart.ctx.shadowColor = 'rgba(110,232,154,.45)'; chart.ctx.shadowBlur = 12 },
+                           afterDatasetDraw(chart, args)  { if (args.index !== 0) return; chart.ctx.restore() } }
+          ],
+          options: {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 900, easing: 'easeOutQuart' },
+            interaction: { mode: 'index', intersect: false }, layout: { padding: { top: 14, right: 16, bottom: 2, left: 2 } },
+            plugins: {
+              legend: { position: 'top', align: 'end', labels: { color: 'rgba(255,255,255,.7)', usePointStyle: true, pointStyle: 'circle', boxWidth: 7, boxHeight: 7, padding: 16, font: { size: 11, weight: '500', family: 'Inter' } } },
+              tooltip: { enabled: true, displayColors: true, usePointStyle: true, padding: 12, cornerRadius: 10, caretSize: 6,
+                backgroundColor: 'rgba(18,18,21,.96)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1, titleColor: '#fff', bodyColor: 'rgba(255,255,255,.76)', titleFont: { size: 12, weight: '600' }, bodyFont: { size: 12 },
+                callbacks: { label(ctx) { return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } } }
+            },
+            scales: {
+              x: { offset: true, border: { display: false }, grid: { display: false }, ticks: { color: 'rgba(255,255,255,.4)', maxRotation: 0, autoSkip: true, maxTicksLimit: 10, padding: 10, font: { size: 10, family: 'Inter' } } },
+              y: { beginAtZero: true, grace: '8%', border: { display: false }, grid: { color: 'rgba(255,255,255,.05)', drawTicks: false }, ticks: { color: 'rgba(255,255,255,.35)', precision: 0, padding: 10, font: { size: 10, family: 'Inter' }, callback: (v) => Number(v).toLocaleString('es-AR') } }
+            }
+          }
+        })
+      }
+
+      // Contadores del rango
+      const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v.toLocaleString('es-AR') }
+      setText('pvLiveScans4', scansR.reduce((a,b)=>a+b,0))
+      setText('pvLiveConsultas4', consR.reduce((a,b)=>a+b,0))
+      setText('pvLiveComisiones4', accCons.length ? accCons[accCons.length-1] : 0)
     }
 
     window.pvSetPeriodo = function(btn) {
@@ -1469,6 +1379,15 @@
       if (!desde || !hasta) { alert('Seleccioná una fecha desde y una fecha hasta.'); return }
       if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
       renderGraficoPasivo(contactos, 30, desde, hasta)
+    }
+
+    // Aplicar el rango editable propio de la Opción 4
+    window.pv4Aplicar = function() {
+      const d = document.getElementById('pv4Desde')?.value
+      const h = document.getElementById('pv4Hasta')?.value
+      if (!d || !h) { alert('Seleccioná una fecha desde y una fecha hasta.'); return }
+      if (d > h) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
+      renderGraficoPasivo(contactos, 30, d, h)
     }
 
     function renderActivo(contactos) {
