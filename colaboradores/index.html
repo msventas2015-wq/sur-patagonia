@@ -4,6 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mi Panel — Sur Patagonia Colaboradores</title>
+  <link rel="manifest" href="/colaboradores/manifest.json">
+  <meta name="theme-color" content="#0f0e0c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sur Patagonia">
+  <link rel="apple-touch-icon" href="/assets/app-icon-180.png">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/colaboradores/sw.js', { scope: '/colaboradores/' });
+      });
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -31,22 +45,32 @@
 
     /* Header */
     .header {
-      background: rgba(12,12,14,.96);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      background: var(--card);
       border-bottom: 1px solid var(--border);
-      padding: .85rem 2rem;
+      padding: 1rem 1.6rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
       position: sticky;
       top: 0;
-      z-index: 100;
+      z-index: 10;
     }
-    .header-brand { display:flex; flex-direction:column; align-items:flex-start; gap:.15rem; }
-    .header-brand img { width:154px; height:auto; filter:brightness(0) invert(1); opacity:.92; }
-    .header-brand span { color:rgba(255,255,255,.3); font-size:.48rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; }
+    .header-brand { display:flex; flex-direction:row; align-items:center; gap:.9rem; }
+    .header-brand img { width:240px; height:auto; filter:brightness(0) invert(1); opacity:.96; }
+    .header-brand span { color:rgba(255,255,255,.45); font-size:.52rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; padding-left:.9rem; border-left:1px solid rgba(255,255,255,.12); }
+    .sp-bg-brand {
+      position: fixed;
+      bottom: 6vh; left: 0; right: 0;
+      height: 65vh;
+      background: url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52% / cover no-repeat;
+      filter: grayscale(1) brightness(0.75);
+      opacity: .18;
+      pointer-events: none;
+      z-index: 9;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
+    }
     .header-right { display: flex; align-items: center; gap: 1rem; }
     .header-canal { font-size: .75rem; color: var(--gris); }
     .header-canal strong { color: var(--blanco); display: block; font-size: .82rem; }
@@ -66,54 +90,20 @@
     /* Main */
     .main { max-width: 900px; margin: 0 auto; padding: 2rem 1.4rem; }
 
-    /* Hero pasivo */
-    .pasivo-hero {
-      position: relative; overflow: hidden;
-      padding: 2rem 2.2rem 1.8rem;
-      margin-bottom: 1rem;
-      border: 1px solid rgba(201,168,76,.18);
-      border-top: 1px solid rgba(201,168,76,.48);
-      border-radius: 14px;
-      background:
-        radial-gradient(circle at 92% 20%, rgba(215,111,63,.1), transparent 32%),
-        linear-gradient(135deg, rgba(201,168,76,.09), rgba(255,255,255,.01) 60%),
-        #11100e;
+    .bienvenida { margin-bottom: 1.8rem; }
+    .bienvenida h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.9rem;
+      font-weight: 300;
+      margin-bottom: .3rem;
     }
-    .pasivo-hero::after {
-      content: ''; position: absolute; inset: auto 0 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,.4), transparent);
-    }
-    .pasivo-eyebrow {
-      font-size: .55rem; font-weight: 700; letter-spacing: .24em;
-      text-transform: uppercase; color: #c9a84c; margin-bottom: .6rem;
-    }
-    .pasivo-titulo {
-      font-family: 'Inter', system-ui, sans-serif;
-      font-size: clamp(1.8rem, 4vw, 2.8rem);
-      font-weight: 800; letter-spacing: -.03em; line-height: 1;
-      text-transform: uppercase;
-      background: linear-gradient(120deg, #ffffff 0%, rgba(255,255,255,.6) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      margin-bottom: .4rem;
-    }
-    .pasivo-geo {
-      font-size: .61rem; color: rgba(255,255,255,.3);
-      letter-spacing: .14em; text-transform: uppercase; margin-top: .4rem;
-    }
-    .pasivo-status {
-      display: flex; align-items: center; gap: .5rem; margin-top: .9rem;
-      font-size: .61rem; font-weight: 600; letter-spacing: .08em;
-      text-transform: uppercase; color: rgba(255,255,255,.45);
-    }
+    .bienvenida p { font-size: .76rem; color: var(--gris); }
 
     /* Estado QR */
     .qr-status {
-      background: linear-gradient(160deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,.02) 100%);
-      border: 1px solid rgba(255,255,255,.07);
-      border-top: 1px solid rgba(255,255,255,.12);
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 14px;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
       padding: 1rem 1.3rem;
       display: flex;
       align-items: center;
@@ -138,28 +128,16 @@
       margin-bottom: 1.2rem;
     }
     .kpi {
-      background: linear-gradient(135deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.02) 100%);
-      border: 1px solid rgba(255,255,255,.08);
-      border-top: 1px solid rgba(255,255,255,.14);
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 14px;
       padding: 1.1rem 1.2rem;
-      position: relative;
-      overflow: hidden;
     }
-    .kpi::before { content:''; position:absolute; left:0; top:20%; bottom:20%; width:2px; background:linear-gradient(to bottom,transparent,var(--c,#c9a84c),transparent); border-radius:99px; }
-    .kpi-grid .kpi:nth-child(1) { --c:#6495ed; }
-    .kpi-grid .kpi:nth-child(2) { --c:#89b4f7; }
-    .kpi-grid .kpi:nth-child(3) { --c:#c9a84c; }
-    .kpi-grid .kpi:nth-child(4) { --c:#50c878; }
     .kpi-n {
-      font-size: 2.45rem;
-      font-weight: 300;
+      font-size: 2rem;
+      font-weight: 700;
       line-height: 1;
       margin-bottom: .3rem;
-      background: linear-gradient(135deg, #fff, rgba(255,255,255,.7));
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
     }
     .kpi-n.accent { color: var(--accent); }
     .kpi-n.dorado { color: var(--dorado); }
@@ -169,14 +147,11 @@
 
     /* Sección */
     .seccion {
-      background: linear-gradient(160deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,.02) 100%);
-      border: 1px solid rgba(255,255,255,.07);
-      border-top: 1px solid rgba(255,255,255,.12);
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 14px;
       padding: 1.3rem 1.4rem;
       margin-bottom: 1.2rem;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
     }
     .sec-titulo {
       font-size: .6rem;
@@ -296,13 +271,13 @@
 
     /* ── Panel de impacto del aliado ── */
     .main.pv-main { max-width:1220px; padding-top:1.5rem; }
-    .pv-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:2rem; min-height:230px; padding:2.4rem 2.2rem; margin-bottom:.75rem; border:1px solid rgba(201,168,76,.18); border-top-color:rgba(201,168,76,.52); border-radius:14px; background:radial-gradient(circle at 88% 20%,rgba(215,111,63,.13),transparent 34%),linear-gradient(135deg,rgba(201,168,76,.1),rgba(255,255,255,.015) 58%),#11100e; }
+    .pv-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:2rem; min-height:230px; padding:2.4rem 2.2rem; margin-bottom:.75rem; border:1px solid rgba(201,168,76,.18); border-top-color:rgba(201,168,76,.52); border-radius:14px; background:radial-gradient(circle at 88% 20%,rgba(215,111,63,.13),transparent 34%),linear-gradient(135deg,rgba(201,168,76,.1),rgba(255,255,255,.015) 58%),#11100e; }
     .pv-hero::after { content:''; position:absolute; inset:auto 0 0; height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,.45),transparent); }
-    .pv-hero-eyebrow { margin-bottom:.65rem; color:#c9a84c; font-size:.55rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; }
-    .pv-hero-hola { color:#f5f3f0; font-family:'Cormorant Garamond',serif; font-size:clamp(2.1rem,4vw,3.35rem); font-weight:300; line-height:1.02; }
-    .pv-hero-hola strong { font-weight:400; }
-    .pv-hero-impacto { max-width:650px; margin-top:.8rem; color:rgba(255,255,255,.58); font-size:.86rem; line-height:1.65; }
-    .pv-hero-geo { margin-top:.75rem; color:rgba(255,255,255,.3); font-size:.61rem; letter-spacing:.14em; text-transform:uppercase; }
+    .pv-hero-eyebrow { margin-bottom:1.1rem; color:#c9a84c; font-size:.55rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; }
+    .pv-hero-hola { color:rgba(255,255,255,.45); font-family:'Inter',sans-serif; font-size:.82rem; font-weight:300; line-height:1.1; letter-spacing:.04em; }
+    .pv-hero-hola strong { display:block; font-family:'Inter',sans-serif; font-size:2rem; font-weight:700; color:#f5f3f0; letter-spacing:-.02em; line-height:1.05; margin-top:.25rem; }
+    .pv-hero-impacto { max-width:560px; margin-top:1.1rem; color:rgba(255,255,255,.52); font-size:.83rem; line-height:1.65; }
+    .pv-hero-geo { display:none; }
     .pv-identity { display:flex; flex-direction:column; align-items:center; gap:.85rem; min-width:150px; }
     .pv-monogram { width:82px; height:82px; display:grid; place-items:center; border:1px solid rgba(201,168,76,.32); border-radius:50%; background:rgba(201,168,76,.07); color:#e8c96a; font-family:'Cormorant Garamond',serif; font-size:1.75rem; letter-spacing:.08em; box-shadow:0 0 32px rgba(201,168,76,.08); }
     .pv-monogram-mobile { display:none; }
@@ -331,34 +306,52 @@
     .pv-sec-sub { margin-top:.35rem; color:rgba(255,255,255,.28); font-size:.66rem; }
     .pv-chart-wrap { position:relative; height:270px; }
     .pv-flt-bar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
-    .pv-flt-btn { min-height:30px; padding:.32rem .65rem; border:1px solid rgba(255,255,255,.09); border-radius:7px; background:rgba(255,255,255,.025); color:rgba(255,255,255,.4); font:600 .58rem 'Inter',sans-serif; cursor:pointer; transition:all .2s; }
-    .pv-flt-btn:hover { border-color:rgba(201,168,76,.35); color:var(--dorado); background:rgba(201,168,76,.06); }
+    .pv-flt-btn { min-height:30px; padding:.32rem .65rem; border:1px solid rgba(255,255,255,.09); border-radius:7px; background:rgba(255,255,255,.025); color:rgba(255,255,255,.4); font:600 .58rem 'Inter',sans-serif; cursor:pointer; }
     .pv-flt-btn.activo { border-color:rgba(201,168,76,.42); background:rgba(201,168,76,.11); color:#e8c96a; }
     .pv-flt-custom { display:flex; align-items:flex-end; justify-content:flex-end; gap:.55rem; margin:0 0 1rem; padding:.7rem; border-top:1px solid rgba(255,255,255,.05); }
     .pv-flt-custom label { display:flex; flex-direction:column; gap:.3rem; color:rgba(255,255,255,.3); font-size:.55rem; text-transform:uppercase; letter-spacing:.09em; }
     .pv-fecha-input { padding:.38rem .5rem; border:1px solid rgba(255,255,255,.1); border-radius:7px; background:rgba(255,255,255,.04); color:#f5f3f0; color-scheme:dark; font:500 .67rem 'Inter',sans-serif; }
     .pv-aplicar { min-height:31px; padding:.35rem .75rem; border:0; border-radius:7px; background:#c9a84c; color:#15130e; font:700 .6rem 'Inter',sans-serif; cursor:pointer; }
     .pv-impact-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:1rem; margin-bottom:1rem; }
-    .pv-funnel-sec { margin-bottom:0; }
-    .pv-funnel { display:flex; flex-direction:column; gap:.55rem; padding:.25rem 0; }
-    .pv-funnel-row { display:grid; grid-template-columns:minmax(0,1fr) 118px; align-items:center; gap:1rem; }
-    .pv-funnel-bar-wrap { min-width:0; display:flex; justify-content:center; }
-    .pv-funnel-bar { min-width:34px; height:28px; position:relative; display:flex; align-items:center; justify-content:center; padding:0 .55rem; border-radius:6px; transition:width .6s cubic-bezier(.22,.61,.36,1); }
-    .pv-funnel-label-inline { overflow:hidden; color:rgba(255,255,255,.78); font-size:.62rem; font-weight:700; letter-spacing:.04em; white-space:nowrap; }
-    .pv-funnel-meta { min-width:0; text-align:right; }
-    .pv-funnel-n { color:#f8f6f2; font-size:1.45rem; font-weight:300; line-height:1; }
-    .pv-funnel-etapa { margin-top:.2rem; color:rgba(255,255,255,.38); font-size:.54rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
-    .pv-funnel-conv { margin-top:.14rem; color:rgba(255,255,255,.3); font-size:.58rem; font-weight:600; }
-    .pv-funnel-bar.etapa-0 { border:1px solid rgba(100,149,237,.28); background:linear-gradient(90deg,rgba(100,149,237,.32),rgba(100,149,237,.13)); }
-    .pv-funnel-bar.etapa-1 { border:1px solid rgba(201,168,76,.3); background:linear-gradient(90deg,rgba(201,168,76,.3),rgba(201,168,76,.12)); }
-    .pv-funnel-bar.etapa-2 { border:1px solid rgba(137,180,247,.26); background:linear-gradient(90deg,rgba(137,180,247,.25),rgba(137,180,247,.1)); }
-    .pv-funnel-bar.etapa-3 { border:1px solid rgba(80,200,120,.28); background:linear-gradient(90deg,rgba(80,200,120,.3),rgba(80,200,120,.1)); }
-    .pv-funnel-row.es-logro .pv-funnel-bar { border:1px solid rgba(201,168,76,.5); background:linear-gradient(90deg,rgba(201,168,76,.45),rgba(232,201,106,.24)); box-shadow:0 0 18px rgba(201,168,76,.15),0 0 32px rgba(201,168,76,.08); }
-    .pv-funnel-row.es-logro .pv-funnel-n { background:linear-gradient(135deg,#c9a84c,#e8c96a); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:2rem; font-weight:400; }
-    .pv-funnel-row.es-logro .pv-funnel-etapa { color:#c9a84c; font-size:.58rem; letter-spacing:.16em; }
-    .pv-funnel-logro-vacio { width:100%; padding:.7rem .8rem; border:1px dashed rgba(201,168,76,.2); border-radius:8px; color:rgba(255,255,255,.32); font-size:.66rem; text-align:center; }
-    .pv-funnel-descartadas { margin-top:.6rem; color:rgba(255,255,255,.22); font-size:.61rem; text-align:center; }
+    /* ── Pipeline CRM ── */
+    .pv-pipeline { display:grid; grid-template-columns:1fr 22px 1fr 22px 1fr 22px 1fr 22px 1fr; gap:0; align-items:stretch; margin:.25rem 0; }
+    .pv-pipe-step { position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; padding:1.4rem .9rem 1.2rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:12px; background:linear-gradient(160deg,rgba(255,255,255,.048),rgba(255,255,255,.015)); transition:transform .2s; }
+    .pv-pipe-step + .pv-pipe-step { margin-left:.55rem; }
+    .pv-pipe-ico { width:36px; height:36px; border-radius:50%; display:grid; place-items:center; font-size:.9rem; margin-bottom:.75rem; flex-shrink:0; }
+    .pv-pipe-n { font-size:2.6rem; font-weight:300; line-height:1; color:#f8f6f2; margin-bottom:.35rem; }
+    .pv-pipe-label { font-size:.52rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.38); line-height:1.35; }
+    .pv-pipe-conv { margin-top:.55rem; font-size:.6rem; font-weight:600; color:rgba(255,255,255,.28); line-height:1.3; }
+    /* Colores de acento por etapa */
+    .pv-pipe-step.p0 { border-top-color:rgba(100,149,237,.4); }
+    .pv-pipe-step.p0 .pv-pipe-ico { background:rgba(100,149,237,.12); color:#89b4f7; }
+    .pv-pipe-step.p1 { border-top-color:rgba(201,168,76,.35); }
+    .pv-pipe-step.p1 .pv-pipe-ico { background:rgba(201,168,76,.1); color:#e8c96a; }
+    .pv-pipe-step.p2 { border-top-color:rgba(215,111,63,.35); }
+    .pv-pipe-step.p2 .pv-pipe-ico { background:rgba(215,111,63,.1); color:#f0956a; }
+    .pv-pipe-step.p3 { border-top-color:rgba(80,200,120,.35); }
+    .pv-pipe-step.p3 .pv-pipe-ico { background:rgba(80,200,120,.1); color:#6ee89a; }
+    /* Logro — operación cerrada */
+    .pv-pipe-step.p4-logro {
+      border-color:rgba(201,168,76,.45); border-top-color:rgba(201,168,76,.8);
+      background:linear-gradient(160deg,rgba(201,168,76,.14),rgba(201,168,76,.04));
+      box-shadow:0 0 28px rgba(201,168,76,.12), 0 0 56px rgba(201,168,76,.06);
+    }
+    .pv-pipe-step.p4-logro .pv-pipe-ico { background:rgba(201,168,76,.18); color:#e8c96a; font-size:1.1rem; box-shadow:0 0 14px rgba(201,168,76,.35); }
+    .pv-pipe-step.p4-logro .pv-pipe-n { background:linear-gradient(135deg,#c9a84c,#f0d878); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:3rem; font-weight:400; }
+    .pv-pipe-step.p4-logro .pv-pipe-label { color:#c9a84c; letter-spacing:.2em; font-size:.54rem; }
+    .pv-pipe-step.p4-logro .pv-pipe-conv { color:rgba(201,168,76,.6); }
+    /* Logro vacío */
+    .pv-pipe-step.p4-vacio { border-color:rgba(201,168,76,.18); border-top-color:rgba(201,168,76,.3); border-style:dashed; background:rgba(201,168,76,.03); }
+    .pv-pipe-step.p4-vacio .pv-pipe-ico { background:rgba(201,168,76,.06); color:rgba(201,168,76,.4); }
+    .pv-pipe-step.p4-vacio .pv-pipe-n { color:rgba(255,255,255,.2); }
+    .pv-pipe-step.p4-vacio .pv-pipe-label { color:rgba(201,168,76,.45); }
+    .pv-pipe-step.p4-vacio .pv-pipe-conv { color:rgba(201,168,76,.35); font-style:italic; letter-spacing:.03em; font-size:.62rem; }
+    /* Conector → entre pasos */
+    .pv-pipe-arrow { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:22px; color:rgba(255,255,255,.15); font-size:.75rem; align-self:center; position:relative; z-index:1; margin:0 -1px; }
+    .pv-funnel-descartadas { margin-top:.85rem; color:rgba(255,255,255,.2); font-size:.61rem; text-align:center; }
     .pv-funnel-sin-actividad { margin-top:.7rem; color:rgba(255,255,255,.3); font-size:.66rem; line-height:1.5; text-align:center; }
+    @media(max-width:900px){ .pv-pipeline{ grid-template-columns:repeat(3,1fr); gap:.5rem; } .pv-pipe-step+.pv-pipe-step{ margin-left:0; } .pv-pipe-arrow{ display:none; } }
+    @media(max-width:560px){ .pv-pipeline{ grid-template-columns:repeat(2,1fr); } }
     .pv-feed { display:flex; flex-direction:column; gap:.2rem; }
     .pv-feed-row { display:grid; grid-template-columns:8px minmax(0,1fr) auto; align-items:center; gap:.65rem; padding:.52rem .2rem; border-bottom:1px solid rgba(255,255,255,.045); }
     .pv-feed-row:last-child { border-bottom:0; }
@@ -392,12 +385,13 @@
     .pv-main .estado-cerrada { background:rgba(100,149,237,.2); color:#89b4f7; border:1px solid rgba(100,149,237,.3); }
     .pv-main .estado-descartada { background:rgba(136,136,136,.14); color:rgba(255,255,255,.42); border:1px solid rgba(136,136,136,.22); }
     @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
-    @media(max-width:560px){ .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-funnel-row{grid-template-columns:1fr;gap:.4rem}.pv-funnel-meta{text-align:left;padding-left:.4rem}.pv-funnel-bar{width:100% !important}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px} }
+    @media(max-width:560px){ .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px} }
   </style>
 </head>
 <body>
 
 <!-- HEADER -->
+<div class="sp-bg-brand"></div>
 <header class="header">
   <div class="header-brand">
     <img src="../assets/logohorizontalnegro.png" alt="Sur Patagonia" />
@@ -650,16 +644,11 @@
       })
     } else {
       main.innerHTML = `
-        <div class="pasivo-hero">
-          <div class="pasivo-eyebrow">Aliado Sur Patagonia</div>
-          <div class="pasivo-titulo">${esc(canales[0].nombre)}</div>
-          ${canales[0].ciudad || canales[0].provincia
-            ? `<div class="pasivo-geo">${[canales[0].ciudad, canales[0].provincia].filter(Boolean).map(esc).join(', ')}</div>`
-            : ''}
-          <div class="pasivo-status">
-            <span class="qr-dot ${!canales[0].activo ? 'inactivo' : campanaActiva[canales[0].id] ? 'campana' : 'activo'}"></span>
-            <span>${!canales[0].activo ? 'Canal inactivo' : campanaActiva[canales[0].id] ? `Campaña: ${esc(campanaActiva[canales[0].id])}` : 'Canal activo'}</span>
-          </div>
+        <div class="bienvenida">
+          <h1>Bienvenido</h1>
+          <p>${canales[0].ciudad ? esc(canales[0].ciudad) + (canales[0].provincia ? ', ' + esc(canales[0].provincia) : '') : 'Tu panel de colaborador'}
+            · <span class="tipo-pill tipo-activo">Inmobiliaria / Vendedor</span>
+          </p>
         </div>
         <div class="kpi-grid">
           <div class="kpi"><div class="kpi-n accent">${totalScans.toLocaleString('es-AR')}</div><div class="kpi-label">Scans totales</div><div class="kpi-sub">todos tus canales</div></div>
@@ -783,44 +772,63 @@
 
     function renderFunnelCRM(contactos) {
       const totalInteracciones = visitas.length
-      const totalConsultas = contactos.length
-      const totalContactadas = contactos.filter(c => ['en_contacto','en_negociacion','cerrada'].includes(c.estado)).length
-      const totalVisitas = contactos.filter(c => ['en_negociacion','cerrada'].includes(c.estado)).length
-      const totalCerradas = contactos.filter(c => c.estado === 'cerrada').length
-      const totalDescartadas = contactos.filter(c => c.estado === 'descartada').length
-      const pct = (actual, anterior) => anterior > 0 ? `${Math.round(actual / anterior * 100)}%` : null
-      const etapas = [
-        { clase:'etapa-0', n:totalInteracciones, label:'Interacciones', conv:null },
-        { clase:'etapa-1', n:totalConsultas, label:'Consultas generadas', conv:pct(totalConsultas, totalInteracciones) },
-        { clase:'etapa-2', n:totalContactadas, label:'Contactadas', conv:pct(totalContactadas, totalConsultas) },
-        { clase:'etapa-3', n:totalVisitas, label:'Visita programada', conv:pct(totalVisitas, totalContactadas) },
-      ]
-      const maxN = Math.max(totalInteracciones, 1)
+      const totalConsultas     = contactos.length
+      const totalContactadas   = contactos.filter(c => ['en_contacto','en_negociacion','cerrada'].includes(c.estado)).length
+      const totalVisitas       = contactos.filter(c => ['en_negociacion','cerrada'].includes(c.estado)).length
+      const totalCerradas      = contactos.filter(c => c.estado === 'cerrada').length
+      const totalDescartadas   = contactos.filter(c => c.estado === 'descartada').length
 
-      const filas = etapas.map(e => {
-        const ancho = Math.min(100, Math.max(8, Math.round(e.n / maxN * 100)))
-        return `<div class="pv-funnel-row">
-          <div class="pv-funnel-bar-wrap"><div class="pv-funnel-bar ${e.clase}" style="width:${ancho}%"><span class="pv-funnel-label-inline">${e.n > 0 ? e.n.toLocaleString('es-AR') : '0'}</span></div></div>
-          <div class="pv-funnel-meta"><div class="pv-funnel-n">${e.n.toLocaleString('es-AR')}</div><div class="pv-funnel-etapa">${esc(e.label)}</div>${e.conv ? `<div class="pv-funnel-conv">${e.conv} de la etapa anterior</div>` : ''}</div>
+      const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : null
+      const fmtPct = (a, b) => { const v = pct(a, b); return v !== null ? `${v}% convirtió` : null }
+
+      const convC = fmtPct(totalConsultas, totalInteracciones)
+      const convCo = fmtPct(totalContactadas, totalConsultas)
+      const convV = fmtPct(totalVisitas, totalContactadas)
+      const convCi = fmtPct(totalCerradas, totalVisitas)
+
+      const arrow = `<div class="pv-pipe-arrow">›</div>`
+
+      const paso = (cls, ico, n, label, conv) => `
+        <div class="pv-pipe-step ${cls}">
+          <div class="pv-pipe-ico">${ico}</div>
+          <div class="pv-pipe-n">${n.toLocaleString('es-AR')}</div>
+          <div class="pv-pipe-label">${label}</div>
+          ${conv ? `<div class="pv-pipe-conv">${conv}</div>` : '<div class="pv-pipe-conv">&nbsp;</div>'}
         </div>`
-      }).join('')
 
-      const convCierre = pct(totalCerradas, totalVisitas)
-      const anchoCierre = Math.min(100, Math.max(8, Math.round(totalCerradas / maxN * 100)))
-      const cierre = totalCerradas > 0
-        ? `<div class="pv-funnel-row es-logro">
-            <div class="pv-funnel-bar-wrap"><div class="pv-funnel-bar" style="width:${anchoCierre}%"><span class="pv-funnel-label-inline">★</span></div></div>
-            <div class="pv-funnel-meta"><div class="pv-funnel-n">${totalCerradas.toLocaleString('es-AR')}</div><div class="pv-funnel-etapa">Operación cerrada</div>${convCierre ? `<div class="pv-funnel-conv" style="color:#c9a84c">${convCierre} de visitas a cierre</div>` : ''}</div>
+      const pasoLogro = totalCerradas > 0
+        ? `<div class="pv-pipe-step p4-logro">
+            <div class="pv-pipe-ico">★</div>
+            <div class="pv-pipe-n">${totalCerradas.toLocaleString('es-AR')}</div>
+            <div class="pv-pipe-label">Operación<br>cerrada</div>
+            <div class="pv-pipe-conv">${convCi ? convCi + ' a cierre' : 'El logro máximo'}</div>
           </div>`
-        : `<div class="pv-funnel-row">
-            <div class="pv-funnel-bar-wrap"><div class="pv-funnel-logro-vacio">★ Primera operación cerrada en camino</div></div>
-            <div class="pv-funnel-meta"><div class="pv-funnel-n" style="color:rgba(255,255,255,.25)">0</div><div class="pv-funnel-etapa">Operación cerrada</div></div>
+        : `<div class="pv-pipe-step p4-vacio">
+            <div class="pv-pipe-ico">★</div>
+            <div class="pv-pipe-n">0</div>
+            <div class="pv-pipe-label">Operación<br>cerrada</div>
+            <div class="pv-pipe-conv">En camino al primer logro</div>
           </div>`
 
-      return `<div class="pv-sec pv-funnel-sec">
-        <div class="pv-sec-head"><div><div class="pv-sec-titulo">Tu trayectoria comercial</div><div class="pv-sec-sub">Cada avance acerca una oportunidad al cierre.</div></div></div>
-        <div class="pv-funnel">${filas}${cierre}</div>
-        ${totalDescartadas > 0 ? `<div class="pv-funnel-descartadas">${totalDescartadas} descartada${totalDescartadas === 1 ? '' : 's'}</div>` : ''}
+      return `<div class="pv-sec">
+        <div class="pv-sec-head">
+          <div>
+            <div class="pv-sec-titulo">Tu trayectoria comercial</div>
+            <div class="pv-sec-sub">Cada etapa que avanza acerca una operación al cierre.</div>
+          </div>
+        </div>
+        <div class="pv-pipeline">
+          ${paso('p0','⬛',totalInteracciones,'Interacciones',null)}
+          ${arrow}
+          ${paso('p1','✦',totalConsultas,'Consultas<br>generadas',convC)}
+          ${arrow}
+          ${paso('p2','◎',totalContactadas,'Contactadas',convCo)}
+          ${arrow}
+          ${paso('p3','⊙',totalVisitas,'Visita<br>programada',convV)}
+          ${arrow}
+          ${pasoLogro}
+        </div>
+        ${totalDescartadas > 0 ? `<div class="pv-funnel-descartadas">${totalDescartadas} descartada${totalDescartadas === 1 ? '' : 's'} — no avanzaron</div>` : ''}
         ${totalInteracciones === 0 ? '<div class="pv-funnel-sin-actividad">Tu canal todavía no registra actividad. Cuando alguien escanee tu QR o visite tu enlace, lo vas a ver acá.</div>' : ''}
       </div>`
     }
