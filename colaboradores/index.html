@@ -440,7 +440,28 @@
     .pv-img-hero-badge.activo { color:#6ee89a; border-color:rgba(80,200,120,.38); }
     .pv-img-hero-badge.campana { color:#e8c96a; border-color:rgba(201,168,76,.42); }
     .pv-img-hero-badge.inactivo { color:rgba(255,255,255,.4); }
-    @media(max-width:560px){ .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px} }
+
+    /* ── OPCIÓN 4 · Pulso en vivo (GLM-5.2) ── */
+    .pv-live-bar {
+      display:flex; align-items:center; justify-content:space-between; gap:.8rem;
+      margin-bottom:.7rem; padding:.5rem .8rem; border-radius:10px;
+      background:linear-gradient(135deg,rgba(110,232,154,.08),rgba(110,232,154,.02));
+      border:1px solid rgba(110,232,154,.18);
+    }
+    .pv-live-left { display:flex; align-items:center; gap:.6rem; }
+    .pv-live-dot { width:9px; height:9px; border-radius:50%; background:#6ee89a; box-shadow:0 0 10px #6ee89a; animation:pvLiveBlink 1.4s ease-in-out infinite; flex-shrink:0; }
+    .pv-live-tag { font-size:.56rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:#6ee89a; }
+    @keyframes pvLiveBlink { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.35; transform:scale(.7)} }
+    .pv-live-right { display:flex; align-items:baseline; gap:1.4rem; }
+    .pv-live-stat { display:flex; flex-direction:column; align-items:flex-end; }
+    .pv-live-stat-n { font-size:1.15rem; font-weight:700; line-height:1; font-family:'Inter',sans-serif; }
+    .pv-live-stat-n.blue { color:#9fc0ff; }
+    .pv-live-stat-n.gold { color:#e8c96a; }
+    .pv-live-stat-l { font-size:.5rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.4); margin-top:.2rem; }
+    .pv-live-wrap { position:relative; height:270px; }
+    @media(max-width:560px){
+      .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.9rem}
+    }
   </style>
 </head>
 <body>
@@ -551,6 +572,7 @@
     const scans30    = rVisitas30.count || 0
     const contactos  = rContactos.data  || []
     let _pvChart = null, _pvChart2 = null, _pvChart3 = null, _pvChart4 = null
+    let _pvLiveRAF = null  // loop de animación del "pulso en vivo" (opción 4)
 
     // Filtrar mensajes para este usuario
     // Lógica: si usuario_id está → solo ese usuario
@@ -935,8 +957,24 @@
               <div class="pv-chart-wrap"><canvas id="pvChartEvol3"></canvas></div>
             </div>
             <div>
-              <div class="pv-opt-label">Opción 4 — Ritmo + tendencia (GLM-5.2)</div>
-              <div class="pv-chart-wrap"><canvas id="pvChartEvol4"></canvas></div>
+              <div class="pv-opt-label">Opción 4 — Pulso en vivo (GLM-5.2)</div>
+              <div id="pvLiveBar4" class="pv-live-bar">
+                <div class="pv-live-left">
+                  <span class="pv-live-dot"></span>
+                  <span class="pv-live-tag">En vivo · ahora</span>
+                </div>
+                <div class="pv-live-right">
+                  <div class="pv-live-stat">
+                    <div class="pv-live-stat-n blue" id="pvLiveScans4">0</div>
+                    <div class="pv-live-stat-l">Hoy · interacciones</div>
+                  </div>
+                  <div class="pv-live-stat">
+                    <div class="pv-live-stat-n gold" id="pvLiveConsultas4">0</div>
+                    <div class="pv-live-stat-l">Hoy · oportunidades</div>
+                  </div>
+                </div>
+              </div>
+              <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
             </div>
           </div>
         </div>
@@ -1170,26 +1208,19 @@
           }
         })
       }
-      // ── OPCIÓN 4: Ritmo + tendencia (GLM-5.2) ───────────────────────────
-      // Tipo distinto: línea ESCALONADA (ritmo diario real, sin suavizar) +
-      // media móvil punteada (tendencia) + oportunidades como hitos dorados.
+
+      // ── OPCIÓN 4: Pulso en vivo (GLM-5.2) ────────────────────────────────
+      // Concepto: líneas fluidas (aurora) + pulso radar "vivo" sobre el último punto,
+      // con un contador en vivo arriba. Genera la sensación de "está pasando ahora".
       if (_pvChart4) { _pvChart4.destroy(); _pvChart4 = null }
+      if (_pvLiveRAF) { cancelAnimationFrame(_pvLiveRAF); _pvLiveRAF = null }
       const ctx4 = document.getElementById('pvChartEvol4')?.getContext('2d')
       if (ctx4) {
-        // Media móvil de interacciones (ventana de 3) → revela la tendencia sin inventar datos
-        const ventanaMovil = 3
-        const tendencia = dataScans.map((_, i) => {
-          const desde = Math.max(0, i - Math.floor(ventanaMovil / 2))
-          const hasta = Math.min(dataScans.length, desde + ventanaMovil)
-          const slice = dataScans.slice(desde, hasta)
-          const suma = slice.reduce((a, b) => a + b, 0)
-          return slice.length ? Number((suma / slice.length).toFixed(2)) : 0
-        })
-
-        // Índice del pico de actividad (scans + consultas)
-        const totalPunto = dataScans.map((s, i) => Number(s || 0) + Number(dataConsultas[i] || 0))
-        const peakVal = Math.max(...totalPunto, 0)
-        const peakIndex = peakVal > 0 ? totalPunto.indexOf(peakVal) : -1
+        // Acumulados (running totals) → la línea SIEMPRE sube = sensación de crecimiento
+        const accScans = []
+        const accConsultas = []
+        let runS = 0, runC = 0
+        dataScans.forEach((v, i) => { runS += Number(v || 0); accScans.push(runS); runC += Number(dataConsultas[i] || 0); accConsultas.push(runC) })
 
         _pvChart4 = new Chart(ctx4, {
           type: 'line',
@@ -1197,36 +1228,28 @@
             labels: labelsEvol,
             datasets: [
               {
-                // Interacciones como escalera (ritmo real)
-                label: 'Interacciones', data: dataScans, order: 3,
-                borderColor: '#7aaeff', borderWidth: 2, stepped: 'before', tension: 0,
-                fill: true,
+                // Interacciones acumuladas — aurora azul
+                label: 'Interacciones (acumulado)', data: accScans, order: 2,
+                borderColor: '#7aaeff', borderWidth: 2.5, tension: 0.4, fill: true,
+                cubicInterpolationMode: 'monotone',
                 backgroundColor: (c) => {
                   const { ctx: cc, chartArea } = c.chart
-                  if (!chartArea) return 'rgba(122,174,255,.18)'
+                  if (!chartArea) return 'rgba(122,174,255,.2)'
                   const g = cc.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-                  g.addColorStop(0, 'rgba(122,174,255,.42)')
-                  g.addColorStop(0.6, 'rgba(122,174,255,.12)')
+                  g.addColorStop(0, 'rgba(122,174,255,.5)')
+                  g.addColorStop(0.5, 'rgba(122,174,255,.16)')
                   g.addColorStop(1, 'rgba(122,174,255,0)')
                   return g
                 },
-                pointRadius: 0, pointHoverRadius: 5,
+                pointRadius: 0, pointHoverRadius: 6,
                 pointHoverBackgroundColor: '#7aaeff', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2
               },
               {
-                // Tendencia: media móvil, punteada
-                label: 'Tendencia', data: tendencia, order: 2,
-                borderColor: 'rgba(200,225,255,.85)', borderWidth: 2, borderDash: [5, 5],
-                tension: 0.38, fill: false, pointRadius: 0, pointHoverRadius: 0,
-                cubicInterpolationMode: 'monotone'
-              },
-              {
-                // Oportunidades: línea dorada con glow + hitos brillantes
-                label: 'Oportunidades', data: dataConsultas, order: 1,
-                borderColor: '#e8c96a', borderWidth: 3, tension: 0.4,
-                fill: false, spanGaps: true,
-                pointRadius: (c) => Number(c.raw) > 0 ? 4 : 0,
-                pointHoverRadius: 7,
+                // Oportunidades acumuladas — línea dorada con glow
+                label: 'Oportunidades (acumulado)', data: accConsultas, order: 1,
+                borderColor: '#e8c96a', borderWidth: 3, tension: 0.4, fill: false,
+                cubicInterpolationMode: 'monotone', spanGaps: true,
+                pointRadius: 0, pointHoverRadius: 7,
                 pointBackgroundColor: '#0c0c0e', pointBorderColor: '#e8c96a', pointBorderWidth: 2,
                 pointHoverBackgroundColor: '#e8c96a', pointHoverBorderColor: '#fff4c4', pointHoverBorderWidth: 3
               }
@@ -1234,38 +1257,47 @@
           },
           plugins: [
             {
-              // Marca vertical sutil en el pico de actividad
-              id: 'pvPeakMark4',
+              // Pulso radar "vivo" sobre el último punto de cada serie
+              id: 'pvLivePulse4',
               afterDatasetsDraw(chart) {
-                const { ctx: c, chartArea, scales } = chart
-                if (!chartArea || peakIndex < 0) return
-                const x = scales.x.getPixelForValue(peakIndex)
-                c.save()
-                c.beginPath(); c.setLineDash([4, 6])
-                c.strokeStyle = 'rgba(232,201,106,.3)'; c.lineWidth = 1
-                c.moveTo(x, chartArea.top); c.lineTo(x, chartArea.bottom); c.stroke()
-                // Etiqueta del pico
-                c.setLineDash([])
-                c.fillStyle = 'rgba(232,201,106,.9)'
-                c.font = '600 9px Inter, sans-serif'
-                c.textAlign = 'center'
-                const labelY = chartArea.top + 4
-                c.fillText('PICO', x, labelY)
-                c.restore()
+                const { ctx: c, chartArea, scales, data } = chart
+                if (!chartArea) return
+                const t = (Date.now() % 1600) / 1600            // 0..1 loop continuo
+                const pulse = (1 - t) * 14                       // radio decrece
+                const alpha = (1 - t) * 0.55                     // opacidad decrece
+                const lastIdx = (data.labels || []).length - 1
+                if (lastIdx < 0) return
+
+                const drawPulse = (datasetIndex, color) => {
+                  const meta = chart.getDatasetMeta(datasetIndex)
+                  if (!meta || !meta.data || !meta.data.length) return
+                  const pt = meta.data[lastIdx]
+                  if (!pt) return
+                  c.save()
+                  // anillos radar
+                  c.beginPath(); c.arc(pt.x, pt.y, pulse, 0, Math.PI * 2)
+                  c.strokeStyle = color.replace('ALPHA', alpha.toFixed(3)); c.lineWidth = 1.5; c.stroke()
+                  // núcleo fijo brillante
+                  c.beginPath(); c.arc(pt.x, pt.y, 4, 0, Math.PI * 2)
+                  c.fillStyle = color.replace('ALPHA', '1'); c.shadowColor = color.replace('ALPHA', '.8'); c.shadowBlur = 12; c.fill()
+                  c.restore()
+                }
+                drawPulse(0, 'rgba(122,174,255,ALPHA)')
+                drawPulse(1, 'rgba(232,201,106,ALPHA)')
               }
             },
             {
-              // Glow en la línea dorada de oportunidades
+              // Glow en la línea dorada
               id: 'pvGoldGlow4',
-              beforeDatasetDraw(chart, args) { if (args.index !== 2) return; chart.ctx.save(); chart.ctx.shadowColor = 'rgba(232,201,106,.5)'; chart.ctx.shadowBlur = 10 },
-              afterDatasetDraw(chart, args) { if (args.index !== 2) return; chart.ctx.restore() }
+              beforeDatasetDraw(chart, args) { if (args.index !== 1) return; chart.ctx.save(); chart.ctx.shadowColor = 'rgba(232,201,106,.5)'; chart.ctx.shadowBlur = 10 },
+              afterDatasetDraw(chart, args) { if (args.index !== 1) return; chart.ctx.restore() }
             }
           ],
           options: {
             responsive: true, maintainAspectRatio: false,
-            animation: { duration: 800, easing: 'easeOutQuart' },
+            animation: { duration: 900, easing: 'easeOutQuart' },
             interaction: { mode: 'index', intersect: false },
-            layout: { padding: { top: 18, right: 10, bottom: 2, left: 2 } },
+            layout: { padding: { top: 14, right: 16, bottom: 2, left: 2 } },
             plugins: {
               legend: {
                 position: 'top', align: 'end',
@@ -1281,11 +1313,9 @@
                 backgroundColor: 'rgba(18,18,21,.96)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
                 titleColor: '#fff', bodyColor: 'rgba(255,255,255,.76)',
                 titleFont: { size: 12, weight: '600' }, bodyFont: { size: 12 },
-                filter: (i) => i.dataset.label !== 'Tendencia' || i.raw > 0,
                 callbacks: {
                   label(ctx) {
                     const v = Number(ctx.raw || 0)
-                    if (ctx.dataset.label === 'Tendencia') return ` Tendencia: ${v.toLocaleString('es-AR')}`
                     return ` ${ctx.dataset.label}: ${v.toLocaleString('es-AR')}`
                   }
                 }
@@ -1297,13 +1327,34 @@
                 ticks: { color: 'rgba(255,255,255,.4)', maxRotation: 0, autoSkip: true, maxTicksLimit: 8, padding: 10, font: { size: 10, family: 'Inter' } }
               },
               y: {
-                beginAtZero: true, grace: '12%', border: { display: false },
+                beginAtZero: true, grace: '8%', border: { display: false },
                 grid: { color: 'rgba(255,255,255,.05)', drawTicks: false },
                 ticks: { color: 'rgba(255,255,255,.35)', precision: 0, padding: 10, font: { size: 10, family: 'Inter' }, callback: (v) => Number(v).toLocaleString('es-AR') }
               }
             }
           }
         })
+
+        // ── Loop de animación independiente (hace que el pulso "respire" siempre) ──
+        const loopLive = () => {
+          if (_pvChart4 && _pvChart4.canvas) {
+            _pvChart4.draw()
+            _pvLiveRAF = requestAnimationFrame(loopLive)
+          } else {
+            _pvLiveRAF = null
+          }
+        }
+        // arrancar tras la animación inicial del chart
+        setTimeout(() => { if (_pvChart4 && !_pvLiveRAF) loopLive() }, 950)
+
+        // ── Contador "en vivo" de HOY arriba del gráfico ──
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+        const scansHoy = visitas.filter(v => new Date(v.created_at) >= hoy).length
+        const consultasHoy = contactos.filter(v => new Date(v.created_at) >= hoy).length
+        const elS = document.getElementById('pvLiveScans4')
+        const elC = document.getElementById('pvLiveConsultas4')
+        if (elS) elS.textContent = scansHoy.toLocaleString('es-AR')
+        if (elC) elC.textContent = consultasHoy.toLocaleString('es-AR')
       }
     }
 
