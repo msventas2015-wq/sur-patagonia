@@ -222,10 +222,22 @@
       return
     }
 
-    // Verificar que tiene un canal asociado (activo/pasivo)
-    const { data: canal } = await supabase.from('canales').select('id').eq('user_id', user.id).maybeSingle()
+    // Verificar que tiene al menos un canal asociado. Los activos pueden tener varios.
+    const { data: canales, error: canalesError } = await supabase
+      .from('canales')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1)
 
-    if (!canal) {
+    if (canalesError) {
+      await supabase.auth.signOut()
+      btn.disabled = false
+      btn.textContent = 'Ingresar'
+      showError('No se pudo verificar el canal asignado. Intentá nuevamente.')
+      return
+    }
+
+    if (!canales?.length) {
       await supabase.auth.signOut()
       btn.disabled = false
       btn.textContent = 'Ingresar'
