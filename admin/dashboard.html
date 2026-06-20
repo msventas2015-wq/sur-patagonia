@@ -109,13 +109,15 @@
     .badge-nueva   { background: rgba(255,255,255,.08); color: var(--blanco); border: 1px solid rgba(255,255,255,.18); }
 
     /* Tabla canales */
-    .canales-tabla { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-    .canales-tabla th { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris-claro); font-weight: 600; text-align: left; padding: 0 0.8rem 0.7rem; }
-    .canales-tabla td { padding: 0.75rem 0.8rem; border-top: 1px solid var(--card-border); color: #c8c5bf; }
+    .canales-tabla { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-family: 'Inter', system-ui, sans-serif; }
+    .canales-tabla th { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris-claro); font-weight: 600; text-align: left; padding: 0 1rem 0.8rem; }
+    .canales-tabla th:not(:first-child) { text-align: right; }
+    .canales-tabla td { padding: 0.8rem 1rem; border-top: 1px solid var(--card-border); color: #c8c5bf; vertical-align: middle; white-space: nowrap; }
+    .canales-tabla td:not(:first-child) { text-align: right; }
     .canales-tabla tr:hover td { background: rgba(255,255,255,0.02); }
-    .canal-nombre { font-weight: 600; color: var(--blanco); }
-    .canal-activo { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--c-verde); margin-right: 0.5rem; }
-    .conv-bar { display: inline-block; height: 4px; border-radius: 2px; background: var(--accent); opacity: 0.7; vertical-align: middle; margin-left: 0.5rem; }
+    .canal-nombre { font-weight: 600; color: var(--blanco); display: flex; align-items: center; gap: 0.5rem; }
+    .canal-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-verde); flex-shrink: 0; }
+    .sec-header.canales-header h3 { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 0.85rem; letter-spacing: 0.01em; }
 
     /* Propiedades recientes */
     .props-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.8rem; padding-bottom: 2rem; }
@@ -279,7 +281,7 @@
     </div>
 
     <!-- CANALES ACTIVOS -->
-    <div class="sec-header">
+    <div class="sec-header canales-header">
       <h3>Canales activos — rendimiento 30 días</h3>
       <a href="canales.html" class="sec-link">Ver todos →</a>
     </div>
@@ -458,13 +460,12 @@ async function cargar() {
   const maxClics = Math.max(...filas.map(f => f.clics), 1)
   document.getElementById('tablaCanales').innerHTML = filas.length
     ? filas.map(f => {
-        const conv = f.clics > 0 ? ((f.leads / f.clics) * 100).toFixed(1) : '—'
-        const barW = Math.round((f.clics / maxClics) * 60)
+        const conv = f.clics > 0 ? ((f.leads / f.clics) * 100).toFixed(1) + '%' : '—'
         return `<tr>
-          <td><span class="canal-activo"></span><span class="canal-nombre">${esc(f.nombre)}</span></td>
-          <td style="text-align:right">${f.clics}<span class="conv-bar" style="width:${barW}px"></span></td>
-          <td style="text-align:right">${f.leads}</td>
-          <td style="text-align:right">${conv !== '—' ? conv + '%' : '—'}</td>
+          <td><span class="canal-nombre"><span class="canal-dot"></span>${esc(f.nombre)}</span></td>
+          <td>${f.clics}</td>
+          <td>${f.leads}</td>
+          <td>${conv}</td>
         </tr>`
       }).join('')
     : '<tr><td colspan="4" style="color:var(--gris-claro)">Sin canales activos.</td></tr>'
