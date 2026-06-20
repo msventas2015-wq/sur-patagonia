@@ -340,6 +340,7 @@
     .pv-sec-titulo { color:var(--gris); font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
     .pv-sec-sub { margin-top:.35rem; color:rgba(255,255,255,.45); font-size:.66rem; }
     .pv-chart-wrap { position:relative; height:270px; }
+    .pv-opt-label { font-size:.55rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.35); margin-bottom:.65rem; padding-bottom:.5rem; border-bottom:1px solid rgba(255,255,255,.06); }
     .pv-flt-bar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
     .pv-flt-btn { min-height:32px; padding:.36rem .88rem; border:1px solid rgba(255,255,255,.09); border-radius:8px; background:rgba(255,255,255,.05); color:rgba(255,255,255,.5); font:600 .63rem 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:all .2s; }
     .pv-flt-btn:hover { border-color:rgba(201,168,76,.35); color:var(--dorado); }
@@ -549,7 +550,7 @@
     const visitas    = rVisitas.data    || []
     const scans30    = rVisitas30.count || 0
     const contactos  = rContactos.data  || []
-    let _pvChart = null
+    let _pvChart = null, _pvChart2 = null, _pvChart3 = null
 
     // Filtrar mensajes para este usuario
     // Lógica: si usuario_id está → solo ese usuario
@@ -920,7 +921,20 @@
               <div class="pv-sec-sub">Interacciones y oportunidades reales generadas en el período seleccionado.</div>
             </div>
           </div>
-          <div class="pv-chart-wrap"><canvas id="pvChartEvol"></canvas></div>
+          <div style="display:flex;flex-direction:column;gap:2.2rem;">
+            <div>
+              <div class="pv-opt-label">Opción 1 — Área en flujo (Claude)</div>
+              <div class="pv-chart-wrap"><canvas id="pvChartEvol"></canvas></div>
+            </div>
+            <div>
+              <div class="pv-opt-label">Opción 2 — Trading lineal (Codex)</div>
+              <div class="pv-chart-wrap"><canvas id="pvChartEvol2"></canvas></div>
+            </div>
+            <div>
+              <div class="pv-opt-label">Opción 3 — Barras + tendencia (ChatGPT)</div>
+              <div class="pv-chart-wrap"><canvas id="pvChartEvol3"></canvas></div>
+            </div>
+          </div>
         </div>
 
         <div class="pv-impact-grid">
@@ -979,64 +993,179 @@
 
     function renderGraficoPasivo(contactos, dias, desdeCustom = null, hastaCustom = null) {
       if (typeof Chart === 'undefined') return
-      const ctx = document.getElementById('pvChartEvol')?.getContext('2d')
-      if (!ctx) return
       const hasta = hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : new Date()
       const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime() - (dias - 1) * 86400000)
       const { labelsEvol, dataScans, dataConsultas } = datosEvolucionPasivo(contactos, desde, hasta)
 
-      if (_pvChart) _pvChart.destroy()
-      _pvChart = new Chart(ctx, {
-        type:'line',
-        data:{
-          labels:labelsEvol,
-          datasets:[
+      const tooltipBase = {
+        backgroundColor:'rgba(10,10,12,.92)', borderColor:'rgba(255,255,255,.08)', borderWidth:1,
+        titleColor:'#ccc', bodyColor:'rgba(255,255,255,.65)', padding:10, cornerRadius:8
+      }
+      const legendBase = { labels:{ color:'rgba(255,255,255,.5)', font:{size:10,family:'Inter'}, boxWidth:10, usePointStyle:true, padding:16 } }
+      const scalesBase = {
+        x:{ ticks:{color:'rgba(255,255,255,.27)',font:{size:9,family:'Inter'},maxTicksLimit:10}, grid:{color:'rgba(255,255,255,.035)'}, border:{color:'rgba(255,255,255,.06)'} },
+        y:{ beginAtZero:true, ticks:{color:'rgba(255,255,255,.27)',font:{size:9,family:'Inter'},precision:0}, grid:{color:'rgba(255,255,255,.04)'}, border:{color:'rgba(255,255,255,.06)'} }
+      }
+      const optsBase = { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+        plugins:{ legend:legendBase, tooltip:tooltipBase }, scales:scalesBase }
+
+      // ── OPCIÓN 1: Área en flujo (Claude) ────────────────────────────────
+      if (_pvChart) { _pvChart.destroy(); _pvChart = null }
+      const ctx1 = document.getElementById('pvChartEvol')?.getContext('2d')
+      if (ctx1) {
+        _pvChart = new Chart(ctx1, {
+          type:'line',
+          data:{ labels:labelsEvol, datasets:[
+            { label:'Interacciones', data:dataScans,    borderColor:'#7aaeff', backgroundColor:pvGrad(ctx1,'rgb(100,149,237)',.5),  tension:.42, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2, borderWidth:2.5 },
+            { label:'Oportunidades', data:dataConsultas, borderColor:'#6ee89a', backgroundColor:pvGrad(ctx1,'rgb(80,200,120)',.38), tension:.42, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#6ee89a', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2, borderWidth:2.5 }
+          ]},
+          options: optsBase
+        })
+      }
+
+      // ── OPCIÓN 2: Codex ────────────────────────────────────────────────
+      if (_pvChart2) { _pvChart2.destroy(); _pvChart2 = null }
+      const ctx2 = document.getElementById('pvChartEvol2')?.getContext('2d')
+      if (ctx2) {
+        _pvChart2 = new Chart(ctx2, {
+          type: 'bar',
+          data: {
+            labels: labelsEvol,
+            datasets: [
+              {
+                type: 'bar', label: 'Interacciones', data: dataScans, order: 2,
+                borderWidth: 0,
+                borderRadius: { topLeft:7, topRight:7, bottomLeft:2, bottomRight:2 },
+                borderSkipped: false, maxBarThickness: 22,
+                categoryPercentage: 0.78, barPercentage: 0.82,
+                backgroundColor: (context) => {
+                  const { chart } = context; const { ctx: c, chartArea } = chart;
+                  if (!chartArea) return 'rgba(122,174,255,.65)';
+                  const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                  g.addColorStop(0, 'rgba(122,174,255,.95)'); g.addColorStop(.55, 'rgba(122,174,255,.48)'); g.addColorStop(1, 'rgba(122,174,255,.08)');
+                  return g;
+                },
+                hoverBackgroundColor: 'rgba(122,174,255,1)'
+              },
+              {
+                type: 'line', label: 'Oportunidades', data: dataConsultas, order: 1,
+                borderColor: '#e8c96a', borderWidth: 3, tension: 0.38,
+                cubicInterpolationMode: 'monotone', fill: true,
+                backgroundColor: (context) => {
+                  const { chart } = context; const { ctx: c, chartArea } = chart;
+                  if (!chartArea) return 'rgba(232,201,106,.10)';
+                  const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                  g.addColorStop(0, 'rgba(232,201,106,.30)'); g.addColorStop(.55, 'rgba(232,201,106,.08)'); g.addColorStop(1, 'rgba(232,201,106,0)');
+                  return g;
+                },
+                pointRadius: (context) => Number(context.raw) > 0 ? 3.5 : 0,
+                pointHoverRadius: 7, pointBackgroundColor: '#0c0c0e',
+                pointBorderColor: '#e8c96a', pointBorderWidth: 2,
+                pointHoverBackgroundColor: '#e8c96a', pointHoverBorderColor: '#fff4c4', pointHoverBorderWidth: 3,
+                spanGaps: true
+              }
+            ]
+          },
+          plugins: [
             {
-              label:'Interacciones',
-              data:dataScans,
-              borderColor:'#7aaeff',
-              backgroundColor: pvGrad(ctx, 'rgb(100,149,237)'),
-              tension:.4, fill:true,
-              pointRadius:0, pointHoverRadius:5,
-              pointHoverBackgroundColor:'#7aaeff',
-              pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
-              borderWidth:2.5
+              id: 'pvPeakBand2',
+              beforeDatasetsDraw(chart) {
+                const { ctx: c, chartArea, scales } = chart;
+                if (!chartArea || !labelsEvol.length) return;
+                const values = labelsEvol.map((_, i) => Number(dataScans[i]||0) + Number(dataConsultas[i]||0));
+                const maxValue = Math.max(...values); if (maxValue <= 0) return;
+                const peakIndex = values.indexOf(maxValue);
+                const xScale = scales.x; const x = xScale.getPixelForValue(peakIndex);
+                const prevX = peakIndex > 0 ? xScale.getPixelForValue(peakIndex-1) : x-24;
+                const nextX = peakIndex < labelsEvol.length-1 ? xScale.getPixelForValue(peakIndex+1) : x+24;
+                const width = Math.max(34, Math.min(x-prevX, nextX-x)*1.45);
+                const g = c.createLinearGradient(x-width/2,0,x+width/2,0);
+                g.addColorStop(0,'rgba(232,201,106,0)'); g.addColorStop(.5,'rgba(232,201,106,.09)'); g.addColorStop(1,'rgba(232,201,106,0)');
+                c.save(); c.fillStyle = g;
+                c.fillRect(x-width/2, chartArea.top, width, chartArea.bottom-chartArea.top);
+                c.beginPath(); c.setLineDash([3,5]); c.strokeStyle='rgba(232,201,106,.28)'; c.lineWidth=1;
+                c.moveTo(x,chartArea.top); c.lineTo(x,chartArea.bottom); c.stroke(); c.restore();
+              }
             },
             {
-              label:'Oportunidades',
-              data:dataConsultas,
-              borderColor:'#6ee89a',
-              backgroundColor: pvGrad(ctx, 'rgb(80,200,120)', .38),
-              tension:.4, fill:true,
-              pointRadius:0, pointHoverRadius:5,
-              pointHoverBackgroundColor:'#6ee89a',
-              pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
-              borderWidth:2.5
+              id: 'pvLineGlow2',
+              beforeDatasetDraw(chart, args) { if (args.index!==1) return; chart.ctx.save(); chart.ctx.shadowColor='rgba(232,201,106,.55)'; chart.ctx.shadowBlur=12; },
+              afterDatasetDraw(chart, args)  { if (args.index!==1) return; chart.ctx.restore(); }
             }
-          ]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          interaction:{ mode:'index', intersect:false },
-          plugins:{
-            legend:{ labels:{ color:'rgba(255,255,255,.5)', font:{size:10, family:'Inter'}, boxWidth:10, usePointStyle:true, padding:16 } },
-            tooltip:{
-              backgroundColor:'rgba(10,10,12,.92)',
-              borderColor:'rgba(255,255,255,.08)',
-              borderWidth:1,
-              titleColor:'#ccc',
-              bodyColor:'rgba(255,255,255,.65)',
-              padding:10,
-              cornerRadius:8
+          ],
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode:'index', intersect:false },
+            animation: { duration:850, easing:'easeOutQuart' },
+            layout: { padding:{ top:14, right:10, bottom:2, left:2 } },
+            plugins: {
+              legend: { position:'top', align:'end', labels:{ color:'rgba(255,255,255,.72)', usePointStyle:true, pointStyle:'circle', boxWidth:7, boxHeight:7, padding:18, font:{size:11,weight:'500'} } },
+              tooltip: {
+                enabled:true, displayColors:true, usePointStyle:true, padding:13, cornerRadius:10, caretSize:6,
+                backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1,
+                titleColor:'#ffffff', bodyColor:'rgba(255,255,255,.76)',
+                titleFont:{size:12,weight:'600'}, bodyFont:{size:12},
+                callbacks: {
+                  label(context) { return ` ${context.dataset.label}: ${Number(context.raw||0).toLocaleString('es-AR')}` },
+                  footer(items) { const total = items.reduce((s,i)=>s+Number(i.raw||0),0); return `Actividad total: ${total.toLocaleString('es-AR')}` }
+                }
+              }
+            },
+            scales: {
+              x: { offset:true, border:{display:false}, grid:{display:false}, ticks:{color:'rgba(255,255,255,.42)',maxRotation:0,autoSkip:true,maxTicksLimit:8,padding:10,font:{size:10,weight:'500'}} },
+              y: { beginAtZero:true, grace:'15%', border:{display:false}, grid:{color:'rgba(255,255,255,.055)',drawTicks:false}, ticks:{color:'rgba(255,255,255,.38)',precision:0,padding:10,font:{size:10},callback(v){return Number(v).toLocaleString('es-AR')}} }
             }
-          },
-          scales:{
-            x:{ ticks:{color:'rgba(255,255,255,.27)',font:{size:9, family:'Inter'},maxTicksLimit:10}, grid:{color:'rgba(255,255,255,.035)'}, border:{color:'rgba(255,255,255,.06)'} },
-            y:{ beginAtZero:true, ticks:{color:'rgba(255,255,255,.27)',font:{size:9, family:'Inter'},precision:0}, grid:{color:'rgba(255,255,255,.04)'}, border:{color:'rgba(255,255,255,.06)'} }
           }
-        }
-      })
+        })
+      }
+
+      // ── OPCIÓN 3: ChatGPT ───────────────────────────────────────────────
+      if (_pvChart3) { _pvChart3.destroy(); _pvChart3 = null }
+      const ctx3 = document.getElementById('pvChartEvol3')?.getContext('2d')
+      if (ctx3) {
+        _pvChart3 = new Chart(ctx3, {
+          type: 'bar',
+          data: {
+            labels: labelsEvol,
+            datasets: [
+              {
+                label: 'Interacciones', data: dataScans,
+                backgroundColor: (context) => {
+                  const { ctx: c, chartArea } = context.chart;
+                  if (!chartArea) return 'rgba(122,174,255,.45)';
+                  const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                  g.addColorStop(0, 'rgba(122,174,255,.85)'); g.addColorStop(1, 'rgba(122,174,255,.10)');
+                  return g;
+                },
+                borderColor: 'rgba(122,174,255,.9)', borderWidth:1,
+                borderRadius:7, borderSkipped:false, maxBarThickness:26, order:2
+              },
+              {
+                type:'line', label:'Oportunidades', data:dataConsultas,
+                borderColor:'#6ee89a', backgroundColor:'rgba(110,232,154,.12)',
+                borderWidth:2.5, tension:.38, fill:false,
+                pointRadius:3, pointHoverRadius:6,
+                pointBackgroundColor:'#0c0c0e', pointBorderColor:'#6ee89a', pointBorderWidth:2,
+                order:1
+              }
+            ]
+          },
+          options: {
+            responsive:true, maintainAspectRatio:false,
+            animation:{ duration:700, easing:'easeOutQuart' },
+            interaction:{ mode:'index', intersect:false },
+            layout:{ padding:{ top:8, right:8 } },
+            plugins: {
+              legend:{ position:'top', labels:{ color:'#aaa', boxWidth:10, boxHeight:10, usePointStyle:true, padding:18, font:{family:'Inter',size:11} } },
+              tooltip:{ backgroundColor:'rgba(12,12,14,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#f0f0f0', bodyColor:'#aaa', padding:12, displayColors:true }
+            },
+            scales: {
+              x:{ grid:{display:false}, border:{display:false}, ticks:{color:'#666',maxRotation:0,autoSkip:true,font:{family:'Inter',size:10}} },
+              y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.045)'}, border:{display:false}, ticks:{color:'#666',precision:0,padding:8,font:{family:'Inter',size:10}} }
+            }
+          }
+        })
+      }
     }
 
     window.pvSetPeriodo = function(btn) {
