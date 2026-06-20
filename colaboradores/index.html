@@ -6,6 +6,7 @@
   <title>Mi Panel — Sur Patagonia Colaboradores</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -39,14 +40,9 @@
       top: 0;
       z-index: 10;
     }
-    .header-logo {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.1rem;
-      font-weight: 300;
-      letter-spacing: .15em;
-      text-transform: uppercase;
-    }
-    .header-logo span { color: var(--accent); }
+    .header-brand { display:flex; flex-direction:column; align-items:flex-start; gap:.15rem; }
+    .header-brand img { width:154px; height:auto; filter:brightness(0) invert(1); opacity:.92; }
+    .header-brand span { color:rgba(255,255,255,.3); font-size:.48rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; }
     .header-right { display: flex; align-items: center; gap: 1rem; }
     .header-canal { font-size: .75rem; color: var(--gris); }
     .header-canal strong { color: var(--blanco); display: block; font-size: .82rem; }
@@ -244,13 +240,96 @@
     .btn-reply:disabled { opacity:.4; cursor:not-allowed; }
     .no-msgs { text-align:center; padding:2rem; color:var(--gris); font-size:.78rem; }
     .badge-nuevo { font-size:.58rem; background:rgba(215,111,63,.15); color:var(--accent); border-radius:999px; padding:.1rem .5rem; flex-shrink:0; }
+
+    /* ── Panel de impacto del aliado ── */
+    .main.pv-main { max-width:1220px; padding-top:1.5rem; }
+    .pv-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:2rem; min-height:230px; padding:2.4rem 2.2rem; margin-bottom:.75rem; border:1px solid rgba(201,168,76,.18); border-top-color:rgba(201,168,76,.52); border-radius:14px; background:radial-gradient(circle at 88% 20%,rgba(215,111,63,.13),transparent 34%),linear-gradient(135deg,rgba(201,168,76,.1),rgba(255,255,255,.015) 58%),#11100e; }
+    .pv-hero::after { content:''; position:absolute; inset:auto 0 0; height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,.45),transparent); }
+    .pv-hero-eyebrow { margin-bottom:.65rem; color:#c9a84c; font-size:.55rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; }
+    .pv-hero-hola { color:#f5f3f0; font-family:'Cormorant Garamond',serif; font-size:clamp(2.1rem,4vw,3.35rem); font-weight:300; line-height:1.02; }
+    .pv-hero-hola strong { font-weight:400; }
+    .pv-hero-impacto { max-width:650px; margin-top:.8rem; color:rgba(255,255,255,.58); font-size:.86rem; line-height:1.65; }
+    .pv-hero-geo { margin-top:.75rem; color:rgba(255,255,255,.3); font-size:.61rem; letter-spacing:.14em; text-transform:uppercase; }
+    .pv-identity { display:flex; flex-direction:column; align-items:center; gap:.85rem; min-width:150px; }
+    .pv-monogram { width:82px; height:82px; display:grid; place-items:center; border:1px solid rgba(201,168,76,.32); border-radius:50%; background:rgba(201,168,76,.07); color:#e8c96a; font-family:'Cormorant Garamond',serif; font-size:1.75rem; letter-spacing:.08em; box-shadow:0 0 32px rgba(201,168,76,.08); }
+    .pv-hero-estado { display:flex; align-items:center; justify-content:center; gap:.5rem; color:rgba(255,255,255,.55); font-size:.61rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
+    .pv-hero-code { color:rgba(255,255,255,.18); font-family:monospace; font-size:.56rem; }
+    .pv-resumen { margin-bottom:1.25rem; padding:.75rem 1rem; text-align:center; color:rgba(255,255,255,.42); font-size:.72rem; }
+    .pv-resumen strong { color:#e8c96a; font-weight:600; }
+    .pv-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; margin-bottom:1rem; }
+    .pv-kpi { position:relative; overflow:hidden; min-height:148px; padding:1.25rem 1.3rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:12px; background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.018)); }
+    .pv-kpi::before { content:''; position:absolute; left:0; top:22%; bottom:22%; width:2px; background:var(--pv-c,#c9a84c); opacity:.75; }
+    .pv-kpi-label { margin-bottom:.7rem; color:rgba(255,255,255,.38); font-size:.54rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; }
+    .pv-kpi-n { color:#f8f6f2; font-size:2.65rem; font-weight:300; line-height:1; }
+    .pv-kpi-sub { margin-top:.55rem; color:rgba(255,255,255,.3); font-size:.63rem; line-height:1.45; }
+    .pv-kpi-delta { display:inline-flex; align-items:center; gap:.25rem; margin-top:.45rem; font-size:.61rem; font-weight:600; }
+    .pv-delta-pos { color:#50c878; }
+    .pv-delta-neg { color:#d9825b; }
+    .pv-delta-neu { color:rgba(255,255,255,.3); }
+    .pv-sec { padding:1.45rem 1.55rem; margin-bottom:1rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:12px; background:linear-gradient(155deg,rgba(255,255,255,.042),rgba(255,255,255,.014)); }
+    .pv-sec-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.15rem; }
+    .pv-sec-titulo { color:rgba(255,255,255,.42); font-size:.57rem; font-weight:700; letter-spacing:.19em; text-transform:uppercase; }
+    .pv-sec-sub { margin-top:.35rem; color:rgba(255,255,255,.28); font-size:.66rem; }
+    .pv-chart-wrap { position:relative; height:270px; }
+    .pv-flt-bar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
+    .pv-flt-btn { min-height:30px; padding:.32rem .65rem; border:1px solid rgba(255,255,255,.09); border-radius:7px; background:rgba(255,255,255,.025); color:rgba(255,255,255,.4); font:600 .58rem 'Inter',sans-serif; cursor:pointer; }
+    .pv-flt-btn.activo { border-color:rgba(201,168,76,.42); background:rgba(201,168,76,.11); color:#e8c96a; }
+    .pv-flt-custom { display:flex; align-items:flex-end; justify-content:flex-end; gap:.55rem; margin:0 0 1rem; padding:.7rem; border-top:1px solid rgba(255,255,255,.05); }
+    .pv-flt-custom label { display:flex; flex-direction:column; gap:.3rem; color:rgba(255,255,255,.3); font-size:.55rem; text-transform:uppercase; letter-spacing:.09em; }
+    .pv-fecha-input { padding:.38rem .5rem; border:1px solid rgba(255,255,255,.1); border-radius:7px; background:rgba(255,255,255,.04); color:#f5f3f0; color-scheme:dark; font:500 .67rem 'Inter',sans-serif; }
+    .pv-aplicar { min-height:31px; padding:.35rem .75rem; border:0; border-radius:7px; background:#c9a84c; color:#15130e; font:700 .6rem 'Inter',sans-serif; cursor:pointer; }
+    .pv-impact-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:1rem; margin-bottom:1rem; }
+    .pv-journey { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; margin-top:.35rem; }
+    .pv-journey-step { position:relative; padding:1rem; border-right:1px solid rgba(255,255,255,.06); }
+    .pv-journey-step:last-child { border-right:0; }
+    .pv-journey-n { color:#f5f3f0; font-size:1.75rem; font-weight:300; }
+    .pv-journey-label { margin-top:.32rem; color:rgba(255,255,255,.3); font-size:.56rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+    .pv-journey-accent .pv-journey-n { color:#e8c96a; }
+    .pv-feed { display:flex; flex-direction:column; gap:.2rem; }
+    .pv-feed-row { display:grid; grid-template-columns:8px minmax(0,1fr) auto; align-items:center; gap:.65rem; padding:.52rem .2rem; border-bottom:1px solid rgba(255,255,255,.045); }
+    .pv-feed-row:last-child { border-bottom:0; }
+    .pv-feed-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.2); }
+    .pv-feed-dot.qr { background:#c9a84c; box-shadow:0 0 7px rgba(201,168,76,.35); }
+    .pv-feed-dot.lead { background:#50c878; box-shadow:0 0 7px rgba(80,200,120,.35); }
+    .pv-feed-desc { color:rgba(255,255,255,.67); font-size:.7rem; }
+    .pv-feed-fecha { color:rgba(255,255,255,.25); font-size:.61rem; white-space:nowrap; }
+    .pv-crm-bar { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .pv-crm-pill { display:inline-flex; align-items:center; gap:.35rem; padding:.28rem .58rem; border:1px solid rgba(255,255,255,.08); border-radius:999px; background:rgba(255,255,255,.025); color:rgba(255,255,255,.48); font-size:.61rem; }
+    .pv-crm-pill strong { color:#f5f3f0; font-size:.68rem; }
+    .pv-tabla { width:100%; border-collapse:collapse; }
+    .pv-tabla th { padding:.5rem .65rem; border-bottom:1px solid rgba(255,255,255,.06); color:rgba(255,255,255,.3); font-size:.54rem; font-weight:600; letter-spacing:.1em; text-align:left; text-transform:uppercase; }
+    .pv-tabla td { padding:.75rem .65rem; border-bottom:1px solid rgba(255,255,255,.04); color:rgba(255,255,255,.78); font-size:.73rem; vertical-align:middle; }
+    .pv-tabla tr:last-child td { border-bottom:none; }
+    .pv-tabla tr:hover td { background:rgba(255,255,255,.02); }
+    .pv-dot-nueva { width:7px; height:7px; border-radius:50%; background:#50c878; box-shadow:0 0 7px rgba(80,200,120,.48); }
+    .pv-via { display:inline-flex; align-items:center; gap:.35rem; color:rgba(255,255,255,.36); font-size:.61rem; }
+    .pv-via-mark { width:8px; height:8px; border:1px solid currentColor; }
+    .pv-via.qr { color:#c9a84c; font-weight:600; }
+    .pv-fecha { color:rgba(255,255,255,.38); font-size:.66rem; white-space:nowrap; }
+    .pv-slug { display:inline-block; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:rgba(255,255,255,.67); font-size:.67rem; }
+    .pv-empty { padding:2rem 1rem; text-align:center; color:rgba(255,255,255,.28); font-size:.72rem; }
+    .pv-empty-mark { width:26px; height:26px; margin:0 auto .65rem; border:1px solid rgba(201,168,76,.28); border-radius:50%; }
+    .pv-msg-sec .msg-card { border-radius:8px; border-left:2px solid rgba(201,168,76,.28); }
+    .pv-msg-sec .msg-card-head { padding:.75rem .85rem; }
+    .pv-msg-sec .msg-unread-dot { background:#c9a84c; }
+    .pv-msg-empty-title { margin-bottom:.32rem; color:rgba(255,255,255,.5); font-size:.86rem; }
+    .pv-main .estado-nueva { background:rgba(80,200,120,.2); color:#6ee89a; border:1px solid rgba(80,200,120,.3); }
+    .pv-main .estado-en_contacto { background:rgba(201,168,76,.2); color:#e8c96a; border:1px solid rgba(201,168,76,.3); }
+    .pv-main .estado-en_negociacion { background:rgba(215,111,63,.2); color:#f0956a; border:1px solid rgba(215,111,63,.3); }
+    .pv-main .estado-cerrada { background:rgba(100,149,237,.2); color:#89b4f7; border:1px solid rgba(100,149,237,.3); }
+    .pv-main .estado-descartada { background:rgba(136,136,136,.14); color:rgba(255,255,255,.42); border:1px solid rgba(136,136,136,.22); }
+    @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
+    @media(max-width:560px){ .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-journey{grid-template-columns:1fr}.pv-journey-step{border-right:0;border-bottom:1px solid rgba(255,255,255,.06)}.pv-journey-step:last-child{border-bottom:0}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:620px} }
   </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <header class="header">
-  <div class="header-logo">SUR <span>PATAGONIA</span></div>
+  <div class="header-brand">
+    <img src="../assets/logohorizontalnegro.png" alt="Sur Patagonia" />
+    <span>Red de aliados</span>
+  </div>
   <div class="header-right">
     <div class="header-canal" id="headerCanal"></div>
     <button class="btn-salir" onclick="salir()">Salir</button>
@@ -347,6 +426,7 @@
     const visitas    = rVisitas.data    || []
     const scans30    = rVisitas30.count || 0
     const contactos  = rContactos.data  || []
+    let _pvChart = null
 
     // Filtrar mensajes para este usuario
     // Lógica: si usuario_id está → solo ese usuario
@@ -429,102 +509,294 @@
 
     // ── Render ─────────────────────────────────────
     const main = document.getElementById('mainContent')
-    main.innerHTML = `
-      <div class="bienvenida">
-        <h1>Bienvenido</h1>
-        <p>${canales[0].ciudad ? esc(canales[0].ciudad) + (canales[0].provincia ? ', ' + esc(canales[0].provincia) : '') : 'Tu panel de colaborador'}
-          · <span class="tipo-pill tipo-${esPasivo ? 'pasivo':'activo'}">${esPasivo ? 'Punto de venta' : 'Inmobiliaria / Vendedor'}</span>
-        </p>
-      </div>
+    if (esPasivo) {
+      main.classList.add('pv-main')
+      const canal = canales[0]
+      const geo = [canal.ciudad, canal.provincia].filter(Boolean).join(', ')
+      const estadoQR = !canal.activo ? 'inactivo' : campanaActiva[canal.id] ? 'campana' : 'activo'
+      const dotColor = estadoQR === 'activo' ? '#50c878' : estadoQR === 'campana' ? '#c9a84c' : '#444'
+      const dotGlow = estadoQR !== 'inactivo' ? `box-shadow:0 0 10px ${dotColor}88` : ''
+      const dotLabel = estadoQR === 'inactivo' ? 'QR inactivo' : estadoQR === 'campana' ? `Campaña: ${campanaActiva[canal.id]}` : 'QR activo'
+      const m = metricasPasivo(contactos)
+      const monograma = (canal.nombre || 'SP').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()
 
-      <!-- KPIs globales -->
-      <div class="kpi-grid">
-        <div class="kpi">
-          <div class="kpi-n accent">${totalScans.toLocaleString('es-AR')}</div>
-          <div class="kpi-label">Scans totales</div>
-          <div class="kpi-sub">todos tus canales</div>
+      main.innerHTML = `
+        <div class="pv-hero">
+          <div>
+            <div class="pv-hero-eyebrow">Aliado Sur Patagonia</div>
+            <div class="pv-hero-hola">Hola, <strong>${esc(canal.nombre)}</strong></div>
+            <div class="pv-hero-impacto">Este es el impacto que tu espacio está generando dentro de la red Sur Patagonia.</div>
+            ${geo ? `<div class="pv-hero-geo">${esc(geo)}</div>` : ''}
+          </div>
+          <div class="pv-identity">
+            <div class="pv-monogram">${esc(monograma)}</div>
+            <div class="pv-hero-estado">
+              <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};${dotGlow};flex-shrink:0"></span>
+              <span style="color:${dotColor}">${esc(dotLabel)}</span>
+            </div>
+            <div class="pv-hero-code">Código ${esc(canal.codigo)}</div>
+          </div>
         </div>
-        <div class="kpi">
-          <div class="kpi-n">${scans30.toLocaleString('es-AR')}</div>
-          <div class="kpi-label">Scans últimos 30 días</div>
-          <div class="kpi-sub">actividad reciente</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-n dorado">${contactos.length}</div>
-          <div class="kpi-label">Consultas generadas</div>
-          <div class="kpi-sub">leads de tus canales</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-n verde">${conv}%</div>
-          <div class="kpi-label">Tasa de conversión</div>
-          <div class="kpi-sub">scans → consultas</div>
-        </div>
-      </div>
 
-      ${!esPasivo && canales.length > 1 ? `
-      <!-- Cards por canal -->
-      <div class="seccion">
-        <div class="sec-titulo">Tus canales</div>
-        <div style="display:flex;flex-direction:column;gap:.6rem;">${renderCards()}</div>
-      </div>` : esPasivo ? `
-      <!-- Estado QR pasivo -->
-      ${renderCards()}` : renderCards()}
+        <div class="pv-resumen">En los últimos 30 días, tu canal generó <strong>${m.v30.toLocaleString('es-AR')} interacciones</strong> y <strong>${m.c30.toLocaleString('es-AR')} consultas comerciales</strong>.</div>
 
-      <!-- Tabla de consultas -->
-      ${esPasivo ? renderPasivo(contactos) : renderActivo(contactos)}
+        <div class="pv-kpi-grid">
+          <div class="pv-kpi" style="--pv-c:#d76f3f"><div class="pv-kpi-label">Interacciones generadas</div><div class="pv-kpi-n">${totalScans.toLocaleString('es-AR')}</div><div class="pv-kpi-sub">Actividad histórica desde tu QR y enlace.</div></div>
+          <div class="pv-kpi" style="--pv-c:#6495ed"><div class="pv-kpi-label">Impulso reciente</div><div class="pv-kpi-n">${m.v30.toLocaleString('es-AR')}</div>${renderDelta(m.deltaV)}<div class="pv-kpi-sub">Interacciones en los últimos 30 días.</div></div>
+          <div class="pv-kpi" style="--pv-c:#c9a84c"><div class="pv-kpi-label">Oportunidades recientes</div><div class="pv-kpi-n">${m.c30.toLocaleString('es-AR')}</div>${renderDelta(m.deltaC)}<div class="pv-kpi-sub">${contactos.length.toLocaleString('es-AR')} acumuladas desde tu canal.</div></div>
+          <div class="pv-kpi" style="--pv-c:#50c878"><div class="pv-kpi-label">Conversión a consulta</div><div class="pv-kpi-n">${m.conv30}%</div>${renderDelta(m.deltaConv, 'puntos vs período anterior')}<div class="pv-kpi-sub">Interacciones que se convirtieron en oportunidades.</div></div>
+        </div>
 
-      <!-- Mensajes de Sur Patagonia -->
-      <div class="seccion" id="secMensajes">
-        <div class="sec-titulo">Mensajes de Sur Patagonia${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem;">${misMensajes.length}</span>` : ''}</div>
-        <div class="msg-inbox" id="msgInbox">
-          ${misMensajes.length ? misMensajes.map((m, i) => `
-            <div class="msg-card" id="msgCard-${i}">
-              <div class="msg-card-head" onclick="toggleMsg(${i})">
-                <div class="msg-unread-dot" id="dot-${i}"></div>
-                <div class="msg-card-asunto">${esc(m.asunto)}</div>
-                <div class="msg-card-fecha">${fmt(m.created_at)}</div>
-              </div>
-              <div class="msg-card-body" id="msgBody-${i}">
-                <div class="msg-card-cuerpo">${esc(m.cuerpo)}</div>
-                ${!esPasivo ? `
+        ${renderPasivo(contactos)}
+
+        <div class="pv-sec pv-msg-sec" id="secMensajes">
+          <div class="pv-sec-head"><div><div class="pv-sec-titulo">Novedades de la red${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem">${misMensajes.length}</span>` : ''}</div><div class="pv-sec-sub">Actualizaciones de Sur Patagonia para tu espacio.</div></div></div>
+          <div class="msg-inbox" id="msgInbox">
+            ${misMensajes.length ? misMensajes.map((m, i) => `
+              <div class="msg-card" id="msgCard-${i}">
+                <div class="msg-card-head" onclick="toggleMsg(${i})">
+                  <div class="msg-unread-dot" id="dot-${i}"></div>
+                  <div class="msg-card-asunto">${esc(m.asunto)}</div>
+                  <div class="msg-card-fecha">${fmt(m.created_at)}</div>
+                </div>
+                <div class="msg-card-body" id="msgBody-${i}"><div class="msg-card-cuerpo">${esc(m.cuerpo)}</div></div>
+              </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonia tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
+          </div>
+        </div>`
+
+      requestAnimationFrame(() => renderGraficoPasivo(contactos, 30))
+    } else {
+      main.innerHTML = `
+        <div class="bienvenida">
+          <h1>Bienvenido</h1>
+          <p>${canales[0].ciudad ? esc(canales[0].ciudad) + (canales[0].provincia ? ', ' + esc(canales[0].provincia) : '') : 'Tu panel de colaborador'}
+            · <span class="tipo-pill tipo-activo">Inmobiliaria / Vendedor</span>
+          </p>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="kpi-n accent">${totalScans.toLocaleString('es-AR')}</div><div class="kpi-label">Scans totales</div><div class="kpi-sub">todos tus canales</div></div>
+          <div class="kpi"><div class="kpi-n">${scans30.toLocaleString('es-AR')}</div><div class="kpi-label">Scans últimos 30 días</div><div class="kpi-sub">actividad reciente</div></div>
+          <div class="kpi"><div class="kpi-n dorado">${contactos.length}</div><div class="kpi-label">Consultas generadas</div><div class="kpi-sub">leads de tus canales</div></div>
+          <div class="kpi"><div class="kpi-n verde">${conv}%</div><div class="kpi-label">Tasa de conversión</div><div class="kpi-sub">scans → consultas</div></div>
+        </div>
+        ${canales.length > 1 ? `<div class="seccion"><div class="sec-titulo">Tus canales</div><div style="display:flex;flex-direction:column;gap:.6rem;">${renderCards()}</div></div>` : renderCards()}
+        ${renderActivo(contactos)}
+        <div class="seccion" id="secMensajes">
+          <div class="sec-titulo">Mensajes de Sur Patagonia${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem;">${misMensajes.length}</span>` : ''}</div>
+          <div class="msg-inbox" id="msgInbox">
+            ${misMensajes.length ? misMensajes.map((m, i) => `
+              <div class="msg-card" id="msgCard-${i}">
+                <div class="msg-card-head" onclick="toggleMsg(${i})">
+                  <div class="msg-unread-dot" id="dot-${i}"></div>
+                  <div class="msg-card-asunto">${esc(m.asunto)}</div>
+                  <div class="msg-card-fecha">${fmt(m.created_at)}</div>
+                </div>
+                <div class="msg-card-body" id="msgBody-${i}">
+                  <div class="msg-card-cuerpo">${esc(m.cuerpo)}</div>
                   <div class="reply-area">
                     <div class="reply-titulo">Tu respuesta</div>
-                    ${(m.mensajes_respuestas || []).filter(r => r.usuario_id === userId).map(r => `
-                      <div class="reply-item-colab">
-                        <div class="reply-cuerpo">${esc(r.cuerpo)}</div>
-                        <div class="reply-meta">${fmt(r.created_at)}</div>
-                      </div>`).join('')}
+                    ${(m.mensajes_respuestas || []).filter(r => r.usuario_id === userId).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
                     <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
                     <button class="btn-reply" onclick="enviarRespuesta('${m.id}', ${i}, ${JSON.stringify(canales[0]?.nombre||'').replace(/"/g,'&quot;')})">Enviar respuesta</button>
-                  </div>` : ''}
-              </div>
-            </div>`).join('') : '<div class="no-msgs">No tenés mensajes por ahora.</div>'}
-        </div>
-      </div>
-    `
+                  </div>
+                </div>
+              </div>`).join('') : '<div class="no-msgs">No tenés mensajes por ahora.</div>'}
+          </div>
+        </div>`
+    }
+
+    function compararPeriodo(actual, anterior) {
+      if (anterior === 0) return { valor:null, nueva:actual > 0 }
+      return { valor:Math.round((actual - anterior) / anterior * 100), nueva:false }
+    }
+
+    function metricasPasivo(contactos) {
+      const corte30 = new Date(Date.now() - 30 * 86400000)
+      const corte60 = new Date(Date.now() - 60 * 86400000)
+      const v30 = visitas.filter(v => new Date(v.created_at) >= corte30).length
+      const c30 = contactos.filter(c => new Date(c.created_at) >= corte30).length
+      const vAnt = visitas.filter(v => { const d = new Date(v.created_at); return d >= corte60 && d < corte30 }).length
+      const cAnt = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 }).length
+      const conv30 = v30 > 0 ? Number((c30 / v30 * 100).toFixed(1)) : 0
+      const convAnt = vAnt > 0 ? Number((cAnt / vAnt * 100).toFixed(1)) : 0
+      return {
+        v30, c30, vAnt, cAnt, conv30,
+        deltaV: compararPeriodo(v30, vAnt),
+        deltaC: compararPeriodo(c30, cAnt),
+        deltaConv: vAnt > 0 ? { valor:Number((conv30 - convAnt).toFixed(1)), nueva:false } : { valor:null, nueva:conv30 > 0 },
+      }
+    }
+
+    function renderDelta(delta, etiqueta = 'vs período anterior') {
+      if (delta.nueva) return '<div class="pv-kpi-delta pv-delta-pos">Actividad nueva</div>'
+      if (delta.valor === null) return '<div class="pv-kpi-delta pv-delta-neu">Sin comparación previa</div>'
+      if (delta.valor === 0) return `<div class="pv-kpi-delta pv-delta-neu">Sin variación ${esc(etiqueta)}</div>`
+      const positivo = delta.valor > 0
+      return `<div class="pv-kpi-delta ${positivo ? 'pv-delta-pos' : 'pv-delta-neg'}">${positivo ? '↑' : '↓'} ${Math.abs(delta.valor)}${etiqueta.startsWith('puntos') ? '' : '%'} ${esc(etiqueta)}</div>`
+    }
+
+    function fechaRelativa(dateStr) {
+      const diff = Math.max(0, Date.now() - new Date(dateStr).getTime())
+      const min = Math.floor(diff / 60000)
+      if (min < 1) return 'ahora'
+      if (min < 60) return `hace ${min} min`
+      const hs = Math.floor(min / 60)
+      if (hs < 24) return `hace ${hs} h`
+      const ds = Math.floor(hs / 24)
+      return `hace ${ds} día${ds === 1 ? '' : 's'}`
+    }
+
+    function renderActividadReciente(contactos) {
+      const eventos = [
+        ...visitas.map(v => ({ fecha:v.created_at, tipo:v.canal_via === 'qr' ? 'qr' : 'link', texto:v.canal_via === 'qr' ? 'Interacción desde el QR físico' : 'Visita desde el enlace compartido' })),
+        ...contactos.map(c => ({ fecha:c.created_at, tipo:'lead', texto:'Nueva oportunidad comercial generada' })),
+      ].filter(e => e.fecha).sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 8)
+
+      if (!eventos.length) return '<div class="pv-empty">Todavía no hay actividad registrada.</div>'
+      return `<div class="pv-feed">${eventos.map(e => `
+        <div class="pv-feed-row">
+          <span class="pv-feed-dot ${e.tipo}"></span>
+          <span class="pv-feed-desc">${esc(e.texto)}</span>
+          <span class="pv-feed-fecha">${fechaRelativa(e.fecha)}</span>
+        </div>`).join('')}</div>`
+    }
 
     function renderPasivo(contactos) {
-      if (!contactos.length) return `
-        <div class="seccion">
-          <div class="sec-titulo">Consultas generadas</div>
-          <div class="empty-msg">Aún no hay consultas. Cuando alguien consulte desde tu QR, aparecerá aquí.</div>
-        </div>`
-      const filas = contactos.slice(0, 30).map(c => `
-        <tr>
-          <td>${fmt(c.created_at)}</td>
-          <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr':''}">${c.canal_via === 'qr' ? '⬛ QR físico' : '🔗 Link'}</span></td>
-          <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
-        </tr>`).join('')
+      const m = metricasPasivo(contactos)
+      const estados = { nueva:0, en_contacto:0, en_negociacion:0, cerrada:0, descartada:0 }
+      contactos.forEach(c => { estados[c.estado] = (estados[c.estado] || 0) + 1 })
+
+      const pills = Object.entries(ESTADO_LABEL).map(([key, label]) =>
+        `<span class="pv-crm-pill estado-${key}"><strong>${estados[key] || 0}</strong> ${esc(label)}</span>`
+      ).join('')
+
+      const filas = contactos.length
+        ? contactos.slice(0, 40).map(c => {
+            const slug = c.proyecto_slug || c.propiedades?.titulo || null
+            return `<tr>
+              <td style="width:10px">${(c.estado || 'nueva') === 'nueva' ? '<div class="pv-dot-nueva"></div>' : ''}</td>
+              <td class="pv-fecha">${fmt(c.created_at)}</td>
+              <td>${slug ? `<span class="pv-slug">${esc(slug)}</span>` : '<span style="color:rgba(255,255,255,.22)">—</span>'}</td>
+              <td><span class="pv-via ${c.canal_via === 'qr' ? 'qr' : ''}"><span class="pv-via-mark"></span>${c.canal_via === 'qr' ? 'QR físico' : 'Enlace'}</span></td>
+              <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
+            </tr>`
+          }).join('')
+        : '<tr><td colspan="5"><div class="pv-empty">Aún no hay oportunidades generadas desde tu canal.</div></td></tr>'
+
       return `
-        <div class="seccion">
-          <div class="sec-titulo">Consultas generadas por tu canal</div>
-          <div style="overflow-x:auto;">
-            <table class="tabla">
-              <thead><tr><th>Fecha</th><th>Origen</th><th>Estado</th></tr></thead>
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div><div class="pv-sec-titulo">Evolución de la actividad de tu canal</div><div class="pv-sec-sub">Interacciones y oportunidades reales generadas en el período.</div></div>
+            <div class="pv-flt-bar">
+              <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
+              <button class="pv-flt-btn activo" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
+              <button class="pv-flt-btn" data-dias="90" onclick="pvSetPeriodo(this)">90 días</button>
+              <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
+            </div>
+          </div>
+          <div class="pv-flt-custom" id="pvFltCustom" style="display:none">
+            <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
+            <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
+            <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
+          </div>
+          <div class="pv-chart-wrap"><canvas id="pvChartEvol"></canvas></div>
+        </div>
+
+        <div class="pv-impact-grid">
+          <div class="pv-sec" style="margin-bottom:0">
+            <div class="pv-sec-head"><div><div class="pv-sec-titulo">Recorrido de impacto</div><div class="pv-sec-sub">Cómo la presencia de tu espacio se transforma en oportunidades.</div></div></div>
+            <div class="pv-journey">
+              <div class="pv-journey-step"><div class="pv-journey-n">${canales[0].activo ? 'Activo' : 'Pausado'}</div><div class="pv-journey-label">Canal asociado</div></div>
+              <div class="pv-journey-step"><div class="pv-journey-n">${m.v30}</div><div class="pv-journey-label">Interacciones · 30 días</div></div>
+              <div class="pv-journey-step pv-journey-accent"><div class="pv-journey-n">${m.c30}</div><div class="pv-journey-label">Oportunidades · 30 días</div></div>
+            </div>
+          </div>
+          <div class="pv-sec" style="margin-bottom:0">
+            <div class="pv-sec-head"><div><div class="pv-sec-titulo">Actividad reciente</div><div class="pv-sec-sub">Últimos movimientos registrados.</div></div></div>
+            ${renderActividadReciente(contactos)}
+          </div>
+        </div>
+
+        <div class="pv-sec">
+          <div class="pv-sec-head"><div><div class="pv-sec-titulo">Estado de las oportunidades generadas</div><div class="pv-sec-sub">Seguimiento comercial de las consultas atribuidas a tu canal.</div></div></div>
+          <div class="pv-crm-bar">${pills}</div>
+          <div style="overflow-x:auto">
+            <table class="pv-tabla">
+              <thead><tr><th></th><th>Fecha</th><th>Proyecto</th><th>Origen</th><th>Estado</th></tr></thead>
               <tbody>${filas}</tbody>
             </table>
           </div>
         </div>`
+    }
+
+    function datosEvolucionPasivo(contactos, desde, hasta) {
+      const inicio = new Date(desde)
+      inicio.setHours(0,0,0,0)
+      const fin = new Date(hasta)
+      fin.setHours(23,59,59,999)
+      const dias = Math.max(1, Math.ceil((fin - inicio) / 86400000))
+      const bloqueDias = dias <= 14 ? 1 : dias <= 45 ? 3 : dias <= 120 ? 7 : 30
+      const labelsEvol = [], dataScans = [], dataConsultas = []
+
+      for (let cursor = new Date(inicio); cursor <= fin; cursor = new Date(cursor.getTime() + bloqueDias * 86400000)) {
+        const bloqueIni = new Date(cursor)
+        const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
+        labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
+        dataScans.push(visitas.filter(v => { const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+      }
+      return { labelsEvol, dataScans, dataConsultas }
+    }
+
+    function renderGraficoPasivo(contactos, dias, desdeCustom = null, hastaCustom = null) {
+      if (typeof Chart === 'undefined') return
+      const ctx = document.getElementById('pvChartEvol')?.getContext('2d')
+      if (!ctx) return
+      const hasta = hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : new Date()
+      const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime() - (dias - 1) * 86400000)
+      const { labelsEvol, dataScans, dataConsultas } = datosEvolucionPasivo(contactos, desde, hasta)
+
+      if (_pvChart) _pvChart.destroy()
+      _pvChart = new Chart(ctx, {
+        type:'line',
+        data:{
+          labels:labelsEvol,
+          datasets:[
+            { label:'Interacciones', data:dataScans, borderColor:'#c9a84c', backgroundColor:'rgba(201,168,76,.1)', tension:.32, fill:true, pointRadius:2.5, pointHoverRadius:5, pointBackgroundColor:'#c9a84c', borderWidth:1.7 },
+            { label:'Oportunidades', data:dataConsultas, borderColor:'#d76f3f', backgroundColor:'rgba(215,111,63,.06)', tension:.32, fill:true, pointRadius:2.5, pointHoverRadius:5, pointBackgroundColor:'#d76f3f', borderWidth:1.7 }
+          ]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          interaction:{ mode:'index', intersect:false },
+          plugins:{
+            legend:{ labels:{ color:'rgba(255,255,255,.48)', font:{size:10}, boxWidth:10, usePointStyle:true } },
+            tooltip:{ backgroundColor:'#171613', borderColor:'rgba(255,255,255,.1)', borderWidth:1, titleColor:'#fff', bodyColor:'rgba(255,255,255,.7)', padding:10 }
+          },
+          scales:{
+            x:{ ticks:{color:'rgba(255,255,255,.27)',font:{size:9},maxTicksLimit:10}, grid:{color:'rgba(255,255,255,.035)'} },
+            y:{ beginAtZero:true, ticks:{color:'rgba(255,255,255,.27)',font:{size:9},precision:0}, grid:{color:'rgba(255,255,255,.04)'} }
+          }
+        }
+      })
+    }
+
+    window.pvSetPeriodo = function(btn) {
+      document.querySelectorAll('.pv-flt-btn').forEach(b => b.classList.remove('activo'))
+      btn.classList.add('activo')
+      const valor = btn.dataset.dias
+      const custom = valor === 'custom'
+      document.getElementById('pvFltCustom').style.display = custom ? '' : 'none'
+      if (!custom) renderGraficoPasivo(contactos, parseInt(valor, 10))
+    }
+
+    window.pvAplicarFechas = function() {
+      const desde = document.getElementById('pvEvolDesde').value
+      const hasta = document.getElementById('pvEvolHasta').value
+      if (!desde || !hasta) { alert('Seleccioná una fecha desde y una fecha hasta.'); return }
+      if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
+      renderGraficoPasivo(contactos, 30, desde, hasta)
     }
 
     function renderActivo(contactos) {
