@@ -6,39 +6,129 @@
   <title>Nuevo Canal — Sur Patagonia Admin</title>
   <link rel="stylesheet" href="../css/estilos.css" />
   <style>
-    .form-seccion {
-      background: var(--negro-2);
-      border: 1px solid var(--gris-oscuro);
-      padding: 1.8rem;
-      margin-bottom: 1.5rem;
+    body, .admin-main { background: #0c0c0e; }
+    .nc-page { width: min(100%, 1040px); margin: 0 auto; padding-bottom: 1rem; }
+    .nc-section {
+      background: linear-gradient(135deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,.02) 100%);
+      border: 1px solid rgba(255,255,255,.07);
+      border-top-color: rgba(255,255,255,.13);
+      border-radius: 14px;
+      padding: 1.35rem;
+      margin-bottom: 1rem;
     }
-    .form-seccion h3 {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.1rem;
-      font-weight: 400;
-      color: var(--dorado);
-      margin-bottom: 1.2rem;
-      padding-bottom: 0.6rem;
-      border-bottom: 1px solid var(--gris-oscuro);
+    .nc-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .8rem;
+      margin-bottom: 1.15rem;
     }
-    .form-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
-    .form-row-1 { margin-bottom: 1rem; }
-    @media (max-width: 700px) { .form-row { grid-template-columns: 1fr; } }
-
-    .hint { font-size: 0.72rem; color: var(--gris-claro); margin-top: 0.3rem; }
-    .slug-preview { font-size: 0.72rem; color: var(--gris-claro); margin-top: 0.3rem; font-family: monospace; }
-    .slug-preview span { color: var(--dorado); }
+    .nc-section-title {
+      margin: 0;
+      font-family: inherit;
+      font-size: .56rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.38);
+      font-weight: 600;
+    }
+    .nc-section-copy { margin: -.55rem 0 1rem; color: rgba(255,255,255,.4); font-size: .75rem; line-height: 1.55; }
+    .nc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .nc-field { min-width: 0; }
+    .nc-field-full { grid-column: 1 / -1; }
+    .nc-page .admin-label {
+      display: block;
+      margin-bottom: .42rem;
+      font-size: .58rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.38);
+    }
+    .nc-page .admin-input {
+      width: 100%;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px;
+      color: #f0ede8;
+      padding: .68rem .75rem;
+      transition: border-color .2s, background .2s, box-shadow .2s;
+    }
+    .nc-page .admin-input:focus {
+      border-color: rgba(201,168,76,.55);
+      background: rgba(255,255,255,.055);
+      box-shadow: 0 0 0 3px rgba(201,168,76,.08);
+      outline: none;
+    }
+    .nc-field-email {
+      padding: .85rem;
+      border-left: 2px solid rgba(201,168,76,.7);
+      background: rgba(201,168,76,.035);
+      border-radius: 0 8px 8px 0;
+    }
+    .nc-hint { font-size: .7rem; color: rgba(255,255,255,.38); margin-top: .38rem; line-height: 1.45; }
+    .nc-code-preview { font: .72rem/1.4 monospace; color: rgba(255,255,255,.38); margin-top: .38rem; }
+    .nc-code-preview span { color: #c9a84c; }
+    .nc-toggle {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      padding: .65rem .75rem;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      background: rgba(255,255,255,.025);
+      color: #f0ede8;
+      font-size: .8rem;
+      cursor: pointer;
+    }
+    .nc-toggle input { accent-color: #c9a84c; }
+    .nc-access-state {
+      display: flex;
+      align-items: flex-start;
+      gap: .7rem;
+      padding: .85rem 0;
+      border-top: 1px solid rgba(255,255,255,.07);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .nc-status-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      margin-top: .35rem;
+      border-radius: 50%;
+      background: #50c878;
+      box-shadow: 0 0 10px rgba(80,200,120,.55);
+    }
+    .nc-access-email { color: #f0ede8; font-size: .86rem; font-weight: 500; }
+    .nc-save-bar {
+      position: sticky;
+      bottom: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: .5rem;
+      padding: .9rem 1.1rem;
+      background: rgba(12,12,14,.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px 12px 0 0;
+    }
+    .nc-save-name { min-width: 0; color: rgba(255,255,255,.62); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nc-save-actions { display: flex; align-items: center; gap: .6rem; flex: 0 0 auto; }
 
     /* ── REFERENCIAS ─────────────────────────────────── */
-    .ref-row {
+    .nc-ref-row {
       display: grid;
       grid-template-columns: 1fr auto auto auto;
       align-items: center;
       gap: 0.8rem;
       padding: 0.8rem;
-      border: 1px solid var(--gris-oscuro);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
       margin-bottom: 0.6rem;
-      background: var(--negro-3);
+      background: rgba(255,255,255,.025);
     }
     .ref-nombre { font-size: 0.85rem; font-weight: 500; }
     .ref-codigo {
@@ -64,21 +154,23 @@
     .btn-ref:hover { border-color: var(--dorado); color: var(--dorado); }
     .btn-ref.danger:hover { border-color: #e05; color: #e05; }
 
-    .ref-add-form {
+    .nc-ref-add {
       display: grid;
       grid-template-columns: 1fr 1fr auto;
       gap: 0.8rem;
       align-items: flex-end;
       padding: 1rem;
-      border: 1px dashed var(--gris-oscuro);
+      border: 1px dashed rgba(255,255,255,.12);
+      border-radius: 8px;
       margin-top: 1rem;
     }
-    .ref-empty {
+    .nc-empty {
       text-align: center;
       padding: 2rem;
-      color: var(--gris-claro);
+      color: rgba(255,255,255,.4);
       font-size: 0.8rem;
-      border: 1px dashed var(--gris-oscuro);
+      border: 1px dashed rgba(255,255,255,.12);
+      border-radius: 8px;
       margin-bottom: 0.8rem;
     }
 
@@ -134,12 +226,22 @@
       font-size: 0.65rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      border-radius: 2px;
-      margin-left: 0.5rem;
+      border-radius: 999px;
       vertical-align: middle;
     }
     .tag-activo   { background: rgba(80,200,120,.15); color: #50c878; }
     .tag-pasivo   { background: rgba(150,150,150,.15); color: var(--gris-claro); }
+    @media (max-width: 700px) {
+      .nc-page { width: 100%; }
+      .nc-section { padding: 1rem; border-radius: 10px; }
+      .nc-grid, .nc-ref-add { grid-template-columns: 1fr; }
+      .nc-field-full { grid-column: auto; }
+      .nc-ref-row { grid-template-columns: 1fr 1fr; }
+      .nc-ref-row > div:first-child { grid-column: 1 / -1; }
+      .nc-save-bar { align-items: stretch; flex-direction: column; }
+      .nc-save-actions { width: 100%; }
+      .nc-save-actions > * { flex: 1; text-align: center; }
+    }
   </style>
 </head>
 <body>
@@ -220,186 +322,167 @@
       </div>
     </div>
 
-    <!-- ── 1. INFORMACIÓN BÁSICA ──────────────────────── -->
-    <div class="form-seccion">
-      <h3>Información básica</h3>
-      <div class="form-row">
-        <div>
-          <label class="admin-label">Nombre del canal *</label>
-          <input type="text" id="nombre" class="admin-input" placeholder="Ej: Inmobiliaria Radatil" />
-          <div class="slug-preview">Código: <span id="slugPreview">—</span></div>
-        </div>
-        <div>
-          <label class="admin-label">Tipo *</label>
-          <select id="tipo" class="admin-input" onchange="onTipoChange()">
-            <option value="inmobiliaria">Inmobiliaria</option>
-            <option value="particular">Vendedor particular</option>
-            <option value="punto_venta">Punto de venta</option>
-            <option value="campaña">Campaña digital</option>
-            <option value="evento">Evento</option>
-          </select>
-          <div class="hint" id="tipoHint">Canal activo — puede vender múltiples proyectos con links independientes.</div>
-        </div>
-      </div>
-      <div class="form-row">
-        <div>
-          <label class="admin-label">Código único</label>
-          <input type="text" id="codigo" class="admin-input" placeholder="Se genera automáticamente" />
-          <div class="hint">Solo letras minúsculas, números y guiones.</div>
-        </div>
-        <div style="display:flex; align-items:flex-start; padding-top:1.8rem;">
-          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem;">
-            <input type="checkbox" id="activo" checked style="accent-color:var(--dorado);"> Canal activo
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── 2. DESTINO (solo canales pasivos) ──────────── -->
-    <div class="form-seccion" id="seccionDestino">
-      <h3>Destino del QR <span class="tipo-tag tag-pasivo">Canal pasivo</span></h3>
-      <p style="font-size:0.78rem; color:var(--gris-claro); margin-bottom:1rem;">
-        A dónde lleva el QR cuando alguien lo escanea. Podés cambiarlo en cualquier momento sin reimprimir.
-      </p>
-      <div class="form-row">
-        <div>
-          <label class="admin-label">Tipo de destino</label>
-          <select id="tipoDestino" class="admin-input" onchange="actualizarDestinoPreview()">
-            <option value="home">Home del sitio</option>
-            <option value="proyecto">Proyecto o propiedad específica</option>
-            <option value="custom">URL personalizada</option>
-          </select>
-        </div>
-        <div id="destinoProyectoWrap">
-          <label class="admin-label">Proyecto</label>
-          <select id="destinoProyecto" class="admin-input" onchange="actualizarDestinoPreview()">
-            <option value="">Cargando proyectos…</option>
-          </select>
-        </div>
-        <div id="destinoCustomWrap" style="display:none;">
-          <label class="admin-label">URL personalizada</label>
-          <input type="text" id="destinoCustom" class="admin-input" placeholder="Ej: /propiedades" oninput="actualizarDestinoPreview()" />
-        </div>
-      </div>
-      <div class="hint" id="destinoPreview">El QR llevará a: <strong>surpatagonia.com.ar/</strong></div>
-    </div>
-
-    <!-- ── UBICACIÓN ──────────────────────────────────── -->
-    <div class="form-seccion">
-      <h3>Ubicación</h3>
-      <p style="font-size:0.78rem; color:var(--gris-claro); margin-bottom:1rem;">
-        Dónde está este canal. Permite analizar de qué ciudad viene cada consulta y ubicarlo en los mapas.
-      </p>
-      <div class="form-row">
-        <div>
-          <label class="admin-label">Ciudad</label>
-          <input type="text" id="ciudad" class="admin-input" placeholder="Ej: San Martín de los Andes" />
-        </div>
-        <div>
-          <label class="admin-label">Provincia</label>
-          <select id="provincia" class="admin-input">
-            <option value="">— Seleccionar —</option>
-            <option>Buenos Aires</option><option>CABA</option><option>Catamarca</option>
-            <option>Chaco</option><option>Chubut</option><option>Córdoba</option>
-            <option>Corrientes</option><option>Entre Ríos</option><option>Formosa</option>
-            <option>Jujuy</option><option>La Pampa</option><option>La Rioja</option>
-            <option>Mendoza</option><option>Misiones</option><option>Neuquén</option>
-            <option>Río Negro</option><option>Salta</option><option>San Juan</option>
-            <option>San Luis</option><option>Santa Cruz</option><option>Santa Fe</option>
-            <option>Santiago del Estero</option><option>Tierra del Fuego</option><option>Tucumán</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row-1">
-        <label class="admin-label">Coordenadas (lat, lng)</label>
-        <input type="text" id="coords" class="admin-input" placeholder="Ej: -40.1572, -71.3534" />
-        <div class="hint">En Google Maps: clic derecho sobre el punto → tocá las coordenadas para copiarlas → pegalas acá tal cual.</div>
-      </div>
-    </div>
-
-    <!-- ── 3. CONTACTO Y NOTIFICACIONES ──────────────── -->
-    <div class="form-seccion">
-      <h3>Contacto y notificaciones</h3>
-      <p style="font-size:0.78rem; color:var(--gris-claro); margin-bottom:1rem;">
-        Cuando llegue un lead por este canal, se notificará a estos contactos.
-      </p>
-      <div class="form-row">
-        <div>
-          <label class="admin-label">Email</label>
-          <input type="email" id="email" class="admin-input" placeholder="agente@ejemplo.com" />
-        </div>
-        <div>
-          <label class="admin-label">Teléfono / WhatsApp</label>
-          <input type="tel" id="telefono" class="admin-input" placeholder="+54 299 000-0000" />
-        </div>
-      </div>
-      <div class="form-row-1">
-        <label class="admin-label">Notas internas</label>
-        <textarea id="notas" class="admin-input" rows="2" placeholder="Arreglo comercial, condiciones…" style="resize:vertical;"></textarea>
-      </div>
-    </div>
-
-    <!-- ── 4. ACCESO EXTERNO ────────────────────────────── -->
-    <div class="form-seccion" id="seccionAcceso">
-      <h3>Acceso externo</h3>
-      <p style="font-size:.78rem;color:var(--gris-claro);margin-bottom:1.2rem;">
-        Si este canal pertenece a un colaborador externo (inmo, punto de venta, vendedor), creá su acceso aquí. Si es un canal propio, dejalo vacío.
-      </p>
-
-      <!-- Usuario ya existente (modo edición) -->
-      <div id="accesoExistente" style="display:none;background:rgba(255,255,255,.03);border:1px solid var(--card-border);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:1rem;">
-        <div style="font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris-claro);margin-bottom:.3rem;">Colaborador asignado</div>
-        <div id="accesoEmail" style="font-size:.85rem;font-weight:500;"></div>
-        <div style="font-size:.72rem;color:var(--gris-claro);margin-top:.25rem;">Para cambiar la contraseña usá el panel de <a href="usuarios.html" style="color:var(--accent);">Usuarios</a>.</div>
-      </div>
-
-      <!-- Crear nuevo acceso -->
-      <div id="accesoNuevo">
-        <p style="font-size:.78rem;color:var(--gris-claro);margin-bottom:.8rem;">
-          Se usará el email de Contacto y notificaciones como acceso al portal.
-        </p>
-        <div class="form-row">
-          <div>
-            <label class="admin-label">Contraseña temporal</label>
-            <input type="password" id="accesoPass" class="admin-input" placeholder="Mínimo 6 caracteres" />
+    <div class="nc-page">
+      <!-- ── 1. INFORMACIÓN BÁSICA ────────────────────── -->
+      <section class="nc-section">
+        <div class="nc-section-head"><h3 class="nc-section-title">Información básica</h3></div>
+        <div class="nc-grid">
+          <div class="nc-field nc-field-full">
+            <label class="admin-label">Nombre del canal *</label>
+            <input type="text" id="nombre" class="admin-input" placeholder="Ej: Inmobiliaria Radatil" />
+          </div>
+          <div class="nc-field nc-field-full">
+            <label class="admin-label">Tipo *</label>
+            <select id="tipo" class="admin-input" onchange="onTipoChange()">
+              <option value="inmobiliaria">Inmobiliaria</option>
+              <option value="particular">Vendedor particular</option>
+              <option value="punto_venta">Punto de venta</option>
+              <option value="campaña">Campaña digital</option>
+              <option value="evento">Evento</option>
+            </select>
+            <div class="nc-hint" id="tipoHint">Canal activo — puede vender múltiples proyectos con links independientes.</div>
+          </div>
+          <div class="nc-field nc-field-full">
+            <label class="admin-label">Código único</label>
+            <input type="text" id="codigo" class="admin-input" placeholder="Se genera automáticamente" />
+            <div class="nc-code-preview">Código: <span id="slugPreview">—</span></div>
+          </div>
+          <div class="nc-field nc-field-full nc-field-email">
+            <label class="admin-label">Email del colaborador *</label>
+            <input type="email" id="email" class="admin-input" placeholder="colaborador@ejemplo.com" required />
+            <div class="nc-hint">Este email identifica al usuario que accede al panel y debe existir en Admin → Usuarios.</div>
+          </div>
+          <div class="nc-field nc-field-full">
+            <label class="admin-label">Teléfono / WhatsApp</label>
+            <input type="tel" id="telefono" class="admin-input" placeholder="+54 299 000-0000" />
+          </div>
+          <div class="nc-field nc-field-full">
+            <label class="nc-toggle"><input type="checkbox" id="activo" checked> Canal habilitado</label>
           </div>
         </div>
-      </div>
+      </section>
 
-      <input type="hidden" id="userId" value="" />
-    </div>
-
-    <!-- ── 5. REFERENCIAS (activos, post-guardado) ────── -->
-    <div class="form-seccion" id="seccionReferencias" style="display:none;">
-      <h3>Links y QRs por proyecto <span class="tipo-tag tag-activo">Canal activo</span></h3>
-      <p style="font-size:0.78rem; color:var(--gris-claro); margin-bottom:1.2rem;">
-        Cada referencia es un link/QR independiente apuntando a un proyecto. El agente usa el link del proyecto que está promocionando.
-      </p>
-
-      <div id="listaReferencias">
-        <div class="ref-empty">Guardá el canal para empezar a agregar referencias.</div>
-      </div>
-
-      <!-- Formulario para agregar referencia -->
-      <div class="ref-add-form" id="refAddForm" style="display:none;">
-        <div>
-          <label class="admin-label">Proyecto</label>
-          <select id="refProyecto" class="admin-input">
-            <option value="">Seleccionar proyecto…</option>
-          </select>
+      <!-- ── 2. DESTINO (solo canales pasivos) ────────── -->
+      <section class="nc-section" id="seccionDestino">
+        <div class="nc-section-head">
+          <h3 class="nc-section-title">Destino del QR</h3>
+          <span class="tipo-tag tag-pasivo">Canal pasivo</span>
         </div>
-        <div>
-          <label class="admin-label">Nombre de referencia</label>
-          <input type="text" id="refNombre" class="admin-input" placeholder="Ej: Radatil → Huemules" />
+        <p class="nc-section-copy">Destino actual del QR. Puede actualizarse sin cambiar el código impreso.</p>
+        <div class="nc-grid">
+          <div class="nc-field">
+            <label class="admin-label">Tipo de destino</label>
+            <select id="tipoDestino" class="admin-input" onchange="actualizarDestinoPreview()">
+              <option value="home">Home del sitio</option>
+              <option value="proyecto">Proyecto o propiedad específica</option>
+              <option value="custom">URL personalizada</option>
+            </select>
+          </div>
+          <div class="nc-field" id="destinoProyectoWrap">
+            <label class="admin-label">Proyecto</label>
+            <select id="destinoProyecto" class="admin-input" onchange="actualizarDestinoPreview()">
+              <option value="">Cargando proyectos…</option>
+            </select>
+          </div>
+          <div class="nc-field" id="destinoCustomWrap" style="display:none;">
+            <label class="admin-label">URL personalizada</label>
+            <input type="text" id="destinoCustom" class="admin-input" placeholder="Ej: /propiedades" oninput="actualizarDestinoPreview()" />
+          </div>
+          <div class="nc-field nc-field-full nc-hint" id="destinoPreview">El QR llevará a: <strong>surpatagonia.com.ar/</strong></div>
         </div>
-        <button class="btn-primary" onclick="agregarReferencia()" style="white-space:nowrap;">+ Agregar</button>
-      </div>
-    </div>
+      </section>
 
-    <!-- ── ACCIONES ───────────────────────────────────── -->
-    <div style="display:flex; gap:1rem; justify-content:flex-end; padding-bottom:3rem;">
-      <a href="canales.html" class="btn-secondary">Cancelar</a>
-      <button class="btn-primary" id="btnGuardar">Guardar canal</button>
+      <!-- ── 3. UBICACIÓN ─────────────────────────────── -->
+      <section class="nc-section">
+        <div class="nc-section-head"><h3 class="nc-section-title">Ubicación</h3></div>
+        <div class="nc-grid">
+          <div class="nc-field">
+            <label class="admin-label">Ciudad</label>
+            <input type="text" id="ciudad" class="admin-input" placeholder="Ej: San Martín de los Andes" />
+          </div>
+          <div class="nc-field">
+            <label class="admin-label">Provincia</label>
+            <select id="provincia" class="admin-input">
+              <option value="">— Seleccionar —</option>
+              <option>Buenos Aires</option><option>CABA</option><option>Catamarca</option>
+              <option>Chaco</option><option>Chubut</option><option>Córdoba</option>
+              <option>Corrientes</option><option>Entre Ríos</option><option>Formosa</option>
+              <option>Jujuy</option><option>La Pampa</option><option>La Rioja</option>
+              <option>Mendoza</option><option>Misiones</option><option>Neuquén</option>
+              <option>Río Negro</option><option>Salta</option><option>San Juan</option>
+              <option>San Luis</option><option>Santa Cruz</option><option>Santa Fe</option>
+              <option>Santiago del Estero</option><option>Tierra del Fuego</option><option>Tucumán</option>
+            </select>
+          </div>
+          <div class="nc-field nc-field-full">
+            <label class="admin-label">Coordenadas (lat, lng)</label>
+            <input type="text" id="coords" class="admin-input" placeholder="Ej: -40.1572, -71.3534" />
+            <div class="nc-hint">Pegá las coordenadas copiadas desde Google Maps.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 4. NOTAS INTERNAS ────────────────────────── -->
+      <section class="nc-section">
+        <div class="nc-section-head"><h3 class="nc-section-title">Notas internas</h3></div>
+        <div class="nc-field">
+          <textarea id="notas" class="admin-input" rows="3" placeholder="Arreglo comercial, condiciones…" style="resize:vertical;"></textarea>
+          <div class="nc-hint">Visible únicamente para el administrador.</div>
+        </div>
+      </section>
+
+      <!-- ── 5. ACCESO ────────────────────────────────── -->
+      <section class="nc-section" id="seccionAcceso">
+        <div class="nc-section-head"><h3 class="nc-section-title">Acceso</h3></div>
+        <div id="accesoExistente" class="nc-access-state" style="display:none;">
+          <span class="nc-status-dot"></span>
+          <div>
+            <div id="accesoEmail" class="nc-access-email"></div>
+            <div class="nc-hint">Acceso activo · Para cambiar la contraseña usá <a href="usuarios.html" style="color:#c9a84c;">Admin → Usuarios</a>.</div>
+          </div>
+        </div>
+        <div id="accesoNuevo">
+          <div class="nc-field">
+            <label class="admin-label">Contraseña temporal</label>
+            <input type="password" id="accesoPass" class="admin-input" placeholder="Mínimo 6 caracteres" />
+            <div class="nc-hint">Solo completá este campo si el usuario todavía no existe en el sistema.</div>
+          </div>
+        </div>
+        <input type="hidden" id="userId" value="" />
+      </section>
+
+      <!-- ── 6. REFERENCIAS (activos, post-guardado) ─── -->
+      <section class="nc-section" id="seccionReferencias" style="display:none;">
+        <div class="nc-section-head">
+          <h3 class="nc-section-title">Links y QRs por proyecto</h3>
+          <span class="tipo-tag tag-activo">Canal activo</span>
+        </div>
+        <p class="nc-section-copy">Referencias independientes para los destinos asignados al canal.</p>
+        <div id="listaReferencias">
+          <div class="nc-empty">Guardá el canal para empezar a agregar referencias.</div>
+        </div>
+        <div class="nc-ref-add" id="refAddForm" style="display:none;">
+          <div class="nc-field">
+            <label class="admin-label">Proyecto</label>
+            <select id="refProyecto" class="admin-input">
+              <option value="">Seleccionar proyecto…</option>
+            </select>
+          </div>
+          <div class="nc-field">
+            <label class="admin-label">Nombre de referencia</label>
+            <input type="text" id="refNombre" class="admin-input" placeholder="Ej: Radatil → Huemules" />
+          </div>
+          <button class="btn-primary" onclick="agregarReferencia()" style="white-space:nowrap;">+ Agregar</button>
+        </div>
+      </section>
+
+      <div class="nc-save-bar">
+        <span class="nc-save-name" id="saveBarNombre">Nuevo canal</span>
+        <div class="nc-save-actions">
+          <a href="canales.html" class="btn-secondary">Cancelar</a>
+          <button class="btn-primary" id="btnGuardar">Guardar canal</button>
+        </div>
+      </div>
     </div>
 
   </main>
@@ -498,6 +581,7 @@ window.onTipoChange = function() {
 
 // ── Slug automático ───────────────────────────────────────
 document.getElementById('nombre').addEventListener('input', function() {
+  document.getElementById('saveBarNombre').textContent = this.value.trim() || 'Nuevo canal'
   if (!editId) {
     const slug = toSlug(this.value)
     document.getElementById('codigo').value        = slug
@@ -657,12 +741,12 @@ async function cargarReferencias() {
 
   const lista = document.getElementById('listaReferencias')
   if (!data?.length) {
-    lista.innerHTML = '<div class="ref-empty">Sin referencias aún. Agregá una abajo.</div>'
+    lista.innerHTML = '<div class="nc-empty">Sin referencias aún. Agregá una abajo.</div>'
     return
   }
 
   lista.innerHTML = data.map(r => `
-    <div class="ref-row">
+    <div class="nc-ref-row">
       <div>
         <div class="ref-nombre">${esc(r.nombre)}</div>
         <span class="ref-codigo">${esc(r.codigo)}</span>
@@ -772,6 +856,7 @@ if (editId) {
   if (c) {
     _canalId = c.id
     document.getElementById('nombre').value   = c.nombre   || ''
+    document.getElementById('saveBarNombre').textContent = c.nombre || 'Editar canal'
     document.getElementById('codigo').value   = c.codigo   || ''
     document.getElementById('tipo').value     = c.tipo     || 'particular'
     document.getElementById('activo').checked = c.activo   ?? true
@@ -828,9 +913,10 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const codigo = document.getElementById('codigo').value.trim()
   if (!nombre || !codigo) { alert('El nombre y el código son obligatorios.'); return }
 
-  const tipo     = document.getElementById('tipo').value
-  const activo_v = esActivo(tipo)
-  const destino  = activo_v ? '/' : getDestinoUrl()
+  const tipo      = document.getElementById('tipo').value
+  const activo_v  = esActivo(tipo)
+  const tipoAcceso = activo_v ? 'activo' : 'pasivo'
+  const destino   = activo_v ? '/' : getDestinoUrl()
   const proyectoSlugDestino = activo_v
     ? null
     : getProyectoSlugDestino(destino)
@@ -838,18 +924,72 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   // Datos de acceso externo — usa el mismo email de Contacto y notificaciones
   const emailAcceso = document.getElementById('email').value.trim()
   const passAcceso  = document.getElementById('accesoPass').value
-  const tieneAccesoNuevo = passAcceso && document.getElementById('accesoNuevo').style.display !== 'none'
+
+  if (!emailAcceso) {
+    alert('El email del colaborador es obligatorio para crear o editar un canal.')
+    return
+  }
 
   if (passAcceso && passAcceso.length < 6) {
     alert('La contraseña temporal debe tener al menos 6 caracteres.')
     return
   }
-  if (passAcceso && !emailAcceso) {
-    alert('Completá el email en Contacto y notificaciones antes de asignar acceso.')
+
+  let userId = null
+  let usuarioCreadoAhora = false
+
+  // El email es la identidad del colaborador: siempre se resuelve antes de guardar.
+  const { data: todosUsuarios, error: usuariosError } = await supabase.rpc('admin_listar_usuarios')
+  if (usuariosError) {
+    alert('No se pudo verificar el usuario colaborador: ' + usuariosError.message)
     return
   }
 
-  let userId = document.getElementById('userId').value.trim() || null
+  const usuarioExistente = todosUsuarios?.find(u =>
+    String(u.email || '').trim().toLowerCase() === emailAcceso.toLowerCase()
+  ) || null
+
+  if (usuarioExistente && usuarioExistente.rol !== 'colaborador') {
+    alert(`El email ${emailAcceso} ya pertenece a un usuario con rol "${usuarioExistente.rol || 'sin rol'}". Cambiá su rol a colaborador desde Usuarios antes de asignarlo al canal.`)
+    return
+  }
+
+  if (usuarioExistente) {
+    userId = usuarioExistente.id
+  } else {
+    if (!passAcceso) {
+      alert(`No existe ningún usuario con el email ${emailAcceso}. Crealo primero desde Admin > Usuarios, o ingresá una contraseña temporal para crearlo ahora.`)
+      return
+    }
+
+    const { data: signUpData, error: signUpError } = await supabaseAux.auth.signUp({
+      email: emailAcceso,
+      password: passAcceso,
+    })
+
+    if (signUpError || !signUpData.user?.id) {
+      alert('No se pudo crear el usuario colaborador: ' + (signUpError?.message || 'el servicio no devolvió su identificador.'))
+      return
+    }
+
+    userId = signUpData.user.id
+    usuarioCreadoAhora = true
+
+    const { error: rolError } = await supabase.rpc('admin_set_user_rol', {
+      p_user_id: userId,
+      p_rol: 'colaborador',
+    })
+    const { error: tipoAccesoError } = await supabase.rpc('admin_set_tipo_acceso', {
+      p_user_id: userId,
+      p_tipo: tipoAcceso,
+    })
+
+    if (rolError || tipoAccesoError) {
+      await supabaseAux.auth.signOut()
+      alert('El usuario fue creado, pero no se pudo configurar como colaborador: ' + (rolError || tipoAccesoError).message + '. Revisalo desde Admin > Usuarios.')
+      return
+    }
+  }
 
   // Coordenadas: acepta el formato que copia Google Maps ("lat, lng")
   let latitud = null, longitud = null
@@ -880,59 +1020,21 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     ;({ data, error } = await supabase.from('canales').insert(payload).select().single())
   }
 
-  if (error) { alert('Error al guardar: ' + error.message); return }
+  if (error) {
+    if (usuarioCreadoAhora) await supabaseAux.auth.signOut()
+    alert('Error al guardar: ' + error.message)
+    return
+  }
 
   _canalId = data.id
 
-  // ── Crear o vincular usuario colaborador si se llenaron los campos ──
-  if (tieneAccesoNuevo) {
-    const btn = document.getElementById('btnGuardar')
-    btn.textContent = 'Vinculando acceso…'
+  if (usuarioCreadoAhora) await supabaseAux.auth.signOut()
 
-    // Verificar si el usuario ya existe (creado desde admin/usuarios)
-    const { data: todosUsuarios } = await supabase.rpc('admin_listar_usuarios')
-    const usuarioExistente = todosUsuarios?.find(u => u.email === emailAcceso)
-
-    let vinculadoUserId = null
-
-    if (usuarioExistente) {
-      // Usuario ya existe → solo vincular, NO tocar tipo_acceso (ya está seteado en Usuarios)
-      vinculadoUserId = usuarioExistente.id
-      await supabase.from('canales').update({ user_id: vinculadoUserId }).eq('id', _canalId)
-      userId = vinculadoUserId
-    } else {
-      // Usuario no existe → crear con signUp
-      const { data: signUpData, error: signUpError } = await supabaseAux.auth.signUp({
-        email: emailAcceso,
-        password: passAcceso,
-      })
-
-      if (signUpError) {
-        alert('Canal guardado, pero hubo un error al crear el usuario: ' + signUpError.message)
-      } else {
-        vinculadoUserId = signUpData.user.id
-
-        // Asignar rol colaborador y tipo de acceso
-        await supabase.rpc('admin_set_user_rol',    { p_user_id: vinculadoUserId, p_rol: 'colaborador' })
-        await supabase.rpc('admin_set_tipo_acceso', { p_user_id: vinculadoUserId, p_tipo: tipoAcceso })
-
-        // Vincular usuario al canal
-        await supabase.from('canales').update({ user_id: vinculadoUserId }).eq('id', _canalId)
-        userId = vinculadoUserId
-
-        // Cerrar sesión del cliente auxiliar
-        await supabaseAux.auth.signOut()
-      }
-    }
-
-    if (vinculadoUserId) {
-      // Mostrar info del usuario vinculado
-      document.getElementById('userId').value = vinculadoUserId
-      document.getElementById('accesoExistente').style.display = ''
-      document.getElementById('accesoNuevo').style.display = 'none'
-      document.getElementById('accesoEmail').textContent = emailAcceso
-    }
-  }
+  // Reflejar la vinculación confirmada en el formulario.
+  document.getElementById('userId').value = userId
+  document.getElementById('accesoExistente').style.display = ''
+  document.getElementById('accesoNuevo').style.display = 'none'
+  document.getElementById('accesoEmail').textContent = emailAcceso
 
   // Para canales pasivos: crear/actualizar la referencia única automáticamente
   if (!activo_v) {
