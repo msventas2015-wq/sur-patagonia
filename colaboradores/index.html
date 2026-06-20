@@ -420,6 +420,24 @@
     .pv-main .estado-cerrada { background:rgba(100,149,237,.2); color:#89b4f7; border:1px solid rgba(100,149,237,.3); }
     .pv-main .estado-descartada { background:rgba(136,136,136,.14); color:rgba(255,255,255,.42); border:1px solid rgba(136,136,136,.22); }
     @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
+
+    /* ── Dev-style hero pasivo ── */
+    .badge-aliado { font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; background:rgba(201,168,76,.1); color:#e8c96a; border:1px solid rgba(201,168,76,.25); padding:.22rem .68rem; border-radius:999px; white-space:nowrap; flex-shrink:0; }
+    .pv-hero-title { margin-bottom:1.4rem; }
+    .pv-hero-title h1 { font-family:'Inter',sans-serif; font-size:clamp(2rem,5vw,3rem); font-weight:800; letter-spacing:-.03em; text-transform:uppercase; line-height:1.05; background:linear-gradient(120deg,#ffffff 0%,rgba(255,255,255,.55) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:.4rem; }
+    .pv-hero-sub-bar { font-size:.6rem; color:rgba(255,255,255,.35); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; display:flex; align-items:center; gap:.5rem; }
+    .pv-periodo-bar-hero { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; }
+    .pv-btn-refresh { min-height:30px; padding:.32rem .72rem; border:1px solid rgba(100,149,237,.28); border-radius:7px; background:linear-gradient(135deg,rgba(100,149,237,.15),rgba(100,149,237,.05)); color:#8fb2ff; font:600 .6rem 'Inter',sans-serif; cursor:pointer; transition:all .2s; letter-spacing:.06em; text-transform:uppercase; }
+    .pv-btn-refresh:hover { border-color:rgba(100,149,237,.45); color:#fff; box-shadow:0 0 12px rgba(100,149,237,.2); }
+    .pv-img-hero { position:relative; height:200px; border-radius:14px; overflow:hidden; margin-bottom:1.25rem; display:flex; align-items:flex-end; background:#111 url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52% / cover no-repeat; }
+    .pv-img-hero-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.18) 100%); }
+    .pv-img-hero-content { position:relative; z-index:1; padding:1.1rem 1.4rem; flex:1; min-width:0; }
+    .pv-img-hero-nombre { font-size:1.5rem; font-weight:300; color:#f0f0f0; letter-spacing:.02em; }
+    .pv-img-hero-slug { font-size:.6rem; color:rgba(255,255,255,.38); letter-spacing:.18em; text-transform:uppercase; margin-top:.2rem; }
+    .pv-img-hero-badge { position:relative; z-index:1; margin:1.1rem 1.4rem; padding:.4rem .82rem; border:1px solid rgba(255,255,255,.14); border-radius:999px; font-size:.6rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; background:rgba(0,0,0,.45); backdrop-filter:blur(8px); white-space:nowrap; flex-shrink:0; }
+    .pv-img-hero-badge.activo { color:#6ee89a; border-color:rgba(80,200,120,.38); }
+    .pv-img-hero-badge.campana { color:#e8c96a; border-color:rgba(201,168,76,.42); }
+    .pv-img-hero-badge.inactivo { color:rgba(255,255,255,.4); }
     @media(max-width:560px){ .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px} }
   </style>
 </head>
@@ -494,8 +512,9 @@
     const hace30    = new Date(ahora - 30 * 86400000).toISOString()
 
     // Header
+    const badgeHtml = esPasivo ? '<div class="badge-aliado">Aliado</div>' : ''
     document.getElementById('headerCanal').innerHTML =
-      `<strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}`
+      `<div style="display:flex;align-items:center;gap:.65rem;">${badgeHtml}<div><strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}</div></div>`
 
     // ── Cargar métricas globales + mensajes ───────
     const canalIds    = canales.map(c => c.id)
@@ -624,30 +643,35 @@
       const monograma = (canal.nombre || 'SP').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()
 
       main.innerHTML = `
-        <div class="pv-hero">
-          <div>
-            <div class="pv-hero-eyebrow">Aliado Sur Patagonia</div>
-            <div class="pv-hero-hola">Hola, <strong>${esc(canal.nombre)}</strong></div>
-            <div class="pv-hero-impacto">Este es el impacto que tu espacio está generando dentro de la red Sur Patagonia.</div>
-            ${geo ? `<div class="pv-hero-geo">${esc(geo)}</div>` : ''}
+        <div class="pv-hero-title">
+          <h1>${esc(canal.nombre)}</h1>
+          <div class="pv-hero-sub-bar">
+            <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};${dotGlow};flex-shrink:0;display:inline-block;"></span>
+            <span>${geo ? esc(geo) + ' · ' : ''}${esc(dotLabel)}</span>
           </div>
-          <div class="pv-identity">
-            ${canal.latitud && canal.longitud ? `
-              <div class="pv-mini-mapa-wrap">
-                <div id="pvMiniMapa" class="pv-mini-mapa"></div>
-                ${geo ? `<div class="pv-mini-mapa-label">${esc(geo)}</div>` : ''}
-              </div>
-              <div class="pv-monogram pv-monogram-mobile">${esc(monograma)}</div>
-            ` : `<div class="pv-monogram">${esc(monograma)}</div>`}
-            <div class="pv-hero-estado">
-              <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};${dotGlow};flex-shrink:0"></span>
-              <span style="color:${dotColor}">${esc(dotLabel)}</span>
-            </div>
-            <div class="pv-hero-code">Código ${esc(canal.codigo)}</div>
+          <div class="pv-periodo-bar-hero">
+            <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
+            <button class="pv-flt-btn activo" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
+            <button class="pv-flt-btn" data-dias="90" onclick="pvSetPeriodo(this)">90 días</button>
+            <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
+            <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+          </div>
+          <div class="pv-flt-custom" id="pvFltCustom" style="display:none;margin-top:.8rem;">
+            <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
+            <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
+            <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
           </div>
         </div>
 
-        <div class="pv-resumen">En los últimos 30 días, tu canal generó <strong>${m.v30.toLocaleString('es-AR')} interacciones</strong> y <strong>${m.c30.toLocaleString('es-AR')} consultas comerciales</strong>.</div>
+        <div class="pv-img-hero">
+          <div class="pv-img-hero-overlay"></div>
+          <div class="pv-img-hero-content">
+            <div class="pv-img-hero-nombre">${esc(canal.nombre)}</div>
+            ${geo ? `<div class="pv-img-hero-slug">${esc(geo)}</div>` : ''}
+          </div>
+          ${canal.latitud && canal.longitud ? `<div id="pvMiniMapa" style="position:absolute;top:1rem;right:1rem;width:100px;height:100px;border-radius:8px;overflow:hidden;border:1px solid rgba(201,168,76,.3);z-index:2;pointer-events:none;"></div>` : ''}
+          <div class="pv-img-hero-badge ${estadoQR}">${esc(dotLabel)}</div>
+        </div>
 
         <div class="pv-kpi-grid">
           <div class="pv-kpi" style="--pv-c:#6495ed"><div class="pv-kpi-label">Interacciones generadas</div><div class="pv-kpi-n">${totalScans.toLocaleString('es-AR')}</div><div class="pv-kpi-sub">Actividad histórica desde tu QR y enlace.</div></div>
@@ -890,18 +914,10 @@
       return `
         <div class="pv-sec">
           <div class="pv-sec-head">
-            <div><div class="pv-sec-titulo">Evolución de la actividad de tu canal</div><div class="pv-sec-sub">Interacciones y oportunidades reales generadas en el período.</div></div>
-            <div class="pv-flt-bar">
-              <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
-              <button class="pv-flt-btn activo" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
-              <button class="pv-flt-btn" data-dias="90" onclick="pvSetPeriodo(this)">90 días</button>
-              <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
+            <div>
+              <div class="pv-sec-titulo">Evolución de la actividad de tu canal</div>
+              <div class="pv-sec-sub">Interacciones y oportunidades reales generadas en el período seleccionado.</div>
             </div>
-          </div>
-          <div class="pv-flt-custom" id="pvFltCustom" style="display:none">
-            <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
-            <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
-            <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
           </div>
           <div class="pv-chart-wrap"><canvas id="pvChartEvol"></canvas></div>
         </div>
@@ -941,6 +957,13 @@
         dataScans.push(visitas.filter(v => { const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
         dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
       }
+      // Arrancar desde el primer día con actividad real
+      const firstIdx = dataScans.findIndex((v, i) => v > 0 || dataConsultas[i] > 0)
+      if (firstIdx > 0) {
+        labelsEvol.splice(0, firstIdx)
+        dataScans.splice(0, firstIdx)
+        dataConsultas.splice(0, firstIdx)
+      }
       return { labelsEvol, dataScans, dataConsultas }
     }
 
@@ -972,8 +995,8 @@
               data:dataScans,
               borderColor:'#7aaeff',
               backgroundColor: pvGrad(ctx, 'rgb(100,149,237)'),
-              tension:.42, fill:true,
-              pointRadius:0, pointHoverRadius:5,
+              tension:.1, fill:true,
+              pointRadius:2, pointBorderWidth:0, pointHoverRadius:5,
               pointHoverBackgroundColor:'#7aaeff',
               pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
               borderWidth:2.5
@@ -983,8 +1006,8 @@
               data:dataConsultas,
               borderColor:'#6ee89a',
               backgroundColor: pvGrad(ctx, 'rgb(80,200,120)', .38),
-              tension:.42, fill:true,
-              pointRadius:0, pointHoverRadius:5,
+              tension:.1, fill:true,
+              pointRadius:2, pointBorderWidth:0, pointHoverRadius:5,
               pointHoverBackgroundColor:'#6ee89a',
               pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
               borderWidth:2.5
