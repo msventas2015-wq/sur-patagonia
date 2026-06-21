@@ -502,29 +502,30 @@
 
     .slot-full-img {
       position: relative;
-      height: 120px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
+      height: 200px;
+      overflow: hidden;
       background: linear-gradient(135deg, rgba(201,168,76,.09), #11100e);
       background-size: cover;
       background-position: center;
     }
     .slot-full-img-overlay {
       position: absolute; inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,.82), rgba(0,0,0,.18));
+      background: linear-gradient(to top, rgba(0,0,0,.92) 0%, rgba(0,0,0,.38) 55%, rgba(0,0,0,.08) 100%);
     }
-    .slot-full-img-content {
-      position: relative; z-index: 1;
-      padding: .8rem 1rem;
-      flex: 1; min-width: 0;
+    .slot-img-top {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 1;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: .65rem .85rem;
+    }
+    .slot-img-bottom {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 1;
+      padding: .55rem .85rem .65rem;
     }
     .slot-full-eyebrow {
       font-family: monospace;
       font-size: .58rem;
       color: #c9a84c;
       letter-spacing: .1em;
-      margin-bottom: .2rem;
     }
     .slot-full-nombre {
       font-size: .95rem;
@@ -533,6 +534,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      margin-bottom: .4rem;
     }
 
     .slot-full-body {
@@ -859,22 +861,40 @@
 
     // ── Mis QRs: datos de slots activos ───────────
     const misSlots = rMisSlots.data || []
-    const slotCodigos = misSlots.map(s => s.codigo)
-    const [rScansPorSlot, rProyImgs] = await Promise.all([
+    // Derivar proyecto_slug desde el código cuando no está seteado en BD
+    const slugify = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+    const canalCodigoMap = {}; canales.forEach(c => { canalCodigoMap[c.id] = c.codigo })
+    misSlots.forEach(slot => {
+      if (!slot.proyecto_slug) {
+        const pfx = (canalCodigoMap[slot.canal_id] || '') + '-'
+        slot.proyecto_slug = slot.codigo.startsWith(pfx) ? slot.codigo.slice(pfx.length) : slot.codigo
+      }
+    })
+    const slotCodigos  = misSlots.map(s => s.codigo)
+    const derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
+    const [rScansPorSlot, rProyImgs, rPropAll] = await Promise.all([
       slotCodigos.length
         ? supabase.from('visitas').select('canal_ref').in('canal_ref', slotCodigos).gte('created_at', hace30)
         : Promise.resolve({ data: [] }),
-      (() => {
-        const slugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
-        return slugs.length
-          ? supabase.from('proyectos').select('slug, nombre, foto_portada, dormitorios, banos, superficie_cubierta, superficie_total').in('slug', slugs)
-          : Promise.resolve({ data: [] })
-      })()
+      derivedSlugs.length
+        ? supabase.from('proyectos').select('slug, nombre, foto_portada').in('slug', derivedSlugs)
+        : Promise.resolve({ data: [] }),
+      supabase.from('propiedades')
+        .select('id, titulo, imagenes, dormitorios, banos, superficie_cubierta, superficie_total')
+        .eq('activa', true).limit(200)
     ])
     const scansPorSlot = {}
     ;(rScansPorSlot.data || []).forEach(v => { scansPorSlot[v.canal_ref] = (scansPorSlot[v.canal_ref] || 0) + 1 })
     const proyImgs = {}
     ;(rProyImgs.data || []).forEach(p => { proyImgs[p.slug] = p })
+    const propDataMap = {}
+    ;(rPropAll.data || []).forEach(p => { propDataMap[slugify(p.titulo)] = p })
+    function findPropData(slug) {
+      if (!slug) return null
+      if (propDataMap[slug]) return propDataMap[slug]
+      for (const [k, v] of Object.entries(propDataMap)) { if (k.startsWith(slug) || slug.startsWith(k)) return v }
+      return null
+    }
     let _pvChart4 = null, _pvChart4a = null, _pvChart4b = null, _pvChart4c = null, _pvChart4d = null
     let _pvLiveRAF = null   // loop de animación del "pulso en vivo"
     let _pvLiveTimer = null // refresco automático (modo Hoy)
@@ -1812,24 +1832,24 @@
       const activosCount = misSlots.filter(s => s.activo !== false).length
       const cards = misSlots.map(slot => {
         const proy       = proyImgs[slot.proyecto_slug]
-        const fotoUrl    = proy?.foto_portada || ''
-        const proyNombre = proy?.nombre || slot.nombre || slot.codigo
+        const prop       = findPropData(slot.proyecto_slug)
+        const fotoUrl    = proy?.foto_portada || prop?.imagenes?.[0] || ''
+        const proyNombre = proy?.nombre || prop?.titulo || slot.nombre || slot.codigo
+        const attrSrc    = prop || proy
         const scans      = scansPorSlot[slot.codigo] || 0
         const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
         const conv       = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
         const esActivo   = slot.activo !== false
         const redirectUrl = `${location.origin}/r/${slot.codigo}`
-        const imgStyle = fotoUrl
-          ? `background-image:url('${fotoUrl.replace(/'/g,"\\'")}');background-size:cover;background-position:center`
-          : 'background:linear-gradient(135deg,rgba(201,168,76,.09),#11100e)'
+        const imgStyle = fotoUrl ? `background-image:url('${fotoUrl.replace(/'/g,"\\'")}')` : ''
         const ptrOff = !esActivo ? 'pointer-events:none' : ''
 
-        // Atributos de propiedad
+        // Atributos de propiedad (preferir propiedades sobre proyectos)
         const attrs = []
-        if (proy?.dormitorios)       attrs.push({ v: proy.dormitorios,                       l: 'DORM.' })
-        if (proy?.banos)             attrs.push({ v: proy.banos,                              l: 'BAÑOS' })
-        if (proy?.superficie_cubierta) attrs.push({ v: proy.superficie_cubierta + ' m²',     l: 'M² CUB.' })
-        if (proy?.superficie_total)  attrs.push({ v: proy.superficie_total + ' m²',          l: 'M² TOT.' })
+        if (attrSrc?.dormitorios)         attrs.push({ v: attrSrc.dormitorios,                     l: 'DORM.' })
+        if (attrSrc?.banos)               attrs.push({ v: attrSrc.banos,                            l: 'BAÑOS' })
+        if (attrSrc?.superficie_cubierta) attrs.push({ v: attrSrc.superficie_cubierta + ' m²',     l: 'M² CUB.' })
+        if (attrSrc?.superficie_total)    attrs.push({ v: attrSrc.superficie_total + ' m²',        l: 'M² TOT.' })
         const attrsHtml = attrs.length ? `
           <div class="slot-attrs">
             ${attrs.map(a => `<div class="slot-attr"><span class="slot-attr-v">${a.v}</span><span class="slot-attr-l">${a.l}</span></div>`).join('')}
@@ -1838,14 +1858,14 @@
         return `
         <div class="slot-full-card${esActivo ? '' : ' slot-full-inactivo'}">
           <div class="slot-full-left">
-            <div class="slot-full-img" style="${imgStyle};height:200px;">
+            <div class="slot-full-img"${imgStyle ? ` style="${imgStyle}"` : ''}>
               <div class="slot-full-img-overlay"></div>
-              <div class="slot-full-img-content" style="top:0;padding:.7rem .85rem;">
+              <div class="slot-img-top">
                 <div class="slot-full-eyebrow">${esc(slot.codigo)}</div>
-                <div class="qr-slot-estado-badge ${esActivo?'activo':'inactivo'}" style="position:relative;top:auto;right:auto;margin-top:.3rem;">${esActivo?'● ACTIVO':'● INACTIVO'}</div>
+                <div class="qr-slot-estado-badge ${esActivo?'activo':'inactivo'}">${esActivo?'● ACTIVO':'● INACTIVO'}</div>
               </div>
-              <div style="position:absolute;bottom:0;left:0;right:0;padding:.6rem .85rem;">
-                <div class="slot-full-nombre" style="margin-bottom:.45rem;">${esc(proyNombre)}</div>
+              <div class="slot-img-bottom">
+                <div class="slot-full-nombre">${esc(proyNombre)}</div>
                 ${attrsHtml}
               </div>
             </div>
