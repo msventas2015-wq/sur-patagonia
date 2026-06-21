@@ -1015,6 +1015,7 @@
     let _pvPanelAct = null, _pvPanelConv = null  // charts de los paneles nuevos (Actividad 30d, Conversión 30d)
     let _pvLiveRAF = null   // loop de animación del "pulso en vivo"
     let _pvLiveTimer = null // refresco automático (modo Hoy)
+    let _pvDocMoveH = null, _pvDocUpH = null    // document-level pan listeners (cleanup seguro)
 
     // ── Zoom horario (modo Hoy) ──────────────────────────────────────────────
     window.pvZoomHoyAplicar = function() {
@@ -1032,12 +1033,160 @@
       _pvChart4.update('none')
     }
     window.pvZoomHoyReset = function() {
-      if (!_pvChart4) return
-      delete _pvChart4.options.scales.x.min
-      delete _pvChart4.options.scales.x.max
-      _pvChart4.update('none')
+      const f = window._pvZoomDefaultFrom, t2 = window._pvZoomDefaultTo
+      if (f && t2) pvApplyViewport(f, t2)
+      else if (_pvChart4) {
+        delete _pvChart4.options.scales.x.min
+        delete _pvChart4.options.scales.x.max
+        _pvChart4.update('none')
+      }
+      window._pvZoomFrom = f; window._pvZoomTo = t2
       const d = document.getElementById('pvZoomDesde'); if (d) d.value = '0'
       const h = document.getElementById('pvZoomHasta'); if (h) h.value = '24'
+    }
+
+    // ── Motor de zoom temporal interactivo ──────────────────────────────────
+
+    // Resamplea visitas/contactos/slots para [fromMs, toMs] con granularidad adaptativa
+    function pvResampleChart(fromMs, toMs) {
+      const rangeMins = (toMs - fromMs) / 60000
+      let bucketMs, labelFn
+      if (rangeMins <= 120) {
+        bucketMs = 60000
+        labelFn = t => { const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
+      } else if (rangeMins <= 360) {
+        bucketMs = 5*60000
+        labelFn = t => { const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
+      } else if (rangeMins <= 1440) {
+        bucketMs = 15*60000
+        labelFn = t => { const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
+      } else if (rangeMins <= 10080) {
+        bucketMs = 3600000
+        labelFn = t => { const d=new Date(t); return `${d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})} ${String(d.getHours()).padStart(2,'0')}h` }
+      } else {
+        bucketMs = 86400000
+        labelFn = t => new Date(t).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})
+      }
+      window._pvZoomBucketMs = bucketMs
+      const snapFrom = Math.floor(fromMs / bucketMs) * bucketMs
+      const numBuckets = Math.max(1, Math.ceil((toMs - snapFrom) / bucketMs))
+      const bucketStarts = Array.from({length:numBuckets}, (_,i) => snapFrom + i*bucketMs)
+      const newLbls = bucketStarts.map(t => labelFn(t))
+      const ds = new Array(numBuckets).fill(0)
+      const dc = new Array(numBuckets).fill(0)
+      visitas.forEach(v => {
+        const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
+        const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) ds[idx]++
+      })
+      contactos.forEach(c => {
+        const t = new Date(c.created_at).getTime(); if (t < fromMs || t >= toMs) return
+        const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) dc[idx]++
+      })
+      const slotData = (typeof misSlots !== 'undefined' ? misSlots : []).map(slot => {
+        const arr = new Array(numBuckets).fill(0)
+        visitas.forEach(v => {
+          if (v.canal_ref !== slot.codigo) return
+          const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
+          const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) arr[idx]++
+        })
+        return { codigo: slot.codigo, data: arr }
+      })
+      return { labels: newLbls, dataScans: ds, dataCons: dc, slotData }
+    }
+
+    // Aplica un viewport al gráfico principal: recalcula datos y labels sin destruir el chart
+    function pvApplyViewport(fromMs, toMs) {
+      if (!_pvChart4?.data) return
+      window._pvZoomFrom = fromMs; window._pvZoomTo = toMs
+      const { labels, dataScans, dataCons, slotData } = pvResampleChart(fromMs, toMs)
+      _pvChart4.data.labels = labels
+      if (_pvChart4.data.datasets[0]) _pvChart4.data.datasets[0].data = dataScans
+      if (_pvChart4.data.datasets[1]) _pvChart4.data.datasets[1].data = dataCons
+      slotData.forEach((sd,i) => { const dst=_pvChart4.data.datasets[2+i]; if (dst) dst.data=sd.data })
+      delete _pvChart4.options.scales.x.min; delete _pvChart4.options.scales.x.max
+      const _cap = labels // captura para closures de callback
+      if (_pvChart4.options.scales?.x?.ticks)
+        _pvChart4.options.scales.x.ticks.callback = (_,i) => _cap[i] || ''
+      if (_pvChart4.options.plugins?.tooltip?.callbacks)
+        _pvChart4.options.plugins.tooltip.callbacks.title = items => _cap[items[0]?.dataIndex ?? 0] || ''
+      _pvChart4.update('none')
+    }
+
+    // Enlaza zoom por Shift+scroll y pan por arrastre al canvas del chart principal
+    function pvBindZoomPan(chart) {
+      if (!chart?.canvas) return
+      // Limpiar handlers previos
+      if (chart._pvWheelH) chart.canvas.removeEventListener('wheel', chart._pvWheelH)
+      if (chart._pvMDownH) chart.canvas.removeEventListener('mousedown', chart._pvMDownH)
+      if (chart._pvDblH)   chart.canvas.removeEventListener('dblclick', chart._pvDblH)
+      if (_pvDocMoveH) { document.removeEventListener('mousemove', _pvDocMoveH); _pvDocMoveH = null }
+      if (_pvDocUpH)   { document.removeEventListener('mouseup',   _pvDocUpH);   _pvDocUpH   = null }
+
+      // Shift + scroll del mouse/trackpad → zoom centrado en la posición del cursor
+      chart._pvWheelH = function(e) {
+        if (!e.shiftKey) return
+        e.preventDefault()
+        const from = window._pvZoomFrom || window._pvZoomDefaultFrom
+        const to   = window._pvZoomTo   || window._pvZoomDefaultTo
+        if (!from || !to) return
+        const rangeMs = to - from
+        const ca = chart.chartArea, rect = chart.canvas.getBoundingClientRect()
+        const pct = ca ? Math.max(0, Math.min(1, (e.clientX - rect.left - ca.left) / (ca.right - ca.left))) : 0.5
+        // scroll arriba = acercar (0.68×), scroll abajo = alejar (1.47×)
+        const factor = e.deltaY < 0 ? 0.68 : 1.47
+        const newRange = Math.max(60000, Math.min(30*86400000, rangeMs * factor))
+        const anchorMs = from + rangeMs * pct
+        let newFrom = anchorMs - newRange * pct
+        let newTo   = anchorMs + newRange * (1-pct)
+        const hardMax = Date.now() + 3600000, hardMin = hardMax - 30*86400000
+        if (newFrom < hardMin) { newFrom = hardMin; newTo = Math.min(hardMax, newFrom + newRange) }
+        if (newTo > hardMax)   { newTo = hardMax;   newFrom = Math.max(hardMin, newTo - newRange) }
+        pvApplyViewport(newFrom, newTo)
+      }
+      chart.canvas.addEventListener('wheel', chart._pvWheelH, { passive: false })
+
+      // Arrastre → pan horizontal
+      let dragging = false, dragX0 = 0, dragFrom0 = 0, dragTo0 = 0
+      chart._pvMDownH = function(e) {
+        if (e.button !== 0 || e.shiftKey) return
+        dragging = true; dragX0 = e.clientX
+        dragFrom0 = window._pvZoomFrom || window._pvZoomDefaultFrom
+        dragTo0   = window._pvZoomTo   || window._pvZoomDefaultTo
+        if (dragFrom0 && dragTo0) chart.canvas.style.cursor = 'grabbing'
+        if (chart.options.plugins?.tooltip) chart.options.plugins.tooltip.enabled = false
+      }
+      chart.canvas.addEventListener('mousedown', chart._pvMDownH)
+
+      const pvMoveH = function(e) {
+        if (!dragging || !dragFrom0) return
+        const ca = chart.chartArea; if (!ca) return
+        const dx = e.clientX - dragX0
+        const rangeMs = dragTo0 - dragFrom0
+        const msPerPx = rangeMs / Math.max(1, ca.right - ca.left)
+        const shift = -dx * msPerPx
+        const hardMax = Date.now() + 3600000, hardMin = hardMax - 30*86400000
+        let newFrom = Math.max(hardMin, dragFrom0 + shift)
+        let newTo = newFrom + rangeMs
+        if (newTo > hardMax) { newTo = hardMax; newFrom = Math.max(hardMin, newTo - rangeMs) }
+        pvApplyViewport(newFrom, newTo)
+      }
+      const pvUpH = function() {
+        if (!dragging) return
+        dragging = false
+        chart.canvas.style.cursor = ''
+        if (chart.options.plugins?.tooltip) chart.options.plugins.tooltip.enabled = true
+      }
+      _pvDocMoveH = pvMoveH; _pvDocUpH = pvUpH
+      document.addEventListener('mousemove', _pvDocMoveH)
+      document.addEventListener('mouseup',   _pvDocUpH)
+
+      // Doble clic → volver a la vista completa
+      chart._pvDblH = function() {
+        const f = window._pvZoomDefaultFrom, t2 = window._pvZoomDefaultTo
+        if (f && t2) pvApplyViewport(f, t2)
+        else { delete chart.options.scales.x.min; delete chart.options.scales.x.max; chart.update('none') }
+      }
+      chart.canvas.addEventListener('dblclick', chart._pvDblH)
     }
 
     // Filtrar mensajes para este usuario
@@ -1724,6 +1873,8 @@
       _pvChart4a = _pvChart4b = _pvChart4c = _pvChart4d = null
       if (_pvLiveRAF) { cancelAnimationFrame(_pvLiveRAF); _pvLiveRAF = null }
       if (_pvLiveTimer) { clearInterval(_pvLiveTimer); _pvLiveTimer = null }
+      if (_pvDocMoveH) { document.removeEventListener('mousemove', _pvDocMoveH); _pvDocMoveH = null }
+      if (_pvDocUpH)   { document.removeEventListener('mouseup',   _pvDocUpH);   _pvDocUpH   = null }
 
       const ctx4 = document.getElementById('pvChartEvol4')?.getContext('2d')
       if (!ctx4) return
@@ -1752,7 +1903,7 @@
             grid:{color:'rgba(255,255,255,.05)', drawTicks:false},
             ticks:{color:'rgba(255,255,255,.35)', precision:0, padding:10, font:{size:10,family:'Inter'}, callback:(v) => Number(v).toLocaleString('es-AR')} }
       }
-      const gradAzul = (c) => { const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.2)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.5)'); g.addColorStop(0.5,'rgba(122,174,255,.16)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g }
+      const gradAzul = (c) => { const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.32)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.72)'); g.addColorStop(0.45,'rgba(122,174,255,.34)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g }
       const pluginPeakMark = (peakIdx) => ({
         id:'pvPeakMark4',
         beforeDatasetsDraw(chart) {
@@ -1769,8 +1920,11 @@
       })
       const pluginGoldGlow = {
         id:'pvGoldGlow4',
-        beforeDatasetDraw(chart,args) { if(args.index!==1) return; chart.ctx.save(); chart.ctx.shadowColor='rgba(232,201,106,.5)'; chart.ctx.shadowBlur=10 },
-        afterDatasetDraw(chart,args)  { if(args.index!==1) return; chart.ctx.restore() }
+        beforeDatasetDraw(chart,args) {
+          if (args.index===0) { chart.ctx.save(); chart.ctx.shadowColor='rgba(122,174,255,.32)'; chart.ctx.shadowBlur=9 }
+          else if (args.index===1) { chart.ctx.save(); chart.ctx.shadowColor='rgba(232,201,106,.5)'; chart.ctx.shadowBlur=10 }
+        },
+        afterDatasetDraw(chart,args) { if(args.index===0||args.index===1) chart.ctx.restore() }
       }
       // datasetsBase ahora recibe también el array de líneas por propiedad (opcional)
       const datasetsBase = (lblsData, slotLines = []) => {
@@ -1929,6 +2083,13 @@
         const loopLive = () => { if(_pvChart4&&_pvChart4.canvas){_pvChart4.draw();_pvLiveRAF=requestAnimationFrame(loopLive)}else{_pvLiveRAF=null} }
         setTimeout(() => { if(_pvChart4&&!_pvLiveRAF) loopLive() }, 950)
 
+        // Zoom/pan interactivo: establecer viewport del día actual
+        window._pvZoomDefaultFrom = hoyB0.getTime()
+        window._pvZoomDefaultTo   = Date.now() + 3600000
+        if (!window._pvZoomFrom || window._pvZoomFrom < hoyB0.getTime()) window._pvZoomFrom = window._pvZoomDefaultFrom
+        if (!window._pvZoomTo)   window._pvZoomTo   = window._pvZoomDefaultTo
+        pvBindZoomPan(_pvChart4)
+
         // Activar barra de zoom horario para modo Hoy
         const pvZB = document.getElementById('pvHoyZoomBar')
         if (pvZB) {
@@ -2016,6 +2177,12 @@
             scales:scalesBase
           }
         })
+        // Zoom/pan interactivo: viewport del período actual
+        window._pvZoomDefaultFrom = desde.getTime()
+        window._pvZoomDefaultTo   = hasta.getTime()
+        window._pvZoomFrom = window._pvZoomDefaultFrom
+        window._pvZoomTo   = window._pvZoomDefaultTo
+        pvBindZoomPan(_pvChart4)
       }
 
       // ── Leyenda interactiva (solo modo multi-slot) ──
@@ -2331,7 +2498,8 @@
       const ctxAct = document.getElementById('pvPanelAct30')?.getContext('2d')
       if (ctxAct && (dataScans.some(x=>x>0) || dataCons.some(x=>x>0))) {
         const datasets = [
-          { label:'Total interacciones', data:dataScans, order:2, borderColor:'#7aaeff', borderWidth:3.5, tension:0.4, fill:false, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2 },
+          { label:'Total interacciones', data:dataScans, order:2, borderColor:'#7aaeff', borderWidth:2.2, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
+            backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.32)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.72)'); g.addColorStop(0.45,'rgba(122,174,255,.34)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g } },
           { label:'Consultas', data:dataCons, order:1, borderColor:'#e8c96a', borderWidth:2.5, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#e8c96a', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2 }
         ]
         slotLines.forEach((ln,i) => datasets.push({ label:ln.nombre, _slotCodigo:ln.codigo, data:ln.data, order:10+i, borderColor:ln.color, borderWidth:1.4, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor:ln.color, pointHoverBorderColor:'#fff', pointHoverBorderWidth:1.5, hidden: window._pvPanelHidden?.[ln.codigo] === true }))
