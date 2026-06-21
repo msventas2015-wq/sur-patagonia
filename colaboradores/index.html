@@ -1519,7 +1519,7 @@
       }
       const datasetsBase = (lblsData) => [
         {
-          label:'Interacciones (acumulado)', data:lblsData[0], order:2,
+          label:'Interacciones', data:lblsData[0], order:2,
           borderColor:'#7aaeff', borderWidth:2.5, tension:0.4, fill:true,
           cubicInterpolationMode:'monotone',
           backgroundColor: gradAzul,
@@ -1527,7 +1527,7 @@
           pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2
         },
         {
-          label:'Consultas (acumulado)', data:lblsData[1], order:1,
+          label:'Consultas', data:lblsData[1], order:1,
           borderColor:'#e8c96a', borderWidth:3, tension:0.4, fill:false,
           cubicInterpolationMode:'monotone', spanGaps:true,
           pointRadius:0, pointHoverRadius:7,
@@ -1615,7 +1615,7 @@
               tooltip:{
                 ...tooltipBase,
                 callbacks:{
-                  title(items){ const i=items[0]?.dataIndex||0; return fmtMin(i) },
+                  title(items){ const i=items[0]?.dataIndex||0; const m=i*VENTANA; const hh=String(Math.floor(m/60)).padStart(2,'0'); const mm=String(m%60).padStart(2,'0'); return `${hh}:${mm} – ${hh}:${String(m%60+VENTANA-1).padStart(2,'0')}` },
                   label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` }
                 }
               }
@@ -1657,10 +1657,6 @@
         const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime()-(dias-1)*86400000)
         const { labelsEvol, dataScans, dataConsultas } = datosEvolucionPasivo(contactos, desde, hasta)
 
-        const accScans=[], accConsultas=[]
-        let rs=0, rc=0
-        dataScans.forEach((v,i)=>{ rs+=v; accScans.push(rs); rc+=dataConsultas[i]; accConsultas.push(rc) })
-
         const combined = dataScans.map((s,i)=>s+dataConsultas[i])
         const peakVal = Math.max(...combined, 0)
         const peakIdx = peakVal>0 ? combined.indexOf(peakVal) : -1
@@ -1677,7 +1673,7 @@
 
         _pvChart4 = new Chart(ctx4, {
           type:'line',
-          data:{ labels:labelsEvol, datasets:datasetsBase([accScans, accConsultas]) },
+          data:{ labels:labelsEvol, datasets:datasetsBase([dataScans, dataConsultas]) },
           plugins:[pluginPeakMark(peakIdx), pluginGoldGlow],
           options:{
             responsive:true, maintainAspectRatio:false,
