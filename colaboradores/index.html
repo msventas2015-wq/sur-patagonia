@@ -479,6 +479,131 @@
       .pv-mini-card{min-width:0;overflow:hidden}
     }
 
+    /* ── Slot cards full (propiedad + mini chart) ── */
+    .slot-full-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      gap: 0;
+      border: 1px solid rgba(255,255,255,.07);
+      border-top: 1px solid rgba(255,255,255,.13);
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(155deg, rgba(255,255,255,.048), rgba(255,255,255,.015));
+    }
+    @media(max-width:640px){ .slot-full-card{ grid-template-columns:1fr; } }
+    .slot-full-card.slot-full-inactivo { opacity: .55; filter: grayscale(.7); }
+
+    .slot-full-left {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    @media(max-width:640px){ .slot-full-left{ border-right:none; border-bottom:1px solid rgba(255,255,255,.06); } }
+
+    .slot-full-img {
+      position: relative;
+      height: 120px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      background: linear-gradient(135deg, rgba(201,168,76,.09), #11100e);
+      background-size: cover;
+      background-position: center;
+    }
+    .slot-full-img-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,.82), rgba(0,0,0,.18));
+    }
+    .slot-full-img-content {
+      position: relative; z-index: 1;
+      padding: .8rem 1rem;
+      flex: 1; min-width: 0;
+    }
+    .slot-full-eyebrow {
+      font-family: monospace;
+      font-size: .58rem;
+      color: #c9a84c;
+      letter-spacing: .1em;
+      margin-bottom: .2rem;
+    }
+    .slot-full-nombre {
+      font-size: .95rem;
+      font-weight: 300;
+      color: #f0f0f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .slot-full-body {
+      padding: .9rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+      flex: 1;
+    }
+    .slot-full-stats {
+      display: flex;
+      flex-direction: row;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .slot-full-qr-footer {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding-top: .6rem;
+      border-top: 1px solid rgba(255,255,255,.06);
+      margin-top: auto;
+    }
+    .slot-stat {
+      display: flex;
+      align-items: baseline;
+      gap: .4rem;
+    }
+    .slot-stat-n {
+      font-size: 1.45rem;
+      font-weight: 300;
+      line-height: 1;
+      color: rgba(255,255,255,.85);
+    }
+    .slot-stat-l {
+      font-size: .58rem;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.35);
+    }
+    .slot-full-btns {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+
+    .slot-full-right {
+      padding: 1rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+    .slot-chart-label {
+      font-size: .54rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.3);
+    }
+    .slot-chart-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 110px;
+    }
+    .slot-chart-total {
+      font-size: .65rem;
+      color: rgba(255,255,255,.3);
+      text-align: right;
+    }
+
     /* ── Sección Mis QRs (canal activo) ── */
     .mis-qrs-grid {
       display: grid;
@@ -844,7 +969,7 @@
         const url = `${location.origin}/r/${slot.codigo}`
         try {
           await QRCode.toCanvas(canvas, url, {
-            width: 134, margin: 1,
+            width: canvas.width || 70, margin: 1,
             color: { dark: '#000000', light: '#ffffff' }
           })
         } catch (e) { console.warn('QR error', slot.codigo, e) }
@@ -1028,9 +1153,8 @@
           </div>
         </div>
 
-        ${renderMisQRs()}
-        ${renderSlotBreakdown()}
         ${renderActivoRico(contactos)}
+        ${renderSlotCards()}
         ${renderContactosActivo_pv(contactos)}
 
         <div class="pv-sec pv-msg-sec" id="secMensajes">
@@ -1062,7 +1186,10 @@
       // Render de gráficos y QR canvases tras DOM
       requestAnimationFrame(() => {
         renderGraficoPasivo(contactos, 0)
-        if (misSlots.length) generarQRCanvases()
+        if (misSlots.length) {
+          generarQRCanvases()
+          renderSlotMiniCharts()
+        }
       })
     }
 
@@ -1409,43 +1536,48 @@
         }
       ]
 
-      // ── MODO HOY: minuto a minuto acumulado ─────────────────────────────
+      // ── MODO HOY: actividad real por ventana de 15 minutos (sube y baja) ──
       if (modoHoy) {
         const tagEl = document.getElementById('pvLiveTag')
         const scansLEl = document.getElementById('pvLiveScansL')
         const consultasLEl = document.getElementById('pvLiveConsultasL')
-        if (tagEl) tagEl.textContent = 'En vivo · minuto a minuto'
+        if (tagEl) tagEl.textContent = 'En vivo · actividad del día'
         if (scansLEl) scansLEl.textContent = 'Hoy · interacciones'
         if (consultasLEl) consultasLEl.textContent = 'Hoy · consultas'
 
+        const VENTANA = 15 // minutos por bucket
         const hoyB0 = new Date(); hoyB0.setHours(0,0,0,0)
         const ahoraMin = new Date()
         const minutosDelDia = ahoraMin.getHours()*60 + ahoraMin.getMinutes() + 1
-        const bucketScans = new Array(minutosDelDia).fill(0)
-        const bucketCons = new Array(minutosDelDia).fill(0)
+        const numBuckets = Math.ceil(minutosDelDia / VENTANA)
+
+        const bucketScans = new Array(numBuckets).fill(0)
+        const bucketCons  = new Array(numBuckets).fill(0)
         const inHoy = (iso) => { const d=new Date(iso); return d>=hoyB0&&d<=ahoraMin }
-        visitas.forEach(v => { if (!inHoy(v.created_at)) return; const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); if(m<minutosDelDia) bucketScans[m]++ })
-        contactos.forEach(c => { if (!inHoy(c.created_at)) return; const d=new Date(c.created_at); const m=d.getHours()*60+d.getMinutes(); if(m<minutosDelDia) bucketCons[m]++ })
+        visitas.forEach(v => {
+          if (!inHoy(v.created_at)) return
+          const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes()
+          const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketScans[b]++
+        })
+        contactos.forEach(c => {
+          if (!inHoy(c.created_at)) return
+          const d=new Date(c.created_at); const m=d.getHours()*60+d.getMinutes()
+          const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketCons[b]++
+        })
 
-        const accScans=[], accConsultas=[]
-        let rs=0, rc=0
-        bucketScans.forEach((v,i) => { rs+=v; accScans.push(rs); rc+=bucketCons[i]; accConsultas.push(rc) })
-
-        const step = minutosDelDia<=360 ? 30 : minutosDelDia<=720 ? 60 : 90
-        const lbls=[]
-        for (let m=0; m<minutosDelDia; m++) {
+        const lbls = Array.from({length:numBuckets}, (_,i) => {
+          const m = i * VENTANA
           const hh=String(Math.floor(m/60)).padStart(2,'0'), mm=String(m%60).padStart(2,'0')
-          lbls.push(m%step===0 ? `${hh}:${mm}` : '')
-        }
-        const fmtMin = (m) => { const hh=String(Math.floor(m/60)).padStart(2,'0'); const mm=String(m%60).padStart(2,'0'); return `${hh}:${mm}` }
+          return (i % 2 === 0) ? `${hh}:${mm}` : ''
+        })
 
-        const totalPorMin = bucketScans.map((s,i)=>s+bucketCons[i])
-        const peakVal = Math.max(...totalPorMin, 0)
-        const peakIdx = peakVal>0 ? totalPorMin.indexOf(peakVal) : -1
+        const totalPorBucket = bucketScans.map((s,i)=>s+bucketCons[i])
+        const peakVal = Math.max(...totalPorBucket, 0)
+        const peakIdx = peakVal>0 ? totalPorBucket.indexOf(peakVal) : -1
 
         _pvChart4 = new Chart(ctx4, {
           type:'line',
-          data:{ labels:lbls, datasets:datasetsBase([accScans, accConsultas]) },
+          data:{ labels:lbls, datasets:datasetsBase([bucketScans, bucketCons]) },
           plugins:[
             {
               id:'pvLivePulse4',
@@ -1637,6 +1769,142 @@
       if (!desde || !hasta) { alert('Seleccioná una fecha desde y una fecha hasta.'); return }
       if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
       renderGraficoPasivo(contactos, 30, desde, hasta)
+    }
+
+    // ── Canal activo: propiedades con mini-chart individual ──────────────────
+    function renderSlotCards() {
+      if (!misSlots.length) return `
+        <div class="pv-sec">
+          <div class="pv-sec-head"><div>
+            <div class="pv-sec-titulo">Mis propiedades</div>
+            <div class="pv-sec-sub">Aún no tenés slots asignados. El administrador te los va a asignar.</div>
+          </div></div>
+        </div>`
+
+      const activosCount = misSlots.filter(s => s.activo !== false).length
+      const cards = misSlots.map(slot => {
+        const proy       = proyImgs[slot.proyecto_slug]
+        const fotoUrl    = proy?.foto_portada || ''
+        const proyNombre = proy?.nombre || slot.nombre || slot.codigo
+        const scans      = scansPorSlot[slot.codigo] || 0
+        const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
+        const conv       = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
+        const esActivo   = slot.activo !== false
+        const redirectUrl = `${location.origin}/r/${slot.codigo}`
+        const imgStyle = fotoUrl
+          ? `background-image:url('${fotoUrl.replace(/'/g,"\\'")}');background-size:cover;background-position:center`
+          : 'background:linear-gradient(135deg,rgba(201,168,76,.09),#11100e)'
+        const ptrOff = !esActivo ? 'pointer-events:none' : ''
+
+        return `
+        <div class="slot-full-card${esActivo ? '' : ' slot-full-inactivo'}">
+          <div class="slot-full-left">
+            <div class="slot-full-img" style="${imgStyle}">
+              <div class="slot-full-img-overlay"></div>
+              <div class="slot-full-img-content">
+                <div class="slot-full-eyebrow">${esc(slot.codigo)}</div>
+                <div class="slot-full-nombre">${esc(proyNombre)}</div>
+              </div>
+              <div class="qr-slot-estado-badge ${esActivo?'activo':'inactivo'}">${esActivo?'● ACTIVO':'● INACTIVO'}</div>
+            </div>
+            <div class="slot-full-body">
+              <div class="slot-full-stats">
+                <div class="slot-stat">
+                  <span class="slot-stat-n" style="color:#9fc0ff;">${scans}</span>
+                  <span class="slot-stat-l">scans · 30d</span>
+                </div>
+                <div class="slot-stat">
+                  <span class="slot-stat-n" style="color:#e8c96a;">${slotCons.length}</span>
+                  <span class="slot-stat-l">consultas</span>
+                </div>
+                <div class="slot-stat">
+                  <span class="slot-stat-n">${conv}</span>
+                  <span class="slot-stat-l">conversión</span>
+                </div>
+              </div>
+              <div class="slot-full-qr-footer" style="${ptrOff}">
+                <div class="qr-slot-canvas-wrap" style="padding:5px;">
+                  <canvas id="qr-canvas-${slot.id}" width="70" height="70"></canvas>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:.35rem;">
+                  <button class="qr-slot-btn" onclick="descargarQR('qr-canvas-${slot.id}','${slot.codigo}')">Descargar QR</button>
+                  <button class="qr-slot-btn" onclick="copiarLink('${redirectUrl}',this)">Copiar link</button>
+                </div>
+              </div>
+              ${!esActivo ? '<div class="qr-slot-inactivo-banner">Esta propiedad ya no está disponible · Retirá el material impreso.</div>' : ''}
+            </div>
+          </div>
+          <div class="slot-full-right">
+            <div class="slot-chart-label">Interacciones · últimos 30 días</div>
+            <div class="slot-chart-wrap"><canvas id="slot-chart-${slot.id}"></canvas></div>
+            <div class="slot-chart-total">${scans} total</div>
+          </div>
+        </div>`
+      }).join('')
+
+      return `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Mis propiedades activas</div>
+              <div class="pv-sec-sub">QR, estadísticas y actividad individual de cada propiedad.</div>
+            </div>
+            <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activosCount} activa${activosCount!==1?'s':''}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.85rem;">${cards}</div>
+        </div>`
+    }
+
+    function renderSlotMiniCharts() {
+      if (typeof Chart === 'undefined') return
+      const ahora  = new Date()
+      const dias30 = Array.from({length: 30}, (_, i) => {
+        const d = new Date(ahora); d.setDate(d.getDate() - (29 - i)); d.setHours(0,0,0,0); return d
+      })
+      const labels = dias30.map(d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}))
+
+      misSlots.forEach(slot => {
+        const canvas = document.getElementById(`slot-chart-${slot.id}`)
+        if (!canvas) return
+        const slotVis = visitas.filter(v => v.canal_ref === slot.codigo)
+        const data = dias30.map(dIni => {
+          const dFin = new Date(dIni.getTime() + 86400000)
+          return slotVis.filter(v => { const d = new Date(v.created_at); return d >= dIni && d < dFin }).length
+        })
+        const max = Math.max(...data, 1)
+        new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              data,
+              backgroundColor: data.map(v => v > 0 ? `rgba(100,149,237,${0.25 + (v / max) * 0.55})` : 'rgba(255,255,255,.04)'),
+              borderRadius: 3,
+              borderSkipped: false,
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            animation: { duration: 600 },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(18,18,21,.96)',
+                borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
+                titleColor: '#fff', bodyColor: 'rgba(255,255,255,.76)',
+                callbacks: {
+                  title: ctx => ctx[0].label,
+                  label: ctx => `${ctx.raw} scan${ctx.raw !== 1 ? 's' : ''}`
+                }
+              }
+            },
+            scales: {
+              x: { display: false },
+              y: { display: false, beginAtZero: true }
+            }
+          }
+        })
+      })
     }
 
     // ── Canal activo: sección de gráfico + funnel (sin tabla de contactos) ──
