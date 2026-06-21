@@ -1011,6 +1011,15 @@
       for (const [k, v] of Object.entries(propDataMap)) { if (k.startsWith(slug) || slug.startsWith(k)) return v }
       return null
     }
+    const esPropiedadReal = slot => {
+      if (!slot.proyecto_slug) return false
+      if (proyImgs[slot.proyecto_slug]) return true
+      if (findPropData(slot.proyecto_slug)) return true
+      return false
+    }
+    // Log temporal — verificar en producción con F12 los slots filtrados como canales generales:
+    console.warn('[esPropiedadReal] Slots filtrados como canales generales:', misSlots.filter(s => !esPropiedadReal(s)).map(s => s.codigo))
+
     let _pvChart4 = null, _pvChart4a = null, _pvChart4b = null, _pvChart4c = null, _pvChart4d = null
     let _pvPanelAct = null, _pvPanelConv = null  // charts de los paneles nuevos (Actividad 30d, Conversión 30d)
     let _pvLiveRAF = null   // loop de animación del "pulso en vivo"
@@ -1019,18 +1028,14 @@
 
     // ── Zoom horario (modo Hoy) ──────────────────────────────────────────────
     window.pvZoomHoyAplicar = function() {
-      if (!_pvChart4 || !window._pvHoyLbls) return
+      // Usa pvApplyViewport para estar sincronizado con el zoom de scroll
       const fromH = parseInt(document.getElementById('pvZoomDesde')?.value || '0')
       const toH   = parseInt(document.getElementById('pvZoomHasta')?.value || '24')
-      const VENTANA = window._pvHoyVENTANA || 15
-      const lbls = window._pvHoyLbls
-      const minIdx = Math.max(0, Math.floor(fromH * 60 / VENTANA))
-      const rawMax = Math.ceil(toH * 60 / VENTANA) - 1
-      const maxIdx = Math.min(lbls.length - 1, rawMax)
-      const safeMax = Math.max(minIdx, maxIdx)
-      _pvChart4.options.scales.x.min = lbls[minIdx]
-      _pvChart4.options.scales.x.max = lbls[safeMax]
-      _pvChart4.update('none')
+      const hoyB0 = window._pvZoomDefaultFrom
+      if (!hoyB0) return
+      const fromMs = hoyB0 + fromH * 3600000
+      const toMs   = Math.min(hoyB0 + toH * 3600000, Date.now())
+      pvApplyViewport(fromMs, toMs)
     }
     window.pvZoomHoyReset = function() {
       const f = window._pvZoomDefaultFrom, t2 = window._pvZoomDefaultTo
@@ -1042,7 +1047,7 @@
       }
       window._pvZoomFrom = f; window._pvZoomTo = t2
       const d = document.getElementById('pvZoomDesde'); if (d) d.value = '0'
-      const h = document.getElementById('pvZoomHasta'); if (h) h.value = '24'
+      const h = document.getElementById('pvZoomHasta'); if (h) h.value = String(Math.min(24, new Date().getHours() + 1))
     }
 
     // ── Motor de zoom temporal interactivo ──────────────────────────────────
@@ -1105,8 +1110,12 @@
       slotData.forEach((sd,i) => { const dst=_pvChart4.data.datasets[2+i]; if (dst) dst.data=sd.data })
       delete _pvChart4.options.scales.x.min; delete _pvChart4.options.scales.x.max
       const _cap = labels // captura para closures de callback
-      if (_pvChart4.options.scales?.x?.ticks)
+      if (_pvChart4.options.scales?.x?.ticks) {
         _pvChart4.options.scales.x.ticks.callback = (_,i) => _cap[i] || ''
+        _pvChart4.options.scales.x.ticks.autoSkip = true
+        // Densidad adaptativa: máx 12 etiquetas siempre, menos si hay pocos buckets
+        _pvChart4.options.scales.x.ticks.maxTicksLimit = Math.min(labels.length, 12)
+      }
       if (_pvChart4.options.plugins?.tooltip?.callbacks)
         _pvChart4.options.plugins.tooltip.callbacks.title = items => _cap[items[0]?.dataIndex ?? 0] || ''
       _pvChart4.update('none')
@@ -1132,13 +1141,13 @@
         const rangeMs = to - from
         const ca = chart.chartArea, rect = chart.canvas.getBoundingClientRect()
         const pct = ca ? Math.max(0, Math.min(1, (e.clientX - rect.left - ca.left) / (ca.right - ca.left))) : 0.5
-        // scroll arriba = acercar (0.68×), scroll abajo = alejar (1.47×)
-        const factor = e.deltaY < 0 ? 0.68 : 1.47
+        // scroll arriba = acercar (0.80×), scroll abajo = alejar (1.25×) — suave
+        const factor = e.deltaY < 0 ? 0.80 : 1.25
         const newRange = Math.max(60000, Math.min(30*86400000, rangeMs * factor))
         const anchorMs = from + rangeMs * pct
         let newFrom = anchorMs - newRange * pct
         let newTo   = anchorMs + newRange * (1-pct)
-        const hardMax = Date.now() + 3600000, hardMin = hardMax - 30*86400000
+        const hardMax = Date.now(), hardMin = hardMax - 30*86400000
         if (newFrom < hardMin) { newFrom = hardMin; newTo = Math.min(hardMax, newFrom + newRange) }
         if (newTo > hardMax)   { newTo = hardMax;   newFrom = Math.max(hardMin, newTo - newRange) }
         pvApplyViewport(newFrom, newTo)
@@ -1164,7 +1173,7 @@
         const rangeMs = dragTo0 - dragFrom0
         const msPerPx = rangeMs / Math.max(1, ca.right - ca.left)
         const shift = -dx * msPerPx
-        const hardMax = Date.now() + 3600000, hardMin = hardMax - 30*86400000
+        const hardMax = Date.now(), hardMin = hardMax - 30*86400000
         let newFrom = Math.max(hardMin, dragFrom0 + shift)
         let newTo = newFrom + rangeMs
         if (newTo > hardMax) { newTo = hardMax; newFrom = Math.max(hardMin, newTo - rangeMs) }
@@ -1495,7 +1504,7 @@
           </div>
           <div class="pv-kpi kpi-prop">
             <div class="pv-kpi-label">Propiedades activas</div>
-            <div class="pv-kpi-n">${misSlots.filter(s => s.activo !== false).length}</div>
+            <div class="pv-kpi-n">${misSlots.filter(s => s.activo !== false && esPropiedadReal(s)).length}</div>
             <div class="pv-kpi-sub">Propiedades reales vinculadas a tu canal.</div>
           </div>
         </div>
@@ -1833,8 +1842,8 @@
         <span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;"></span>
         <span class="pv-legend-name">Consultas</span>
       </div>`)
-      // Una por slot activo con actividad
-      misSlots.forEach(slot => {
+      // Una por slot activo con actividad (solo propiedades reales)
+      misSlots.filter(esPropiedadReal).forEach(slot => {
         const color = colorDeSlot(slot.codigo)
         const proy = proyImgs[slot.proyecto_slug]
         const nombre = proy?.nombre || slot.nombre || slot.codigo
@@ -1931,7 +1940,7 @@
         const base = [
           {
             label:'Interacciones', data:lblsData[0], order:2,
-            borderColor:'#7aaeff', borderWidth: multiSlot ? 2.2 : 2.5, tension:0.4, fill: true,
+            borderColor:'#7aaeff', borderWidth: multiSlot ? 4 : 2.5, tension:0.4, fill: true,
             cubicInterpolationMode:'monotone',
             backgroundColor: gradAzul,
             pointRadius:0, pointHoverRadius:6,
@@ -1939,7 +1948,7 @@
           },
           {
             label:'Consultas', data:lblsData[1], order:1,
-            borderColor:'#e8c96a', borderWidth: multiSlot ? 3.5 : 3, tension:0.4, fill:false,
+            borderColor:'#e8c96a', borderWidth: multiSlot ? 2.5 : 3, tension:0.4, fill:false,
             cubicInterpolationMode:'monotone', spanGaps:true,
             pointRadius:0, pointHoverRadius:7,
             pointBackgroundColor:'#0c0c0e', pointBorderColor:'#e8c96a', pointBorderWidth:2,
@@ -2005,7 +2014,7 @@
         // ── Líneas individuales por slot (modo Hoy, por bucket de 15min) ──
         const slotLinesHoy = []
         if (multiSlot) {
-          misSlots.forEach(slot => {
+          misSlots.filter(esPropiedadReal).forEach(slot => {
             const visSlot = visitas.filter(v => v.canal_ref === slot.codigo && inHoy(v.created_at))
             const arr = new Array(numBuckets).fill(0)
             visSlot.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
@@ -2052,7 +2061,7 @@
             interaction:{mode:'index',intersect:false},
             layout:{padding:{top:14,right:16,bottom:2,left:2}},
             plugins:{
-              legend:legendBase,
+              legend: multiSlot ? {display:false} : legendBase,
               tooltip:{
                 ...tooltipBase,
                 callbacks:{
@@ -2083,9 +2092,9 @@
         const loopLive = () => { if(_pvChart4&&_pvChart4.canvas){_pvChart4.draw();_pvLiveRAF=requestAnimationFrame(loopLive)}else{_pvLiveRAF=null} }
         setTimeout(() => { if(_pvChart4&&!_pvLiveRAF) loopLive() }, 950)
 
-        // Zoom/pan interactivo: establecer viewport del día actual
+        // Zoom/pan interactivo: viewport = hoy desde medianoche hasta ahora (sin futuro)
         window._pvZoomDefaultFrom = hoyB0.getTime()
-        window._pvZoomDefaultTo   = Date.now() + 3600000
+        window._pvZoomDefaultTo   = Date.now()
         if (!window._pvZoomFrom || window._pvZoomFrom < hoyB0.getTime()) window._pvZoomFrom = window._pvZoomDefaultFrom
         if (!window._pvZoomTo)   window._pvZoomTo   = window._pvZoomDefaultTo
         pvBindZoomPan(_pvChart4)
@@ -2099,8 +2108,9 @@
             const v=from+i; const hh=String(v).padStart(2,'0')
             return `<option value="${v}"${v===sel?' selected':''}>${hh}:00</option>`
           }).join('')
+          const horaMax = Math.min(24, new Date().getHours() + 1)
           const elD = document.getElementById('pvZoomDesde'); if (elD) elD.innerHTML = hOpts(0,23,0)
-          const elH = document.getElementById('pvZoomHasta'); if (elH) elH.innerHTML = hOpts(1,24,24)
+          const elH = document.getElementById('pvZoomHasta'); if (elH) elH.innerHTML = hOpts(1,horaMax,horaMax)
           pvZB.style.display = 'flex'
         }
 
@@ -2132,7 +2142,7 @@
         const slotLinesPeriodo = []
         if (multiSlot) {
           const bloqueDias = Math.ceil((hasta - desde) / 86400000) <= 14 ? 1 : Math.ceil((hasta - desde) / 86400000) <= 45 ? 3 : 7
-          misSlots.forEach(slot => {
+          misSlots.filter(esPropiedadReal).forEach(slot => {
             const visSlot = visitas.filter(v => v.canal_ref === slot.codigo && new Date(v.created_at) >= desde && new Date(v.created_at) <= hasta)
             if (!visSlot.length) return
             const arr = []
@@ -2168,7 +2178,7 @@
             interaction:{mode:'index',intersect:false},
             layout:{padding:{top:14,right:16,bottom:2,left:2}},
             plugins:{
-              legend:legendBase,
+              legend: multiSlot ? {display:false} : legendBase,
               tooltip:{
                 ...tooltipBase,
                 callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } }
@@ -2278,8 +2288,8 @@
           </div></div>
         </div>`
 
-      const activosCount = misSlots.filter(s => s.activo !== false).length
-      const cards = misSlots.map(slot => {
+      const activosCount = misSlots.filter(s => s.activo !== false && esPropiedadReal(s)).length
+      const cards = misSlots.filter(esPropiedadReal).map(slot => {
         const proy       = proyImgs[slot.proyecto_slug]
         const prop       = findPropData(slot.proyecto_slug)
         const fotoUrl    = proy?.foto_portada || prop?.imagenes?.[0] || ''
@@ -2489,7 +2499,7 @@
       const labels = dias.map(d => d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}))
       const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
       const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
-      const slotLines = misSlots.map(slot => {
+      const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
         const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
         const proy = proyImgs[slot.proyecto_slug]
         return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
@@ -2498,7 +2508,7 @@
       const ctxAct = document.getElementById('pvPanelAct30')?.getContext('2d')
       if (ctxAct && (dataScans.some(x=>x>0) || dataCons.some(x=>x>0))) {
         const datasets = [
-          { label:'Total interacciones', data:dataScans, order:2, borderColor:'#7aaeff', borderWidth:2.2, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
+          { label:'Total interacciones', data:dataScans, order:2, borderColor:'#7aaeff', borderWidth:3.5, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
             backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.32)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.72)'); g.addColorStop(0.45,'rgba(122,174,255,.34)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g } },
           { label:'Consultas', data:dataCons, order:1, borderColor:'#e8c96a', borderWidth:2.5, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#e8c96a', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2 }
         ]
@@ -2614,7 +2624,7 @@
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
       const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
       const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
-      const slotLines = misSlots.map(slot => {
+      const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
         const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
         const proy = proyImgs[slot.proyecto_slug]
         return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
@@ -2721,7 +2731,7 @@
           </div></div>
           <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Aún no tenés propiedades asignadas.</div></div>
         </div>`
-      const rows = misSlots.map(slot => {
+      const rows = misSlots.filter(esPropiedadReal).map(slot => {
         const scans = scansPorSlot[slot.codigo] || 0
         const slotCons = contactos.filter(c => c.canal_ref === slot.codigo).length
         const conv = scans > 0 ? Number((slotCons/scans*100).toFixed(1)) : 0
