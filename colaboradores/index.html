@@ -972,54 +972,98 @@
         renderMiniMapaPasivo(canal)
       })
     } else {
+      const mAct       = metricasPasivo(contactos)
+      const primerC    = canales[0]
+      const geoAct     = [primerC.ciudad, primerC.provincia].filter(Boolean).join(', ')
+      const estadoAct  = !primerC.activo ? 'inactivo' : campanaActiva[primerC.id] ? 'campana' : 'activo'
+      const dotColorAct = estadoAct === 'activo' ? '#50c878' : estadoAct === 'campana' ? '#c9a84c' : '#444'
+      const dotLabelAct = estadoAct === 'inactivo' ? 'Canal inactivo' : estadoAct === 'campana' ? `Campaña: ${esc(campanaActiva[primerC.id])}` : 'Canal activo'
+      const nombreDisplay = canales.length > 1 ? `${primerC.nombre} +${canales.length - 1}` : primerC.nombre
+
+      main.classList.add('pv-main')
       main.innerHTML = `
-        <div class="pasivo-hero">
-          <div class="pasivo-eyebrow">Aliado Sur Patagonia</div>
-          <div class="pasivo-titulo">${esc(canales[0].nombre)}</div>
-          ${canales[0].ciudad || canales[0].provincia
-            ? `<div class="pasivo-geo">${[canales[0].ciudad, canales[0].provincia].filter(Boolean).map(esc).join(', ')}</div>`
-            : ''}
-          <div class="pasivo-status">
-            <span class="qr-dot ${!canales[0].activo ? 'inactivo' : campanaActiva[canales[0].id] ? 'campana' : 'activo'}"></span>
-            <span>${!canales[0].activo ? 'Canal inactivo' : campanaActiva[canales[0].id] ? `Campaña: ${esc(campanaActiva[canales[0].id])}` : 'Canal activo'}</span>
+        <div class="pv-hero-title">
+          <h1>${esc(nombreDisplay)}</h1>
+          <div class="pv-hero-sub-bar">
+            <span style="width:8px;height:8px;border-radius:50%;background:${dotColorAct};${estadoAct!=='inactivo'?`box-shadow:0 0 10px ${dotColorAct}88`:''};flex-shrink:0;display:inline-block;"></span>
+            <span>${geoAct ? esc(geoAct) + ' · ' : ''}${esc(dotLabelAct)}</span>
+          </div>
+          <div class="pv-periodo-bar-hero">
+            <button class="pv-flt-btn activo" data-dias="hoy" onclick="pvSetPeriodo(this)">Hoy</button>
+            <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
+            <button class="pv-flt-btn" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
+            <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
+            <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+          </div>
+          <div class="pv-flt-custom" id="pvFltCustom" style="display:none;margin-top:.8rem;">
+            <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
+            <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
+            <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
           </div>
         </div>
-        <div class="kpi-grid">
-          <div class="kpi"><div class="kpi-n accent">${totalScans.toLocaleString('es-AR')}</div><div class="kpi-label">Scans totales</div><div class="kpi-sub">todos tus canales</div></div>
-          <div class="kpi"><div class="kpi-n">${scans30.toLocaleString('es-AR')}</div><div class="kpi-label">Scans últimos 30 días</div><div class="kpi-sub">actividad reciente</div></div>
-          <div class="kpi"><div class="kpi-n dorado">${contactos.length}</div><div class="kpi-label">Consultas generadas</div><div class="kpi-sub">leads de tus canales</div></div>
-          <div class="kpi"><div class="kpi-n verde">${conv}%</div><div class="kpi-label">Tasa de conversión</div><div class="kpi-sub">scans → consultas</div></div>
+
+        <div class="pv-kpi-grid">
+          <div class="pv-kpi" style="--pv-c:#6495ed">
+            <div class="pv-kpi-label">Interacciones totales</div>
+            <div class="pv-kpi-n">${totalScans.toLocaleString('es-AR')}</div>
+            <div class="pv-kpi-sub">Actividad histórica de todos tus QRs.</div>
+          </div>
+          <div class="pv-kpi" style="--pv-c:#89b4f7">
+            <div class="pv-kpi-label">Impulso reciente</div>
+            <div class="pv-kpi-n">${mAct.v30.toLocaleString('es-AR')}</div>
+            ${renderDelta(mAct.deltaV)}
+            <div class="pv-kpi-sub">Interacciones en los últimos 30 días.</div>
+          </div>
+          <div class="pv-kpi" style="--pv-c:#c9a84c">
+            <div class="pv-kpi-label">Consultas generadas</div>
+            <div class="pv-kpi-n pv-dorado">${contactos.length.toLocaleString('es-AR')}</div>
+            ${renderDelta(mAct.deltaC)}
+            <div class="pv-kpi-sub">${mAct.c30.toLocaleString('es-AR')} en los últimos 30 días.</div>
+          </div>
+          <div class="pv-kpi" style="--pv-c:#50c878">
+            <div class="pv-kpi-label">Conversión a consulta</div>
+            <div class="pv-kpi-n">${mAct.conv30}%</div>
+            ${renderDelta(mAct.deltaConv, 'puntos vs período anterior')}
+            <div class="pv-kpi-sub">Scans que generaron una oportunidad.</div>
+          </div>
         </div>
-        ${canales.length > 1 ? `<div class="seccion"><div class="sec-titulo">Tus canales</div><div style="display:flex;flex-direction:column;gap:.6rem;">${renderCards()}</div></div>` : renderCards()}
+
         ${renderMisQRs()}
-        ${renderActivo(contactos)}
-        <div class="seccion" id="secMensajes">
-          <div class="sec-titulo">Mensajes de Sur Patagonia${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem;">${misMensajes.length}</span>` : ''}</div>
+        ${renderSlotBreakdown()}
+        ${renderActivoRico(contactos)}
+        ${renderContactosActivo_pv(contactos)}
+
+        <div class="pv-sec pv-msg-sec" id="secMensajes">
+          <div class="pv-sec-head"><div>
+            <div class="pv-sec-titulo">Novedades de la red${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem">${misMensajes.length}</span>` : ''}</div>
+            <div class="pv-sec-sub">Actualizaciones de Sur Patagonia para tu espacio.</div>
+          </div></div>
           <div class="msg-inbox" id="msgInbox">
-            ${misMensajes.length ? misMensajes.map((m, i) => `
+            ${misMensajes.length ? misMensajes.map((msg, i) => `
               <div class="msg-card" id="msgCard-${i}">
                 <div class="msg-card-head" onclick="toggleMsg(${i})">
                   <div class="msg-unread-dot" id="dot-${i}"></div>
-                  <div class="msg-card-asunto">${esc(m.asunto)}</div>
-                  <div class="msg-card-fecha">${fmt(m.created_at)}</div>
+                  <div class="msg-card-asunto">${esc(msg.asunto)}</div>
+                  <div class="msg-card-fecha">${fmt(msg.created_at)}</div>
                 </div>
                 <div class="msg-card-body" id="msgBody-${i}">
-                  <div class="msg-card-cuerpo">${esc(m.cuerpo)}</div>
+                  <div class="msg-card-cuerpo">${esc(msg.cuerpo)}</div>
                   <div class="reply-area">
                     <div class="reply-titulo">Tu respuesta</div>
-                    ${(m.mensajes_respuestas || []).filter(r => r.usuario_id === userId).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
+                    ${(msg.mensajes_respuestas || []).filter(r => r.usuario_id === userId).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
                     <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
-                    <button class="btn-reply" onclick="enviarRespuesta('${m.id}', ${i}, ${JSON.stringify(canales[0]?.nombre||'').replace(/"/g,'&quot;')})">Enviar respuesta</button>
+                    <button class="btn-reply" onclick="enviarRespuesta('${msg.id}', ${i}, ${JSON.stringify(canales[0]?.nombre||'').replace(/"/g,'&quot;')})">Enviar respuesta</button>
                   </div>
                 </div>
-              </div>`).join('') : '<div class="no-msgs">No tenés mensajes por ahora.</div>'}
+              </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonia tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
           </div>
         </div>`
 
-      // Generar QR canvases tras render del DOM
-      if (!esPasivo && misSlots.length) {
-        requestAnimationFrame(() => generarQRCanvases())
-      }
+      // Render de gráficos y QR canvases tras DOM
+      requestAnimationFrame(() => {
+        renderGraficoPasivo(contactos, 0)
+        if (misSlots.length) generarQRCanvases()
+      })
     }
 
     function compararPeriodo(actual, anterior) {
@@ -1593,6 +1637,160 @@
       if (!desde || !hasta) { alert('Seleccioná una fecha desde y una fecha hasta.'); return }
       if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
       renderGraficoPasivo(contactos, 30, desde, hasta)
+    }
+
+    // ── Canal activo: sección de gráfico + funnel (sin tabla de contactos) ──
+    function renderActivoRico(contactos) {
+      return `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Evolución de la actividad</div>
+              <div class="pv-sec-sub">Interacciones y consultas de todos tus slots combinados.</div>
+            </div>
+          </div>
+          <div id="pvLiveBar4" class="pv-live-bar">
+            <div class="pv-live-left">
+              <span class="pv-live-dot"></span>
+              <span class="pv-live-tag" id="pvLiveTag">En vivo · minuto a minuto</span>
+            </div>
+            <div class="pv-live-right">
+              <div class="pv-live-stat">
+                <div class="pv-live-stat-n blue" id="pvLiveScans4">0</div>
+                <div class="pv-live-stat-l" id="pvLiveScansL">Hoy · interacciones</div>
+              </div>
+              <div class="pv-live-stat">
+                <div class="pv-live-stat-n gold" id="pvLiveConsultas4">0</div>
+                <div class="pv-live-stat-l" id="pvLiveConsultasL">Hoy · consultas</div>
+              </div>
+              <div class="pv-live-stat com">
+                <div class="pv-live-stat-n com" id="pvLiveComisiones4">0</div>
+                <div class="pv-live-stat-l">Comisiones activas</div>
+              </div>
+            </div>
+          </div>
+          <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
+          <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad de comisión</strong>: si compra una propiedad en los próximos 15 meses, cobrás. Mientras más registres, más chances de cobrar en el futuro.</div>
+          <div class="pv-mini-grid">
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Ayer</span><span id="pvMiniAyerN">0</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniAyer"></canvas></div>
+            </div>
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Últimos 7 días</span><span id="pvMiniSemN">0</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniSem"></canvas></div>
+            </div>
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Últimos 30 días</span><span id="pvMiniMesN">0</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniMes"></canvas></div>
+            </div>
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Tasa de conversión</span><span id="pvMiniConvN" style="color:rgba(255,160,80,1)">0%</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniConv"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pv-impact-grid">
+          ${renderFunnelCRM(contactos)}
+          <div class="pv-sec" style="margin-bottom:0">
+            <div class="pv-sec-head"><div><div class="pv-sec-titulo">Actividad reciente</div><div class="pv-sec-sub">Últimos movimientos registrados.</div></div></div>
+            ${renderActividadReciente(contactos)}
+          </div>
+        </div>`
+    }
+
+    // ── Canal activo: tabla de rendimiento por slot ──────────────────────────
+    function renderSlotBreakdown() {
+      if (!misSlots.length) return ''
+      const rows = misSlots.map(slot => {
+        const scans     = scansPorSlot[slot.codigo] || 0
+        const slotCons  = contactos.filter(c => c.canal_ref === slot.codigo)
+        const conv      = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
+        const proy      = proyImgs[slot.proyecto_slug]
+        const nombre    = proy?.nombre || slot.nombre || slot.codigo
+        const esActivo  = slot.activo !== false
+        return `
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:.55rem;">
+                <div style="width:8px;height:8px;border-radius:50%;background:${esActivo ? '#50c878' : '#555'};${esActivo ? 'box-shadow:0 0 7px rgba(80,200,120,.4)' : ''}"></div>
+                <span style="font-family:monospace;font-size:.68rem;color:#c9a84c;">${esc(slot.codigo)}</span>
+              </div>
+            </td>
+            <td>
+              <span style="font-size:.78rem;font-weight:500;">${esc(nombre)}</span>
+              ${!esActivo ? '<span style="display:block;font-size:.6rem;color:#e05c5c;margin-top:.1rem;">Inactivo</span>' : ''}
+            </td>
+            <td style="text-align:right;font-size:.82rem;font-weight:600;color:#9fc0ff;">${scans}</td>
+            <td style="text-align:right;font-size:.82rem;font-weight:600;color:#e8c96a;">${slotCons.length}</td>
+            <td style="text-align:right;font-size:.78rem;color:rgba(255,255,255,.5);">${conv}</td>
+          </tr>`
+      }).join('')
+      return `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Rendimiento por slot QR</div>
+              <div class="pv-sec-sub">Actividad individual de cada propiedad en los últimos 30 días.</div>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="pv-tabla">
+              <thead><tr>
+                <th>Código</th>
+                <th>Propiedad</th>
+                <th style="text-align:right">Scans 30d</th>
+                <th style="text-align:right">Consultas</th>
+                <th style="text-align:right">Conversión</th>
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`
+    }
+
+    // ── Canal activo: tabla de contactos enriquecida ─────────────────────────
+    function renderContactosActivo_pv(contactos) {
+      const nombreSlot = {}
+      ;(misSlots || []).forEach(s => {
+        nombreSlot[s.codigo] = proyImgs[s.proyecto_slug]?.nombre || s.nombre || s.codigo
+      })
+      canales.forEach(c => { if (!nombreSlot[c.codigo]) nombreSlot[c.codigo] = c.nombre })
+
+      const filas = contactos.length
+        ? contactos.slice(0, 50).map(c => `
+          <tr>
+            <td style="width:10px">${(c.estado||'nueva')==='nueva' ? '<div class="pv-dot-nueva"></div>' : ''}</td>
+            <td class="pv-fecha">${fmt(c.created_at)}</td>
+            <td>
+              <span style="font-weight:500">${esc(codificarNombre(c.nombre))}</span>
+              ${c.mensaje ? `<span style="display:block;font-size:.62rem;color:rgba(255,255,255,.35);margin-top:.1rem;">${esc(c.mensaje.slice(0,60))}${c.mensaje.length > 60 ? '…':''}</span>` : ''}
+            </td>
+            <td style="font-size:.7rem;color:rgba(255,255,255,.55);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
+            <td><span style="font-family:monospace;font-size:.65rem;color:#c9a84c;">${esc(nombreSlot[c.canal_ref] || c.canal_ref || '—')}</span></td>
+            <td><span class="pv-via ${c.canal_via==='qr'?'qr':'link'}"><span class="pv-via-mark"></span>${c.canal_via==='qr'?'QR':'Link'}</span></td>
+            <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
+          </tr>`).join('')
+        : '<tr><td colspan="7"><div class="pv-empty"><div class="pv-empty-mark"></div>Aún no hay consultas generadas desde tus slots.</div></td></tr>'
+
+      return `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Consultas generadas</div>
+              <div class="pv-sec-sub">Oportunidades de comisión vinculadas a tu actividad comercial.</div>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="pv-tabla">
+              <thead><tr>
+                <th></th><th>Fecha</th><th>Consulta</th><th>Propiedad</th><th>Slot</th><th>Origen</th><th>Estado</th>
+              </tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>
+        </div>`
     }
 
     function renderActivo(contactos) {
