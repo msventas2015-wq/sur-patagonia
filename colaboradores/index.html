@@ -598,7 +598,7 @@
     .slot-chart-wrap {
       position: relative;
       flex: 1;
-      min-height: 110px;
+      min-height: 135px;
     }
     .slot-chart-total {
       font-size: .65rem;
@@ -1015,6 +1015,30 @@
     let _pvPanelAct = null, _pvPanelConv = null  // charts de los paneles nuevos (Actividad 30d, Conversión 30d)
     let _pvLiveRAF = null   // loop de animación del "pulso en vivo"
     let _pvLiveTimer = null // refresco automático (modo Hoy)
+
+    // ── Zoom horario (modo Hoy) ──────────────────────────────────────────────
+    window.pvZoomHoyAplicar = function() {
+      if (!_pvChart4 || !window._pvHoyLbls) return
+      const fromH = parseInt(document.getElementById('pvZoomDesde')?.value || '0')
+      const toH   = parseInt(document.getElementById('pvZoomHasta')?.value || '24')
+      const VENTANA = window._pvHoyVENTANA || 15
+      const lbls = window._pvHoyLbls
+      const minIdx = Math.max(0, Math.floor(fromH * 60 / VENTANA))
+      const rawMax = Math.ceil(toH * 60 / VENTANA) - 1
+      const maxIdx = Math.min(lbls.length - 1, rawMax)
+      const safeMax = Math.max(minIdx, maxIdx)
+      _pvChart4.options.scales.x.min = lbls[minIdx]
+      _pvChart4.options.scales.x.max = lbls[safeMax]
+      _pvChart4.update('none')
+    }
+    window.pvZoomHoyReset = function() {
+      if (!_pvChart4) return
+      delete _pvChart4.options.scales.x.min
+      delete _pvChart4.options.scales.x.max
+      _pvChart4.update('none')
+      const d = document.getElementById('pvZoomDesde'); if (d) d.value = '0'
+      const h = document.getElementById('pvZoomHasta'); if (h) h.value = '24'
+    }
 
     // Filtrar mensajes para este usuario
     // Lógica: si usuario_id está → solo ese usuario
@@ -1561,6 +1585,13 @@
               </div>
             </div>
           </div>
+          <div id="pvHoyZoomBar" style="display:none;flex-wrap:wrap;align-items:center;gap:.55rem;padding:.4rem .75rem;margin-bottom:.35rem;background:rgba(255,255,255,.03);border-radius:7px;border:1px solid rgba(255,255,255,.06);">
+            <span style="font-size:.6rem;color:rgba(255,255,255,.3);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;">Rango horario</span>
+            <select id="pvZoomDesde" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
+            <span style="color:rgba(255,255,255,.22);font-size:.7rem">→</span>
+            <select id="pvZoomHasta" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
+            <button onclick="pvZoomHoyReset()" style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.09);border-radius:5px;padding:.18rem .65rem;font-size:.62rem;font-family:Inter,sans-serif;cursor:pointer;letter-spacing:.05em;white-space:nowrap;">Ver todo el día</button>
+          </div>
           <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
           <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad de comisión</strong>: si compra una propiedad en los próximos 15 meses, cobrás. Mientras más registres, más chances de cobrar en el futuro.</div>
           <div class="pv-mini-grid">
@@ -1746,7 +1777,7 @@
         const base = [
           {
             label:'Interacciones', data:lblsData[0], order:2,
-            borderColor:'#7aaeff', borderWidth: multiSlot ? 4 : 2.5, tension:0.4, fill: !multiSlot,
+            borderColor:'#7aaeff', borderWidth: multiSlot ? 3 : 2.5, tension:0.4, fill: true,
             cubicInterpolationMode:'monotone',
             backgroundColor: gradAzul,
             pointRadius:0, pointHoverRadius:6,
@@ -1898,6 +1929,20 @@
         const loopLive = () => { if(_pvChart4&&_pvChart4.canvas){_pvChart4.draw();_pvLiveRAF=requestAnimationFrame(loopLive)}else{_pvLiveRAF=null} }
         setTimeout(() => { if(_pvChart4&&!_pvLiveRAF) loopLive() }, 950)
 
+        // Activar barra de zoom horario para modo Hoy
+        const pvZB = document.getElementById('pvHoyZoomBar')
+        if (pvZB) {
+          window._pvHoyLbls = lbls
+          window._pvHoyVENTANA = VENTANA
+          const hOpts = (from, to, sel) => Array.from({length:to-from+1},(_,i)=>{
+            const v=from+i; const hh=String(v).padStart(2,'0')
+            return `<option value="${v}"${v===sel?' selected':''}>${hh}:00</option>`
+          }).join('')
+          const elD = document.getElementById('pvZoomDesde'); if (elD) elD.innerHTML = hOpts(0,23,0)
+          const elH = document.getElementById('pvZoomHasta'); if (elH) elH.innerHTML = hOpts(1,24,24)
+          pvZB.style.display = 'flex'
+        }
+
         // Refresco real cada 30s (re-fetch desde Supabase)
         _pvLiveTimer = setInterval(async () => {
           const [rV, rC] = await Promise.all([
@@ -1912,6 +1957,8 @@
 
       } else {
         // ── MODO PERÍODO: diario acumulado ───────────────────────────────
+        // Ocultar barra de zoom (solo activa en modo Hoy)
+        const pvZBP = document.getElementById('pvHoyZoomBar'); if (pvZBP) pvZBP.style.display = 'none'
         const hasta = hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : new Date()
         const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime()-(dias-1)*86400000)
         const { labelsEvol, dataScans, dataConsultas } = datosEvolucionPasivo(contactos, desde, hasta)
@@ -2211,6 +2258,7 @@
             responsive: true, maintainAspectRatio: false,
             animation: { duration: 800, easing: 'easeOutQuart' },
             interaction: { mode: 'index', intersect: false },
+            layout: { padding: { top: 6, right: 4, bottom: 0, left: 0 } },
             plugins: {
               legend: { display: false },
               tooltip: {
@@ -2226,11 +2274,33 @@
               }
             },
             scales: {
-              x: { display: false },
+              x: {
+                offset: true,
+                border: { display: false },
+                grid: { display: false },
+                ticks: {
+                  color: 'rgba(255,255,255,.28)',
+                  maxRotation: 0,
+                  autoSkip: true,
+                  maxTicksLimit: 6,
+                  padding: 4,
+                  font: { size: 9, family: 'Inter' },
+                  callback: (_, i) => labels[i] || ''
+                }
+              },
               y: {
-                display: false,
                 beginAtZero: true,
-                suggestedMax: Math.max(...data, 3) // mínimo visual aunque haya 0 datos
+                suggestedMax: Math.max(...data, 3),
+                border: { display: false },
+                grid: { color: 'rgba(255,255,255,.05)', drawTicks: false },
+                ticks: {
+                  color: 'rgba(255,255,255,.28)',
+                  precision: 0,
+                  maxTicksLimit: 4,
+                  padding: 6,
+                  font: { size: 9, family: 'Inter' },
+                  callback: v => Number(v).toLocaleString('es-AR')
+                }
               }
             }
           }
@@ -2334,6 +2404,13 @@
                 <div class="pv-live-stat-l">Comisiones activas</div>
               </div>
             </div>
+          </div>
+          <div id="pvHoyZoomBar" style="display:none;flex-wrap:wrap;align-items:center;gap:.55rem;padding:.4rem .75rem;margin-bottom:.35rem;background:rgba(255,255,255,.03);border-radius:7px;border:1px solid rgba(255,255,255,.06);">
+            <span style="font-size:.6rem;color:rgba(255,255,255,.3);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;">Rango horario</span>
+            <select id="pvZoomDesde" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
+            <span style="color:rgba(255,255,255,.22);font-size:.7rem">→</span>
+            <select id="pvZoomHasta" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
+            <button onclick="pvZoomHoyReset()" style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.09);border-radius:5px;padding:.18rem .65rem;font-size:.62rem;font-family:Inter,sans-serif;cursor:pointer;letter-spacing:.05em;white-space:nowrap;">Ver todo el día</button>
           </div>
           <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
           <div id="pvLegendHost"></div>
