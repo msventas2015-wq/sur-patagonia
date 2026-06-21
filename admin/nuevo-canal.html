@@ -118,52 +118,74 @@
     .nc-save-name { min-width: 0; color: rgba(255,255,255,.62); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .nc-save-actions { display: flex; align-items: center; gap: .6rem; flex: 0 0 auto; }
 
-    /* ── REFERENCIAS ─────────────────────────────────── */
-    .nc-ref-row {
-      display: grid;
-      grid-template-columns: 1fr auto auto auto;
-      align-items: center;
-      gap: 0.8rem;
-      padding: 0.8rem;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 8px;
-      margin-bottom: 0.6rem;
-      background: rgba(255,255,255,.025);
+    /* ── REFERENCIAS — slot cards ─────────────────────── */
+    .slot-list { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1rem; }
+
+    .slot-card {
+      background: linear-gradient(160deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,.02) 100%);
+      border: 1px solid rgba(255,255,255,.07);
+      border-top: 3px solid rgba(201,168,76,.42);
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+      position: relative;
+      transition: opacity .2s;
     }
-    .ref-nombre { font-size: 0.85rem; font-weight: 500; }
-    .ref-codigo {
-      font-family: monospace;
-      font-size: 0.72rem;
-      color: var(--dorado);
-      background: var(--negro-2);
-      padding: 0.15rem 0.5rem;
-      border-radius: 3px;
-      display: block;
-      margin-top: 0.2rem;
+    .slot-card.inactivo { border-top-color: rgba(136,136,136,.25); opacity: .55; }
+    .slot-card-head {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 1rem; margin-bottom: .65rem;
     }
-    .btn-ref {
-      background: none;
-      border: 1px solid var(--gris-oscuro);
-      color: var(--gris-claro);
-      padding: 0.3rem 0.7rem;
-      cursor: pointer;
-      font-size: 0.72rem;
-      white-space: nowrap;
-      transition: all .2s;
+    .slot-eyebrow { font-family: monospace; font-size: .62rem; color: #c9a84c; letter-spacing: .06em; margin-bottom: .28rem; }
+    .slot-nombre  { font-size: 1rem; font-weight: 600; color: #f0ede8; line-height: 1.2; }
+    .slot-destino { font-size: .67rem; color: rgba(255,255,255,.4); margin-top: .22rem; }
+    .slot-scans   { flex-shrink: 0; text-align: right; font-size: .62rem; color: rgba(255,255,255,.35); line-height: 1.4; }
+    .slot-scans strong { display: block; font-size: 1.15rem; font-weight: 300; color: rgba(255,255,255,.7); }
+
+    .slot-actions {
+      display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+      padding-top: .75rem; border-top: 1px solid rgba(255,255,255,.06);
     }
-    .btn-ref:hover { border-color: var(--dorado); color: var(--dorado); }
-    .btn-ref.danger:hover { border-color: #e05; color: #e05; }
+    .slot-badge {
+      display: inline-flex; align-items: center; gap: .35rem;
+      font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      padding: .2rem .6rem; border-radius: 999px; border: 1px solid;
+      cursor: pointer; transition: all .18s; font-family: inherit; background: none;
+    }
+    .slot-badge::before { content: '●'; font-size: .5rem; }
+    .slot-badge.activo  { color: #50c878; border-color: rgba(80,200,120,.3); background: rgba(80,200,120,.08); }
+    .slot-badge.inactivo{ color: #aaa; border-color: rgba(255,255,255,.12); }
+
+    .slot-btn {
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+      color: rgba(255,255,255,.65); padding: .28rem .7rem; border-radius: 8px;
+      cursor: pointer; font-size: .68rem; font-family: inherit;
+      white-space: nowrap; transition: all .2s;
+    }
+    .slot-btn:hover { border-color: rgba(201,168,76,.45); color: #e8c96a; }
+    .slot-btn.danger { margin-left: auto; }
+    .slot-btn.danger:hover { border-color: rgba(224,92,92,.5); color: #e05c5c; }
+
+    .slot-edit-form {
+      display: none; margin-top: .75rem; padding: .85rem;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(201,168,76,.2);
+      border-radius: 10px; gap: .65rem;
+    }
+    .slot-edit-form.open { display: grid; grid-template-columns: 1fr auto; }
+    @media(max-width:560px){ .slot-edit-form.open{ grid-template-columns:1fr; } }
 
     .nc-ref-add {
       display: grid;
       grid-template-columns: 1fr 1fr auto;
       gap: 0.8rem;
       align-items: flex-end;
-      padding: 1rem;
-      border: 1px dashed rgba(255,255,255,.12);
-      border-radius: 8px;
+      padding: 1.1rem 1.2rem;
+      border: 1px dashed rgba(201,168,76,.28);
+      border-radius: 14px;
       margin-top: 1rem;
+      background: rgba(201,168,76,.025);
     }
+    @media(max-width:600px){ .nc-ref-add{ grid-template-columns:1fr; } }
+
     .nc-empty {
       text-align: center;
       padding: 2rem;
@@ -749,27 +771,92 @@ async function cargarReferencias() {
     .from('referencias')
     .select('*')
     .eq('canal_id', _canalId)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: true })
 
   const lista = document.getElementById('listaReferencias')
   if (!data?.length) {
-    lista.innerHTML = '<div class="nc-empty">Sin referencias aún. Agregá una abajo.</div>'
+    lista.innerHTML = '<div class="nc-empty">Sin slots aún. Agregá un destino abajo.</div>'
     return
   }
 
-  lista.innerHTML = data.map(r => `
-    <div class="nc-ref-row">
-      <div>
-        <div class="ref-nombre">${esc(r.nombre)}</div>
-        <span class="ref-codigo">${esc(r.codigo)}</span>
+  // Escaneos del mes por slot
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString()
+  const { data: visitas30 } = await supabase
+    .from('visitas')
+    .select('canal_ref')
+    .in('canal_ref', data.map(r => r.codigo))
+    .gte('created_at', hace30)
+  const scansPorCodigo = {}
+  ;(visitas30 || []).forEach(v => {
+    scansPorCodigo[v.canal_ref] = (scansPorCodigo[v.canal_ref] || 0) + 1
+  })
+
+  lista.innerHTML = `<div class="slot-list">${data.map(r => {
+    const scans = scansPorCodigo[r.codigo] || 0
+    const activo = r.activo !== false
+    return `
+    <div class="slot-card${activo ? '' : ' inactivo'}" id="slot-${r.id}">
+      <div class="slot-card-head">
+        <div>
+          <div class="slot-eyebrow">${esc(r.codigo)}</div>
+          <div class="slot-nombre">${esc(r.nombre)}</div>
+          <div class="slot-destino">${esc(r.destino || '/')}</div>
+        </div>
+        <div class="slot-scans">
+          <strong>${scans}</strong>
+          escaneos<br>último mes
+        </div>
       </div>
-      <button class="btn-ref" onclick="verQR('${r.codigo}','${encodeURIComponent(r.nombre)}','${encodeURIComponent(r.destino || '/')}')">QR / Link</button>
-      <button class="btn-ref" onclick="toggleRefActivo('${r.id}', ${r.activo})" style="color:${r.activo ? '' : 'var(--gris-claro)'}">
-        ${r.activo ? 'Activo' : 'Inactivo'}
-      </button>
-      <button class="btn-ref danger" onclick="eliminarReferencia('${r.id}')">✕</button>
-    </div>
-  `).join('')
+      <div class="slot-actions">
+        <button class="slot-badge ${activo ? 'activo' : 'inactivo'}"
+          onclick="toggleRefActivo('${r.id}', ${activo})">
+          ${activo ? 'Activo' : 'Inactivo'}
+        </button>
+        <button class="slot-btn" onclick="verQR('${r.codigo}','${encodeURIComponent(r.nombre)}','${encodeURIComponent(r.destino || '/')}')">QR / Link</button>
+        <button class="slot-btn" onclick="abrirEditarDestino('${r.id}')">Editar destino</button>
+        <button class="slot-btn danger" onclick="eliminarReferencia('${r.id}','${esc(r.codigo)}')">Eliminar</button>
+      </div>
+      <div class="slot-edit-form" id="edit-form-${r.id}">
+        <select class="admin-input" id="edit-sel-${r.id}">
+          <option value="">Seleccioná nuevo destino…</option>
+        </select>
+        <button class="btn-primary" onclick="guardarDestinoRef('${r.id}')">Guardar</button>
+      </div>
+    </div>`
+  }).join('')}</div>`
+
+  // Poblar selects de edición con los mismos proyectos/propiedades
+  data.forEach(r => {
+    const sel = document.getElementById(`edit-sel-${r.id}`)
+    if (!sel) return
+    _proyectos.forEach(p => {
+      const o = document.createElement('option')
+      o.value = JSON.stringify(p)
+      o.textContent = p.nombre
+      if (p.destino === r.destino) o.selected = true
+      sel.appendChild(o)
+    })
+  })
+}
+
+window.abrirEditarDestino = (id) => {
+  // Cerrar otros forms abiertos
+  document.querySelectorAll('.slot-edit-form.open').forEach(f => {
+    if (f.id !== `edit-form-${id}`) f.classList.remove('open')
+  })
+  document.getElementById(`edit-form-${id}`)?.classList.toggle('open')
+}
+
+window.guardarDestinoRef = async (id) => {
+  const sel = document.getElementById(`edit-sel-${id}`)
+  if (!sel?.value) { alert('Seleccioná un destino.'); return }
+  const { tipo, slug, destino, nombre } = JSON.parse(sel.value)
+  const proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
+  const { error } = await supabase.from('referencias').update({
+    destino, nombre, proyecto_slug,
+  }).eq('id', id)
+  if (error) { alert('Error al guardar: ' + error.message); return }
+  cargarReferencias()
 }
 
 window.agregarReferencia = async function() {
@@ -779,9 +866,19 @@ window.agregarReferencia = async function() {
 
   const { tipo, slug, destino } = JSON.parse(selVal)
   const codigoCanal = document.getElementById('codigo').value
-  const codigo = `${codigoCanal}-${toSlug(slug)}`
 
-  // proyecto_slug: guardamos el slug del proyecto o propiedad para rastreo
+  // Código de slot permanente basado en número de posición (anti-colisión)
+  const { data: refsExist } = await supabase
+    .from('referencias').select('codigo').eq('canal_id', _canalId)
+  const prefix = codigoCanal + '-'
+  const nums = (refsExist || [])
+    .map(r => r.codigo)
+    .filter(c => new RegExp(`^${prefix.replace(/[-]/g,'\\$&')}\\d{2}$`).test(c))
+    .map(c => parseInt(c.slice(-2), 10))
+    .filter(n => !isNaN(n))
+  const slotNum = nums.length ? Math.max(...nums) + 1 : 1
+  const codigo  = `${codigoCanal}-${String(slotNum).padStart(2, '0')}`
+
   const proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
 
   const { error } = await supabase.from('referencias').insert({
@@ -794,7 +891,7 @@ window.agregarReferencia = async function() {
   })
 
   if (error) {
-    if (error.code === '23505') alert('Ya existe una referencia con ese código. Cambiá el nombre del proyecto o el código del canal.')
+    if (error.code === '23505') alert('Código de slot duplicado. Intentá de nuevo.')
     else alert('Error: ' + error.message)
     return
   }
@@ -804,8 +901,11 @@ window.agregarReferencia = async function() {
   cargarReferencias()
 }
 
-window.eliminarReferencia = async (id) => {
-  if (!confirm('¿Eliminar esta referencia? Los leads anteriores no se borran.')) return
+window.eliminarReferencia = async (id, codigo) => {
+  const ok = confirm(
+    `⚠️ ATENCIÓN\n\nSi eliminás el slot "${codigo}", el QR físico impreso deja de funcionar permanentemente.\n\nSi solo querés cambiar la propiedad, usá "Editar destino" en su lugar.\n\n¿Confirmar eliminación definitiva?`
+  )
+  if (!ok) return
   await supabase.from('referencias').delete().eq('id', id)
   cargarReferencias()
 }
