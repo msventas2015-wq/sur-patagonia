@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Sur Patagonia Propiedades · Próximamente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Montserrat:wght@200;300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #0c0c0e;
+    }
+
+
+    /* ── VIDEO FONDO ── */
+    #yt-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    #yt-player {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 177.78vh;
+      height: 56.25vw;
+      min-width: 100%; min-height: 100%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    /* ── OVERLAY ── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background:
+        linear-gradient(to bottom,
+          rgba(12,12,14,0.65) 0%,
+          rgba(12,12,14,0.20) 35%,
+          rgba(12,12,14,0.20) 65%,
+          rgba(12,12,14,0.75) 100%
+        );
+    }
+
+    /* ── CONTENIDO ── */
+    #content {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      gap: 0;
+      animation: fadeUp 2.4s cubic-bezier(0.16,1,0.3,1) both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .logo-wrap {
+      margin-bottom: 3rem;
+    }
+    .logo-wrap img {
+      width: clamp(180px, 30vw, 340px);
+      filter: brightness(0) invert(1);
+      opacity: 0.90;
+    }
+
+    .divider {
+      width: 40px;
+      height: 1px;
+      background: rgba(201, 168, 76, 0.55);
+      margin-bottom: 2.4rem;
+    }
+
+    .proximo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.2rem, 6vw, 5rem);
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      color: rgba(240, 237, 232, 0.85);
+      text-shadow: 0 4px 40px rgba(0,0,0,0.6);
+      line-height: 1;
+      margin-bottom: 2rem;
+    }
+
+    .video-wrap {
+      width: clamp(260px, 55vw, 720px);
+      aspect-ratio: 16 / 9;
+      border-radius: 4px;
+      overflow: hidden;
+      opacity: 0.88;
+    }
+    .video-wrap iframe {
+      width: 100%; height: 100%;
+      border: none;
+      pointer-events: none;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div id="yt-bg">
+    <div id="yt-player"></div>
+  </div>
+
+  <div id="overlay"></div>
+
+  <div id="content">
+    <div class="logo-wrap">
+      <picture>
+        <source srcset="assets/logoverticalnegro.webp" type="image/webp">
+        <img src="assets/logoverticalnegro.png" alt="Sur Patagonia Propiedades">
+      </picture>
+    </div>
+    <div class="divider"></div>
+    <div class="proximo">PRÓXIMAMENTE</div>
+    <div class="video-wrap">
+      <iframe
+        src="https://www.youtube.com/embed/7bxKpIxdhXU?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=7bxKpIxdhXU&playsinline=1&iv_load_policy=3&disablekb=1"
+        allow="autoplay; encrypted-media"
+        allowfullscreen
+        title="Sur Patagonia">
+      </iframe>
+    </div>
+  </div>
+
+  <script>
+    // Bloquear navegación hacia atrás
+    history.pushState(null, '', location.href);
+    window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+
+    // YouTube IFrame API (autoplay en iOS)
+    var tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+
+    window.onYouTubeIframeAPIReady = function() {
+      new YT.Player('yt-player', {
+        videoId: 'VMkGpUK7E2Q',
+        playerVars: {
+          autoplay: 1, mute: 1, loop: 1, controls: 0,
+          showinfo: 0, rel: 0, modestbranding: 1,
+          playlist: 'VMkGpUK7E2Q', playsinline: 1,
+          iv_load_policy: 3, disablekb: 1, fs: 0
+        },
+        events: {
+          onReady: e => e.target.playVideo(),
+          onStateChange: e => {
+            if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED)
+              e.target.playVideo()
+          }
+        }
+      })
+    }
+  </script>
+
+</body>
+</html>
