@@ -546,7 +546,7 @@ let _proyectos          = []
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if ((session.user.app_metadata?.rol ?? session.user.user_metadata?.rol) !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault()
@@ -882,6 +882,13 @@ if (editId) {
     }
     document.getElementById('slugPreview').textContent = c.codigo || '—'
 
+    // Congelar campo código — el QR físico es permanente y no puede modificarse
+    const _codigoInput = document.getElementById('codigo')
+    _codigoInput.setAttribute('readonly', true)
+    _codigoInput.style.opacity = '0.5'
+    _codigoInput.style.cursor  = 'not-allowed'
+    _codigoInput.title = 'El código del QR es permanente y no puede modificarse'
+
     // Si ya tiene usuario asignado, mostrar info de solo lectura
     if (c.user_id) {
       document.getElementById('userId').value = c.user_id
@@ -1069,9 +1076,9 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
         destino, activo: true,
       }))
     } else {
-      // Actualizar también el código para que la referencia siga coincidiendo con el QR
+      // Solo actualizar destino y metadatos — codigo es permanente y no se toca jamás
       ;({ error: refError } = await supabase.from('referencias').update({
-        destino, nombre, codigo,
+        destino, nombre,
         proyecto_slug: proyectoSlugDestino,
       }).eq('canal_id', _canalId))
     }
@@ -1080,8 +1087,11 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
       alert('Canal guardado, pero no se pudo actualizar su referencia: ' + refError.message)
       return
     }
-    // Mostrar QR del canal pasivo
-    verQR(codigo, encodeURIComponent(nombre), encodeURIComponent(destino))
+    // Mostrar QR del canal pasivo — leer codigo desde DB para garantizar que es el permanente
+    const { data: refGuardada } = await supabase
+      .from('referencias').select('codigo').eq('canal_id', _canalId).maybeSingle()
+    const codigoQR = refGuardada?.codigo || codigo
+    verQR(codigoQR, encodeURIComponent(nombre), encodeURIComponent(destino))
   } else {
     // Canal activo: mostrar sección de referencias
     document.getElementById('seccionReferencias').style.display = ''
