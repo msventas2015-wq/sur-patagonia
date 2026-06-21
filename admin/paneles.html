@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual paneles — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --vp-card:#161513; --vp-border:rgba(255,255,255,.08); }
+    .admin-main { font-family:'Inter',system-ui,sans-serif; }
+    .vp-section { padding:2rem; border:1px solid var(--vp-border); border-radius:12px; background:var(--vp-card); }
+    .vp-title { margin-bottom:.45rem; color:var(--blanco); font-size:1rem; font-weight:500; }
+    .vp-sub { max-width:700px; margin-bottom:1.6rem; color:var(--gris-claro); font-size:.75rem; line-height:1.6; }
+    .vp-grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr); gap:2rem; align-items:start; }
+    .vp-preview-shell { padding:1rem; border:1px solid var(--vp-border); border-radius:10px; background:rgba(255,255,255,.025); }
+    .vp-label { display:block; margin-bottom:.55rem; color:var(--gris-claro); font-size:.64rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; }
+    .vp-preview { width:100%; aspect-ratio:16/9; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:#111 center 52%/cover no-repeat; filter:grayscale(1) brightness(.75); opacity:.11; -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 12%,#000 82%,transparent 100%); mask-image:linear-gradient(to bottom,transparent 0%,#000 12%,#000 82%,transparent 100%); }
+    .vp-controls { display:flex; flex-direction:column; gap:1.25rem; }
+    .vp-upload { display:flex; align-items:center; justify-content:center; min-height:42px; padding:.65rem 1rem; border:1px solid rgba(201,168,76,.3); border-radius:8px; color:var(--dorado); font-size:.68rem; font-weight:700; letter-spacing:.09em; text-align:center; text-transform:uppercase; cursor:pointer; transition:.2s; }
+    .vp-upload:hover { border-color:var(--dorado); background:rgba(201,168,76,.06); }
+    .vp-upload-input { display:none; }
+    .vp-file-name { min-height:1rem; margin-top:.45rem; color:var(--gris); font-size:.65rem; overflow-wrap:anywhere; }
+    .vp-slider-row { display:grid; grid-template-columns:minmax(0,1fr) 46px; align-items:center; gap:.8rem; }
+    .vp-slider { width:100%; accent-color:var(--dorado); }
+    .vp-slider-value { color:var(--dorado); font-size:.78rem; font-variant-numeric:tabular-nums; text-align:right; }
+    .vp-actions { display:flex; flex-wrap:wrap; gap:.65rem; }
+    .vp-btn { min-height:40px; padding:.65rem 1rem; border:1px solid transparent; border-radius:8px; font:700 .65rem 'Inter',sans-serif; letter-spacing:.07em; text-transform:uppercase; cursor:pointer; transition:.2s; }
+    .vp-btn:disabled { opacity:.45; cursor:not-allowed; }
+    .vp-btn-primary { background:var(--dorado); color:#15130e; }
+    .vp-btn-primary:hover:not(:disabled) { filter:brightness(1.08); }
+    .vp-btn-secondary { border-color:rgba(255,255,255,.12); background:transparent; color:var(--gris-claro); }
+    .vp-btn-secondary:hover:not(:disabled) { border-color:rgba(255,255,255,.28); color:var(--blanco); }
+    .vp-status { display:none; padding:.7rem .8rem; border-radius:8px; font-size:.7rem; line-height:1.45; }
+    .vp-status.loading { display:block; border:1px solid rgba(201,168,76,.22); background:rgba(201,168,76,.06); color:var(--dorado); }
+    .vp-status.ok { display:block; border:1px solid rgba(80,200,120,.22); background:rgba(80,200,120,.06); color:#6ee89a; }
+    .vp-status.error { display:block; border:1px solid rgba(224,92,92,.25); background:rgba(224,92,92,.07); color:#e07070; }
+    .vp-scope { padding:1.1rem 0; border-top:1px solid var(--vp-border); }
+    .vp-scope:first-child { padding-top:0; border-top:0; }
+    .vp-scope strong { display:block; margin-bottom:.25rem; color:var(--blanco); font-size:.75rem; font-weight:500; }
+    .vp-scope span { color:var(--gris); font-size:.68rem; line-height:1.5; }
+    @media(max-width:820px) { .vp-grid{grid-template-columns:1fr}.vp-section{padding:1.25rem} }
+    @media(max-width:520px) { .vp-actions{flex-direction:column}.vp-btn{width:100%} }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+      <a href="propiedades.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Propiedades</a>
+      <a href="proyectos.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Proyectos</a>
+      <a href="contactos.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Consultas</a>
+      <a href="crm.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>CRM</a>
+      <a href="canales.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Canales</a>
+      <a href="salud-de-red.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Salud de Red</a>
+      <a href="campanas.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Campañas</a>
+      <a href="tour360.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>Tour 360°</a>
+      <a href="trafico.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Tráfico</a>
+      <a href="generador-pdf.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Generar PDF</a>
+      <a href="apariencia.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>Apariencia</a>
+      <a href="usuarios.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>Usuarios</a>
+      <a href="colaboradores.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>Colaboradores</a>
+      <a href="paneles.html" class="admin-nav-item activo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>Visual paneles</a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>Ver sitio</a>
+      <a href="#" class="admin-nav-item" id="btnLogout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Salir</a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-header">
+      <div>
+        <h1 class="admin-title">Visual paneles</h1>
+        <p class="admin-subtitle">Configuración visual compartida por desarrolladores y aliados</p>
+      </div>
+    </div>
+
+    <div class="vp-section">
+      <div class="vp-title">Fondo global de paneles</div>
+      <div class="vp-sub">El fondo se aplica en los paneles de desarrollador, canal activo y canal pasivo.</div>
+
+      <div class="vp-grid">
+        <div class="vp-preview-shell">
+          <span class="vp-label">Vista previa</span>
+          <div id="fondoPanelPreview" class="vp-preview"></div>
+        </div>
+
+        <div class="vp-controls">
+          <div>
+            <span class="vp-label">Imagen</span>
+            <label class="vp-upload" for="fondoPanelFile">Seleccionar imagen</label>
+            <input class="vp-upload-input" type="file" id="fondoPanelFile" accept="image/jpeg,image/png,image/webp" />
+            <div id="fondoPanelFileName" class="vp-file-name">Imagen global actual</div>
+          </div>
+
+          <div>
+            <label class="vp-label" for="fondoPanelSlider">Opacidad</label>
+            <div class="vp-slider-row">
+              <input class="vp-slider" type="range" id="fondoPanelSlider" min="3" max="30" step="1" value="11" />
+              <span id="fondoPanelSliderVal" class="vp-slider-value">11%</span>
+            </div>
+          </div>
+
+          <div class="vp-actions">
+            <button class="vp-btn vp-btn-primary" id="fondoPanelGuardar">Guardar</button>
+            <button class="vp-btn vp-btn-secondary" id="fondoPanelRestaurar">Restaurar original</button>
+          </div>
+
+          <div id="fondoPanelStatus" class="vp-status" role="status" aria-live="polite"></div>
+
+          <div>
+            <div class="vp-scope"><strong>Desarrollador</strong><span>Portal completo del proyecto.</span></div>
+            <div class="vp-scope"><strong>Canal activo</strong><span>Vista multiproyecto del colaborador.</span></div>
+            <div class="vp-scope"><strong>Canal pasivo</strong><span>Impacto generado por su punto de difusión.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+import { supabase, subirImagen, eliminarImagen } from '../js/config.js'
+import {
+  PANEL_CONFIG_KEY,
+  PANEL_VISUAL_DEFAULT,
+  aplicarConfigVisual,
+  crearConfigVisual,
+  esPanelFondo,
+  leerConfigVisual,
+  normalizarOpacidad,
+} from '../js/panel-config.js'
+
+const { data: { session } } = await supabase.auth.getSession()
+if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
+// TODO seguridad: eliminar el fallback a user_metadata después de completar la Fase 2.
+if ((session.user.app_metadata?.rol ?? session.user.user_metadata?.rol) !== 'admin') {
+  window.location.href = 'login.html'; throw new Error('not admin')
+}
+
+document.getElementById('btnLogout').addEventListener('click', async event => {
+  event.preventDefault()
+  await supabase.auth.signOut()
+  window.location.href = 'login.html'
+})
+
+const preview = document.getElementById('fondoPanelPreview')
+const fileInput = document.getElementById('fondoPanelFile')
+const fileName = document.getElementById('fondoPanelFileName')
+const slider = document.getElementById('fondoPanelSlider')
+const sliderValue = document.getElementById('fondoPanelSliderVal')
+const saveButton = document.getElementById('fondoPanelGuardar')
+const resetButton = document.getElementById('fondoPanelRestaurar')
+const status = document.getElementById('fondoPanelStatus')
+
+let panelConfig = await leerConfigVisual(supabase)
+let pendingFile = null
+let pendingPreviewUrl = null
+
+function setBusy(busy) {
+  saveButton.disabled = busy
+  resetButton.disabled = busy
+  fileInput.disabled = busy
+  slider.disabled = busy
+}
+
+function showStatus(message = '', type = '') {
+  status.textContent = message
+  status.className = `vp-status${type ? ` ${type}` : ''}`
+}
+
+function revokePendingPreview() {
+  if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl)
+  pendingPreviewUrl = null
+}
+
+function clearPendingFile() {
+  revokePendingPreview()
+  pendingFile = null
+  fileInput.value = ''
+  fileName.textContent = 'Imagen global actual'
+}
+
+function applyPreview(config, overrideUrl = null) {
+  const opacity = normalizarOpacidad(config.background.opacity)
+  preview.style.backgroundImage = `url("${overrideUrl || config.background.url}")`
+  preview.style.opacity = String(opacity)
+  slider.value = String(Math.round(opacity * 100))
+  sliderValue.textContent = `${slider.value}%`
+}
+
+async function saveConfig(config) {
+  return supabase.from('site_config').upsert({
+    key: PANEL_CONFIG_KEY,
+    value: JSON.stringify(config),
+    label: 'Configuración visual — Paneles de colaboradores',
+    tipo: 'panel_visual',
+  }, { onConflict: 'key' })
+}
+
+applyPreview(panelConfig)
+
+slider.addEventListener('input', () => {
+  sliderValue.textContent = `${slider.value}%`
+  preview.style.opacity = String(normalizarOpacidad(Number(slider.value) / 100))
+})
+
+fileInput.addEventListener('change', () => {
+  showStatus()
+  const file = fileInput.files?.[0]
+  if (!file) return
+
+  const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
+  if (!allowedTypes.has(file.type)) {
+    clearPendingFile()
+    showStatus('Formato no válido. Usá JPEG, PNG o WebP.', 'error')
+    applyPreview(panelConfig)
+    return
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    clearPendingFile()
+    showStatus('La imagen supera el máximo de 10 MB.', 'error')
+    applyPreview(panelConfig)
+    return
+  }
+
+  revokePendingPreview()
+  pendingFile = file
+  pendingPreviewUrl = URL.createObjectURL(file)
+  fileName.textContent = file.name
+  applyPreview(crearConfigVisual(panelConfig.background.url, Number(slider.value) / 100), pendingPreviewUrl)
+})
+
+saveButton.addEventListener('click', async () => {
+  setBusy(true)
+  showStatus(pendingFile ? 'Optimizando y subiendo imagen…' : 'Guardando configuración…', 'loading')
+
+  const previousUrl = panelConfig.background.url
+  let uploadedUrl = null
+
+  try {
+    if (pendingFile) uploadedUrl = await subirImagen(pendingFile, 'panel-fondo')
+    const nextConfig = crearConfigVisual(uploadedUrl || previousUrl, Number(slider.value) / 100)
+    const { error } = await saveConfig(nextConfig)
+    if (error) throw error
+
+    panelConfig = nextConfig
+    aplicarConfigVisual(panelConfig)
+    clearPendingFile()
+    applyPreview(panelConfig)
+
+    if (uploadedUrl && previousUrl !== uploadedUrl && esPanelFondo(previousUrl)) {
+      await eliminarImagen(previousUrl)
+    }
+    showStatus('Configuración guardada.', 'ok')
+  } catch (error) {
+    if (uploadedUrl && esPanelFondo(uploadedUrl)) {
+      try { await eliminarImagen(uploadedUrl) } catch {}
+    }
+    applyPreview(panelConfig, pendingPreviewUrl)
+    showStatus(`No se pudo guardar: ${error.message || 'error desconocido'}`, 'error')
+  } finally {
+    setBusy(false)
+  }
+})
+
+resetButton.addEventListener('click', async () => {
+  setBusy(true)
+  showStatus('Restaurando fondo original…', 'loading')
+  const previousUrl = panelConfig.background.url
+
+  try {
+    const defaultConfig = crearConfigVisual(
+      PANEL_VISUAL_DEFAULT.background.url,
+      PANEL_VISUAL_DEFAULT.background.opacity,
+    )
+    const { error } = await saveConfig(defaultConfig)
+    if (error) throw error
+
+    panelConfig = defaultConfig
+    clearPendingFile()
+    applyPreview(panelConfig)
+    if (esPanelFondo(previousUrl)) await eliminarImagen(previousUrl)
+    showStatus('Fondo original restaurado.', 'ok')
+  } catch (error) {
+    applyPreview(panelConfig, pendingPreviewUrl)
+    showStatus(`No se pudo restaurar: ${error.message || 'error desconocido'}`, 'error')
+  } finally {
+    setBusy(false)
+  }
+})
+
+window.addEventListener('beforeunload', revokePendingPreview)
+</script>
+</body>
+</html>
