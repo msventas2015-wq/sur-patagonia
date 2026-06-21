@@ -463,7 +463,7 @@
     .pv-live-hint strong { color:#e8c96a; font-weight:600; }
     .pv-live-bar .pv-live-stat.com { margin-left:.4rem; padding-left:1rem; border-left:1px solid rgba(110,232,154,.18); }
     .pv-live-bar .pv-live-stat-n.com { color:#6ee89a; }
-    .pv-mini-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; margin-top:1rem; }
+    .pv-mini-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.6rem; margin-top:1rem; }
     .pv-mini-card { padding:.7rem .7rem .55rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:10px; background:linear-gradient(155deg,rgba(255,255,255,.04),rgba(255,255,255,.012)); }
     .pv-mini-label { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:.4rem; }
     .pv-mini-label span:first-child { font-size:.5rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.42); }
@@ -578,13 +578,12 @@
         .order('created_at', { ascending: false })
     ])
 
-    const visitas    = rVisitas.data    || []
-    const scans30    = rVisitas30.count || 0
-    const contactos  = rContactos.data  || []
-    let _pvChart = null, _pvChart2 = null, _pvChart3 = null
-    let _pvChart4 = null, _pvChart4a = null, _pvChart4b = null, _pvChart4c = null
-    let _pvLiveRAF = null   // loop de animación del "pulso en vivo" (opción 4)
-    let _pvLiveTimer = null // refresco automático minuto a minuto (opción 4)
+    let visitas   = rVisitas.data    || []
+    const scans30 = rVisitas30.count || 0
+    let contactos = rContactos.data  || []
+    let _pvChart4 = null, _pvChart4a = null, _pvChart4b = null, _pvChart4c = null, _pvChart4d = null
+    let _pvLiveRAF = null   // loop de animación del "pulso en vivo"
+    let _pvLiveTimer = null // refresco automático (modo Hoy)
 
     // Filtrar mensajes para este usuario
     // Lógica: si usuario_id está → solo ese usuario
@@ -686,9 +685,9 @@
             <span>${geo ? esc(geo) + ' · ' : ''}${esc(dotLabel)}</span>
           </div>
           <div class="pv-periodo-bar-hero">
+            <button class="pv-flt-btn activo" data-dias="hoy" onclick="pvSetPeriodo(this)">Hoy</button>
             <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
-            <button class="pv-flt-btn activo" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
-            <button class="pv-flt-btn" data-dias="90" onclick="pvSetPeriodo(this)">90 días</button>
+            <button class="pv-flt-btn" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
             <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
             <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
           </div>
@@ -734,7 +733,7 @@
         </div>`
 
       requestAnimationFrame(() => {
-        renderGraficoPasivo(contactos, 30)
+        renderGraficoPasivo(contactos, 0)
         renderMiniMapaPasivo(canal)
       })
     } else {
@@ -955,57 +954,44 @@
               <div class="pv-sec-sub">Interacciones y oportunidades reales generadas en el período seleccionado.</div>
             </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:2.2rem;">
-            <div>
-              <div class="pv-opt-label">Opción 1 — Área en flujo (Claude)</div>
-              <div class="pv-chart-wrap"><canvas id="pvChartEvol"></canvas></div>
+          <div id="pvLiveBar4" class="pv-live-bar">
+            <div class="pv-live-left">
+              <span class="pv-live-dot"></span>
+              <span class="pv-live-tag" id="pvLiveTag">En vivo · minuto a minuto</span>
             </div>
-            <div>
-              <div class="pv-opt-label">Opción 2 — Trading lineal (Codex)</div>
-              <div class="pv-chart-wrap"><canvas id="pvChartEvol2"></canvas></div>
-            </div>
-            <div>
-              <div class="pv-opt-label">Opción 3 — Barras + tendencia (ChatGPT)</div>
-              <div class="pv-chart-wrap"><canvas id="pvChartEvol3"></canvas></div>
-            </div>
-            <div>
-              <div class="pv-opt-label">Opción 4 — Pulso en vivo (GLM-5.2)</div>
-              <div id="pvLiveBar4" class="pv-live-bar">
-                <div class="pv-live-left">
-                  <span class="pv-live-dot"></span>
-                  <span class="pv-live-tag">En vivo · minuto a minuto</span>
-                </div>
-                <div class="pv-live-right">
-                  <div class="pv-live-stat">
-                    <div class="pv-live-stat-n blue" id="pvLiveScans4">0</div>
-                    <div class="pv-live-stat-l">Hoy · interacciones</div>
-                  </div>
-                  <div class="pv-live-stat">
-                    <div class="pv-live-stat-n gold" id="pvLiveConsultas4">0</div>
-                    <div class="pv-live-stat-l">Hoy · consultas</div>
-                  </div>
-                  <div class="pv-live-stat com">
-                    <div class="pv-live-stat-n com" id="pvLiveComisiones4">0</div>
-                    <div class="pv-live-stat-l">Comisiones activas</div>
-                  </div>
-                </div>
+            <div class="pv-live-right">
+              <div class="pv-live-stat">
+                <div class="pv-live-stat-n blue" id="pvLiveScans4">0</div>
+                <div class="pv-live-stat-l" id="pvLiveScansL">Hoy · interacciones</div>
               </div>
-              <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
-              <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad de comisión</strong>: si compra una propiedad en los próximos 15 meses, cobrás. Mientras más registres, más chances de cobrar en el futuro.</div>
-              <div class="pv-mini-grid">
-                <div class="pv-mini-card">
-                  <div class="pv-mini-label"><span>Ayer</span><span id="pvMiniAyerN">0</span></div>
-                  <div class="pv-mini-wrap"><canvas id="pvMiniAyer"></canvas></div>
-                </div>
-                <div class="pv-mini-card">
-                  <div class="pv-mini-label"><span>Últimos 7 días</span><span id="pvMiniSemN">0</span></div>
-                  <div class="pv-mini-wrap"><canvas id="pvMiniSem"></canvas></div>
-                </div>
-                <div class="pv-mini-card">
-                  <div class="pv-mini-label"><span>Últimos 30 días</span><span id="pvMiniMesN">0</span></div>
-                  <div class="pv-mini-wrap"><canvas id="pvMiniMes"></canvas></div>
-                </div>
+              <div class="pv-live-stat">
+                <div class="pv-live-stat-n gold" id="pvLiveConsultas4">0</div>
+                <div class="pv-live-stat-l" id="pvLiveConsultasL">Hoy · consultas</div>
               </div>
+              <div class="pv-live-stat com">
+                <div class="pv-live-stat-n com" id="pvLiveComisiones4">0</div>
+                <div class="pv-live-stat-l">Comisiones activas</div>
+              </div>
+            </div>
+          </div>
+          <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
+          <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad de comisión</strong>: si compra una propiedad en los próximos 15 meses, cobrás. Mientras más registres, más chances de cobrar en el futuro.</div>
+          <div class="pv-mini-grid">
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Ayer</span><span id="pvMiniAyerN">0</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniAyer"></canvas></div>
+            </div>
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Últimos 7 días</span><span id="pvMiniSemN">0</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniSem"></canvas></div>
+            </div>
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Últimos 30 días</span><span id="pvMiniMesN">0</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniMes"></canvas></div>
+            </div>
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Tasa de conversión</span><span id="pvMiniConvN" style="color:rgba(255,160,80,1)">0%</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniConv"></canvas></div>
             </div>
           </div>
         </div>
@@ -1066,393 +1052,287 @@
 
     function renderGraficoPasivo(contactos, dias, desdeCustom = null, hastaCustom = null) {
       if (typeof Chart === 'undefined') return
-      const hasta = hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : new Date()
-      const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime() - (dias - 1) * 86400000)
-      const { labelsEvol, dataScans, dataConsultas } = datosEvolucionPasivo(contactos, desde, hasta)
 
-      const tooltipBase = {
-        backgroundColor:'rgba(10,10,12,.92)', borderColor:'rgba(255,255,255,.08)', borderWidth:1,
-        titleColor:'#ccc', bodyColor:'rgba(255,255,255,.65)', padding:10, cornerRadius:8
-      }
-      const legendBase = { labels:{ color:'rgba(255,255,255,.5)', font:{size:10,family:'Inter'}, boxWidth:10, usePointStyle:true, padding:16 } }
-      const scalesBase = {
-        x:{ ticks:{color:'rgba(255,255,255,.27)',font:{size:9,family:'Inter'},maxTicksLimit:10}, grid:{color:'rgba(255,255,255,.035)'}, border:{color:'rgba(255,255,255,.06)'} },
-        y:{ beginAtZero:true, ticks:{color:'rgba(255,255,255,.27)',font:{size:9,family:'Inter'},precision:0}, grid:{color:'rgba(255,255,255,.04)'}, border:{color:'rgba(255,255,255,.06)'} }
-      }
-      const optsBase = { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
-        plugins:{ legend:legendBase, tooltip:tooltipBase }, scales:scalesBase }
+      const modoHoy = dias === 0 && !desdeCustom
 
-      // ── OPCIÓN 1: Área en flujo (Claude) ────────────────────────────────
-      if (_pvChart) { _pvChart.destroy(); _pvChart = null }
-      const ctx1 = document.getElementById('pvChartEvol')?.getContext('2d')
-      if (ctx1) {
-        _pvChart = new Chart(ctx1, {
-          type:'line',
-          data:{ labels:labelsEvol, datasets:[
-            { label:'Interacciones', data:dataScans,    borderColor:'#7aaeff', backgroundColor:pvGrad(ctx1,'rgb(100,149,237)',.5),  tension:.42, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2, borderWidth:2.5 },
-            { label:'Oportunidades', data:dataConsultas, borderColor:'#6ee89a', backgroundColor:pvGrad(ctx1,'rgb(80,200,120)',.38), tension:.42, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#6ee89a', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2, borderWidth:2.5 }
-          ]},
-          options: optsBase
-        })
-      }
-
-      // ── OPCIÓN 2: Codex ────────────────────────────────────────────────
-      if (_pvChart2) { _pvChart2.destroy(); _pvChart2 = null }
-      const ctx2 = document.getElementById('pvChartEvol2')?.getContext('2d')
-      if (ctx2) {
-        _pvChart2 = new Chart(ctx2, {
-          type: 'bar',
-          data: {
-            labels: labelsEvol,
-            datasets: [
-              {
-                type: 'bar', label: 'Interacciones', data: dataScans, order: 2,
-                borderWidth: 0,
-                borderRadius: { topLeft:7, topRight:7, bottomLeft:2, bottomRight:2 },
-                borderSkipped: false, maxBarThickness: 22,
-                categoryPercentage: 0.78, barPercentage: 0.82,
-                backgroundColor: (context) => {
-                  const { chart } = context; const { ctx: c, chartArea } = chart;
-                  if (!chartArea) return 'rgba(122,174,255,.65)';
-                  const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                  g.addColorStop(0, 'rgba(122,174,255,.95)'); g.addColorStop(.55, 'rgba(122,174,255,.48)'); g.addColorStop(1, 'rgba(122,174,255,.08)');
-                  return g;
-                },
-                hoverBackgroundColor: 'rgba(122,174,255,1)'
-              },
-              {
-                type: 'line', label: 'Oportunidades', data: dataConsultas, order: 1,
-                borderColor: '#e8c96a', borderWidth: 3, tension: 0.38,
-                cubicInterpolationMode: 'monotone', fill: true,
-                backgroundColor: (context) => {
-                  const { chart } = context; const { ctx: c, chartArea } = chart;
-                  if (!chartArea) return 'rgba(232,201,106,.10)';
-                  const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                  g.addColorStop(0, 'rgba(232,201,106,.30)'); g.addColorStop(.55, 'rgba(232,201,106,.08)'); g.addColorStop(1, 'rgba(232,201,106,0)');
-                  return g;
-                },
-                pointRadius: (context) => Number(context.raw) > 0 ? 3.5 : 0,
-                pointHoverRadius: 7, pointBackgroundColor: '#0c0c0e',
-                pointBorderColor: '#e8c96a', pointBorderWidth: 2,
-                pointHoverBackgroundColor: '#e8c96a', pointHoverBorderColor: '#fff4c4', pointHoverBorderWidth: 3,
-                spanGaps: true
-              }
-            ]
-          },
-          plugins: [
-            {
-              id: 'pvPeakBand2',
-              beforeDatasetsDraw(chart) {
-                const { ctx: c, chartArea, scales } = chart;
-                if (!chartArea || !labelsEvol.length) return;
-                const values = labelsEvol.map((_, i) => Number(dataScans[i]||0) + Number(dataConsultas[i]||0));
-                const maxValue = Math.max(...values); if (maxValue <= 0) return;
-                const peakIndex = values.indexOf(maxValue);
-                const xScale = scales.x; const x = xScale.getPixelForValue(peakIndex);
-                const prevX = peakIndex > 0 ? xScale.getPixelForValue(peakIndex-1) : x-24;
-                const nextX = peakIndex < labelsEvol.length-1 ? xScale.getPixelForValue(peakIndex+1) : x+24;
-                const width = Math.max(34, Math.min(x-prevX, nextX-x)*1.45);
-                const g = c.createLinearGradient(x-width/2,0,x+width/2,0);
-                g.addColorStop(0,'rgba(232,201,106,0)'); g.addColorStop(.5,'rgba(232,201,106,.09)'); g.addColorStop(1,'rgba(232,201,106,0)');
-                c.save(); c.fillStyle = g;
-                c.fillRect(x-width/2, chartArea.top, width, chartArea.bottom-chartArea.top);
-                c.beginPath(); c.setLineDash([3,5]); c.strokeStyle='rgba(232,201,106,.28)'; c.lineWidth=1;
-                c.moveTo(x,chartArea.top); c.lineTo(x,chartArea.bottom); c.stroke(); c.restore();
-              }
-            },
-            {
-              id: 'pvLineGlow2',
-              beforeDatasetDraw(chart, args) { if (args.index!==1) return; chart.ctx.save(); chart.ctx.shadowColor='rgba(232,201,106,.55)'; chart.ctx.shadowBlur=12; },
-              afterDatasetDraw(chart, args)  { if (args.index!==1) return; chart.ctx.restore(); }
-            }
-          ],
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            interaction: { mode:'index', intersect:false },
-            animation: { duration:850, easing:'easeOutQuart' },
-            layout: { padding:{ top:14, right:10, bottom:2, left:2 } },
-            plugins: {
-              legend: { position:'top', align:'end', labels:{ color:'rgba(255,255,255,.72)', usePointStyle:true, pointStyle:'circle', boxWidth:7, boxHeight:7, padding:18, font:{size:11,weight:'500'} } },
-              tooltip: {
-                enabled:true, displayColors:true, usePointStyle:true, padding:13, cornerRadius:10, caretSize:6,
-                backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1,
-                titleColor:'#ffffff', bodyColor:'rgba(255,255,255,.76)',
-                titleFont:{size:12,weight:'600'}, bodyFont:{size:12},
-                callbacks: {
-                  label(context) { return ` ${context.dataset.label}: ${Number(context.raw||0).toLocaleString('es-AR')}` },
-                  footer(items) { const total = items.reduce((s,i)=>s+Number(i.raw||0),0); return `Actividad total: ${total.toLocaleString('es-AR')}` }
-                }
-              }
-            },
-            scales: {
-              x: { offset:true, border:{display:false}, grid:{display:false}, ticks:{color:'rgba(255,255,255,.42)',maxRotation:0,autoSkip:true,maxTicksLimit:8,padding:10,font:{size:10,weight:'500'}} },
-              y: { beginAtZero:true, grace:'15%', border:{display:false}, grid:{color:'rgba(255,255,255,.055)',drawTicks:false}, ticks:{color:'rgba(255,255,255,.38)',precision:0,padding:10,font:{size:10},callback(v){return Number(v).toLocaleString('es-AR')}} }
-            }
-          }
-        })
-      }
-
-      // ── OPCIÓN 3: ChatGPT ───────────────────────────────────────────────
-      if (_pvChart3) { _pvChart3.destroy(); _pvChart3 = null }
-      const ctx3 = document.getElementById('pvChartEvol3')?.getContext('2d')
-      if (ctx3) {
-        _pvChart3 = new Chart(ctx3, {
-          type: 'bar',
-          data: {
-            labels: labelsEvol,
-            datasets: [
-              {
-                label: 'Interacciones', data: dataScans,
-                backgroundColor: (context) => {
-                  const { ctx: c, chartArea } = context.chart;
-                  if (!chartArea) return 'rgba(122,174,255,.45)';
-                  const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                  g.addColorStop(0, 'rgba(122,174,255,.85)'); g.addColorStop(1, 'rgba(122,174,255,.10)');
-                  return g;
-                },
-                borderColor: 'rgba(122,174,255,.9)', borderWidth:1,
-                borderRadius:7, borderSkipped:false, maxBarThickness:26, order:2
-              },
-              {
-                type:'line', label:'Oportunidades', data:dataConsultas,
-                borderColor:'#6ee89a', backgroundColor:'rgba(110,232,154,.12)',
-                borderWidth:2.5, tension:.38, fill:false,
-                pointRadius:3, pointHoverRadius:6,
-                pointBackgroundColor:'#0c0c0e', pointBorderColor:'#6ee89a', pointBorderWidth:2,
-                order:1
-              }
-            ]
-          },
-          options: {
-            responsive:true, maintainAspectRatio:false,
-            animation:{ duration:700, easing:'easeOutQuart' },
-            interaction:{ mode:'index', intersect:false },
-            layout:{ padding:{ top:8, right:8 } },
-            plugins: {
-              legend:{ position:'top', labels:{ color:'#aaa', boxWidth:10, boxHeight:10, usePointStyle:true, padding:18, font:{family:'Inter',size:11} } },
-              tooltip:{ backgroundColor:'rgba(12,12,14,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#f0f0f0', bodyColor:'#aaa', padding:12, displayColors:true }
-            },
-            scales: {
-              x:{ grid:{display:false}, border:{display:false}, ticks:{color:'#666',maxRotation:0,autoSkip:true,font:{family:'Inter',size:10}} },
-              y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.045)'}, border:{display:false}, ticks:{color:'#666',precision:0,padding:8,font:{family:'Inter',size:10}} }
-            }
-          }
-        })
-      }
-
-      // ── OPCIÓN 4: Pulso en vivo (GLM-5.2) ────────────────────────────────
-      // Concepto: dato MINUTO A MINUTO de hoy (curva acumulada suave y no lineal),
-      // pulso radar "vivo" sobre el último punto + pico destacado (tensión/recompensa),
-      // contador en vivo arriba + mini gráficos (ayer / 7d / 30d).
-      // Refresco automático cada 30s → sensación de actividad en tiempo real.
+      // ── Cleanup ──
       if (_pvChart4) { _pvChart4.destroy(); _pvChart4 = null }
-      ;[_pvChart4a, _pvChart4b, _pvChart4c].forEach(ch => { if (ch) { ch.destroy() } })
-      _pvChart4a = _pvChart4b = _pvChart4c = null
+      ;[_pvChart4a, _pvChart4b, _pvChart4c, _pvChart4d].forEach(ch => { if (ch) ch.destroy() })
+      _pvChart4a = _pvChart4b = _pvChart4c = _pvChart4d = null
       if (_pvLiveRAF) { cancelAnimationFrame(_pvLiveRAF); _pvLiveRAF = null }
       if (_pvLiveTimer) { clearInterval(_pvLiveTimer); _pvLiveTimer = null }
 
       const ctx4 = document.getElementById('pvChartEvol4')?.getContext('2d')
-      if (ctx4) {
-        // ── Bucketeo de HOY por minuto (resolución minuto a minuto) ──
+      if (!ctx4) return
+
+      const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = typeof v === 'number' ? v.toLocaleString('es-AR') : v }
+
+      // ── Estilos comunes Z-Code ──
+      const tooltipBase = {
+        backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1,
+        titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)',
+        titleFont:{size:12,weight:'600'}, bodyFont:{size:12},
+        displayColors:true, usePointStyle:true, padding:12, cornerRadius:10, caretSize:6
+      }
+      const legendBase = {
+        position:'top', align:'end',
+        labels:{ color:'rgba(255,255,255,.7)', usePointStyle:true, pointStyle:'circle', boxWidth:7, boxHeight:7, padding:16, font:{size:11,weight:'500',family:'Inter'} }
+      }
+      const scalesBase = {
+        x:{ offset:true, border:{display:false}, grid:{display:false},
+            ticks:{color:'rgba(255,255,255,.4)', maxRotation:0, autoSkip:true, maxTicksLimit:10, padding:10, font:{size:10,family:'Inter'}} },
+        y:{ beginAtZero:true, grace:'8%', border:{display:false},
+            grid:{color:'rgba(255,255,255,.05)', drawTicks:false},
+            ticks:{color:'rgba(255,255,255,.35)', precision:0, padding:10, font:{size:10,family:'Inter'}, callback:(v) => Number(v).toLocaleString('es-AR')} }
+      }
+      const gradAzul = (c) => { const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.2)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.5)'); g.addColorStop(0.5,'rgba(122,174,255,.16)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g }
+      const pluginPeakMark = (peakIdx) => ({
+        id:'pvPeakMark4',
+        beforeDatasetsDraw(chart) {
+          const {ctx:c,chartArea,scales}=chart
+          if(!chartArea||peakIdx<0) return
+          const x=scales.x.getPixelForValue(peakIdx)
+          if(!Number.isFinite(x)) return
+          const g=c.createLinearGradient(x-40,0,x+40,0)
+          g.addColorStop(0,'rgba(232,201,106,0)'); g.addColorStop(0.5,'rgba(232,201,106,.12)'); g.addColorStop(1,'rgba(232,201,106,0)')
+          c.save(); c.fillStyle=g; c.fillRect(x-40,chartArea.top,80,chartArea.bottom-chartArea.top)
+          c.beginPath(); c.setLineDash([4,6]); c.strokeStyle='rgba(232,201,106,.35)'; c.lineWidth=1
+          c.moveTo(x,chartArea.top); c.lineTo(x,chartArea.bottom); c.stroke(); c.restore()
+        }
+      })
+      const pluginGoldGlow = {
+        id:'pvGoldGlow4',
+        beforeDatasetDraw(chart,args) { if(args.index!==1) return; chart.ctx.save(); chart.ctx.shadowColor='rgba(232,201,106,.5)'; chart.ctx.shadowBlur=10 },
+        afterDatasetDraw(chart,args)  { if(args.index!==1) return; chart.ctx.restore() }
+      }
+      const datasetsBase = (lblsData) => [
+        {
+          label:'Interacciones (acumulado)', data:lblsData[0], order:2,
+          borderColor:'#7aaeff', borderWidth:2.5, tension:0.4, fill:true,
+          cubicInterpolationMode:'monotone',
+          backgroundColor: gradAzul,
+          pointRadius:0, pointHoverRadius:6,
+          pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2
+        },
+        {
+          label:'Consultas (acumulado)', data:lblsData[1], order:1,
+          borderColor:'#e8c96a', borderWidth:3, tension:0.4, fill:false,
+          cubicInterpolationMode:'monotone', spanGaps:true,
+          pointRadius:0, pointHoverRadius:7,
+          pointBackgroundColor:'#0c0c0e', pointBorderColor:'#e8c96a', pointBorderWidth:2,
+          pointHoverBackgroundColor:'#e8c96a', pointHoverBorderColor:'#fff4c4', pointHoverBorderWidth:3
+        }
+      ]
+
+      // ── MODO HOY: minuto a minuto acumulado ─────────────────────────────
+      if (modoHoy) {
+        const tagEl = document.getElementById('pvLiveTag')
+        const scansLEl = document.getElementById('pvLiveScansL')
+        const consultasLEl = document.getElementById('pvLiveConsultasL')
+        if (tagEl) tagEl.textContent = 'En vivo · minuto a minuto'
+        if (scansLEl) scansLEl.textContent = 'Hoy · interacciones'
+        if (consultasLEl) consultasLEl.textContent = 'Hoy · consultas'
+
         const hoyB0 = new Date(); hoyB0.setHours(0,0,0,0)
         const ahoraMin = new Date()
         const minutosDelDia = ahoraMin.getHours()*60 + ahoraMin.getMinutes() + 1
         const bucketScans = new Array(minutosDelDia).fill(0)
         const bucketCons = new Array(minutosDelDia).fill(0)
-        const inHoy = (iso) => { const d = new Date(iso); return d >= hoyB0 && d <= ahoraMin }
-        visitas.forEach(v => { if (!inHoy(v.created_at)) return; const d = new Date(v.created_at); const m = d.getHours()*60 + d.getMinutes(); if (m < minutosDelDia) bucketScans[m]++ })
-        contactos.forEach(c => { if (!inHoy(c.created_at)) return; const d = new Date(c.created_at); const m = d.getHours()*60 + d.getMinutes(); if (m < minutosDelDia) bucketCons[m]++ })
+        const inHoy = (iso) => { const d=new Date(iso); return d>=hoyB0&&d<=ahoraMin }
+        visitas.forEach(v => { if (!inHoy(v.created_at)) return; const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); if(m<minutosDelDia) bucketScans[m]++ })
+        contactos.forEach(c => { if (!inHoy(c.created_at)) return; const d=new Date(c.created_at); const m=d.getHours()*60+d.getMinutes(); if(m<minutosDelDia) bucketCons[m]++ })
 
-        // Acumulado suave (no lineal) → la línea siempre sube, con microvariaciones reales
-        const accScans = [], accConsultas = []
-        let rs = 0, rc = 0
-        bucketScans.forEach((v, i) => { rs += v; accScans.push(rs); rc += bucketCons[i]; accConsultas.push(rc) })
+        const accScans=[], accConsultas=[]
+        let rs=0, rc=0
+        bucketScans.forEach((v,i) => { rs+=v; accScans.push(rs); rc+=bucketCons[i]; accConsultas.push(rc) })
 
-        // Labels cada N minutos (para no saturar el eje)
-        const lbls = []
-        const step = minutosDelDia <= 360 ? 30 : minutosDelDia <= 720 ? 60 : 90
-        for (let m = 0; m < minutosDelDia; m += 1) {
-          const hh = String(Math.floor(m/60)).padStart(2,'0'), mm = String(m%60).padStart(2,'0')
-          lbls.push(m % step === 0 ? `${hh}:${mm}` : '')
+        const step = minutosDelDia<=360 ? 30 : minutosDelDia<=720 ? 60 : 90
+        const lbls=[]
+        for (let m=0; m<minutosDelDia; m++) {
+          const hh=String(Math.floor(m/60)).padStart(2,'0'), mm=String(m%60).padStart(2,'0')
+          lbls.push(m%step===0 ? `${hh}:${mm}` : '')
         }
+        const fmtMin = (m) => { const hh=String(Math.floor(m/60)).padStart(2,'0'); const mm=String(m%60).padStart(2,'0'); return `${hh}:${mm}` }
 
-        // Pico de hoy (minuto con más actividad)
-        const totalPorMin = bucketScans.map((s,i) => s + bucketCons[i])
+        const totalPorMin = bucketScans.map((s,i)=>s+bucketCons[i])
         const peakVal = Math.max(...totalPorMin, 0)
-        const peakIdx = peakVal > 0 ? totalPorMin.indexOf(peakVal) : -1
-
-        const fmtMin = (m) => { const hh = String(Math.floor(m/60)).padStart(2,'0'); const mm = String(m%60).padStart(2,'0'); return `${hh}:${mm}` }
+        const peakIdx = peakVal>0 ? totalPorMin.indexOf(peakVal) : -1
 
         _pvChart4 = new Chart(ctx4, {
-          type: 'line',
-          data: {
-            labels: lbls,
-            datasets: [
-              {
-                label: 'Interacciones (acumulado)', data: accScans, order: 2,
-                borderColor: '#7aaeff', borderWidth: 2.5, tension: 0.4, fill: true,
-                cubicInterpolationMode: 'monotone',
-                backgroundColor: (c) => {
-                  const { ctx: cc, chartArea } = c.chart
-                  if (!chartArea) return 'rgba(122,174,255,.2)'
-                  const g = cc.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-                  g.addColorStop(0, 'rgba(122,174,255,.5)'); g.addColorStop(0.5, 'rgba(122,174,255,.16)'); g.addColorStop(1, 'rgba(122,174,255,0)')
-                  return g
-                },
-                pointRadius: 0, pointHoverRadius: 6,
-                pointHoverBackgroundColor: '#7aaeff', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2
-              },
-              {
-                label: 'Consultas (acumulado)', data: accConsultas, order: 1,
-                borderColor: '#e8c96a', borderWidth: 3, tension: 0.4, fill: false,
-                cubicInterpolationMode: 'monotone', spanGaps: true,
-                pointRadius: 0, pointHoverRadius: 7,
-                pointBackgroundColor: '#0c0c0e', pointBorderColor: '#e8c96a', pointBorderWidth: 2,
-                pointHoverBackgroundColor: '#e8c96a', pointHoverBorderColor: '#fff4c4', pointHoverBorderWidth: 3
-              }
-            ]
-          },
-          plugins: [
+          type:'line',
+          data:{ labels:lbls, datasets:datasetsBase([accScans, accConsultas]) },
+          plugins:[
             {
-              // Pulso radar "vivo" sobre el último punto de cada serie
-              id: 'pvLivePulse4',
+              id:'pvLivePulse4',
               afterDatasetsDraw(chart) {
-                const { ctx: c, data } = chart
-                const t = (Date.now() % 1600) / 1600
-                const pulse = (1 - t) * 14
-                const alpha = (1 - t) * 0.55
-                const lastIdx = (data.labels || []).length - 1
-                if (lastIdx < 0) return
-                const drawPulse = (di, color) => {
-                  const meta = chart.getDatasetMeta(di)
-                  if (!meta || !meta.data || !meta.data.length) return
-                  const pt = meta.data[lastIdx]
-                  if (!pt) return
+                const {ctx:c,data}=chart
+                const t=(Date.now()%1600)/1600
+                const pulse=(1-t)*14, alpha=(1-t)*0.55
+                const lastIdx=(data.labels||[]).length-1
+                if(lastIdx<0) return
+                const drawPulse=(di,color)=>{
+                  const meta=chart.getDatasetMeta(di)
+                  if(!meta?.data?.length) return
+                  const pt=meta.data[lastIdx]; if(!pt) return
                   c.save()
-                  c.beginPath(); c.arc(pt.x, pt.y, pulse, 0, Math.PI*2)
-                  c.strokeStyle = color.replace('ALPHA', alpha.toFixed(3)); c.lineWidth = 1.5; c.stroke()
-                  c.beginPath(); c.arc(pt.x, pt.y, 4, 0, Math.PI*2)
-                  c.fillStyle = color.replace('ALPHA', '1'); c.shadowColor = color.replace('ALPHA', '.8'); c.shadowBlur = 12; c.fill()
+                  c.beginPath(); c.arc(pt.x,pt.y,pulse,0,Math.PI*2)
+                  c.strokeStyle=color.replace('ALPHA',alpha.toFixed(3)); c.lineWidth=1.5; c.stroke()
+                  c.beginPath(); c.arc(pt.x,pt.y,4,0,Math.PI*2)
+                  c.fillStyle=color.replace('ALPHA','1'); c.shadowColor=color.replace('ALPHA','.8'); c.shadowBlur=12; c.fill()
                   c.restore()
                 }
-                drawPulse(0, 'rgba(122,174,255,ALPHA)')
-                drawPulse(1, 'rgba(232,201,106,ALPHA)')
+                drawPulse(0,'rgba(122,174,255,ALPHA)')
+                drawPulse(1,'rgba(232,201,106,ALPHA)')
               }
             },
-            {
-              // Tensión visual: marca vertical + halo dorado en el pico del día
-              id: 'pvPeakMark4',
-              beforeDatasetsDraw(chart) {
-                const { ctx: c, chartArea, scales } = chart
-                if (!chartArea || peakIdx < 0) return
-                const x = scales.x.getPixelForValue(peakIdx)
-                if (!Number.isFinite(x)) return
-                const g = c.createLinearGradient(x-40, 0, x+40, 0)
-                g.addColorStop(0, 'rgba(232,201,106,0)'); g.addColorStop(0.5, 'rgba(232,201,106,.12)'); g.addColorStop(1, 'rgba(232,201,106,0)')
-                c.save(); c.fillStyle = g; c.fillRect(x-40, chartArea.top, 80, chartArea.bottom-chartArea.top)
-                c.beginPath(); c.setLineDash([4,6]); c.strokeStyle='rgba(232,201,106,.35)'; c.lineWidth=1
-                c.moveTo(x, chartArea.top); c.lineTo(x, chartArea.bottom); c.stroke(); c.restore()
-              }
-            },
-            {
-              id: 'pvGoldGlow4',
-              beforeDatasetDraw(chart, args) { if (args.index !== 1) return; chart.ctx.save(); chart.ctx.shadowColor = 'rgba(232,201,106,.5)'; chart.ctx.shadowBlur = 10 },
-              afterDatasetDraw(chart, args) { if (args.index !== 1) return; chart.ctx.restore() }
-            }
+            pluginPeakMark(peakIdx),
+            pluginGoldGlow
           ],
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            animation: { duration: 900, easing: 'easeOutQuart' },
-            interaction: { mode: 'index', intersect: false },
-            layout: { padding: { top: 14, right: 16, bottom: 2, left: 2 } },
-            plugins: {
-              legend: {
-                position: 'top', align: 'end',
-                labels: { color: 'rgba(255,255,255,.7)', usePointStyle: true, pointStyle: 'circle', boxWidth: 7, boxHeight: 7, padding: 16, font: { size: 11, weight: '500', family: 'Inter' } }
-              },
-              tooltip: {
-                enabled: true, displayColors: true, usePointStyle: true, padding: 12, cornerRadius: 10, caretSize: 6,
-                backgroundColor: 'rgba(18,18,21,.96)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
-                titleColor: '#fff', bodyColor: 'rgba(255,255,255,.76)',
-                titleFont: { size: 12, weight: '600' }, bodyFont: { size: 12 },
-                callbacks: {
-                  title(items) { const i = items[0]?.dataIndex || 0; return fmtMin(i) },
-                  label(ctx) { return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` }
+          options:{
+            responsive:true, maintainAspectRatio:false,
+            animation:{duration:900,easing:'easeOutQuart'},
+            interaction:{mode:'index',intersect:false},
+            layout:{padding:{top:14,right:16,bottom:2,left:2}},
+            plugins:{
+              legend:legendBase,
+              tooltip:{
+                ...tooltipBase,
+                callbacks:{
+                  title(items){ const i=items[0]?.dataIndex||0; return fmtMin(i) },
+                  label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` }
                 }
               }
             },
-            scales: {
-              x: { offset: true, border: { display: false }, grid: { display: false },
-                   ticks: { color: 'rgba(255,255,255,.4)', maxRotation: 0, autoSkip: false, padding: 10, font: { size: 10, family: 'Inter' }, callback: (v,i) => lbls[i] || '' } },
-              y: { beginAtZero: true, grace: '8%', border: { display: false },
-                   grid: { color: 'rgba(255,255,255,.05)', drawTicks: false },
-                   ticks: { color: 'rgba(255,255,255,.35)', precision: 0, padding: 10, font: { size: 10, family: 'Inter' }, callback: (v) => Number(v).toLocaleString('es-AR') } }
+            scales:{
+              x:{...scalesBase.x, ticks:{...scalesBase.x.ticks, autoSkip:false, callback:(_,i)=>lbls[i]||''}},
+              y:scalesBase.y
             }
           }
         })
 
-        // ── Mini gráficos (ayer / 7d / 30d) ──
-        const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
-        const ayer0 = new Date(hoy0 - 86400000), ayerFin = new Date(hoy0 - 1)
-        const sem0 = new Date(hoy0 - 7*86400000), mes0 = new Date(hoy0 - 30*86400000)
-        const enRango = (iso, a, b) => { const d = new Date(iso); return d >= a && d <= b }
-        const accPorDia = (arr, desde, hasta) => {
-          const dias = Math.max(1, Math.round((hasta - desde) / 86400000) + 1)
-          const out = new Array(dias).fill(0)
-          arr.forEach(x => { if (!enRango(x.created_at, desde, hasta)) return; const idx = Math.floor((new Date(x.created_at) - desde) / 86400000); if (idx >= 0 && idx < dias) out[idx]++ })
-          let run = 0; return out.map(v => { run += v; return run })
-        }
-        const miniCfg = (data, color) => ({
-          type: 'line',
-          data: { labels: data.map((_,i) => i), datasets: [{ data, borderColor: color, borderWidth: 2, tension: 0.4, fill: true, pointRadius: 0, cubicInterpolationMode: 'monotone',
-            backgroundColor: (c) => { const { ctx: cc, chartArea } = c.chart; if (!chartArea) return 'rgba(232,201,106,.1)'; const g = cc.createLinearGradient(0, chartArea.top, 0, chartArea.bottom); g.addColorStop(0, color.replace('1)','0.4)')); g.addColorStop(1, color.replace('1)','0)')); return g } }] },
-          options: { responsive: true, maintainAspectRatio: false, animation: { duration: 600 }, plugins: { legend: { display: false }, tooltip: { enabled: false } },
-            scales: { x: { display: false }, y: { display: false } } }
-        })
-        const dAyerS = accPorDia(visitas, ayer0, ayerFin), dAyerC = accPorDia(contactos, ayer0, ayerFin)
-        const semAll = (() => { const dias = 7; const outS = new Array(dias).fill(0), outC = new Array(dias).fill(0)
-          visitas.forEach(v => { if (!enRango(v.created_at, sem0, new Date())) return; const i = Math.floor((new Date(v.created_at) - sem0)/86400000); if (i>=0&&i<dias) outS[i]++ })
-          contactos.forEach(c => { if (!enRango(c.created_at, sem0, new Date())) return; const i = Math.floor((new Date(c.created_at) - sem0)/86400000); if (i>=0&&i<dias) outC[i]++ })
-          let rs2=0, rc2=0; return { s: outS.map(v=>{rs2+=v;return rs2}), c: outC.map(v=>{rc2+=v;return rc2}) } })()
-        const mesAll = (() => { const dias = 30; const outS = new Array(dias).fill(0), outC = new Array(dias).fill(0)
-          visitas.forEach(v => { if (!enRango(v.created_at, mes0, new Date())) return; const i = Math.floor((new Date(v.created_at) - mes0)/86400000); if (i>=0&&i<dias) outS[i]++ })
-          contactos.forEach(c => { if (!enRango(c.created_at, mes0, new Date())) return; const i = Math.floor((new Date(c.created_at) - mes0)/86400000); if (i>=0&&i<dias) outC[i]++ })
-          let rs2=0, rc2=0; return { s: outS.map(v=>{rs2+=v;return rs2}), c: outC.map(v=>{rc2+=v;return rc2}) } })()
-
-        const ca = document.getElementById('pvMiniAyer')?.getContext('2d')
-        const cb = document.getElementById('pvMiniSem')?.getContext('2d')
-        const cc = document.getElementById('pvMiniMes')?.getContext('2d')
-        if (ca) _pvChart4a = new Chart(ca, miniCfg(dAyerS.map((s,i)=>s+dAyerC[i]), 'rgba(232,201,106,1)'))
-        if (cb) _pvChart4b = new Chart(cb, miniCfg(semAll.s.map((s,i)=>s+semAll.c[i]), 'rgba(122,174,255,1)'))
-        if (cc) _pvChart4c = new Chart(cc, miniCfg(mesAll.s.map((s,i)=>s+mesAll.c[i]), 'rgba(110,232,154,1)'))
-
-        // Números de los mini cards (total del período)
-        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v.toLocaleString('es-AR') }
-        setText('pvMiniAyerN', (dAyerS[dAyerS.length-1]||0) + (dAyerC[dAyerC.length-1]||0))
-        setText('pvMiniSemN', (semAll.s[semAll.s.length-1]||0) + (semAll.c[semAll.c.length-1]||0))
-        setText('pvMiniMesN', (mesAll.s[mesAll.s.length-1]||0) + (mesAll.c[mesAll.c.length-1]||0))
-
-        // ── Loop de animación del pulso (independiente) ──
-        const loopLive = () => { if (_pvChart4 && _pvChart4.canvas) { _pvChart4.draw(); _pvLiveRAF = requestAnimationFrame(loopLive) } else { _pvLiveRAF = null } }
-        setTimeout(() => { if (_pvChart4 && !_pvLiveRAF) loopLive() }, 950)
-
-        // ── Contadores "en vivo" de HOY + comisiones activas ──
+        // Contadores en vivo
         const refrescarContadores = () => {
-          const hoy = new Date(); hoy.setHours(0,0,0,0)
-          const scansHoy = visitas.filter(v => new Date(v.created_at) >= hoy).length
-          const consultasHoy = contactos.filter(v => new Date(v.created_at) >= hoy).length
-          setText('pvLiveScans4', scansHoy)
-          setText('pvLiveConsultas4', consultasHoy)
-          setText('pvLiveComisiones4', contactos.length) // cada contacto = chance de comisión
+          const hoy=new Date(); hoy.setHours(0,0,0,0)
+          setText('pvLiveScans4', visitas.filter(v=>new Date(v.created_at)>=hoy).length)
+          setText('pvLiveConsultas4', contactos.filter(v=>new Date(v.created_at)>=hoy).length)
+          setText('pvLiveComisiones4', contactos.length)
         }
         refrescarContadores()
 
-        // ── Refresco automático cada 30s (re-dibuja el "hoy" con datos nuevos) ──
-        _pvLiveTimer = setInterval(() => {
-          renderGraficoPasivo(contactos, dias, desdeCustom, hastaCustom)
+        // RAF loop para el pulso
+        const loopLive = () => { if(_pvChart4&&_pvChart4.canvas){_pvChart4.draw();_pvLiveRAF=requestAnimationFrame(loopLive)}else{_pvLiveRAF=null} }
+        setTimeout(() => { if(_pvChart4&&!_pvLiveRAF) loopLive() }, 950)
+
+        // Refresco real cada 30s (re-fetch desde Supabase)
+        _pvLiveTimer = setInterval(async () => {
+          const [rV, rC] = await Promise.all([
+            supabase.from('visitas').select('created_at,canal_via,canal_ref').in('canal_ref', codigosRef),
+            supabase.from('contactos').select('*').in('canal_ref', codigosRef).order('created_at',{ascending:false})
+          ])
+          if (rV.data) visitas = rV.data
+          if (rC.data) contactos = rC.data
+          renderGraficoPasivo(contactos, 0)
         }, 30000)
+
+      } else {
+        // ── MODO PERÍODO: diario acumulado ───────────────────────────────
+        const hasta = hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : new Date()
+        const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime()-(dias-1)*86400000)
+        const { labelsEvol, dataScans, dataConsultas } = datosEvolucionPasivo(contactos, desde, hasta)
+
+        const accScans=[], accConsultas=[]
+        let rs=0, rc=0
+        dataScans.forEach((v,i)=>{ rs+=v; accScans.push(rs); rc+=dataConsultas[i]; accConsultas.push(rc) })
+
+        const combined = dataScans.map((s,i)=>s+dataConsultas[i])
+        const peakVal = Math.max(...combined, 0)
+        const peakIdx = peakVal>0 ? combined.indexOf(peakVal) : -1
+
+        const tagEl = document.getElementById('pvLiveTag')
+        const scansLEl = document.getElementById('pvLiveScansL')
+        const consultasLEl = document.getElementById('pvLiveConsultasL')
+        if (tagEl) tagEl.textContent = desdeCustom ? `${desdeCustom.replace(/-/g,'/')} → ${hastaCustom.replace(/-/g,'/')}` : `Últimos ${dias} días`
+        if (scansLEl) scansLEl.textContent = 'período · interacciones'
+        if (consultasLEl) consultasLEl.textContent = 'período · consultas'
+        setText('pvLiveScans4', dataScans.reduce((s,v)=>s+v,0))
+        setText('pvLiveConsultas4', dataConsultas.reduce((s,v)=>s+v,0))
+        setText('pvLiveComisiones4', contactos.length)
+
+        _pvChart4 = new Chart(ctx4, {
+          type:'line',
+          data:{ labels:labelsEvol, datasets:datasetsBase([accScans, accConsultas]) },
+          plugins:[pluginPeakMark(peakIdx), pluginGoldGlow],
+          options:{
+            responsive:true, maintainAspectRatio:false,
+            animation:{duration:900,easing:'easeOutQuart'},
+            interaction:{mode:'index',intersect:false},
+            layout:{padding:{top:14,right:16,bottom:2,left:2}},
+            plugins:{
+              legend:legendBase,
+              tooltip:{
+                ...tooltipBase,
+                callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } }
+              }
+            },
+            scales:scalesBase
+          }
+        })
       }
+
+      // ── Mini sparklines (siempre, independiente del modo) ───────────────
+      const hoy0=new Date(); hoy0.setHours(0,0,0,0)
+      const ayer0=new Date(hoy0-86400000), ayerFin=new Date(hoy0-1)
+      const sem0=new Date(hoy0-7*86400000), mes0=new Date(hoy0-30*86400000)
+      const enRango=(iso,a,b)=>{ const d=new Date(iso); return d>=a&&d<=b }
+      const accPorDia=(arr,desde,hasta)=>{
+        const d=Math.max(1,Math.round((hasta-desde)/86400000)+1)
+        const out=new Array(d).fill(0)
+        arr.forEach(x=>{ if(!enRango(x.created_at,desde,hasta)) return; const idx=Math.floor((new Date(x.created_at)-desde)/86400000); if(idx>=0&&idx<d) out[idx]++ })
+        let run=0; return out.map(v=>{run+=v;return run})
+      }
+      const miniCfg=(data,color)=>({
+        type:'line',
+        data:{labels:data.map((_,i)=>i),datasets:[{data,borderColor:color,borderWidth:2,tension:0.4,fill:true,pointRadius:0,cubicInterpolationMode:'monotone',
+          backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(0,0,0,0)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,color.replace('1)','0.4)')); g.addColorStop(1,color.replace('1)','0)')); return g } }]},
+        options:{responsive:true,maintainAspectRatio:false,animation:{duration:600},plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}
+      })
+
+      const dAyerS=accPorDia(visitas,ayer0,ayerFin), dAyerC=accPorDia(contactos,ayer0,ayerFin)
+      const semAll=(()=>{ const d=7; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
+        visitas.forEach(v=>{ if(!enRango(v.created_at,sem0,new Date())) return; const i=Math.floor((new Date(v.created_at)-sem0)/86400000); if(i>=0&&i<d) oS[i]++ })
+        contactos.forEach(c=>{ if(!enRango(c.created_at,sem0,new Date())) return; const i=Math.floor((new Date(c.created_at)-sem0)/86400000); if(i>=0&&i<d) oC[i]++ })
+        let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
+      const mesAll=(()=>{ const d=30; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
+        visitas.forEach(v=>{ if(!enRango(v.created_at,mes0,new Date())) return; const i=Math.floor((new Date(v.created_at)-mes0)/86400000); if(i>=0&&i<d) oS[i]++ })
+        contactos.forEach(c=>{ if(!enRango(c.created_at,mes0,new Date())) return; const i=Math.floor((new Date(c.created_at)-mes0)/86400000); if(i>=0&&i<d) oC[i]++ })
+        let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
+
+      // Tasa de conversión diaria (últimos 30 días)
+      const convData=new Array(30).fill(0).map((_,i)=>{
+        const dIni=new Date(mes0.getTime()+i*86400000)
+        const dFin=new Date(dIni.getTime()+86400000)
+        const v=visitas.filter(x=>{ const d=new Date(x.created_at); return d>=dIni&&d<dFin }).length
+        const c=contactos.filter(x=>{ const d=new Date(x.created_at); return d>=dIni&&d<dFin }).length
+        return v>0 ? Number((c/v*100).toFixed(1)) : 0
+      })
+      const convDias=convData.filter(v=>v>0)
+      const convProm=convDias.length ? Number((convDias.reduce((s,v)=>s+v,0)/convDias.length).toFixed(1)) : 0
+
+      const ca=document.getElementById('pvMiniAyer')?.getContext('2d')
+      const cb=document.getElementById('pvMiniSem')?.getContext('2d')
+      const cc=document.getElementById('pvMiniMes')?.getContext('2d')
+      const cd=document.getElementById('pvMiniConv')?.getContext('2d')
+      if(ca) _pvChart4a=new Chart(ca,miniCfg(dAyerS.map((s,i)=>s+dAyerC[i]),'rgba(232,201,106,1)'))
+      if(cb) _pvChart4b=new Chart(cb,miniCfg(semAll.s.map((s,i)=>s+semAll.c[i]),'rgba(122,174,255,1)'))
+      if(cc) _pvChart4c=new Chart(cc,miniCfg(mesAll.s.map((s,i)=>s+mesAll.c[i]),'rgba(110,232,154,1)'))
+      if(cd) _pvChart4d=new Chart(cd,miniCfg(convData,'rgba(255,160,80,1)'))
+
+      setText('pvMiniAyerN', (dAyerS[dAyerS.length-1]||0)+(dAyerC[dAyerC.length-1]||0))
+      setText('pvMiniSemN', (semAll.s[semAll.s.length-1]||0)+(semAll.c[semAll.c.length-1]||0))
+      setText('pvMiniMesN', (mesAll.s[mesAll.s.length-1]||0)+(mesAll.c[mesAll.c.length-1]||0))
+      const convEl=document.getElementById('pvMiniConvN'); if(convEl) convEl.textContent=`${convProm}%`
     }
+
 
     window.pvSetPeriodo = function(btn) {
       document.querySelectorAll('.pv-flt-btn').forEach(b => b.classList.remove('activo'))
@@ -1460,7 +1340,10 @@
       const valor = btn.dataset.dias
       const custom = valor === 'custom'
       document.getElementById('pvFltCustom').style.display = custom ? '' : 'none'
-      if (!custom) renderGraficoPasivo(contactos, parseInt(valor, 10))
+      if (!custom) {
+        const dias = valor === 'hoy' ? 0 : parseInt(valor, 10)
+        renderGraficoPasivo(contactos, dias)
+      }
     }
 
     window.pvAplicarFechas = function() {
