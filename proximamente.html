@@ -1,142 +1,370 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex, nofollow">
-  <title>Sur Patagonia Propiedades · Próximamente</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Montserrat:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <style>
-    :root { --bg:#0c0c0e; --text:rgba(240,237,232,0.88); --gold:#c9a84c; --muted:rgba(240,237,232,0.35); }
-    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f5f3ee">
+<meta name="robots" content="noindex, nofollow">
+<title>Sur Patagonia Propiedades · Próximamente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  :root{
+    --ink:#0a0a0a;            /* negro carbón estricto */
+    --paper:#f5f3ee;          /* blanco cálido del fondo */
+    --gold:#c9a84c;           /* dorado SP — solo la línea fina */
+    --mist:0.5;               /* opacidad base niebla */
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--paper);}
+  body{
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
 
-    /* ── LOADING — copiado exacto del index ── */
-    #loading { position:fixed; inset:0; z-index:9999; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; }
-    #loading-content { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.2rem; width:100%; text-align:center; }
-    #loading-picos { width:110px; opacity:0; transform:translateY(-18px); mix-blend-mode:screen; display:block; margin:0 auto; }
-    #loading-title { font-family:'Montserrat',sans-serif; font-size:1.5rem; font-weight:700; letter-spacing:0.45em; text-transform:uppercase; color:var(--text); display:flex; gap:0; overflow:hidden; }
-    #loading-title .lc { display:inline-block; opacity:0; transform:translateY(14px); }
-    #loading-title .ls { display:inline-block; width:0.45em; }
-    #loading-sub { font-size:0.52rem; font-weight:400; letter-spacing:0.55em; text-transform:uppercase; color:var(--muted); opacity:0; }
-    #loading-line-wrap { position:absolute; bottom:0; left:0; right:0; height:1px; background:rgba(255,255,255,0.04); }
-    #loading-line { height:100%; width:0%; background:linear-gradient(90deg,transparent,var(--gold),transparent); }
-    #loading-wipe { position:absolute; inset:0; background:var(--bg); transform:translateY(100%); }
+  /* ─────────── ESCENA EN CAPAS ─────────── */
+  .scene{
+    position:fixed;inset:0;
+    perspective:1200px;
+    overflow:hidden;
+    transform-style:preserve-3d;
+  }
 
-    /* ── VIDEO FONDO ── */
-    #yt-bg { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-    #yt-player { position:absolute; top:50%; left:50%; width:177.78vh; height:56.25vw; min-width:100%; min-height:100%; transform:translate(-50%,-50%); }
+  /* Acto 1 · superficie de fondo */
+  .layer-base{
+    position:absolute;inset:-4%;
+    background:
+      radial-gradient(ellipse 90% 70% at 50% 35%, #ffffff 0%, #f5f3ee 55%, #ece8df 100%);
+    z-index:1;
+    will-change:transform;
+  }
+  .layer-base::after{
+    /* grano sutil para sensación papel */
+    content:"";
+    position:absolute;inset:0;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    mix-blend-mode:multiply;
+    opacity:.6;
+    pointer-events:none;
+  }
 
-    /* ── OVERLAY ── */
-    #overlay { position:fixed; inset:0; z-index:1; background:linear-gradient(to bottom, rgba(12,12,14,0.55) 0%, rgba(12,12,14,0.15) 40%, rgba(12,12,14,0.15) 60%, rgba(12,12,14,0.70) 100%); }
+  /* Acto 2 · cordillera B/N (capa media) */
+  .layer-mountains{
+    position:absolute;
+    left:-6%;right:-6%;bottom:-6%;
+    width:112%;
+    z-index:2;
+    will-change:transform;
+    transform:translateY(60%);
+    opacity:0;
+  }
+  .layer-mountains img{
+    width:100%;display:block;
+    filter:grayscale(1) contrast(1.05) brightness(.96);
+  }
 
-    /* ── CONTENIDO ── */
-    #content { position:fixed; inset:0; z-index:2; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:2rem; opacity:0; }
-    .logo-wrap { margin-bottom:2.8rem; }
-    .logo-wrap img { width:clamp(160px,22vw,280px); filter:brightness(0) invert(1); opacity:0.88; }
-    .divider { width:36px; height:1px; background:rgba(201,168,76,0.5); margin-bottom:2.2rem; }
-    .proximo { font-family:'Cormorant Garamond',serif; font-size:clamp(2rem,5.5vw,4.5rem); font-weight:300; letter-spacing:0.18em; color:rgba(240,237,232,0.85); text-shadow:0 4px 40px rgba(0,0,0,0.5); }
-  </style>
+  /* Acto 3 · texto + logo (capa enfoque) */
+  .layer-focus{
+    position:absolute;inset:0;
+    z-index:3;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;
+    padding:6vh 1.5rem;
+    will-change:transform,opacity,filter;
+    opacity:0;
+    filter:blur(14px);
+  }
+  .brand{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:400;
+    font-size:clamp(2.4rem,7vw,5.6rem);
+    letter-spacing:.04em;
+    line-height:.95;
+    color:var(--ink);
+    margin-bottom:.4rem;
+  }
+  .brand .ampersand{
+    font-style:italic;
+    font-weight:300;
+    opacity:.65;
+  }
+  .eyebrow{
+    font-family:'Inter',sans-serif;
+    font-weight:300;
+    font-size:clamp(.6rem,1vw,.78rem);
+    letter-spacing:.62em;
+    text-transform:uppercase;
+    color:var(--ink);
+    opacity:.5;
+    margin-bottom:2.6rem;
+    padding-left:.62em; /* compensa el letter-spacing */
+  }
+  .logo-mark{
+    width:clamp(54px,7vw,86px);
+    height:auto;
+    margin-bottom:2.4rem;
+    filter:grayscale(1) brightness(0);
+    opacity:.85;
+  }
+  .proximo{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:300;
+    font-style:italic;
+    font-size:clamp(1.5rem,3.6vw,2.9rem);
+    letter-spacing:.22em;
+    color:var(--ink);
+    padding-left:.22em;
+  }
+  .gold-line{
+    display:block;
+    width:0;
+    height:1px;
+    margin:1.5rem auto 0;
+    background:linear-gradient(90deg,transparent 0%,var(--gold) 18%,var(--gold) 82%,transparent 100%);
+    box-shadow:0 0 14px rgba(201,168,76,.45);
+  }
+
+  /* Niebla · capa frontal con deriva infinita */
+  .layer-fog{
+    position:absolute;
+    left:-50%;right:-50%;
+    bottom:-8%;
+    width:200%;
+    z-index:4;
+    pointer-events:none;
+    will-change:transform;
+    opacity:0;
+  }
+  .layer-fog img{
+    width:100%;display:block;
+    filter:grayscale(1) brightness(1.02);
+    opacity:var(--mist);
+    mix-blend-mode:screen;
+  }
+  /* segunda pasada de niebla desfasada para deriva continua */
+  .layer-fog .fog-2{
+    position:absolute;left:0;bottom:0;width:100%;
+    transform:scaleX(-1);
+    opacity:calc(var(--mist) * .55);
+  }
+
+  /* Viñeta sutil para anclar la composición */
+  .vignette{
+    position:absolute;inset:0;
+    z-index:5;pointer-events:none;
+    background:
+      linear-gradient(to bottom, rgba(0,0,0,.05) 0%, transparent 22%, transparent 78%, rgba(0,0,0,.10) 100%),
+      radial-gradient(ellipse 75% 60% at 50% 50%, transparent 60%, rgba(0,0,0,.07) 100%);
+    mix-blend-mode:multiply;
+    opacity:0;
+  }
+
+  /* Marca de agua esquina */
+  .corner{
+    position:fixed;
+    bottom:5vh;left:50%;
+    transform:translateX(-50%);
+    z-index:6;
+    font-family:'Inter',sans-serif;
+    font-weight:300;
+    font-size:.58rem;
+    letter-spacing:.42em;
+    text-transform:uppercase;
+    color:var(--ink);
+    opacity:0;
+    padding-left:.42em;
+    white-space:nowrap;
+  }
+
+  @media (max-width:600px){
+    .eyebrow{margin-bottom:2rem;}
+    .logo-mark{margin-bottom:1.8rem;}
+    .gold-line{margin-top:1.1rem;}
+    .corner{font-size:.5rem;letter-spacing:.34em;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .layer-mountains{transform:translateY(0);opacity:1;}
+    .layer-focus{opacity:1;filter:none;}
+    .layer-fog{opacity:1;}
+    .vignette{opacity:1;}
+    .corner{opacity:.5;}
+  }
+</style>
 </head>
 <body>
 
-  <!-- LOADING — igual al index -->
-  <div id="loading">
-    <div id="loading-content">
-      <picture>
-        <source srcset="picos.webp" type="image/webp">
-        <img id="loading-picos" src="picos.png" alt="Sur Patagonia">
-      </picture>
-      <div id="loading-title">
-        <span class="lc">S</span><span class="lc">U</span><span class="lc">R</span><span class="ls"> </span><span class="lc">P</span><span class="lc">A</span><span class="lc">T</span><span class="lc">A</span><span class="lc">G</span><span class="lc">O</span><span class="lc">N</span><span class="lc">I</span><span class="lc">A</span>
-      </div>
-      <div id="loading-sub">Propiedades</div>
+  <div class="scene" id="scene">
+
+    <!-- Acto 1 -->
+    <div class="layer-base" data-depth="0.04"></div>
+
+    <!-- Acto 2 -->
+    <div class="layer-mountains" id="mountains" data-depth="0.18">
+      <img src="proximamente-montanas.png" alt="" loading="eager">
     </div>
-    <div id="loading-line-wrap"><div id="loading-line"></div></div>
-    <div id="loading-wipe"></div>
+
+    <!-- Acto 3 -->
+    <div class="layer-focus" id="focus" data-depth="0.10">
+      <div class="eyebrow" id="eyebrow">Propiedades</div>
+      <picture>
+        <source srcset="assets/logohorizontalnegro.webp" type="image/webp">
+        <img class="logo-mark" src="assets/logohorizontalnegro.png" alt="Sur Patagonia">
+      </picture>
+      <h1 class="brand" id="brand">SUR PATAGONIA</h1>
+      <p class="proximo" id="proximo">PRÓXIMAMENTE</p>
+      <span class="gold-line" id="goldLine"></span>
+    </div>
+
+    <!-- Niebla frontal con deriva -->
+    <div class="layer-fog" id="fog" data-depth="0.32">
+      <img src="proximamente-niebla.png" alt="" loading="eager">
+      <img class="fog-2" src="proximamente-niebla.png" alt="">
+    </div>
+
+    <div class="vignette" id="vignette"></div>
+
   </div>
 
-  <!-- VIDEO FONDO -->
-  <div id="yt-bg"><div id="yt-player"></div></div>
+  <div class="corner" id="corner">Sur Patagonia · 2026</div>
 
-  <!-- OVERLAY -->
-  <div id="overlay"></div>
+<script>
+(function(){
+  const reduced = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const mountains = document.getElementById('mountains');
+  const focus     = document.getElementById('focus');
+  const fog       = document.getElementById('fog');
+  const vignette  = document.getElementById('vignette');
+  const goldLine  = document.getElementById('goldLine');
+  const corner    = document.getElementById('corner');
+  const eyebrow   = document.getElementById('eyebrow');
+  const brand     = document.getElementById('brand');
+  const proximo   = document.getElementById('proximo');
 
-  <!-- CONTENIDO -->
-  <div id="content">
-    <div class="logo-wrap">
-      <picture>
-        <source srcset="assets/logoverticalnegro.webp" type="image/webp">
-        <img src="assets/logoverticalnegro.png" alt="Sur Patagonia Propiedades">
-      </picture>
-    </div>
-    <div class="divider"></div>
-    <div class="proximo">PRÓXIMAMENTE</div>
-  </div>
+  /* ───── ENTRADA CINEMATOGRÁFICA — 3 ACTOS ───── */
+  if(!reduced && window.gsap){
+    const tl = gsap.timeline({ defaults:{ ease:'power3.out' } });
 
-  <script>
-    history.pushState(null, '', location.href)
-    window.addEventListener('popstate', () => history.pushState(null, '', location.href))
+    // Acto 1 — la luz se enciende
+    tl.fromTo('.layer-base',
+      { opacity:0, scale:1.08 },
+      { opacity:1, scale:1, duration:1.4 }, 0);
 
-    // YouTube
-    var tag = document.createElement('script')
-    tag.src = 'https://www.youtube.com/iframe_api'
-    document.head.appendChild(tag)
-    window.onYouTubeIframeAPIReady = function() {
-      new YT.Player('yt-player', {
-        videoId: 'VMkGpUK7E2Q',
-        playerVars: { autoplay:1, mute:1, loop:1, controls:0, showinfo:0, rel:0, modestbranding:1, playlist:'VMkGpUK7E2Q', playsinline:1, iv_load_policy:3, disablekb:1, fs:0 },
-        events: {
-          onReady: e => e.target.playVideo(),
-          onStateChange: e => { if (e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.ENDED) e.target.playVideo() }
+    // Acto 2 — las montañas emergen
+    tl.to(mountains,
+      { y:'0%', opacity:1, duration:1.7, ease:'power2.out' }, 0.55)
+      .to(vignette, { opacity:1, duration:1.2 }, 0.8);
+
+    // Acto 3 — el enfoque llega
+    tl.to(focus,
+      { opacity:1, filter:'blur(0px)', duration:1.4, ease:'power2.out' }, 1.4);
+
+    // detalle: palabra a palabra dentro del enfoque
+    tl.fromTo([eyebrow, brand],
+      { y:18, opacity:0 },
+      { y:0, opacity:1, duration:0.9, stagger:0.15 }, 1.55)
+      .fromTo(proximo,
+        { y:20, opacity:0 },
+        { y:0, opacity:1, duration:0.9 }, 1.95);
+
+    // el hilo de oro se dibuja al final
+    tl.to(goldLine,
+      { width:'clamp(60px,12vw,180px)', duration:1.1, ease:'power2.inOut' }, 2.35)
+      .to(corner, { opacity:.45, duration:1 }, 2.7);
+
+    // la niebla entra en paralelo y empieza a derivar
+    tl.to(fog, { opacity:1, duration:2.2 }, 1.6);
+    tl.add(()=>startFog(), 1.6);
+    tl.add(()=>startParallax(), 2.4);
+  } else {
+    // modo reducido: mostrar todo de una
+    startFog();
+    startParallax();
+  }
+
+  /* ───── NIEBLA — deriva infinita lenta ───── */
+  function startFog(){
+    if(reduced) return;
+    const fogInner = fog;
+    let x = 0, dir = 1, start = null;
+    const amp = 4.5;     // % de deriva lateral
+    const dur = 26000;   // ~26s por ciclo
+    function step(ts){
+      if(!start) start = ts;
+      const t = ((ts - start) % dur) / dur;
+      // oscilación suave (seno)
+      x = Math.sin(t * Math.PI * 2) * amp;
+      // pequeño oleaje vertical
+      const y = Math.cos(t * Math.PI * 2) * 1.1;
+      fogInner.style.transform = `translate3d(${x}%, ${y}%, 0)`;
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ───── PARALLAX — ratón / giroscopio ───── */
+  function startParallax(){
+    if(reduced) return;
+    const layers = [
+      { el:document.querySelector('.layer-base'), d:0.04 },
+      { el:mountains,                              d:0.20 },
+      { el:focus,                                  d:0.10 },
+      { el:fog,                                    d:0.34 },
+    ];
+    let targetX=0, targetY=0, curX=0, curY=0;
+
+    function apply(){
+      curX += (targetX - curX) * 0.06;
+      curY += (targetY - curY) * 0.06;
+      layers.forEach(({el,d})=>{
+        if(!el) return;
+        const tx = -curX * d * 26;
+        const ty = -curY * d * 26;
+        // preserva transform de niebla combinándolo vía variable separada
+        if(el === fog){
+          el.style.setProperty('--px', tx+'px');
+          el.style.setProperty('--py', ty+'px');
+          // dejamos que la niebla combine su deriva propia;
+          // por eso acá sólo movemos un wrapper extra suave
+          el.style.marginLeft = (tx*0.15)+'px';
+          el.style.marginTop  = (ty*0.15)+'px';
+        } else {
+          el.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
         }
-      })
+      });
+      requestAnimationFrame(apply);
     }
+    apply();
 
-    // Loading — lógica copiada exacta del index
-    const lineEl    = document.getElementById('loading-line')
-    const loadingEl = document.getElementById('loading')
-    const picosEl   = document.getElementById('loading-picos')
-    const chars     = document.querySelectorAll('#loading-title .lc')
-    const subEl     = document.getElementById('loading-sub')
-    const wipeEl    = document.getElementById('loading-wipe')
-    const contentEl = document.getElementById('content')
+    // ratón / toque
+    window.addEventListener('pointermove', (e)=>{
+      targetX = (e.clientX / window.innerWidth)  * 2 - 1;
+      targetY = (e.clientY / window.innerHeight) * 2 - 1;
+    }, { passive:true });
 
-    gsap.timeline()
-      .to(picosEl, { opacity:1, y:0, duration:0.9, ease:'power3.out' }, 0.1)
-      .to(chars,   { opacity:1, y:0, duration:0.5, ease:'power2.out', stagger:0.05 }, 0.5)
-      .to(subEl,   { opacity:1, duration:0.6, ease:'power2.out' }, 1.3)
+    // giroscopio (móvil)
+    window.addEventListener('deviceorientation', (e)=>{
+      if(e.beta == null && e.gamma == null) return;
+      const gamma = Math.max(-45, Math.min(45, e.gamma || 0)) / 45; // izq/der
+      const beta  = Math.max(-45, Math.min(45, e.beta  || 0)) / 45; // arr/abj
+      targetX = gamma;
+      targetY = beta;
+    }, { passive:true });
+  }
 
-    const MIN_LOAD = 1400
-    let pageLoaded = false
-    const loadStart = performance.now()
-    window.addEventListener('load', () => { pageLoaded = true })
-    if (document.readyState === 'complete') pageLoaded = true
-
-    function closeLoading() {
-      setTimeout(() => {
-        gsap.to(wipeEl, { y:0, duration:0.65, ease:'power3.inOut', onComplete: () => {
-          loadingEl.style.display = 'none'
-          gsap.to(contentEl, { opacity:1, duration:1.2, ease:'power2.out' })
-        }})
-      }, 300)
-    }
-
-    function tick(now) {
-      const elapsed = now - loadStart
-      let pct
-      if (!pageLoaded)           pct = Math.min((elapsed/MIN_LOAD)*80, 80)
-      else if (elapsed<MIN_LOAD) pct = Math.min((elapsed/MIN_LOAD)*100, 100)
-      else                       pct = 100
-      lineEl.style.width = pct + '%'
-      if (pct < 100) { requestAnimationFrame(tick); return }
-      closeLoading()
-    }
-    requestAnimationFrame(tick)
-  </script>
-
+  // bloquea scroll / pull-to-refresh / back
+  history.pushState(null,'',location.href);
+  window.addEventListener('popstate', ()=>history.pushState(null,'',location.href));
+  ['wheel','touchmove','keydown'].forEach(ev=>{
+    window.addEventListener(ev,(e)=>{
+      if(ev==='keydown' && (e.key===' '||e.key==='ArrowDown'||e.key==='ArrowUp')) e.preventDefault();
+      if(ev!=='keydown') e.preventDefault();
+    },{ passive:false });
+  });
+})();
+</script>
 </body>
 </html>
