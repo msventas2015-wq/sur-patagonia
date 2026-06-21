@@ -1905,19 +1905,20 @@
       })
       const labels = dias30.map(d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}))
 
+      const hace30Slot = new Date(Date.now() - 30 * 86400000)
+
       misSlots.forEach(slot => {
         const canvas = document.getElementById(`slot-chart-${slot.id}`)
         if (!canvas) return
-        const slotVis = visitas.filter(v => v.canal_ref === slot.codigo)
+        // Solo últimos 30 días, filtrado por slot
+        const slotVis = visitas.filter(v =>
+          v.canal_ref === slot.codigo && new Date(v.created_at) >= hace30Slot
+        )
         const data = dias30.map(dIni => {
           const dFin = new Date(dIni.getTime() + 86400000)
           return slotVis.filter(v => { const d = new Date(v.created_at); return d >= dIni && d < dFin }).length
         })
         const ctx2d = canvas.getContext('2d')
-        const grad = ctx2d.createLinearGradient(0, 0, 0, canvas.offsetHeight || 110)
-        grad.addColorStop(0, 'rgba(122,174,255,0.45)')
-        grad.addColorStop(0.6, 'rgba(122,174,255,0.1)')
-        grad.addColorStop(1, 'rgba(122,174,255,0)')
         new Chart(ctx2d, {
           type: 'line',
           data: {
@@ -1925,13 +1926,23 @@
             datasets: [{
               data,
               borderColor: '#7aaeff',
-              borderWidth: 2,
+              borderWidth: 2.5,
               tension: 0.4,
               cubicInterpolationMode: 'monotone',
               fill: true,
-              backgroundColor: grad,
+              // Gradiente creado dentro del contexto del chart (cuando ya tiene dimensiones)
+              backgroundColor: (context) => {
+                const chart = context.chart
+                const { ctx: c, chartArea } = chart
+                if (!chartArea) return 'rgba(122,174,255,0.2)'
+                const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+                g.addColorStop(0,   'rgba(122,174,255,0.50)')
+                g.addColorStop(0.5, 'rgba(122,174,255,0.15)')
+                g.addColorStop(1,   'rgba(122,174,255,0.00)')
+                return g
+              },
               pointRadius: 0,
-              pointHoverRadius: 4,
+              pointHoverRadius: 5,
               pointHoverBackgroundColor: '#7aaeff',
               pointHoverBorderColor: '#fff',
               pointHoverBorderWidth: 2,
@@ -1939,7 +1950,7 @@
           },
           options: {
             responsive: true, maintainAspectRatio: false,
-            animation: { duration: 700, easing: 'easeOutQuart' },
+            animation: { duration: 800, easing: 'easeOutQuart' },
             interaction: { mode: 'index', intersect: false },
             plugins: {
               legend: { display: false },
@@ -1957,7 +1968,11 @@
             },
             scales: {
               x: { display: false },
-              y: { display: false, beginAtZero: true }
+              y: {
+                display: false,
+                beginAtZero: true,
+                suggestedMax: Math.max(...data, 3) // mínimo visual aunque haya 0 datos
+              }
             }
           }
         })
