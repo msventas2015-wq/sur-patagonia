@@ -604,6 +604,38 @@
       text-align: right;
     }
 
+    /* Atributos de propiedad sobre la foto */
+    .slot-attrs {
+      display: flex;
+      flex-direction: row;
+      gap: 0;
+      border-top: 1px solid rgba(255,255,255,.15);
+      padding-top: .4rem;
+    }
+    .slot-attr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      padding: 0 .3rem;
+      border-right: 1px solid rgba(255,255,255,.12);
+    }
+    .slot-attr:last-child { border-right: none; }
+    .slot-attr-v {
+      font-size: .82rem;
+      font-weight: 400;
+      color: rgba(240,237,232,.88);
+      line-height: 1.1;
+    }
+    .slot-attr-l {
+      font-size: .42rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.38);
+      margin-top: .1rem;
+    }
+
     /* ── Sección Mis QRs (canal activo) ── */
     .mis-qrs-grid {
       display: grid;
@@ -835,7 +867,7 @@
       (() => {
         const slugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
         return slugs.length
-          ? supabase.from('proyectos').select('slug, nombre, foto_portada').in('slug', slugs)
+          ? supabase.from('proyectos').select('slug, nombre, foto_portada, dormitorios, banos, superficie_cubierta, superficie_total').in('slug', slugs)
           : Promise.resolve({ data: [] })
       })()
     ])
@@ -1792,30 +1824,44 @@
           : 'background:linear-gradient(135deg,rgba(201,168,76,.09),#11100e)'
         const ptrOff = !esActivo ? 'pointer-events:none' : ''
 
+        // Atributos de propiedad
+        const attrs = []
+        if (proy?.dormitorios)       attrs.push({ v: proy.dormitorios,                       l: 'DORM.' })
+        if (proy?.banos)             attrs.push({ v: proy.banos,                              l: 'BAÑOS' })
+        if (proy?.superficie_cubierta) attrs.push({ v: proy.superficie_cubierta + ' m²',     l: 'M² CUB.' })
+        if (proy?.superficie_total)  attrs.push({ v: proy.superficie_total + ' m²',          l: 'M² TOT.' })
+        const attrsHtml = attrs.length ? `
+          <div class="slot-attrs">
+            ${attrs.map(a => `<div class="slot-attr"><span class="slot-attr-v">${a.v}</span><span class="slot-attr-l">${a.l}</span></div>`).join('')}
+          </div>` : ''
+
         return `
         <div class="slot-full-card${esActivo ? '' : ' slot-full-inactivo'}">
           <div class="slot-full-left">
-            <div class="slot-full-img" style="${imgStyle}">
+            <div class="slot-full-img" style="${imgStyle};height:200px;">
               <div class="slot-full-img-overlay"></div>
-              <div class="slot-full-img-content">
+              <div class="slot-full-img-content" style="top:0;padding:.7rem .85rem;">
                 <div class="slot-full-eyebrow">${esc(slot.codigo)}</div>
-                <div class="slot-full-nombre">${esc(proyNombre)}</div>
+                <div class="qr-slot-estado-badge ${esActivo?'activo':'inactivo'}" style="position:relative;top:auto;right:auto;margin-top:.3rem;">${esActivo?'● ACTIVO':'● INACTIVO'}</div>
               </div>
-              <div class="qr-slot-estado-badge ${esActivo?'activo':'inactivo'}">${esActivo?'● ACTIVO':'● INACTIVO'}</div>
+              <div style="position:absolute;bottom:0;left:0;right:0;padding:.6rem .85rem;">
+                <div class="slot-full-nombre" style="margin-bottom:.45rem;">${esc(proyNombre)}</div>
+                ${attrsHtml}
+              </div>
             </div>
             <div class="slot-full-body">
               <div class="slot-full-stats">
                 <div class="slot-stat">
                   <span class="slot-stat-n" style="color:#9fc0ff;">${scans}</span>
-                  <span class="slot-stat-l">scans · 30d</span>
+                  <span class="slot-stat-l">SCANS · 30D</span>
                 </div>
                 <div class="slot-stat">
                   <span class="slot-stat-n" style="color:#e8c96a;">${slotCons.length}</span>
-                  <span class="slot-stat-l">consultas</span>
+                  <span class="slot-stat-l">CONSULTAS</span>
                 </div>
                 <div class="slot-stat">
                   <span class="slot-stat-n">${conv}</span>
-                  <span class="slot-stat-l">conversión</span>
+                  <span class="slot-stat-l">CONVERSIÓN</span>
                 </div>
               </div>
               <div class="slot-full-qr-footer" style="${ptrOff}">
@@ -1867,30 +1913,45 @@
           const dFin = new Date(dIni.getTime() + 86400000)
           return slotVis.filter(v => { const d = new Date(v.created_at); return d >= dIni && d < dFin }).length
         })
-        const max = Math.max(...data, 1)
-        new Chart(canvas.getContext('2d'), {
-          type: 'bar',
+        const ctx2d = canvas.getContext('2d')
+        const grad = ctx2d.createLinearGradient(0, 0, 0, canvas.offsetHeight || 110)
+        grad.addColorStop(0, 'rgba(122,174,255,0.45)')
+        grad.addColorStop(0.6, 'rgba(122,174,255,0.1)')
+        grad.addColorStop(1, 'rgba(122,174,255,0)')
+        new Chart(ctx2d, {
+          type: 'line',
           data: {
             labels,
             datasets: [{
               data,
-              backgroundColor: data.map(v => v > 0 ? `rgba(100,149,237,${0.25 + (v / max) * 0.55})` : 'rgba(255,255,255,.04)'),
-              borderRadius: 3,
-              borderSkipped: false,
+              borderColor: '#7aaeff',
+              borderWidth: 2,
+              tension: 0.4,
+              cubicInterpolationMode: 'monotone',
+              fill: true,
+              backgroundColor: grad,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              pointHoverBackgroundColor: '#7aaeff',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 2,
             }]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
-            animation: { duration: 600 },
+            animation: { duration: 700, easing: 'easeOutQuart' },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
               legend: { display: false },
               tooltip: {
                 backgroundColor: 'rgba(18,18,21,.96)',
                 borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
-                titleColor: '#fff', bodyColor: 'rgba(255,255,255,.76)',
+                titleColor: 'rgba(255,255,255,.55)', titleFont: { size: 10 },
+                bodyColor: '#7aaeff', bodyFont: { size: 12, weight: '600' },
+                padding: 10, cornerRadius: 6,
                 callbacks: {
                   title: ctx => ctx[0].label,
-                  label: ctx => `${ctx.raw} scan${ctx.raw !== 1 ? 's' : ''}`
+                  label: ctx => ` ${ctx.raw} interacción${ctx.raw !== 1 ? 'es' : ''}`
                 }
               }
             },
