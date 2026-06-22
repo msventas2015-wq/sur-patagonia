@@ -973,16 +973,51 @@
     const COLOR_QR_FISICO        = '#50c878'
     const COLOR_LINK_COMPARTIDO  = '#6495ed'
     const COLORES_RESERVADOS = [COLOR_TOTAL_GENERAL, COLOR_TOTAL_GRAFICO, COLOR_QR_FISICO, COLOR_LINK_COMPARTIDO]
-    const SLOT_PALETTE = ['#b56cff','#ff8a65','#4dd0e1','#ffb74d','#ba68c8','#81c784','#e57373','#f06292','#a1887f','#90a4ae']
+    const SLOT_PALETTE = [
+      '#ff4088',  // 0: rosa fucsia vibrante
+      '#d030c0',  // 1: magenta vivida
+      '#8820c0',  // 2: violeta profunda
+      '#c890f0',  // 3: lavanda luminosa
+      '#8e1f63',  // 4: frambuesa/ciruela premium
+      '#ff4a5a',  // 5: rojo coral vivido
+      '#ff6830',  // 6: naranja coral vivido
+      '#b840e0',  // 7: orquídea (último recurso)
+    ]
     const SLOT_PALETTE_SOFT = SLOT_PALETTE
     const slotColorMap = {} // slot.codigo → hex
+    const DIST_MIN = 80
+    function colorDist(a, b) {
+      const ah = a.replace('#',''), bh = b.replace('#','')
+      const ar=parseInt(ah.slice(0,2),16),ag=parseInt(ah.slice(2,4),16),ab=parseInt(ah.slice(4,6),16)
+      const br=parseInt(bh.slice(0,2),16),bg=parseInt(bh.slice(2,4),16),bb=parseInt(bh.slice(4,6),16)
+      return Math.sqrt((ar-br)**2+(ag-bg)**2+(ab-bb)**2)
+    }
     function colorDeSlot(codigo) {
       if (slotColorMap[codigo]) return slotColorMap[codigo]
       // FNV-1a hash del código → índice de paleta estable
       let h = 0x811c9dc5
       for (let i = 0; i < codigo.length; i++) { h ^= codigo.charCodeAt(i); h = (h * 0x01000193) >>> 0 }
-      let color = SLOT_PALETTE[h % SLOT_PALETTE.length]
-      if (COLORES_RESERVADOS.includes(color)) color = SLOT_PALETTE.find(c => !COLORES_RESERVADOS.includes(c)) || '#b56cff'
+      const usados = Object.values(slotColorMap)
+      let color = null
+      // Paso 1: no reservado, no usado, dist >= DIST_MIN con todos los ya asignados Y con reservados
+      for (let i = 0; i < SLOT_PALETTE.length; i++) {
+        const c = SLOT_PALETTE[(h + i) % SLOT_PALETTE.length]
+        if (!COLORES_RESERVADOS.includes(c)
+          && !usados.includes(c)
+          && usados.every(u => colorDist(c, u) >= DIST_MIN)
+          && COLORES_RESERVADOS.every(r => colorDist(c, r) >= DIST_MIN)) {
+          color = c; break
+        }
+      }
+      // Paso 2: fallback — relajar distancia si paleta agotada
+      if (!color) {
+        for (let i = 0; i < SLOT_PALETTE.length; i++) {
+          const c = SLOT_PALETTE[(h + i) % SLOT_PALETTE.length]
+          if (!COLORES_RESERVADOS.includes(c) && !usados.includes(c)) { color = c; break }
+        }
+        if (color) console.warn('[colorDeSlot] Paleta insuficiente: usando fallback de color', { codigo, color })
+      }
+      if (!color) color = SLOT_PALETTE.find(c => !COLORES_RESERVADOS.includes(c)) || '#ff4088'
       slotColorMap[codigo] = color
       return color
     }
@@ -992,6 +1027,8 @@
         slot.proyecto_slug = slot.codigo.startsWith(pfx) ? slot.codigo.slice(pfx.length) : slot.codigo
       }
     })
+    // Pre-warm de colores en orden alfabético → asignación determinística e independiente del orden de render
+    ;[...misSlots].sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(s => colorDeSlot(s.codigo))
     const slotCodigos  = misSlots.map(s => s.codigo)
     const derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
     const [rScansPorSlot, rProyImgs, rPropAll] = await Promise.all([
@@ -1570,6 +1607,8 @@
         // ETAPA 2: KPI iniciales en HOY (medianoche → ahora)
         const _h = new Date(); const _d = new Date(_h); _d.setHours(0,0,0,0)
         actualizarKpisActivo(_d, _h)
+        // ETAPA 3A.1: métricas de cards — período inicial = Hoy
+        actualizarSlotCards(_d, _h)
       })
     }
 
@@ -1963,7 +2002,7 @@
         const base = [
           {
             label:'Interacciones', data:lblsData[0], order:2,
-            borderColor:'#7aaeff', borderWidth: multiSlot ? 4 : 2.5, tension:0.4, fill: true,
+            borderColor:'#7aaeff', borderWidth: multiSlot ? 3 : 2.5, tension:0.4, fill: true,
             cubicInterpolationMode:'monotone',
             backgroundColor: gradAzul,
             pointRadius:0, pointHoverRadius:6,
@@ -2027,7 +2066,7 @@
         const lbls = Array.from({length:numBuckets}, (_,i) => {
           const m = i * VENTANA
           const hh=String(Math.floor(m/60)).padStart(2,'0'), mm=String(m%60).padStart(2,'0')
-          return (i % 2 === 0) ? `${hh}:${mm}` : ''
+          return (i * VENTANA) % 360 === 0 ? `${hh}:00` : ''
         })
 
         const totalPorBucket = bucketScans.map((s,i)=>s+bucketCons[i])
@@ -2343,6 +2382,7 @@
         renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot() })
         if (_modoMultiSlot()) renderPanelesActivos(contactos)
         actualizarKpisActivo(desde, hasta)
+        actualizarSlotCards(desde, hasta)
       }
     }
 
@@ -2355,6 +2395,28 @@
       renderGraficoPasivo(contactos, 30, desde, hasta, { multiSlot: _modoMultiSlot() })
       if (_modoMultiSlot()) renderPanelesActivos(contactos)
       actualizarKpisActivo(fechaLocal(desde), fechaLocal(hasta))
+      actualizarSlotCards(fechaLocal(desde), fechaLocal(hasta))
+    }
+
+    // ── ETAPA 3A.1: actualizar métricas de cards por período (sin regenerar HTML) ──
+    function actualizarSlotCards(desde, hasta) {
+      const d0 = new Date(desde); d0.setHours(0,0,0,0)
+      const d1 = new Date(hasta); d1.setHours(23,59,59,999)
+      const en  = t => { const d = new Date(t); return d >= d0 && d <= d1 }
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
+      misSlots.filter(s => s.activo !== false).forEach(slot => {
+        const vSlot = visitas.filter(v => v.canal_ref === slot.codigo && en(v.created_at))
+        const int   = vSlot.length
+        const qrN   = vSlot.filter(v => v.canal_via === 'qr').length
+        const lnkN  = int - qrN
+        const cons  = contactos.filter(c => c.canal_ref === slot.codigo && en(c.created_at)).length
+        const conv  = int > 0 ? (cons / int * 100).toFixed(1) + '%' : '—'
+        set(`slot-n-int-${slot.id}`,  int)
+        set(`slot-n-cons-${slot.id}`, cons)
+        set(`slot-n-conv-${slot.id}`, conv)
+        set(`slot-n-qr-${slot.id}`,   qrN)
+        set(`slot-n-lnk-${slot.id}`,  lnkN)
+      })
     }
 
     // ── Canal activo: propiedades con mini-chart individual ──────────────────
@@ -2417,17 +2479,21 @@
             <div class="slot-full-body">
               <div class="slot-full-stats">
                 <div class="slot-stat">
-                  <span class="slot-stat-n" style="color:${colorHex};">${scans}</span>
-                  <span class="slot-stat-l">SCANS · 30D</span>
+                  <span class="slot-stat-n" id="slot-n-int-${slot.id}" style="color:${colorHex};">${scans}</span>
+                  <span class="slot-stat-l">INTERACCIONES</span>
                 </div>
                 <div class="slot-stat">
-                  <span class="slot-stat-n" style="color:#e8c96a;">${slotCons.length}</span>
+                  <span class="slot-stat-n" id="slot-n-cons-${slot.id}" style="color:#e8c96a;">${slotCons.length}</span>
                   <span class="slot-stat-l">CONSULTAS</span>
                 </div>
                 <div class="slot-stat">
-                  <span class="slot-stat-n">${conv}</span>
+                  <span class="slot-stat-n" id="slot-n-conv-${slot.id}">${conv}</span>
                   <span class="slot-stat-l">CONVERSIÓN</span>
                 </div>
+              </div>
+              <div style="display:flex;gap:.8rem;margin-top:.4rem;padding-top:.38rem;border-top:1px solid rgba(255,255,255,.07);">
+                <span style="font-size:.6rem;color:rgba(255,255,255,.42);display:flex;align-items:center;gap:.25rem;letter-spacing:.04em;text-transform:uppercase;"><span style="color:#50c878;">●</span> QR&nbsp;<strong id="slot-n-qr-${slot.id}" style="color:#50c878;font-weight:700;">—</strong></span>
+                <span style="font-size:.6rem;color:rgba(255,255,255,.42);display:flex;align-items:center;gap:.25rem;letter-spacing:.04em;text-transform:uppercase;"><span style="color:#6495ed;">●</span> Link&nbsp;<strong id="slot-n-lnk-${slot.id}" style="color:#6495ed;font-weight:700;">—</strong></span>
               </div>
               <div class="slot-full-qr-footer" style="${ptrOff}">
                 <div class="qr-slot-canvas-wrap" style="padding:5px;">
@@ -2487,17 +2553,21 @@
               <div style="font-size:.68rem;color:rgba(255,255,255,.38);letter-spacing:.03em;margin-bottom:.65rem;word-break:break-all;">${esc(destLabel)}</div>
               <div class="slot-full-stats">
                 <div class="slot-stat">
-                  <span class="slot-stat-n" style="color:${colorHex};">${scans}</span>
-                  <span class="slot-stat-l">SCANS · 30D</span>
+                  <span class="slot-stat-n" id="slot-n-int-${slot.id}" style="color:${colorHex};">${scans}</span>
+                  <span class="slot-stat-l">INTERACCIONES</span>
                 </div>
                 <div class="slot-stat">
-                  <span class="slot-stat-n" style="color:#e8c96a;">${slotCons.length}</span>
+                  <span class="slot-stat-n" id="slot-n-cons-${slot.id}" style="color:#e8c96a;">${slotCons.length}</span>
                   <span class="slot-stat-l">CONSULTAS</span>
                 </div>
                 <div class="slot-stat">
-                  <span class="slot-stat-n">${conv}</span>
+                  <span class="slot-stat-n" id="slot-n-conv-${slot.id}">${conv}</span>
                   <span class="slot-stat-l">CONVERSIÓN</span>
                 </div>
+              </div>
+              <div style="display:flex;gap:.8rem;margin-top:.4rem;padding-top:.38rem;border-top:1px solid rgba(255,255,255,.07);">
+                <span style="font-size:.6rem;color:rgba(255,255,255,.42);display:flex;align-items:center;gap:.25rem;letter-spacing:.04em;text-transform:uppercase;"><span style="color:#50c878;">●</span> QR&nbsp;<strong id="slot-n-qr-${slot.id}" style="color:#50c878;font-weight:700;">—</strong></span>
+                <span style="font-size:.6rem;color:rgba(255,255,255,.42);display:flex;align-items:center;gap:.25rem;letter-spacing:.04em;text-transform:uppercase;"><span style="color:#6495ed;">●</span> Link&nbsp;<strong id="slot-n-lnk-${slot.id}" style="color:#6495ed;font-weight:700;">—</strong></span>
               </div>
               <div class="slot-full-qr-footer" style="${ptrOff}">
                 <div class="qr-slot-canvas-wrap" style="padding:5px;">
