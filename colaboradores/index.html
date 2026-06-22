@@ -1597,18 +1597,20 @@
         </div>`
 
       // Render de gráficos y QR canvases tras DOM
+      // ETAPA 3A.2: fechas iniciales definidas antes del RAF para pasarlas a renderPanelesActivos y renderSlotMiniCharts
+      const _h = new Date(); const _d = new Date(_h); _d.setHours(0,0,0,0)
       requestAnimationFrame(() => {
         renderGraficoPasivo(contactos, 0, null, null, { multiSlot: true })
         renderPanelesActivos(contactos)
         if (misSlots.length) {
           generarQRCanvases()
-          renderSlotMiniCharts()
         }
         // ETAPA 2: KPI iniciales en HOY (medianoche → ahora)
-        const _h = new Date(); const _d = new Date(_h); _d.setHours(0,0,0,0)
         actualizarKpisActivo(_d, _h)
         // ETAPA 3A.1: métricas de cards — período inicial = Hoy
         actualizarSlotCards(_d, _h)
+        // ETAPA 3A.2: mini-gráficos de cards — período inicial = Hoy
+        if (misSlots.length) renderSlotMiniCharts(_d, _h, 'hoy')
       })
     }
 
@@ -1879,6 +1881,29 @@
       return { labelsEvol, dataScans, dataConsultas }
     }
 
+    // datosEvolucionActivo — igual que datosEvolucionPasivo pero con bloqueDias del panel activo:
+    // ≤30d → 1 punto por día, 31-45d → 3d, 46-120d → 7d, >120d → 30d
+    // NO modificar datosEvolucionPasivo para no afectar panel pasivo.
+    function datosEvolucionActivo(contactos, desde, hasta) {
+      const inicio = new Date(desde)
+      inicio.setHours(0,0,0,0)
+      const fin = new Date(hasta)
+      fin.setHours(23,59,59,999)
+      const dias = Math.max(1, Math.ceil((fin - inicio) / 86400000))
+      const bloqueDias = dias <= 30 ? 1 : dias <= 45 ? 3 : dias <= 120 ? 7 : 30
+      const labelsEvol = [], dataScans = [], dataConsultas = []
+      for (let cursor = new Date(inicio); cursor <= fin; cursor = new Date(cursor.getTime() + bloqueDias * 86400000)) {
+        const bloqueIni = new Date(cursor)
+        const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
+        labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
+        dataScans.push(visitas.filter(v => { const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+      }
+      const firstIdx = dataScans.findIndex((v, i) => v > 0 || dataConsultas[i] > 0)
+      if (firstIdx > 0) { labelsEvol.splice(0, firstIdx); dataScans.splice(0, firstIdx); dataConsultas.splice(0, firstIdx) }
+      return { labelsEvol, dataScans, dataConsultas }
+    }
+
     function pvGrad(ctx, rgb, alto = .45) {
       const h = ctx.canvas.height || 260
       const g = ctx.createLinearGradient(0, 0, 0, h)
@@ -1992,7 +2017,7 @@
       const pluginGoldGlow = {
         id:'pvGoldGlow4',
         beforeDatasetDraw(chart,args) {
-          if (args.index===0) { chart.ctx.save(); chart.ctx.shadowColor='rgba(122,174,255,.32)'; chart.ctx.shadowBlur=9 }
+          if (args.index===0) { chart.ctx.save(); chart.ctx.shadowColor='rgba(122,174,255,.28)'; chart.ctx.shadowBlur=6 }
           else if (args.index===1) { chart.ctx.save(); chart.ctx.shadowColor='rgba(232,201,106,.5)'; chart.ctx.shadowBlur=10 }
         },
         afterDatasetDraw(chart,args) { if(args.index===0||args.index===1) chart.ctx.restore() }
@@ -2002,7 +2027,7 @@
         const base = [
           {
             label:'Interacciones', data:lblsData[0], order:2,
-            borderColor:'#7aaeff', borderWidth: multiSlot ? 3 : 2.5, tension:0.4, fill: true,
+            borderColor:'#7aaeff', borderWidth: multiSlot ? 2 : 1.8, tension:0.4, fill: true,
             cubicInterpolationMode:'monotone',
             backgroundColor: gradAzul,
             pointRadius:0, pointHoverRadius:6,
@@ -2010,7 +2035,7 @@
           },
           {
             label:'Consultas', data:lblsData[1], order:1,
-            borderColor:'#e8c96a', borderWidth: multiSlot ? 2.5 : 3, tension:0.4, fill:false,
+            borderColor:'#e8c96a', borderWidth: 1.6, tension:0.4, fill:false,
             cubicInterpolationMode:'monotone', spanGaps:true,
             pointRadius:0, pointHoverRadius:7,
             pointBackgroundColor:'#0c0c0e', pointBorderColor:'#e8c96a', pointBorderWidth:2,
@@ -2023,7 +2048,7 @@
             const hidden = window._pvSlotHidden[ln.codigo] === true
             base.push({
               label: ln.nombre, _slotCodigo: ln.codigo, data: ln.data, order: 10 + i,
-              borderColor: ln.color, borderWidth: 1.6, tension: 0.4, fill: false,
+              borderColor: ln.color, borderWidth: 1.4, tension: 0.4, fill: false,
               cubicInterpolationMode: 'monotone', spanGaps: true,
               pointRadius: 0, pointHoverRadius: 4,
               pointHoverBackgroundColor: ln.color, pointHoverBorderColor: '#fff', pointHoverBorderWidth: 1.5,
@@ -2087,9 +2112,12 @@
           })
         }
 
+        const _dsHoy = datasetsBase([bucketScans, bucketCons], slotLinesHoy)
+        _dsHoy[1].pointRadius = bucketCons.map(v => v > 0 ? 6 : 0)
+        _dsHoy[1].pointBackgroundColor = '#e8c96a'
         _pvChart4 = new Chart(ctx4, {
           type:'line',
-          data:{ labels:lbls, datasets:datasetsBase([bucketScans, bucketCons], slotLinesHoy) },
+          data:{ labels:lbls, datasets:_dsHoy },
           plugins:[
             {
               id:'pvLivePulse4',
@@ -2126,11 +2154,10 @@
               legend: multiSlot ? {display:false} : legendBase,
               tooltip:{
                 ...tooltipBase,
+                filter: item => item.datasetIndex === 0 || Number(item.raw) > 0,
                 callbacks:{
                   title(items){ const i=items[0]?.dataIndex||0; const m=i*VENTANA; const hh=String(Math.floor(m/60)).padStart(2,'0'); const mm=String(m%60).padStart(2,'0'); return `${hh}:${mm} – ${hh}:${String(m%60+VENTANA-1).padStart(2,'0')}` },
-                  label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` },
-                  // Filtra los slot ocultos del tooltip automáticamente (hidden los excluye Chart.js)
-                  afterBody(items){ return null }
+                  label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` }
                 }
               }
             },
@@ -2194,7 +2221,7 @@
         const pvZBP = document.getElementById('pvHoyZoomBar'); if (pvZBP) pvZBP.style.display = 'none'
         const hasta = hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : new Date()
         const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime()-(dias-1)*86400000)
-        const { labelsEvol, dataScans, dataConsultas } = datosEvolucionPasivo(contactos, desde, hasta)
+        const { labelsEvol, dataScans, dataConsultas } = (multiSlot ? datosEvolucionActivo : datosEvolucionPasivo)(contactos, desde, hasta)
 
         const combined = dataScans.map((s,i)=>s+dataConsultas[i])
         const peakVal = Math.max(...combined, 0)
@@ -2215,7 +2242,7 @@
           const _ini = new Date(desde); _ini.setHours(0,0,0,0)
           const _fin = new Date(hasta);  _fin.setHours(23,59,59,999)
           const _dias = Math.max(1, Math.ceil((_fin - _ini) / 86400000))
-          const bloqueDias = _dias <= 14 ? 1 : _dias <= 45 ? 3 : _dias <= 120 ? 7 : 30
+          const bloqueDias = _dias <= 30 ? 1 : _dias <= 45 ? 3 : _dias <= 120 ? 7 : 30
           // 3. Construir los mismos buckets que usó la línea total
           const _buckets = []
           for (let _c = new Date(_ini); _c <= _fin; _c = new Date(_c.getTime() + bloqueDias * 86400000)) {
@@ -2249,9 +2276,12 @@
         setText('pvLiveConsultas4', dataConsultas.reduce((s,v)=>s+v,0))
         setText('pvLiveComisiones4', contactos.length)
 
+        const _dsPer = datasetsBase([dataScans, dataConsultas], slotLinesPeriodo)
+        _dsPer[1].pointRadius = dataConsultas.map(v => v > 0 ? 6 : 0)
+        _dsPer[1].pointBackgroundColor = '#e8c96a'
         _pvChart4 = new Chart(ctx4, {
           type:'line',
-          data:{ labels:labelsEvol, datasets:datasetsBase([dataScans, dataConsultas], slotLinesPeriodo) },
+          data:{ labels:labelsEvol, datasets:_dsPer },
           plugins:[pluginPeakMark(peakIdx), pluginGoldGlow],
           options:{
             responsive:true, maintainAspectRatio:false,
@@ -2262,6 +2292,7 @@
               legend: multiSlot ? {display:false} : legendBase,
               tooltip:{
                 ...tooltipBase,
+                filter: item => item.datasetIndex === 0 || Number(item.raw) > 0,
                 callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } }
               }
             },
@@ -2379,10 +2410,12 @@
           desde.setTime(hasta.getTime() - (dias - 1) * 86400000)
           desde.setHours(0,0,0,0)
         }
+        const _lbl = valor === 'hoy' ? 'hoy' : `últimos ${dias} días`
         renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot() })
         if (_modoMultiSlot()) renderPanelesActivos(contactos)
         actualizarKpisActivo(desde, hasta)
         actualizarSlotCards(desde, hasta)
+        if (misSlots.length) renderSlotMiniCharts(desde, hasta, _lbl)
       }
     }
 
@@ -2396,6 +2429,7 @@
       if (_modoMultiSlot()) renderPanelesActivos(contactos)
       actualizarKpisActivo(fechaLocal(desde), fechaLocal(hasta))
       actualizarSlotCards(fechaLocal(desde), fechaLocal(hasta))
+      if (misSlots.length) renderSlotMiniCharts(fechaLocal(desde), fechaLocal(hasta), 'período seleccionado')
     }
 
     // ── ETAPA 3A.1: actualizar métricas de cards por período (sin regenerar HTML) ──
@@ -2508,9 +2542,9 @@
             </div>
           </div>
           <div class="slot-full-right">
-            <div class="slot-chart-label" style="color:${colorHex};opacity:.8;">Interacciones · últimos 30 días</div>
+            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Interacciones · últimos 30 días</div>
             <div class="slot-chart-wrap"><canvas id="slot-chart-${slot.id}"></canvas></div>
-            <div class="slot-chart-total">${scans} total</div>
+            <div class="slot-chart-total" id="slot-chart-tot-${slot.id}">${scans} total</div>
           </div>
         </div>`
       }).join('')
@@ -2582,9 +2616,9 @@
             </div>
           </div>
           <div class="slot-full-right">
-            <div class="slot-chart-label" style="color:${colorHex};opacity:.8;">Interacciones · últimos 30 días</div>
+            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Interacciones · últimos 30 días</div>
             <div class="slot-chart-wrap"><canvas id="slot-chart-${slot.id}"></canvas></div>
-            <div class="slot-chart-total">${scans} total</div>
+            <div class="slot-chart-total" id="slot-chart-tot-${slot.id}">${scans} total</div>
           </div>
         </div>`
       }).join('')
@@ -2616,59 +2650,88 @@
       return secPropiedades + secCanales
     }
 
-    function renderSlotMiniCharts() {
-      if (typeof Chart === 'undefined') return
-      const ahora  = new Date()
-      const dias30 = Array.from({length: 30}, (_, i) => {
-        const d = new Date(ahora); d.setDate(d.getDate() - (29 - i)); d.setHours(0,0,0,0); return d
-      })
-      const labels = dias30.map(d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}))
+    // ETAPA 3A.2: registro de instancias para destroy antes de recrear
+    const _slotCharts = {}
 
-      const hace30Slot = new Date(Date.now() - 30 * 86400000)
+    function renderSlotMiniCharts(desde, hasta, labelPeriodo) {
+      if (typeof Chart === 'undefined') return
+      const d0 = desde ? new Date(desde) : new Date(Date.now() - 30 * 86400000)
+      const d1 = hasta ? new Date(hasta) : new Date()
+      d0.setHours(0,0,0,0); d1.setHours(23,59,59,999)
+      const totalDias = Math.max(1, Math.ceil((d1 - d0) / 86400000))
+      // HOY o período de 1 día → buckets horarios (24h); más días → buckets diarios
+      const isSingleDay = totalDias === 1
+      const diasArr = isSingleDay ? [] : Array.from({length: totalDias}, (_, i) => {
+        const d = new Date(d0.getTime() + i * 86400000); d.setHours(0,0,0,0); return d
+      })
+      const labels = isSingleDay
+        ? Array.from({length: 24}, (_, h) => `${String(h).padStart(2,'0')}:00`)
+        : diasArr.map(d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}))
+      const lblPeriodo = labelPeriodo || 'últimos 30 días'
 
       misSlots.forEach(slot => {
         const canvas = document.getElementById(`slot-chart-${slot.id}`)
         if (!canvas) return
-        // Color determinístico de la propiedad
+        // Destroy instancia anterior antes de recrear
+        if (_slotCharts[slot.id]) { try { _slotCharts[slot.id].destroy() } catch(e){} ; _slotCharts[slot.id] = null }
         const colorHex = colorDeSlot(slot.codigo)
         const rgba = (a) => colorHex.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)).join(',')+`,${a}`
-        // Solo últimos 30 días, filtrado por slot
-        const slotVis = visitas.filter(v =>
-          v.canal_ref === slot.codigo && new Date(v.created_at) >= hace30Slot
-        )
-        const data = dias30.map(dIni => {
-          const dFin = new Date(dIni.getTime() + 86400000)
-          return slotVis.filter(v => { const d = new Date(v.created_at); return d >= dIni && d < dFin }).length
-        })
+        const slotVis  = visitas.filter(v => v.canal_ref === slot.codigo)
+        const slotCons = contactos.filter(c => c.canal_ref === slot.codigo)
+        // HOY → contar por hora; multiday → contar por día
+        let data, dataCons
+        if (isSingleDay) {
+          data     = Array.from({length:24}, (_, h) => { const hI=new Date(d0); hI.setHours(h,0,0,0); const hF=new Date(d0); hF.setHours(h,59,59,999); return slotVis.filter(v=>{const d=new Date(v.created_at);return d>=hI&&d<=hF}).length })
+          dataCons = Array.from({length:24}, (_, h) => { const hI=new Date(d0); hI.setHours(h,0,0,0); const hF=new Date(d0); hF.setHours(h,59,59,999); return slotCons.filter(c=>{const d=new Date(c.created_at);return d>=hI&&d<=hF}).length })
+        } else {
+          data     = diasArr.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return slotVis.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
+          dataCons = diasArr.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return slotCons.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
+        }
         const ctx2d = canvas.getContext('2d')
-        new Chart(ctx2d, {
+        _slotCharts[slot.id] = new Chart(ctx2d, {
           type: 'line',
           data: {
             labels,
-            datasets: [{
-              data,
-              borderColor: colorHex,
-              borderWidth: 2.5,
-              tension: 0.4,
-              cubicInterpolationMode: 'monotone',
-              fill: true,
-              // Gradiente creado dentro del contexto del chart (cuando ya tiene dimensiones)
-              backgroundColor: (context) => {
-                const chart = context.chart
-                const { ctx: c, chartArea } = chart
-                if (!chartArea) return `rgba(${rgba(0.2)})`
-                const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-                g.addColorStop(0,   `rgba(${rgba(0.50)})`)
-                g.addColorStop(0.5, `rgba(${rgba(0.15)})`)
-                g.addColorStop(1,   `rgba(${rgba(0.00)})`)
-                return g
+            datasets: [
+              {
+                data,
+                borderColor: colorHex,
+                borderWidth: 2.5,
+                tension: 0.4,
+                cubicInterpolationMode: 'monotone',
+                fill: true,
+                backgroundColor: (context) => {
+                  const chart = context.chart
+                  const { ctx: c, chartArea } = chart
+                  if (!chartArea) return `rgba(${rgba(0.2)})`
+                  const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+                  g.addColorStop(0,   `rgba(${rgba(0.50)})`)
+                  g.addColorStop(0.5, `rgba(${rgba(0.15)})`)
+                  g.addColorStop(1,   `rgba(${rgba(0.00)})`)
+                  return g
+                },
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: colorHex,
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2,
               },
-              pointRadius: 0,
-              pointHoverRadius: 5,
-              pointHoverBackgroundColor: colorHex,
-              pointHoverBorderColor: '#fff',
-              pointHoverBorderWidth: 2,
-            }]
+              {
+                data: dataCons,
+                borderColor: '#e8c96a',
+                borderWidth: 1.5,
+                tension: 0.4,
+                cubicInterpolationMode: 'monotone',
+                fill: false,
+                spanGaps: true,
+                pointRadius: dataCons.map(v => v > 0 ? 5 : 0),
+                pointBackgroundColor: '#e8c96a',
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: '#e8c96a',
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2,
+              }
+            ]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
@@ -2683,9 +2746,12 @@
                 titleColor: 'rgba(255,255,255,.55)', titleFont: { size: 10 },
                 bodyColor: colorHex, bodyFont: { size: 12, weight: '600' },
                 padding: 10, cornerRadius: 6,
+                filter: item => item.datasetIndex === 0 || Number(item.raw) > 0,
                 callbacks: {
                   title: ctx => ctx[0].label,
-                  label: ctx => ` ${ctx.raw} interacción${ctx.raw !== 1 ? 'es' : ''}`
+                  label: ctx => ctx.datasetIndex === 0
+                    ? ` ${ctx.raw} interacción${ctx.raw !== 1 ? 'es' : ''}`
+                    : ` ${ctx.raw} consulta${ctx.raw !== 1 ? 's' : ''}`
                 }
               }
             },
@@ -2721,11 +2787,16 @@
             }
           }
         })
+        // Actualizar etiqueta y total por período vía DOM
+        const lblEl = document.getElementById(`slot-chart-lbl-${slot.id}`)
+        if (lblEl) lblEl.textContent = `Interacciones · ${lblPeriodo}`
+        const totEl = document.getElementById(`slot-chart-tot-${slot.id}`)
+        if (totEl) totEl.textContent = `${data.reduce((s,v)=>s+v,0)} total`
       })
     }
 
     // ── Canal activo: sección de gráfico + funnel (sin tabla de contactos) ──
-    // Inicializa los charts de los 4 paneles inferiores (Actividad 30d + Conversión 30d tienen chart).
+    // Paneles inferiores: histórico explícito últimos 30 días (Opción A — no mezclar períodos).
     function renderPanelesActivos(contactos) {
       if (typeof Chart === 'undefined') return
       if (_pvPanelAct) { _pvPanelAct.destroy(); _pvPanelAct = null }
@@ -2874,7 +2945,7 @@
         <div class="pv-panel">
           <div class="pv-panel-head">
             <div>
-              <div class="pv-panel-titulo">Actividad general · últimos 30 días</div>
+              <div class="pv-panel-titulo" id="pvPanelAct30Tit">Actividad general · últimos 30 días</div>
               <div class="pv-panel-sub">Total de interacciones, consultas y cada propiedad.</div>
             </div>
           </div>
@@ -2903,7 +2974,7 @@
         <div class="pv-panel">
           <div class="pv-panel-head">
             <div>
-              <div class="pv-panel-titulo">Conversión · últimos 30 días</div>
+              <div class="pv-panel-titulo" id="pvPanelConv30Tit">Conversión · últimos 30 días</div>
               <div class="pv-panel-sub">Consultas ÷ interacciones × 100.</div>
             </div>
             <div style="text-align:right;">
@@ -2960,17 +3031,17 @@
         </div>`
     }
 
-    // Panel 4 — Rendimiento por propiedad (ranking)
+    // Panel 4 — Rendimiento por canal (ranking)
     function panelRendimientoPropiedad(contactos) {
       if (!misSlots.length) return `
         <div class="pv-panel">
           <div class="pv-panel-head"><div>
-            <div class="pv-panel-titulo">Rendimiento por propiedad</div>
+            <div class="pv-panel-titulo">Rendimiento por canal</div>
             <div class="pv-panel-sub">Ranking por interacciones.</div>
           </div></div>
-          <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Aún no tenés propiedades asignadas.</div></div>
+          <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Aún no tenés canales asignados.</div></div>
         </div>`
-      const rows = misSlots.filter(esPropiedadReal).map(slot => {
+      const rows = misSlots.filter(s => s.activo !== false).map(slot => {
         const scans = scansPorSlot[slot.codigo] || 0
         const slotCons = contactos.filter(c => c.canal_ref === slot.codigo).length
         const conv = scans > 0 ? Number((slotCons/scans*100).toFixed(1)) : 0
@@ -2980,7 +3051,7 @@
       return `
         <div class="pv-panel">
           <div class="pv-panel-head"><div>
-            <div class="pv-panel-titulo">Rendimiento por propiedad</div>
+            <div class="pv-panel-titulo">Rendimiento por canal</div>
             <div class="pv-panel-sub">Ordenado por interacciones (mayor a menor).</div>
           </div></div>
           <div class="pv-rank-head"><span>#</span><span>Propiedad</span><span class="r">Scan</span><span class="r">Cons.</span><span class="r">Conv.</span></div>
