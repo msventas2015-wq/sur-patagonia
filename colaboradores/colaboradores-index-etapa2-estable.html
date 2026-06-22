@@ -1,0 +1,2990 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Panel — Sur Patagonia Colaboradores</title>
+  <link rel="manifest" href="/colaboradores/manifest.json">
+  <meta name="theme-color" content="#0f0e0c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sur Patagonia">
+  <link rel="apple-touch-icon" href="/assets/app-icon-180.png">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/colaboradores/sw.js', { scope: '/colaboradores/' });
+      });
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0e0c;
+      --card: #161513;
+      --border: rgba(255,255,255,0.07);
+      --accent: #d76f3f;
+      --dorado: #c9a84c;
+      --verde: #50c878;
+      --gris: #aaa;
+      --blanco: #f5f3f0;
+      --rojo: #e05c5c;
+    }
+    body {
+      background: var(--bg);
+      color: var(--blanco);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: rgba(15,14,12,.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-brand { display:flex; flex-direction:row; align-items:center; gap:.9rem; }
+    .header-brand img { width:240px; height:auto; filter:brightness(0) invert(1); opacity:.96; }
+    .header-brand span { color:rgba(255,255,255,.45); font-size:.52rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; padding-left:.9rem; border-left:1px solid rgba(255,255,255,.12); }
+    .sp-bg-brand {
+      position: fixed;
+      bottom: 6vh; left: 0; right: 0;
+      height: 65vh;
+      background: url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52% / cover no-repeat;
+      filter: grayscale(1) brightness(0.75);
+      opacity: .11;
+      pointer-events: none;
+      z-index: 9;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
+    }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .header-canal { font-size: .75rem; color: var(--gris); }
+    .header-canal strong { color: var(--blanco); display: block; font-size: .82rem; }
+    .btn-salir {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--gris);
+      padding: .35rem .8rem;
+      border-radius: 8px;
+      font-size: .72rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .18s;
+    }
+    .btn-salir:hover { border-color: var(--rojo); color: var(--rojo); }
+
+    /* Main */
+    .main { max-width: 900px; margin: 0 auto; padding: 2rem 1.4rem; }
+
+    /* Hero pasivo */
+    .pasivo-hero {
+      position: relative; overflow: hidden;
+      padding: 2rem 2.2rem 1.8rem;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(201,168,76,.18);
+      border-top: 1px solid rgba(201,168,76,.48);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 92% 20%, rgba(215,111,63,.1), transparent 32%),
+        linear-gradient(135deg, rgba(201,168,76,.09), rgba(255,255,255,.01) 60%),
+        #11100e;
+    }
+    .pasivo-hero::after {
+      content: ''; position: absolute; inset: auto 0 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,.4), transparent);
+    }
+    .pasivo-eyebrow { font-size:.55rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; color:#c9a84c; margin-bottom:.6rem; }
+    .pasivo-titulo {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800; letter-spacing: -.03em; line-height: 1; text-transform: uppercase;
+      background: linear-gradient(120deg, #ffffff 0%, rgba(255,255,255,.6) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: .4rem;
+    }
+    .pasivo-geo { font-size:.61rem; color:rgba(255,255,255,.3); letter-spacing:.14em; text-transform:uppercase; margin-top:.4rem; }
+    .pasivo-status { display:flex; align-items:center; gap:.5rem; margin-top:.9rem; font-size:.61rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.45); }
+
+    /* Estado QR */
+    .qr-status {
+      background: linear-gradient(160deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,.02) 100%);
+      border: 1px solid rgba(255,255,255,.07);
+      border-top: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(4px);
+      border-radius: 14px;
+      padding: 1rem 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .qr-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .qr-dot.activo { background: var(--verde); box-shadow: 0 0 8px rgba(80,200,120,.5); }
+    .qr-dot.campana { background: var(--dorado); box-shadow: 0 0 8px rgba(201,168,76,.5); }
+    .qr-dot.inactivo { background: var(--gris); }
+    .qr-info { flex: 1; }
+    .qr-label { font-size: .7rem; color: var(--gris); }
+    .qr-valor { font-size: .85rem; font-weight: 600; }
+    .qr-codigo { font-family: monospace; font-size: .72rem; color: var(--accent); margin-left: auto; }
+
+    /* KPIs */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: .8rem;
+      margin-bottom: 1.2rem;
+    }
+    .kpi {
+      background: linear-gradient(135deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.02) 100%);
+      border: 1px solid rgba(255,255,255,.08);
+      border-top: 1px solid rgba(255,255,255,.14);
+      border-radius: 14px;
+      padding: 1.1rem 1.2rem;
+      position: relative; overflow: hidden;
+    }
+    .kpi::before { content:''; position:absolute; left:0; top:20%; bottom:20%; width:2px; background:linear-gradient(to bottom,transparent,var(--c,#c9a84c),transparent); border-radius:99px; }
+    .kpi-grid .kpi:nth-child(1) { --c:#d76f3f; }
+    .kpi-grid .kpi:nth-child(2) { --c:#6495ed; }
+    .kpi-grid .kpi:nth-child(3) { --c:#c9a84c; }
+    .kpi-grid .kpi:nth-child(4) { --c:#50c878; }
+    .kpi-n {
+      font-size: 2.45rem;
+      font-weight: 300;
+      line-height: 1;
+      margin-bottom: .3rem;
+      background: linear-gradient(135deg, #fff, rgba(255,255,255,.7));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .kpi-n.accent { background: linear-gradient(135deg,#d76f3f,#e8956a); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .kpi-n.dorado { background: linear-gradient(135deg,#c9a84c,#e8c96a); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .kpi-n.verde  { background: linear-gradient(135deg,#50c878,#7de89a); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .kpi-label { font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--gris); font-weight: 600; }
+    .kpi-sub { font-size: .65rem; color: var(--gris); margin-top: .3rem; }
+
+    /* Sección */
+    .seccion {
+      background: linear-gradient(160deg, rgba(255,255,255,.055) 0%, rgba(255,255,255,.02) 100%);
+      border: 1px solid rgba(255,255,255,.07);
+      border-top: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(4px);
+      border-radius: 14px;
+      padding: 1.3rem 1.4rem;
+      margin-bottom: 1.2rem;
+    }
+    .sec-titulo {
+      font-size: .6rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--gris);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    /* Tabla consultas */
+    .tabla { width: 100%; border-collapse: collapse; }
+    .tabla th {
+      font-size: .58rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--gris);
+      font-weight: 600;
+      padding: .55rem .7rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    .tabla td {
+      font-size: .76rem;
+      color: var(--blanco);
+      padding: .75rem .7rem;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      vertical-align: top;
+    }
+    .tabla tr:last-child td { border-bottom: none; }
+
+    /* Estado badges */
+    .estado-badge {
+      display: inline-block;
+      padding: .15rem .55rem;
+      border-radius: 999px;
+      font-size: .6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      white-space: nowrap;
+    }
+    .estado-nueva        { background: rgba(80,200,120,.12); color: var(--verde); }
+    .estado-en_contacto  { background: rgba(201,168,76,.12); color: var(--dorado); }
+    .estado-en_negociacion { background: rgba(215,111,63,.12); color: var(--accent); }
+    .estado-cerrada      { background: rgba(100,149,237,.12); color: #6495ed; }
+    .estado-descartada   { background: rgba(136,136,136,.12); color: var(--gris); }
+
+    /* Via badge */
+    .via-badge {
+      font-size: .6rem;
+      color: #6495ed;
+      font-family: monospace;
+    }
+    .via-badge.qr { color: var(--verde); }
+
+    .empty-msg {
+      text-align: center;
+      padding: 2rem;
+      color: var(--gris);
+      font-size: .8rem;
+    }
+
+    /* Tipo canal badge */
+    .tipo-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-size: .62rem;
+      font-weight: 600;
+      padding: .18rem .55rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .tipo-pasivo    { background: rgba(136,136,136,.12); color: var(--gris); border: 1px solid rgba(136,136,136,.2); }
+    .tipo-activo    { background: rgba(201,168,76,.1); color: var(--dorado); border: 1px solid rgba(201,168,76,.25); }
+
+    .sp { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,.1); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 4rem auto; display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider { height: 1px; background: var(--border); margin: 1.4rem 0; }
+
+    /* ── Mensajes ── */
+    .msg-inbox { display:flex; flex-direction:column; gap:.5rem; }
+    .msg-card { background:rgba(255,255,255,.025); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .msg-card-head { display:flex; align-items:center; gap:.7rem; padding:.85rem 1rem; cursor:pointer; }
+    .msg-unread-dot { width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+    .msg-unread-dot.leido { background:transparent; }
+    .msg-card-asunto { font-size:.82rem; font-weight:600; color:var(--blanco); flex:1; }
+    .msg-card-fecha  { font-size:.62rem; color:var(--gris); white-space:nowrap; }
+    .msg-card-body   { display:none; border-top:1px solid var(--border); padding:.9rem 1rem 1rem; }
+    .msg-card-body.open { display:block; }
+    .msg-card-cuerpo { font-size:.78rem; color:rgba(255,255,255,.78); line-height:1.7; white-space:pre-wrap; margin-bottom:.8rem; }
+
+    .reply-area { margin-top:.6rem; }
+    .reply-titulo { font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gris); font-weight:600; margin-bottom:.55rem; }
+    .reply-item-colab { background:rgba(215,111,63,.07); border-radius:8px; padding:.55rem .75rem; margin-bottom:.35rem; }
+    .reply-item-colab .reply-cuerpo { font-size:.75rem; color:rgba(255,255,255,.7); }
+    .reply-item-colab .reply-meta { font-size:.6rem; color:var(--gris); margin-top:.2rem; }
+    .reply-input {
+      width:100%; padding:.5rem .7rem; background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.1); color:var(--blanco);
+      border-radius:8px; font-family:'Inter',sans-serif; font-size:.76rem;
+      resize:vertical; min-height:60px; box-sizing:border-box; margin-top:.4rem;
+    }
+    .reply-input:focus { outline:none; border-color:rgba(215,111,63,.5); }
+    .btn-reply {
+      margin-top:.5rem; padding:.42rem 1rem; background:var(--accent); color:#fff;
+      border:none; border-radius:8px; font-size:.72rem; font-weight:600;
+      cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .15s;
+    }
+    .btn-reply:hover { opacity:.85; }
+    .btn-reply:disabled { opacity:.4; cursor:not-allowed; }
+    .no-msgs { text-align:center; padding:2rem; color:var(--gris); font-size:.78rem; }
+    .badge-nuevo { font-size:.58rem; background:rgba(215,111,63,.15); color:var(--accent); border-radius:999px; padding:.1rem .5rem; flex-shrink:0; }
+
+    /* ── Panel de impacto del aliado ── */
+    .main.pv-main { max-width:1220px; padding-top:1.5rem; }
+    .pv-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:2rem; min-height:230px; padding:2.4rem 2.2rem; margin-bottom:.75rem; border:1px solid rgba(201,168,76,.18); border-top-color:rgba(201,168,76,.52); border-radius:14px; background:radial-gradient(circle at 88% 20%,rgba(215,111,63,.13),transparent 34%),linear-gradient(135deg,rgba(201,168,76,.1),rgba(255,255,255,.015) 58%),#11100e; }
+    .pv-hero::after { content:''; position:absolute; inset:auto 0 0; height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,.45),transparent); }
+    .pv-hero-eyebrow { margin-bottom:1.1rem; color:#c9a84c; font-size:.55rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; }
+    .pv-hero-hola { color:rgba(255,255,255,.45); font-family:'Inter',sans-serif; font-size:.82rem; font-weight:300; line-height:1.1; letter-spacing:.04em; }
+    .pv-hero-hola strong { display:block; font-family:'Inter',sans-serif; font-size:2rem; font-weight:700; color:#f5f3f0; letter-spacing:-.02em; line-height:1.05; margin-top:.25rem; }
+    .pv-hero-impacto { max-width:560px; margin-top:1.1rem; color:rgba(255,255,255,.52); font-size:.83rem; line-height:1.65; }
+    .pv-hero-geo { display:none; }
+    .pv-identity { display:flex; flex-direction:column; align-items:center; gap:.85rem; min-width:150px; }
+    .pv-monogram { width:82px; height:82px; display:grid; place-items:center; border:1px solid rgba(201,168,76,.32); border-radius:50%; background:rgba(201,168,76,.07); color:#e8c96a; font-family:'Cormorant Garamond',serif; font-size:1.75rem; letter-spacing:.08em; box-shadow:0 0 32px rgba(201,168,76,.08); }
+    .pv-monogram-mobile { display:none; }
+    .pv-mini-mapa-wrap { display:flex; flex-direction:column; align-items:center; gap:.45rem; }
+    .pv-mini-mapa { width:160px; height:160px; overflow:hidden; border:1px solid rgba(201,168,76,.25); border-radius:10px; background:#111; pointer-events:none; }
+    .pv-mini-mapa-label { max-width:160px; color:rgba(255,255,255,.3); font-size:.56rem; letter-spacing:.14em; text-align:center; text-transform:uppercase; }
+    #pvMiniMapa .leaflet-control-zoom, #pvMiniMapa .leaflet-control-attribution { display:none !important; }
+    .pv-hero-estado { display:flex; align-items:center; justify-content:center; gap:.5rem; color:rgba(255,255,255,.55); font-size:.61rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
+    .pv-hero-code { color:rgba(255,255,255,.18); font-family:monospace; font-size:.56rem; }
+    .pv-resumen { margin-bottom:1.25rem; padding:.75rem 1rem; text-align:center; color:rgba(255,255,255,.42); font-size:.72rem; }
+    .pv-resumen strong { color:#e8c96a; font-weight:600; }
+    .pv-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; margin-bottom:1rem; }
+    .pv-kpi { position:relative; overflow:hidden; min-height:148px; padding:1.25rem 1.3rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:12px; background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.018)); }
+    .pv-kpi::before { content:''; position:absolute; left:0; top:22%; bottom:22%; width:2px; background:var(--pv-c,#c9a84c); opacity:.75; }
+    .pv-kpi-label { margin-bottom:.55rem; color:rgba(255,255,255,.42); font-size:.58rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; }
+    .pv-kpi-n { font-size:2.45rem; font-weight:300; line-height:1; background:linear-gradient(135deg,#fff,rgba(255,255,255,.7)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .pv-kpi-n.pv-dorado { background:linear-gradient(135deg,#c9a84c,#e8c96a); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .pv-kpi-sub { margin-top:.55rem; color:rgba(255,255,255,.3); font-size:.63rem; line-height:1.45; }
+    .pv-kpi-delta { display:inline-flex; align-items:center; gap:.25rem; margin-top:.45rem; font-size:.61rem; font-weight:600; }
+    .pv-delta-pos { color:#50c878; }
+    .pv-delta-neg { color:#d9825b; }
+    .pv-delta-neu { color:rgba(255,255,255,.3); }
+    .pv-sec { padding:1.45rem 1.55rem; margin-bottom:1rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:12px; background:linear-gradient(155deg,rgba(255,255,255,.042),rgba(255,255,255,.014)); }
+    .pv-sec-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.15rem; }
+    .pv-sec-titulo { color:var(--gris); font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+    .pv-sec-sub { margin-top:.35rem; color:rgba(255,255,255,.45); font-size:.66rem; }
+    .pv-chart-wrap { position:relative; height:270px; }
+    .pv-opt-label { font-size:.55rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.35); margin-bottom:.65rem; padding-bottom:.5rem; border-bottom:1px solid rgba(255,255,255,.06); }
+    .pv-flt-bar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
+    .pv-flt-btn { min-height:32px; padding:.36rem .88rem; border:1px solid rgba(255,255,255,.09); border-radius:8px; background:rgba(255,255,255,.05); color:rgba(255,255,255,.5); font:600 .63rem 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:all .2s; }
+    .pv-flt-btn:hover { border-color:rgba(201,168,76,.35); color:var(--dorado); }
+    .pv-flt-btn.activo { background:linear-gradient(135deg,rgba(201,168,76,.22),rgba(201,168,76,.08)); border-color:rgba(201,168,76,.42); color:#e8c96a; box-shadow:0 0 14px rgba(201,168,76,.12); }
+    .pv-flt-custom { display:flex; align-items:flex-end; justify-content:flex-end; gap:.55rem; margin:0 0 1rem; padding:.7rem; border-top:1px solid rgba(255,255,255,.05); }
+    .pv-flt-custom label { display:flex; flex-direction:column; gap:.3rem; color:rgba(255,255,255,.3); font-size:.55rem; text-transform:uppercase; letter-spacing:.09em; }
+    .pv-fecha-input { padding:.38rem .5rem; border:1px solid rgba(255,255,255,.1); border-radius:7px; background:rgba(255,255,255,.04); color:#f5f3f0; color-scheme:dark; font:500 .67rem 'Inter',sans-serif; }
+    .pv-aplicar { min-height:31px; padding:.35rem .75rem; border:0; border-radius:7px; background:#c9a84c; color:#15130e; font:700 .6rem 'Inter',sans-serif; cursor:pointer; }
+    .pv-impact-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:1rem; margin-bottom:1rem; }
+    /* ── Pipeline CRM ── */
+    .pv-pipeline { display:grid; grid-template-columns:1fr 22px 1fr 22px 1fr 22px 1fr 22px 1fr; gap:0; align-items:stretch; margin:.25rem 0; }
+    .pv-pipe-step { position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; padding:1.4rem .9rem 1.2rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:12px; background:linear-gradient(160deg,rgba(255,255,255,.048),rgba(255,255,255,.015)); transition:transform .2s; }
+    .pv-pipe-step + .pv-pipe-step { margin-left:.55rem; }
+    .pv-pipe-ico { width:36px; height:36px; border-radius:50%; display:grid; place-items:center; font-size:.9rem; margin-bottom:.75rem; flex-shrink:0; }
+    .pv-pipe-n { font-size:2.6rem; font-weight:300; line-height:1; color:#f8f6f2; margin-bottom:.35rem; }
+    .pv-pipe-label { font-size:.52rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.38); line-height:1.35; }
+    .pv-pipe-conv { margin-top:.55rem; font-size:.6rem; font-weight:600; color:rgba(255,255,255,.28); line-height:1.3; }
+    /* Colores de acento por etapa */
+    .pv-pipe-step.p0 { border-top-color:rgba(100,149,237,.4); }
+    .pv-pipe-step.p0 .pv-pipe-ico { background:rgba(100,149,237,.12); color:#89b4f7; }
+    .pv-pipe-step.p1 { border-top-color:rgba(201,168,76,.35); }
+    .pv-pipe-step.p1 .pv-pipe-ico { background:rgba(201,168,76,.1); color:#e8c96a; }
+    .pv-pipe-step.p2 { border-top-color:rgba(215,111,63,.35); }
+    .pv-pipe-step.p2 .pv-pipe-ico { background:rgba(215,111,63,.1); color:#f0956a; }
+    .pv-pipe-step.p3 { border-top-color:rgba(80,200,120,.35); }
+    .pv-pipe-step.p3 .pv-pipe-ico { background:rgba(80,200,120,.1); color:#6ee89a; }
+    /* Logro — operación cerrada */
+    .pv-pipe-step.p4-logro {
+      border-color:rgba(201,168,76,.45); border-top-color:rgba(201,168,76,.8);
+      background:linear-gradient(160deg,rgba(201,168,76,.14),rgba(201,168,76,.04));
+      box-shadow:0 0 28px rgba(201,168,76,.12), 0 0 56px rgba(201,168,76,.06);
+    }
+    .pv-pipe-step.p4-logro .pv-pipe-ico { background:rgba(201,168,76,.18); color:#e8c96a; font-size:1.1rem; box-shadow:0 0 14px rgba(201,168,76,.35); }
+    .pv-pipe-step.p4-logro .pv-pipe-n { background:linear-gradient(135deg,#c9a84c,#f0d878); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:3rem; font-weight:400; }
+    .pv-pipe-step.p4-logro .pv-pipe-label { color:#c9a84c; letter-spacing:.2em; font-size:.54rem; }
+    .pv-pipe-step.p4-logro .pv-pipe-conv { color:rgba(201,168,76,.6); }
+    /* Logro vacío */
+    .pv-pipe-step.p4-vacio { border-color:rgba(201,168,76,.18); border-top-color:rgba(201,168,76,.3); border-style:dashed; background:rgba(201,168,76,.03); }
+    .pv-pipe-step.p4-vacio .pv-pipe-ico { background:rgba(201,168,76,.06); color:rgba(201,168,76,.4); }
+    .pv-pipe-step.p4-vacio .pv-pipe-n { color:rgba(255,255,255,.2); }
+    .pv-pipe-step.p4-vacio .pv-pipe-label { color:rgba(201,168,76,.45); }
+    .pv-pipe-step.p4-vacio .pv-pipe-conv { color:rgba(201,168,76,.35); font-style:italic; letter-spacing:.03em; font-size:.62rem; }
+    /* Conector → entre pasos */
+    .pv-pipe-arrow { display:flex; align-items:center; justify-content:center; flex-shrink:0; width:22px; color:rgba(255,255,255,.15); font-size:.75rem; align-self:center; position:relative; z-index:1; margin:0 -1px; }
+    .pv-funnel-descartadas { margin-top:.85rem; color:rgba(255,255,255,.2); font-size:.61rem; text-align:center; }
+    .pv-funnel-sin-actividad { margin-top:.7rem; color:rgba(255,255,255,.3); font-size:.66rem; line-height:1.5; text-align:center; }
+    @media(max-width:900px){ .pv-pipeline{ grid-template-columns:repeat(3,1fr); gap:.5rem; } .pv-pipe-step+.pv-pipe-step{ margin-left:0; } .pv-pipe-arrow{ display:none; } }
+    @media(max-width:560px){ .pv-pipeline{ grid-template-columns:repeat(2,1fr); } }
+    .pv-feed { display:flex; flex-direction:column; gap:.2rem; }
+    .pv-feed-row { display:grid; grid-template-columns:8px minmax(0,1fr) auto; align-items:center; gap:.65rem; padding:.52rem .2rem; border-bottom:1px solid rgba(255,255,255,.045); }
+    .pv-feed-row:last-child { border-bottom:0; }
+    .pv-feed-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.2); }
+    .pv-feed-dot.qr { background:#50c878; box-shadow:0 0 7px rgba(80,200,120,.4); }
+    .pv-feed-dot.link { background:#6495ed; box-shadow:0 0 7px rgba(100,149,237,.35); }
+    .pv-feed-dot.lead { background:#c9a84c; box-shadow:0 0 7px rgba(201,168,76,.35); }
+    .pv-feed-desc { color:rgba(255,255,255,.67); font-size:.7rem; }
+    .pv-feed-fecha { color:rgba(255,255,255,.25); font-size:.61rem; white-space:nowrap; }
+    .pv-tabla { width:100%; border-collapse:collapse; }
+    .pv-tabla th { padding:.5rem .65rem; border-bottom:1px solid rgba(255,255,255,.06); color:rgba(255,255,255,.3); font-size:.54rem; font-weight:600; letter-spacing:.1em; text-align:left; text-transform:uppercase; }
+    .pv-tabla td { padding:.75rem .65rem; border-bottom:1px solid rgba(255,255,255,.04); color:rgba(255,255,255,.78); font-size:.73rem; vertical-align:middle; }
+    .pv-tabla tr:last-child td { border-bottom:none; }
+    .pv-tabla tr:hover td { background:rgba(255,255,255,.02); }
+    .pv-dot-nueva { width:7px; height:7px; border-radius:50%; background:#50c878; box-shadow:0 0 7px rgba(80,200,120,.48); }
+    .pv-via { display:inline-flex; align-items:center; gap:.35rem; color:#6495ed; font-size:.61rem; }
+    .pv-via-mark { width:8px; height:8px; border:1px solid currentColor; }
+    .pv-via.qr { color:#50c878; font-weight:600; }
+    .pv-via.link { color:#6495ed; }
+    .pv-fecha { color:rgba(255,255,255,.38); font-size:.66rem; white-space:nowrap; }
+    .pv-slug { display:inline-block; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:rgba(255,255,255,.67); font-size:.67rem; }
+    .pv-empty { padding:2rem 1rem; text-align:center; color:rgba(255,255,255,.28); font-size:.72rem; }
+    .pv-empty-mark { width:26px; height:26px; margin:0 auto .65rem; border:1px solid rgba(201,168,76,.28); border-radius:50%; }
+    .pv-msg-sec .msg-card { border-radius:8px; border-left:2px solid rgba(201,168,76,.28); }
+    .pv-msg-sec .msg-card-head { padding:.75rem .85rem; }
+    .pv-msg-sec .msg-unread-dot { background:#c9a84c; }
+    .pv-msg-empty-title { margin-bottom:.32rem; color:rgba(255,255,255,.5); font-size:.86rem; }
+    .pv-main .estado-nueva { background:rgba(80,200,120,.2); color:#6ee89a; border:1px solid rgba(80,200,120,.3); }
+    .pv-main .estado-en_contacto { background:rgba(201,168,76,.2); color:#e8c96a; border:1px solid rgba(201,168,76,.3); }
+    .pv-main .estado-en_negociacion { background:rgba(215,111,63,.2); color:#f0956a; border:1px solid rgba(215,111,63,.3); }
+    .pv-main .estado-cerrada { background:rgba(100,149,237,.2); color:#89b4f7; border:1px solid rgba(100,149,237,.3); }
+    .pv-main .estado-descartada { background:rgba(136,136,136,.14); color:rgba(255,255,255,.42); border:1px solid rgba(136,136,136,.22); }
+    @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
+
+    /* ── Dev-style hero pasivo ── */
+    .badge-aliado { font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; background:rgba(201,168,76,.1); color:#e8c96a; border:1px solid rgba(201,168,76,.25); padding:.22rem .68rem; border-radius:999px; white-space:nowrap; flex-shrink:0; }
+    .pv-hero-title { margin-bottom:1.4rem; }
+    .pv-hero-title h1 { font-family:'Inter',sans-serif; font-size:clamp(2rem,5vw,3rem); font-weight:800; letter-spacing:-.03em; text-transform:uppercase; line-height:1.05; background:linear-gradient(120deg,#ffffff 0%,rgba(255,255,255,.55) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:.4rem; }
+    .pv-hero-sub-bar { font-size:.62rem; color:rgba(255,255,255,.52); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; display:flex; align-items:center; gap:.5rem; }
+    .pv-periodo-bar-hero { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; }
+    .pv-btn-refresh { min-height:30px; padding:.32rem .72rem; border:1px solid rgba(100,149,237,.28); border-radius:7px; background:linear-gradient(135deg,rgba(100,149,237,.15),rgba(100,149,237,.05)); color:#8fb2ff; font:600 .6rem 'Inter',sans-serif; cursor:pointer; transition:all .2s; letter-spacing:.06em; text-transform:uppercase; }
+    .pv-btn-refresh:hover { border-color:rgba(100,149,237,.45); color:#fff; box-shadow:0 0 12px rgba(100,149,237,.2); }
+    .pv-img-hero { position:relative; height:200px; border-radius:14px; overflow:hidden; margin-bottom:1.25rem; display:flex; align-items:flex-end; background:#111 url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52% / cover no-repeat; }
+    .pv-img-hero-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,.86) 0%,rgba(0,0,0,.30) 100%); }
+    .pv-img-hero-content { position:relative; z-index:1; padding:1.1rem 1.4rem; flex:1; min-width:0; }
+    .pv-img-hero-nombre { font-size:1.5rem; font-weight:300; color:#f0f0f0; letter-spacing:.02em; }
+    .pv-img-hero-slug { font-size:.6rem; color:rgba(255,255,255,.38); letter-spacing:.18em; text-transform:uppercase; margin-top:.2rem; }
+    .pv-img-hero-badge { position:relative; z-index:1; margin:1.1rem 1.4rem; padding:.4rem .82rem; border:1px solid rgba(255,255,255,.14); border-radius:999px; font-size:.6rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase; background:rgba(0,0,0,.45); backdrop-filter:blur(8px); white-space:nowrap; flex-shrink:0; }
+    .pv-img-hero-badge.activo { color:#6ee89a; border-color:rgba(80,200,120,.38); }
+    .pv-img-hero-badge.campana { color:#e8c96a; border-color:rgba(201,168,76,.42); }
+    .pv-img-hero-badge.inactivo { color:rgba(255,255,255,.4); }
+
+    /* ── OPCIÓN 4 · Pulso en vivo (GLM-5.2) ── */
+    .pv-live-bar {
+      display:flex; align-items:center; justify-content:space-between; gap:.8rem;
+      margin-bottom:.7rem; padding:.5rem .8rem; border-radius:10px;
+      background:linear-gradient(135deg,rgba(110,232,154,.08),rgba(110,232,154,.02));
+      border:1px solid rgba(110,232,154,.18);
+    }
+    .pv-live-left { display:flex; align-items:center; gap:.6rem; }
+    .pv-live-dot { width:9px; height:9px; border-radius:50%; background:#6ee89a; box-shadow:0 0 10px #6ee89a; animation:pvLiveBlink 1.4s ease-in-out infinite; flex-shrink:0; }
+    .pv-live-tag { font-size:.56rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:#6ee89a; }
+    @keyframes pvLiveBlink { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.35; transform:scale(.7)} }
+    .pv-live-right { display:flex; align-items:baseline; gap:1.4rem; }
+    .pv-live-stat { display:flex; flex-direction:column; align-items:flex-end; }
+    .pv-live-stat-n { font-size:1.15rem; font-weight:700; line-height:1; font-family:'Inter',sans-serif; }
+    .pv-live-stat-n.blue { color:#9fc0ff; }
+    .pv-live-stat-n.gold { color:#e8c96a; }
+    .pv-live-stat-l { font-size:.5rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.4); margin-top:.2rem; }
+    .pv-live-wrap { position:relative; height:270px; }
+    .pv-live-hint { font-size:.58rem; color:rgba(255,255,255,.4); margin:.85rem .2rem 0; line-height:1.5; }
+    .pv-live-hint strong { color:#e8c96a; font-weight:600; }
+    .pv-live-bar .pv-live-stat.com { margin-left:.4rem; padding-left:1rem; border-left:1px solid rgba(110,232,154,.18); }
+    .pv-live-bar .pv-live-stat-n.com { color:#6ee89a; }
+    .pv-mini-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.6rem; margin-top:1rem; }
+    .pv-mini-card { padding:.7rem .7rem .55rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:10px; background:linear-gradient(155deg,rgba(255,255,255,.04),rgba(255,255,255,.012)); }
+    .pv-mini-label { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:.4rem; }
+    .pv-mini-label span:first-child { font-size:.5rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.42); }
+    .pv-mini-label span:last-child { font-size:.74rem; font-weight:600; color:#e8c96a; }
+    .pv-mini-wrap { position:relative; height:60px; }
+    @media(max-width:560px){
+      .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.9rem}
+      .pv-live-bar{flex-direction:column;align-items:flex-start;gap:.45rem}
+      .pv-live-left{width:100%}
+      .pv-live-right{width:100%;justify-content:space-between}
+      .pv-live-bar .pv-live-stat{align-items:flex-start}
+      .pv-live-bar .pv-live-stat.com{margin-left:0;padding-left:0;border-left:none}
+      .pv-mini-card{min-width:0;overflow:hidden}
+    }
+
+    /* ── Slot cards full (propiedad + mini chart) ── */
+    .slot-full-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      gap: 0;
+      border: 1px solid rgba(255,255,255,.07);
+      border-top: 1px solid rgba(255,255,255,.13);
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(155deg, rgba(255,255,255,.048), rgba(255,255,255,.015));
+    }
+    @media(max-width:640px){ .slot-full-card{ grid-template-columns:1fr; } }
+    .slot-full-card.slot-full-inactivo { opacity: .55; filter: grayscale(.7); }
+
+    .slot-full-left {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    @media(max-width:640px){ .slot-full-left{ border-right:none; border-bottom:1px solid rgba(255,255,255,.06); } }
+
+    .slot-full-img {
+      position: relative;
+      height: 200px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(201,168,76,.09), #11100e);
+      background-size: cover;
+      background-position: center;
+    }
+    .slot-full-img-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,.92) 0%, rgba(0,0,0,.38) 55%, rgba(0,0,0,.08) 100%);
+    }
+    .slot-img-top {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 1;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: .65rem .85rem;
+    }
+    .slot-img-bottom {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 1;
+      padding: .55rem .85rem .65rem;
+    }
+    .slot-full-eyebrow {
+      font-family: monospace;
+      font-size: .58rem;
+      color: #c9a84c;
+      letter-spacing: .1em;
+    }
+    .slot-full-nombre {
+      font-size: .95rem;
+      font-weight: 300;
+      color: #f0f0f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: .4rem;
+    }
+
+    .slot-full-body {
+      padding: .9rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+      flex: 1;
+    }
+    .slot-full-stats {
+      display: flex;
+      flex-direction: row;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .slot-full-qr-footer {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding-top: .6rem;
+      border-top: 1px solid rgba(255,255,255,.06);
+      margin-top: auto;
+    }
+    .slot-stat {
+      display: flex;
+      align-items: baseline;
+      gap: .4rem;
+    }
+    .slot-stat-n {
+      font-size: 1.45rem;
+      font-weight: 300;
+      line-height: 1;
+      color: rgba(255,255,255,.85);
+    }
+    .slot-stat-l {
+      font-size: .58rem;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.35);
+    }
+    .slot-full-btns {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+
+    .slot-full-right {
+      padding: 1rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+    .slot-chart-label {
+      font-size: .54rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.3);
+    }
+    .slot-chart-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 135px;
+    }
+    .slot-chart-total {
+      font-size: .65rem;
+      color: rgba(255,255,255,.3);
+      text-align: right;
+    }
+
+    /* Atributos de propiedad sobre la foto */
+    .slot-attrs {
+      display: flex;
+      flex-direction: row;
+      gap: 0;
+      border-top: 1px solid rgba(255,255,255,.15);
+      padding-top: .4rem;
+    }
+    .slot-attr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      padding: 0 .3rem;
+      border-right: 1px solid rgba(255,255,255,.12);
+    }
+    .slot-attr:last-child { border-right: none; }
+    .slot-attr-v {
+      font-size: .82rem;
+      font-weight: 400;
+      color: rgba(240,237,232,.88);
+      line-height: 1.1;
+    }
+    .slot-attr-l {
+      font-size: .42rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.38);
+      margin-top: .1rem;
+    }
+
+    /* ── Sección Mis QRs (canal activo) ── */
+    .mis-qrs-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+    @media(max-width:560px){ .mis-qrs-grid{ grid-template-columns: 1fr; } }
+
+    .qr-slot-card {
+      border: 1px solid rgba(255,255,255,.07);
+      border-top: 1px solid rgba(255,255,255,.13);
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(155deg, rgba(255,255,255,.048), rgba(255,255,255,.015));
+      display: flex;
+      flex-direction: column;
+    }
+    .qr-slot-card.slot-inactivo { filter: grayscale(1); opacity: .55; }
+
+    .qr-slot-img {
+      position: relative;
+      height: 110px;
+      background: linear-gradient(135deg, rgba(201,168,76,.09), #11100e);
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+    .qr-slot-img-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,.82) 0%, rgba(0,0,0,.2) 100%);
+    }
+    .qr-slot-img-nombre {
+      position: relative; z-index: 1;
+      padding: .75rem 1rem;
+      font-size: .95rem; font-weight: 300; color: #f0f0f0;
+      flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .qr-slot-estado-badge {
+      position: relative; z-index: 1;
+      margin: .75rem .85rem;
+      padding: .28rem .68rem;
+      border: 1px solid; border-radius: 999px;
+      font-size: .58rem; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; white-space: nowrap; flex-shrink: 0;
+      background: rgba(0,0,0,.45); backdrop-filter: blur(6px);
+    }
+    .qr-slot-estado-badge.activo  { color: #6ee89a; border-color: rgba(80,200,120,.38); }
+    .qr-slot-estado-badge.inactivo{ color: rgba(255,255,255,.45); border-color: rgba(255,255,255,.18); }
+
+    .qr-slot-body {
+      padding: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .65rem;
+      flex: 1;
+    }
+    .qr-slot-canvas-wrap {
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-slot-codigo {
+      font-family: monospace;
+      font-size: .6rem;
+      color: #c9a84c;
+      letter-spacing: .06em;
+    }
+
+    .qr-slot-footer {
+      padding: .7rem 1rem;
+      border-top: 1px solid rgba(255,255,255,.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+    }
+    .qr-slot-scans { font-size: .63rem; color: rgba(255,255,255,.38); }
+    .qr-slot-btns  { display: flex; gap: .4rem; }
+    .qr-slot-btn {
+      font-size: .63rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+      padding: .28rem .65rem; border-radius: 7px;
+      border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.65); cursor: pointer; font-family: inherit;
+      transition: all .18s;
+    }
+    .qr-slot-btn:hover { border-color: rgba(201,168,76,.45); color: #e8c96a; }
+
+    .qr-slot-inactivo-banner {
+      padding: .55rem 1rem;
+      background: rgba(224,92,92,.07);
+      border-top: 1px solid rgba(224,92,92,.2);
+      font-size: .65rem;
+      color: #e05c5c;
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    /* ── KPI grid adaptable a 4 o 5 columnas ── */
+    .pv-kpi-grid { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+    .pv-kpi.kpi-prop {
+      --pv-c:#50c878;
+    }
+    .pv-kpi.kpi-prop .pv-kpi-n {
+      background: linear-gradient(135deg,#6ee89a,#a8f5c4);
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    }
+
+    /* ── Leyenda interactiva del gráfico principal ── */
+    .pv-legend {
+      display:flex; flex-wrap:wrap; gap:.4rem;
+      margin-top:1rem; padding-top:.9rem;
+      border-top:1px solid rgba(255,255,255,.06);
+    }
+    .pv-legend-chip {
+      display:inline-flex; align-items:center; gap:.45rem;
+      padding:.32rem .75rem;
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      color:rgba(255,255,255,.62);
+      font-size:.6rem; font-weight:600; letter-spacing:.04em;
+      cursor:pointer; user-select:none;
+      transition:all .18s;
+    }
+    .pv-legend-chip:hover { border-color:rgba(255,255,255,.22); color:#fff; }
+    .pv-legend-chip.off { opacity:.32; text-decoration:line-through; }
+    .pv-legend-chip.locked { cursor:default; }
+    .pv-legend-chip.locked:hover { border-color:rgba(255,255,255,.1); }
+    .pv-legend-dot {
+      width:9px; height:9px; border-radius:50%; flex-shrink:0;
+      box-shadow:0 0 6px currentColor;
+    }
+    .pv-legend-name { max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* ── 4 paneles inferiores nuevos (grid 2x2) ── */
+    .pv-panels-grid {
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:1rem;
+      margin-bottom:1rem;
+    }
+    @media(max-width:760px){ .pv-panels-grid{ grid-template-columns:1fr; } }
+    .pv-panel {
+      padding:1.3rem 1.35rem;
+      border:1px solid rgba(255,255,255,.07);
+      border-top-color:rgba(255,255,255,.12);
+      border-radius:12px;
+      background:linear-gradient(155deg,rgba(255,255,255,.042),rgba(255,255,255,.014));
+      display:flex; flex-direction:column;
+    }
+    .pv-panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:.8rem; margin-bottom:.95rem; }
+    .pv-panel-titulo { color:#f5f3f0; font-family:'Inter',sans-serif; font-size:.78rem; font-weight:600; letter-spacing:.02em; }
+    .pv-panel-sub { margin-top:.25rem; color:rgba(255,255,255,.4); font-size:.62rem; }
+    .pv-panel-chart { position:relative; height:170px; margin-bottom:.6rem; }
+    .pv-panel-foot { margin-top:auto; }
+    .pv-panel-legend { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.7rem; padding-top:.6rem; border-top:1px solid rgba(255,255,255,.05); }
+    .pv-panel-empty {
+      flex:1; display:grid; place-items:center;
+      padding:1.5rem 1rem; text-align:center;
+      color:rgba(255,255,255,.3); font-size:.72rem; line-height:1.5;
+    }
+    .pv-panel-empty-mark { width:26px; height:26px; margin:0 auto .6rem; border:1px solid rgba(201,168,76,.28); border-radius:50%; }
+
+    /* Panel Origen: barras horizontales */
+    .pv-origen-list { display:flex; flex-direction:column; gap:.7rem; }
+    .pv-origen-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.6rem; align-items:center; }
+    .pv-origen-label { display:flex; align-items:center; gap:.5rem; font-size:.72rem; color:rgba(255,255,255,.78); }
+    .pv-origen-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; box-shadow:0 0 6px currentColor; }
+    .pv-origen-bar-wrap { height:6px; border-radius:99px; background:rgba(255,255,255,.06); overflow:hidden; margin-top:.32rem; }
+    .pv-origen-bar { height:100%; border-radius:99px; transition:width .8s cubic-bezier(.22,.68,.18,1); }
+    .pv-origen-val { text-align:right; }
+    .pv-origen-val-n { font-size:.92rem; font-weight:600; color:#fff; line-height:1; }
+    .pv-origen-val-p { font-size:.58rem; color:rgba(255,255,255,.4); margin-top:.18rem; }
+
+    /* Panel Rendimiento: ranking */
+    .pv-rank-row {
+      display:grid;
+      grid-template-columns:18px minmax(0,1fr) auto auto auto;
+      gap:.6rem; align-items:center;
+      padding:.6rem .1rem;
+      border-bottom:1px solid rgba(255,255,255,.045);
+    }
+    .pv-rank-row:last-child { border-bottom:0; }
+    .pv-rank-pos { font-family:'Cormorant Garamond',serif; font-size:.9rem; font-weight:600; color:rgba(255,255,255,.4); text-align:center; }
+    .pv-rank-nombre { display:flex; align-items:center; gap:.5rem; min-width:0; }
+    .pv-rank-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; box-shadow:0 0 6px currentColor; }
+    .pv-rank-nombre span { font-size:.74rem; color:rgba(255,255,255,.82); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pv-rank-num { font-size:.78rem; font-weight:600; text-align:right; min-width:42px; }
+    .pv-rank-conv { font-size:.66rem; color:rgba(255,255,255,.42); text-align:right; min-width:42px; }
+    .pv-rank-head {
+      display:grid;
+      grid-template-columns:18px minmax(0,1fr) auto auto auto;
+      gap:.6rem; align-items:center;
+      padding-bottom:.5rem; margin-bottom:.2rem;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .pv-rank-head span { font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.35); }
+    .pv-rank-head span.r { text-align:right; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="sp-bg-brand"></div>
+<header class="header">
+  <div class="header-brand">
+    <img src="../assets/logohorizontalnegro.png" alt="Sur Patagonia" />
+    <span>Red de aliados</span>
+  </div>
+  <div class="header-right">
+    <div class="header-canal" id="headerCanal"></div>
+    <button class="btn-salir" onclick="salir()">Salir</button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main" id="mainContent">
+  <div class="sp"></div>
+</main>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+  import { aplicarConfigVisual, leerConfigVisual } from '../js/panel-config.js'
+  import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
+
+  const supabase = createClient(
+    'https://wajkfydxutptcvvfwrvq.supabase.co',
+    'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s',
+    { auth: { storageKey: 'sp-colab-session' } }
+  )
+
+  leerConfigVisual(supabase).then(aplicarConfigVisual).catch(() => {})
+
+  window.salir = async function() {
+    await supabase.auth.signOut()
+    location.href = 'login.html'
+  }
+
+  const esc  = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  const fmt  = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
+  const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
+  const ESTADO_LABEL_PASIVO = { nueva:'Nueva', en_contacto:'Contactada', en_negociacion:'Visita programada', cerrada:'Operación cerrada', descartada:'Descartada' }
+
+  // Codifica el apellido: "Juan González" → "Juan Go***"
+  const codificarNombre = nombre => {
+    if (!nombre) return '—'
+    const partes = nombre.trim().split(/\s+/)
+    if (partes.length === 1) return partes[0]
+    const apellido = partes[partes.length - 1]
+    const codApellido = apellido.slice(0, 2) + '***'
+    return [...partes.slice(0, -1), codApellido].join(' ')
+  }
+
+  ;(async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { location.href = 'login.html'; return }
+
+    const userId = session.user.id
+
+    // ── Cargar TODOS los canales del usuario ───────
+    const { data: canales } = await supabase
+      .from('canales').select('*').eq('user_id', userId).order('nombre')
+
+    if (!canales?.length) {
+      document.getElementById('mainContent').innerHTML =
+        '<div class="empty-msg">No tenés canales asignados. Contactá a Sur Patagonia.</div>'
+      return
+    }
+
+    const esPasivo  = session.user.user_metadata?.tipo_acceso !== 'activo'
+    const codigos   = canales.map(c => c.codigo)
+    const ahora     = new Date()
+    const hace30    = new Date(ahora - 30 * 86400000).toISOString()
+
+    // Header
+    const badgeHtml = esPasivo ? '<div class="badge-aliado">Aliado</div>' : ''
+    document.getElementById('headerCanal').innerHTML =
+      `<div style="display:flex;align-items:center;gap:.65rem;">${badgeHtml}<div><strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}</div></div>`
+
+    // ── Cargar métricas globales + mensajes ───────
+    const canalIds    = canales.map(c => c.id)
+    const ciudadesMias = [...new Set(canales.map(c => c.ciudad).filter(Boolean))]
+    const provinciasMias = [...new Set(canales.map(c => c.provincia).filter(Boolean))]
+
+    // canal_ref almacena el codigo de la REFERENCIA (no del canal).
+    // El admin lo resuelve por prefijo: canal_ref.startsWith(canal.codigo + '-').
+    // Acá buscamos primero todas las referencias del canal y filtramos por esos códigos.
+    // También incluimos canal.codigo directamente como fallback (links sin referencia).
+    const { data: misRefs } = await supabase
+      .from('referencias')
+      .select('codigo, canal_id')
+      .in('canal_id', canalIds)
+    const refCodigos = misRefs?.map(r => r.codigo) || []
+    // codigos de filtrado = referencia codes + canal codes (fallback)
+    const codigosRef = [...new Set([...refCodigos, ...codigos])]
+
+    const [rVisitas, rVisitas30, rContactos, rCampanas, rMensajes, rMisSlots] = await Promise.all([
+      supabase.from('visitas').select('created_at, canal_via, canal_ref').in('canal_ref', codigosRef),
+      supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigosRef).gte('created_at', hace30),
+      supabase.from('contactos').select('*').in('canal_ref', codigosRef).order('created_at', { ascending: false }),
+      supabase.from('campanas_canales')
+        .select('canal_id, campanas(nombre, activa, fecha_inicio, fecha_fin)')
+        .in('canal_id', canales.map(c => c.id)),
+      supabase.from('mensajes')
+        .select('id, asunto, cuerpo, usuario_id, ciudad, provincia, tipo_acceso, provincias_arr, ciudades_arr, canal_ids, created_at, mensajes_respuestas(id, usuario_id, cuerpo, created_at)')
+        .order('created_at', { ascending: false }),
+      supabase.from('referencias')
+        .select('id, codigo, nombre, destino, activo, proyecto_slug, canal_id')
+        .in('canal_id', canalIds)
+        .order('created_at', { ascending: true })
+    ])
+
+    let visitas   = rVisitas.data    || []
+    const scans30 = rVisitas30.count || 0
+    let contactos = rContactos.data  || []
+
+    // ── Mis QRs: datos de slots activos ───────────
+    const misSlots = rMisSlots.data || []
+    // Derivar proyecto_slug desde el código cuando no está seteado en BD
+    const slugify = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+    const canalCodigoMap = {}; canales.forEach(c => { canalCodigoMap[c.id] = c.codigo })
+    // ── Color determinístico por slot.id (hash estable) ──────────────
+    // Paleta premium coherente con Sur Patagonia — 10 colores bien separados.
+    const SLOT_PALETTE = ['#6495ed','#50c878','#e8c96a','#d76f3f','#b06cd9','#4ec9b0','#f0956a','#7aaeff','#a8e063','#e85aae']
+    const SLOT_PALETTE_SOFT = ['#6495ed','#50c878','#e8c96a','#d76f3f','#b06cd9','#4ec9b0','#f0956a','#7aaeff','#a8e063','#e85aae']
+    const slotColorMap = {} // slot.codigo → hex
+    function colorDeSlot(codigo) {
+      if (slotColorMap[codigo]) return slotColorMap[codigo]
+      // FNV-1a hash del código → índice de paleta estable
+      let h = 0x811c9dc5
+      for (let i = 0; i < codigo.length; i++) { h ^= codigo.charCodeAt(i); h = (h * 0x01000193) >>> 0 }
+      const color = SLOT_PALETTE[h % SLOT_PALETTE.length]
+      slotColorMap[codigo] = color
+      return color
+    }
+    misSlots.forEach(slot => {
+      if (!slot.proyecto_slug) {
+        const pfx = (canalCodigoMap[slot.canal_id] || '') + '-'
+        slot.proyecto_slug = slot.codigo.startsWith(pfx) ? slot.codigo.slice(pfx.length) : slot.codigo
+      }
+    })
+    const slotCodigos  = misSlots.map(s => s.codigo)
+    const derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
+    const [rScansPorSlot, rProyImgs, rPropAll] = await Promise.all([
+      slotCodigos.length
+        ? supabase.from('visitas').select('canal_ref').in('canal_ref', slotCodigos).gte('created_at', hace30)
+        : Promise.resolve({ data: [] }),
+      derivedSlugs.length
+        ? supabase.from('proyectos').select('slug, nombre, foto_portada').in('slug', derivedSlugs)
+        : Promise.resolve({ data: [] }),
+      supabase.from('propiedades')
+        .select('id, titulo, imagenes, dormitorios, banos, superficie_cubierta, superficie_total')
+        .eq('activa', true).limit(200)
+    ])
+    const scansPorSlot = {}
+    ;(rScansPorSlot.data || []).forEach(v => { scansPorSlot[v.canal_ref] = (scansPorSlot[v.canal_ref] || 0) + 1 })
+    const proyImgs = {}
+    ;(rProyImgs.data || []).forEach(p => { proyImgs[p.slug] = p })
+    const propDataMap = {}
+    ;(rPropAll.data || []).forEach(p => { propDataMap[slugify(p.titulo)] = p })
+    function findPropData(slug) {
+      if (!slug) return null
+      if (propDataMap[slug]) return propDataMap[slug]
+      for (const [k, v] of Object.entries(propDataMap)) { if (k.startsWith(slug) || slug.startsWith(k)) return v }
+      return null
+    }
+    const esPropiedadReal = slot => {
+      if (!slot.proyecto_slug) return false
+      if (proyImgs[slot.proyecto_slug]) return true
+      if (findPropData(slot.proyecto_slug)) return true
+      return false
+    }
+    // Log temporal — verificar en producción con F12 los slots filtrados como canales generales:
+    console.warn('[esPropiedadReal] Slots filtrados como canales generales:', misSlots.filter(s => !esPropiedadReal(s)).map(s => s.codigo))
+
+    let _pvChart4 = null, _pvChart4a = null, _pvChart4b = null, _pvChart4c = null, _pvChart4d = null
+    let _pvPanelAct = null, _pvPanelConv = null  // charts de los paneles nuevos (Actividad 30d, Conversión 30d)
+    let _pvLiveRAF = null   // loop de animación del "pulso en vivo"
+    let _pvLiveTimer = null // refresco automático (modo Hoy)
+    let _pvDocMoveH = null, _pvDocUpH = null    // document-level pan listeners (cleanup seguro)
+
+    // ── Zoom horario (modo Hoy) ──────────────────────────────────────────────
+    window.pvZoomHoyAplicar = function() {
+      // Usa pvApplyViewport para estar sincronizado con el zoom de scroll
+      const fromH = parseInt(document.getElementById('pvZoomDesde')?.value || '0')
+      const toH   = parseInt(document.getElementById('pvZoomHasta')?.value || '24')
+      const hoyB0 = window._pvZoomDefaultFrom
+      if (!hoyB0) return
+      const fromMs = hoyB0 + fromH * 3600000
+      const toMs   = Math.min(hoyB0 + toH * 3600000, Date.now())
+      pvApplyViewport(fromMs, toMs)
+    }
+    window.pvZoomHoyReset = function() {
+      const f = window._pvZoomDefaultFrom, t2 = window._pvZoomDefaultTo
+      if (f && t2) pvApplyViewport(f, t2)
+      else if (_pvChart4) {
+        delete _pvChart4.options.scales.x.min
+        delete _pvChart4.options.scales.x.max
+        _pvChart4.update('none')
+      }
+      window._pvZoomFrom = f; window._pvZoomTo = t2
+      const d = document.getElementById('pvZoomDesde'); if (d) d.value = '0'
+      const h = document.getElementById('pvZoomHasta'); if (h) h.value = String(Math.min(24, new Date().getHours() + 1))
+    }
+
+    // ── Motor de zoom temporal interactivo ──────────────────────────────────
+
+    // Resamplea visitas/contactos/slots para [fromMs, toMs] con granularidad adaptativa
+    function pvResampleChart(fromMs, toMs) {
+      const rangeMins = (toMs - fromMs) / 60000
+      let bucketMs, labelFn
+      if (rangeMins <= 120) {
+        bucketMs = 60000
+        labelFn = t => { const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
+      } else if (rangeMins <= 360) {
+        bucketMs = 5*60000
+        labelFn = t => { const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
+      } else if (rangeMins <= 1440) {
+        bucketMs = 15*60000
+        labelFn = t => { const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
+      } else if (rangeMins <= 10080) {
+        bucketMs = 3600000
+        labelFn = t => { const d=new Date(t); return `${d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})} ${String(d.getHours()).padStart(2,'0')}h` }
+      } else {
+        bucketMs = 86400000
+        labelFn = t => new Date(t).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})
+      }
+      window._pvZoomBucketMs = bucketMs
+      const snapFrom = Math.floor(fromMs / bucketMs) * bucketMs
+      const numBuckets = Math.max(1, Math.ceil((toMs - snapFrom) / bucketMs))
+      const bucketStarts = Array.from({length:numBuckets}, (_,i) => snapFrom + i*bucketMs)
+      const newLbls = bucketStarts.map(t => labelFn(t))
+      const ds = new Array(numBuckets).fill(0)
+      const dc = new Array(numBuckets).fill(0)
+      visitas.forEach(v => {
+        const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
+        const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) ds[idx]++
+      })
+      contactos.forEach(c => {
+        const t = new Date(c.created_at).getTime(); if (t < fromMs || t >= toMs) return
+        const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) dc[idx]++
+      })
+      const slotData = (typeof misSlots !== 'undefined' ? misSlots : []).map(slot => {
+        const arr = new Array(numBuckets).fill(0)
+        visitas.forEach(v => {
+          if (v.canal_ref !== slot.codigo) return
+          const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
+          const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) arr[idx]++
+        })
+        return { codigo: slot.codigo, data: arr }
+      })
+      return { labels: newLbls, dataScans: ds, dataCons: dc, slotData }
+    }
+
+    // Aplica un viewport al gráfico principal: recalcula datos y labels sin destruir el chart
+    function pvApplyViewport(fromMs, toMs) {
+      if (!_pvChart4?.data) return
+      window._pvZoomFrom = fromMs; window._pvZoomTo = toMs
+      const { labels, dataScans, dataCons, slotData } = pvResampleChart(fromMs, toMs)
+      _pvChart4.data.labels = labels
+      if (_pvChart4.data.datasets[0]) _pvChart4.data.datasets[0].data = dataScans
+      if (_pvChart4.data.datasets[1]) _pvChart4.data.datasets[1].data = dataCons
+      slotData.forEach((sd,i) => { const dst=_pvChart4.data.datasets[2+i]; if (dst) dst.data=sd.data })
+      delete _pvChart4.options.scales.x.min; delete _pvChart4.options.scales.x.max
+      const _cap = labels // captura para closures de callback
+      if (_pvChart4.options.scales?.x?.ticks) {
+        _pvChart4.options.scales.x.ticks.callback = (_,i) => _cap[i] || ''
+        _pvChart4.options.scales.x.ticks.autoSkip = true
+        // Densidad adaptativa: máx 12 etiquetas siempre, menos si hay pocos buckets
+        _pvChart4.options.scales.x.ticks.maxTicksLimit = Math.min(labels.length, 12)
+      }
+      if (_pvChart4.options.plugins?.tooltip?.callbacks)
+        _pvChart4.options.plugins.tooltip.callbacks.title = items => _cap[items[0]?.dataIndex ?? 0] || ''
+      _pvChart4.update('none')
+    }
+
+    // Enlaza zoom por Shift+scroll y pan por arrastre al canvas del chart principal
+    function pvBindZoomPan(chart) {
+      if (!chart?.canvas) return
+      // Limpiar handlers previos
+      if (chart._pvWheelH) chart.canvas.removeEventListener('wheel', chart._pvWheelH)
+      if (chart._pvMDownH) chart.canvas.removeEventListener('mousedown', chart._pvMDownH)
+      if (chart._pvDblH)   chart.canvas.removeEventListener('dblclick', chart._pvDblH)
+      if (_pvDocMoveH) { document.removeEventListener('mousemove', _pvDocMoveH); _pvDocMoveH = null }
+      if (_pvDocUpH)   { document.removeEventListener('mouseup',   _pvDocUpH);   _pvDocUpH   = null }
+
+      // Shift + scroll del mouse/trackpad → zoom centrado en la posición del cursor
+      chart._pvWheelH = function(e) {
+        if (!e.shiftKey) return
+        e.preventDefault()
+        const from = window._pvZoomFrom || window._pvZoomDefaultFrom
+        const to   = window._pvZoomTo   || window._pvZoomDefaultTo
+        if (!from || !to) return
+        const rangeMs = to - from
+        const ca = chart.chartArea, rect = chart.canvas.getBoundingClientRect()
+        const pct = ca ? Math.max(0, Math.min(1, (e.clientX - rect.left - ca.left) / (ca.right - ca.left))) : 0.5
+        // scroll arriba = acercar (0.80×), scroll abajo = alejar (1.25×) — suave
+        const factor = e.deltaY < 0 ? 0.80 : 1.25
+        const newRange = Math.max(60000, Math.min(30*86400000, rangeMs * factor))
+        const anchorMs = from + rangeMs * pct
+        let newFrom = anchorMs - newRange * pct
+        let newTo   = anchorMs + newRange * (1-pct)
+        const hardMax = Date.now(), hardMin = hardMax - 30*86400000
+        if (newFrom < hardMin) { newFrom = hardMin; newTo = Math.min(hardMax, newFrom + newRange) }
+        if (newTo > hardMax)   { newTo = hardMax;   newFrom = Math.max(hardMin, newTo - newRange) }
+        pvApplyViewport(newFrom, newTo)
+      }
+      chart.canvas.addEventListener('wheel', chart._pvWheelH, { passive: false })
+
+      // Arrastre → pan horizontal
+      let dragging = false, dragX0 = 0, dragFrom0 = 0, dragTo0 = 0
+      chart._pvMDownH = function(e) {
+        if (e.button !== 0 || e.shiftKey) return
+        dragging = true; dragX0 = e.clientX
+        dragFrom0 = window._pvZoomFrom || window._pvZoomDefaultFrom
+        dragTo0   = window._pvZoomTo   || window._pvZoomDefaultTo
+        if (dragFrom0 && dragTo0) chart.canvas.style.cursor = 'grabbing'
+        if (chart.options.plugins?.tooltip) chart.options.plugins.tooltip.enabled = false
+      }
+      chart.canvas.addEventListener('mousedown', chart._pvMDownH)
+
+      const pvMoveH = function(e) {
+        if (!dragging || !dragFrom0) return
+        const ca = chart.chartArea; if (!ca) return
+        const dx = e.clientX - dragX0
+        const rangeMs = dragTo0 - dragFrom0
+        const msPerPx = rangeMs / Math.max(1, ca.right - ca.left)
+        const shift = -dx * msPerPx
+        const hardMax = Date.now(), hardMin = hardMax - 30*86400000
+        let newFrom = Math.max(hardMin, dragFrom0 + shift)
+        let newTo = newFrom + rangeMs
+        if (newTo > hardMax) { newTo = hardMax; newFrom = Math.max(hardMin, newTo - rangeMs) }
+        pvApplyViewport(newFrom, newTo)
+      }
+      const pvUpH = function() {
+        if (!dragging) return
+        dragging = false
+        chart.canvas.style.cursor = ''
+        if (chart.options.plugins?.tooltip) chart.options.plugins.tooltip.enabled = true
+      }
+      _pvDocMoveH = pvMoveH; _pvDocUpH = pvUpH
+      document.addEventListener('mousemove', _pvDocMoveH)
+      document.addEventListener('mouseup',   _pvDocUpH)
+
+      // Doble clic → volver a la vista completa
+      chart._pvDblH = function() {
+        const f = window._pvZoomDefaultFrom, t2 = window._pvZoomDefaultTo
+        if (f && t2) pvApplyViewport(f, t2)
+        else { delete chart.options.scales.x.min; delete chart.options.scales.x.max; chart.update('none') }
+      }
+      chart.canvas.addEventListener('dblclick', chart._pvDblH)
+    }
+
+    // Filtrar mensajes para este usuario
+    // Lógica: si usuario_id está → solo ese usuario
+    // Si no → AND entre todos los filtros activos.
+    // Soporta tanto campos nuevos (arrays) como campos viejos (single value).
+    const userTipoAcceso = esPasivo ? 'pasivo' : 'activo'
+    const misCanalesIds  = canales.map(c => c.id)
+    const todosMsg = rMensajes.data || []
+    const misMensajes = todosMsg.filter(m => {
+      if (m.usuario_id) return m.usuario_id === userId
+
+      // ── Nuevos campos multi-select (arrays) ──
+      // canal_ids: alguno de los mis canales debe estar en la lista
+      if (m.canal_ids?.length) {
+        if (!m.canal_ids.some(id => misCanalesIds.includes(id))) return false
+      }
+      // provincias_arr: mi provincia debe estar en alguna de las seleccionadas
+      if (m.provincias_arr?.length) {
+        if (!m.provincias_arr.some(p => provinciasMias.includes(p))) return false
+      }
+      // ciudades_arr: mi ciudad debe estar en alguna de las seleccionadas
+      if (m.ciudades_arr?.length) {
+        if (!m.ciudades_arr.some(c => ciudadesMias.includes(c))) return false
+      }
+
+      // ── Compatibilidad con campos viejos (mensajes anteriores) ──
+      if (!m.provincias_arr && !m.ciudades_arr && !m.canal_ids) {
+        if (m.ciudad      && !ciudadesMias.includes(m.ciudad))      return false
+        if (m.provincia   && !provinciasMias.includes(m.provincia)) return false
+        if (m.tipo_acceso && m.tipo_acceso !== userTipoAcceso)      return false
+      }
+
+      return true
+    })
+    const totalScans = visitas.length
+    const conv       = totalScans > 0 ? ((contactos.length / totalScans) * 100).toFixed(1) : 0
+
+    // Campaña activa por canal
+    const campanaActiva = {}
+    ;(rCampanas.data || []).forEach(row => {
+      const c = row.campanas
+      if (!c?.activa) return
+      const ini = c.fecha_inicio ? new Date(c.fecha_inicio) : null
+      const fin = c.fecha_fin    ? new Date(c.fecha_fin)    : null
+      if ((!ini || ini <= ahora) && (!fin || fin >= ahora)) {
+        campanaActiva[row.canal_id] = c.nombre
+      }
+    })
+
+    // Mapa refCodigo → canalId (canal_id viene en misRefs)
+    const refACanal = {}
+    ;(misRefs || []).forEach(r => { refACanal[r.codigo] = r.canal_id })
+
+    // ── Mis QRs (solo lectura, canal activo) ──────
+    function renderMisQRs() {
+      if (!misSlots.length) return ''
+      const activos   = misSlots.filter(s => s.activo).length
+      const cards = misSlots.map(slot => {
+        const proy       = proyImgs[slot.proyecto_slug]
+        const fotoUrl    = proy?.foto_portada || ''
+        const proyNombre = proy?.nombre || slot.nombre || slot.codigo
+        const scans      = scansPorSlot[slot.codigo] || 0
+        const esActivo   = slot.activo !== false
+
+        const imgStyle = fotoUrl
+          ? `background-image:url('${fotoUrl.replace(/'/g, "\\'")}');background-size:cover;background-position:center`
+          : 'background:linear-gradient(135deg,rgba(201,168,76,.09),#11100e)'
+
+        const badgeClass = esActivo ? 'activo' : 'inactivo'
+        const badgeLabel = esActivo ? '● ACTIVO' : '● INACTIVO'
+
+        const inactivoBanner = !esActivo ? `
+          <div class="qr-slot-inactivo-banner">
+            Esta propiedad ya no está disponible · Retirá el material impreso.
+          </div>` : ''
+
+        const ptrEvents = !esActivo ? 'pointer-events:none' : ''
+        const redirectUrl = `${location.origin}/r/${slot.codigo}`
+
+        return `
+        <div class="qr-slot-card${esActivo ? '' : ' slot-inactivo'}">
+          <div class="qr-slot-img" style="${imgStyle}">
+            <div class="qr-slot-img-overlay"></div>
+            <div class="qr-slot-img-nombre">${esc(proyNombre)}</div>
+            <div class="qr-slot-estado-badge ${badgeClass}">${badgeLabel}</div>
+          </div>
+          <div class="qr-slot-body" style="${ptrEvents}">
+            <div class="qr-slot-canvas-wrap">
+              <canvas id="qr-canvas-${slot.id}" width="134" height="134"></canvas>
+            </div>
+            <div class="qr-slot-codigo">${esc(slot.codigo)}</div>
+          </div>
+          ${inactivoBanner}
+          <div class="qr-slot-footer">
+            <span class="qr-slot-scans">${scans} escaneos este mes</span>
+            <div class="qr-slot-btns" style="${ptrEvents}">
+              <button class="qr-slot-btn" onclick="descargarQR('qr-canvas-${slot.id}', '${slot.codigo}')">Descargar QR</button>
+              <button class="qr-slot-btn" onclick="copiarLink('${redirectUrl}', this)">Copiar link</button>
+            </div>
+          </div>
+        </div>`
+      }).join('')
+
+      return `
+      <div class="seccion">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem;flex-wrap:wrap;gap:.5rem;">
+          <div>
+            <div class="sec-titulo" style="margin-bottom:.2rem;">Mis QRs activos</div>
+            <div style="font-size:.72rem;color:rgba(255,255,255,.38);">Los QRs que podés imprimir y compartir</div>
+          </div>
+          <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activos} activo${activos !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="mis-qrs-grid">${cards}</div>
+      </div>`
+    }
+
+    async function generarQRCanvases() {
+      for (const slot of misSlots) {
+        const canvas = document.getElementById(`qr-canvas-${slot.id}`)
+        if (!canvas) continue
+        const url = `${location.origin}/r/${slot.codigo}`
+        try {
+          await QRCode.toCanvas(canvas, url, {
+            width: canvas.width || 70, margin: 1,
+            color: { dark: '#000000', light: '#ffffff' }
+          })
+        } catch (e) { console.warn('QR error', slot.codigo, e) }
+      }
+    }
+
+    function descargarQR(canvasId, codigo) {
+      const canvas = document.getElementById(canvasId)
+      if (!canvas) return
+      const a = document.createElement('a')
+      a.download = `qr-${codigo}.png`
+      a.href = canvas.toDataURL('image/png')
+      a.click()
+    }
+    window.descargarQR = descargarQR
+
+    function copiarLink(url, btn) {
+      navigator.clipboard.writeText(url).then(() => {
+        const orig = btn.textContent
+        btn.textContent = '¡Copiado!'
+        setTimeout(() => { btn.textContent = orig }, 1800)
+      }).catch(() => {
+        prompt('Copiá el link:', url)
+      })
+    }
+    window.copiarLink = copiarLink
+
+    // ── Cards de canales (activo) ──────────────────
+    const renderCards = () => canales.map(c => {
+      // Todos los codigos (referencia o canal directo) que pertenecen a este canal
+      const misCodigos = new Set([c.codigo, ...(misRefs || []).filter(r => r.canal_id === c.id).map(r => r.codigo)])
+      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref)).length
+      const cContacts = contactos.filter(x => misCodigos.has(x.canal_ref)).length
+      const estado    = !c.activo ? 'inactivo' : campanaActiva[c.id] ? 'campana' : 'activo'
+      const estadoLabel = estado === 'inactivo' ? 'QR inactivo'
+        : campanaActiva[c.id] ? `Campaña: ${campanaActiva[c.id]}`
+        : 'QR activo'
+      return `
+      <div class="qr-status" style="flex-direction:column;align-items:flex-start;gap:.6rem;padding:1rem 1.2rem;">
+        <div style="display:flex;align-items:center;gap:.6rem;width:100%;">
+          <div class="qr-dot ${estado}"></div>
+          <div class="qr-info" style="flex:1;">
+            <div class="qr-label" style="font-weight:600;font-size:.8rem;">${esc(c.nombre)}</div>
+            <div class="qr-valor" style="font-size:.68rem;">${esc(estadoLabel)}</div>
+          </div>
+          <div class="qr-codigo">${esc(c.codigo)}</div>
+        </div>
+        <div style="display:flex;gap:1.5rem;font-size:.72rem;color:var(--gris);">
+          <span><strong style="color:var(--blanco);font-size:.9rem;">${cScans}</strong> scans</span>
+          <span><strong style="color:var(--dorado);font-size:.9rem;">${cContacts}</strong> consultas</span>
+        </div>
+      </div>`
+    }).join('')
+
+    // ── Render ─────────────────────────────────────
+    const main = document.getElementById('mainContent')
+    if (esPasivo) {
+      main.classList.add('pv-main')
+      const canal = canales[0]
+      const geo = [canal.ciudad, canal.provincia].filter(Boolean).join(', ')
+      const estadoQR = !canal.activo ? 'inactivo' : campanaActiva[canal.id] ? 'campana' : 'activo'
+      const dotColor = estadoQR === 'activo' ? '#50c878' : estadoQR === 'campana' ? '#c9a84c' : '#444'
+      const dotGlow = estadoQR !== 'inactivo' ? `box-shadow:0 0 10px ${dotColor}88` : ''
+      const dotLabel = estadoQR === 'inactivo' ? 'QR inactivo' : estadoQR === 'campana' ? `Campaña: ${campanaActiva[canal.id]}` : 'QR activo'
+      const m = metricasPasivo(contactos)
+      const monograma = (canal.nombre || 'SP').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()
+
+      main.innerHTML = `
+        <div class="pv-hero-title">
+          <h1>${esc(canal.nombre)}</h1>
+          <div class="pv-hero-sub-bar">
+            <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};${dotGlow};flex-shrink:0;display:inline-block;"></span>
+            <span>${geo ? esc(geo) + ' · ' : ''}${esc(dotLabel)}</span>
+          </div>
+          <div class="pv-periodo-bar-hero">
+            <button class="pv-flt-btn activo" data-dias="hoy" onclick="pvSetPeriodo(this)">Hoy</button>
+            <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
+            <button class="pv-flt-btn" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
+            <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
+            <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+          </div>
+          <div class="pv-flt-custom" id="pvFltCustom" style="display:none;margin-top:.8rem;">
+            <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
+            <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
+            <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
+          </div>
+        </div>
+
+        <div class="pv-img-hero">
+          <div class="pv-img-hero-overlay"></div>
+          <div class="pv-img-hero-content">
+            <div class="pv-img-hero-nombre">${esc(canal.nombre)}</div>
+            ${geo ? `<div class="pv-img-hero-slug">${esc(geo)}</div>` : ''}
+          </div>
+          ${canal.latitud && canal.longitud ? `<div id="pvMiniMapa" style="position:absolute;top:1rem;right:1rem;width:100px;height:100px;border-radius:8px;overflow:hidden;border:1px solid rgba(201,168,76,.3);z-index:2;pointer-events:none;"></div>` : ''}
+          <div class="pv-img-hero-badge ${estadoQR}">${esc(dotLabel)}</div>
+        </div>
+
+        <div class="pv-kpi-grid">
+          <div class="pv-kpi" style="--pv-c:#6495ed"><div class="pv-kpi-label">Interacciones generadas</div><div class="pv-kpi-n">${totalScans.toLocaleString('es-AR')}</div><div class="pv-kpi-sub">Actividad histórica desde tu QR y enlace.</div></div>
+          <div class="pv-kpi" style="--pv-c:#89b4f7"><div class="pv-kpi-label">Impulso reciente</div><div class="pv-kpi-n">${m.v30.toLocaleString('es-AR')}</div>${renderDelta(m.deltaV)}<div class="pv-kpi-sub">Interacciones en los últimos 30 días.</div></div>
+          <div class="pv-kpi" style="--pv-c:#c9a84c"><div class="pv-kpi-label">Consultas históricas</div><div class="pv-kpi-n pv-dorado">${contactos.length.toLocaleString('es-AR')}</div><div class="pv-kpi-sub">Oportunidades generadas desde el inicio · ${m.c30.toLocaleString('es-AR')} en los últimos 30 días.</div></div>
+          <div class="pv-kpi" style="--pv-c:#50c878"><div class="pv-kpi-label">Conversión a consulta</div><div class="pv-kpi-n">${m.conv30}%</div>${renderDelta(m.deltaConv, 'puntos vs período anterior')}<div class="pv-kpi-sub">Interacciones que se convirtieron en oportunidades.</div></div>
+        </div>
+
+        ${renderPasivo(contactos)}
+
+        <div class="pv-sec pv-msg-sec" id="secMensajes">
+          <div class="pv-sec-head"><div><div class="pv-sec-titulo">Novedades de la red${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem">${misMensajes.length}</span>` : ''}</div><div class="pv-sec-sub">Actualizaciones de Sur Patagonia para tu espacio.</div></div></div>
+          <div class="msg-inbox" id="msgInbox">
+            ${misMensajes.length ? misMensajes.map((m, i) => `
+              <div class="msg-card" id="msgCard-${i}">
+                <div class="msg-card-head" onclick="toggleMsg(${i})">
+                  <div class="msg-unread-dot" id="dot-${i}"></div>
+                  <div class="msg-card-asunto">${esc(m.asunto)}</div>
+                  <div class="msg-card-fecha">${fmt(m.created_at)}</div>
+                </div>
+                <div class="msg-card-body" id="msgBody-${i}"><div class="msg-card-cuerpo">${esc(m.cuerpo)}</div></div>
+              </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonia tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
+          </div>
+        </div>`
+
+      requestAnimationFrame(() => {
+        renderGraficoPasivo(contactos, 0)
+        renderMiniMapaPasivo(canal)
+      })
+    } else {
+      const mAct       = metricasPasivo(contactos)
+      const primerC    = canales[0]
+      const geoAct     = [primerC.ciudad, primerC.provincia].filter(Boolean).join(', ')
+      const estadoAct  = !primerC.activo ? 'inactivo' : campanaActiva[primerC.id] ? 'campana' : 'activo'
+      const dotColorAct = estadoAct === 'activo' ? '#50c878' : estadoAct === 'campana' ? '#c9a84c' : '#444'
+      const dotLabelAct = estadoAct === 'inactivo' ? 'Canal inactivo' : estadoAct === 'campana' ? `Campaña: ${esc(campanaActiva[primerC.id])}` : 'Canal activo'
+      const nombreDisplay = canales.length > 1 ? `${primerC.nombre} +${canales.length - 1}` : primerC.nombre
+
+      main.classList.add('pv-main')
+      main.innerHTML = `
+        <div class="pv-hero-title">
+          <h1>${esc(nombreDisplay)}</h1>
+          <div class="pv-hero-sub-bar">
+            <span style="width:8px;height:8px;border-radius:50%;background:${dotColorAct};${estadoAct!=='inactivo'?`box-shadow:0 0 10px ${dotColorAct}88`:''};flex-shrink:0;display:inline-block;"></span>
+            <span>${geoAct ? esc(geoAct) + ' · ' : ''}${esc(dotLabelAct)}</span>
+          </div>
+          <div class="pv-periodo-bar-hero">
+            <button class="pv-flt-btn activo" data-dias="hoy" onclick="pvSetPeriodo(this)">Hoy</button>
+            <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
+            <button class="pv-flt-btn" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
+            <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
+            <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+          </div>
+          <div class="pv-flt-custom" id="pvFltCustom" style="display:none;margin-top:.8rem;">
+            <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
+            <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
+            <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
+          </div>
+        </div>
+
+        <div class="pv-kpi-grid">
+          <div class="pv-kpi" style="--pv-c:#6495ed">
+            <div class="pv-kpi-label">Interacciones del período</div>
+            <div class="pv-kpi-n" id="pvKpi1N">${totalScans.toLocaleString('es-AR')}</div>
+            <div class="pv-kpi-sub" id="pvKpi1Sub">Actividad histórica de todos tus QRs.</div>
+          </div>
+          <div class="pv-kpi" style="--pv-c:#89b4f7">
+            <div class="pv-kpi-label">Escaneos QR del período</div>
+            <div class="pv-kpi-n" id="pvKpi2N">${mAct.v30.toLocaleString('es-AR')}</div>
+            <div id="pvKpi2Delta"></div>
+            <div class="pv-kpi-sub" id="pvKpi2Sub">Escaneos desde QR físico en el período.</div>
+          </div>
+          <div class="pv-kpi" style="--pv-c:#c9a84c">
+            <div class="pv-kpi-label">Consultas del período</div>
+            <div class="pv-kpi-n pv-dorado" id="pvKpi3N">${contactos.length.toLocaleString('es-AR')}</div>
+            <div id="pvKpi3Delta"></div>
+            <div class="pv-kpi-sub" id="pvKpi3Sub">${mAct.c30.toLocaleString('es-AR')} consultas en el período.</div>
+          </div>
+          <div class="pv-kpi" style="--pv-c:#50c878">
+            <div class="pv-kpi-label">Conversión del período</div>
+            <div class="pv-kpi-n" id="pvKpi4N">${mAct.conv30}%</div>
+            <div id="pvKpi4Delta"></div>
+            <div class="pv-kpi-sub" id="pvKpi4Sub">Scans que generaron una oportunidad.</div>
+          </div>
+          <div class="pv-kpi kpi-prop">
+            <div class="pv-kpi-label">Propiedades activas</div>
+            <div class="pv-kpi-n">${misSlots.filter(s => s.activo !== false && esPropiedadReal(s)).length}</div>
+            <div class="pv-kpi-sub">Propiedades reales vinculadas a tu canal.</div>
+          </div>
+        </div>
+
+        ${renderActivoRico(contactos)}
+        ${renderSlotCards()}
+        ${renderContactosActivo_pv(contactos)}
+
+        <div class="pv-sec pv-msg-sec" id="secMensajes">
+          <div class="pv-sec-head"><div>
+            <div class="pv-sec-titulo">Novedades de la red${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem">${misMensajes.length}</span>` : ''}</div>
+            <div class="pv-sec-sub">Actualizaciones de Sur Patagonia para tu espacio.</div>
+          </div></div>
+          <div class="msg-inbox" id="msgInbox">
+            ${misMensajes.length ? misMensajes.map((msg, i) => `
+              <div class="msg-card" id="msgCard-${i}">
+                <div class="msg-card-head" onclick="toggleMsg(${i})">
+                  <div class="msg-unread-dot" id="dot-${i}"></div>
+                  <div class="msg-card-asunto">${esc(msg.asunto)}</div>
+                  <div class="msg-card-fecha">${fmt(msg.created_at)}</div>
+                </div>
+                <div class="msg-card-body" id="msgBody-${i}">
+                  <div class="msg-card-cuerpo">${esc(msg.cuerpo)}</div>
+                  <div class="reply-area">
+                    <div class="reply-titulo">Tu respuesta</div>
+                    ${(msg.mensajes_respuestas || []).filter(r => r.usuario_id === userId).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
+                    <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
+                    <button class="btn-reply" onclick="enviarRespuesta('${msg.id}', ${i}, ${JSON.stringify(canales[0]?.nombre||'').replace(/"/g,'&quot;')})">Enviar respuesta</button>
+                  </div>
+                </div>
+              </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonia tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
+          </div>
+        </div>`
+
+      // Render de gráficos y QR canvases tras DOM
+      requestAnimationFrame(() => {
+        renderGraficoPasivo(contactos, 0, null, null, { multiSlot: true })
+        renderPanelesActivos(contactos)
+        if (misSlots.length) {
+          generarQRCanvases()
+          renderSlotMiniCharts()
+        }
+        // ETAPA 2: KPI iniciales en HOY (medianoche → ahora)
+        const _h = new Date(); const _d = new Date(_h); _d.setHours(0,0,0,0)
+        actualizarKpisActivo(_d, _h)
+      })
+    }
+
+    function compararPeriodo(actual, anterior) {
+      if (anterior === 0) return { valor:null, nueva:actual > 0 }
+      return { valor:Math.round((actual - anterior) / anterior * 100), nueva:false }
+    }
+
+    function metricasPasivo(contactos) {
+      const corte30 = new Date(Date.now() - 30 * 86400000)
+      const corte60 = new Date(Date.now() - 60 * 86400000)
+      const v30 = visitas.filter(v => new Date(v.created_at) >= corte30).length
+      const c30 = contactos.filter(c => new Date(c.created_at) >= corte30).length
+      const vAnt = visitas.filter(v => { const d = new Date(v.created_at); return d >= corte60 && d < corte30 }).length
+      const cAnt = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 }).length
+      const conv30 = v30 > 0 ? Number((c30 / v30 * 100).toFixed(1)) : 0
+      const convAnt = vAnt > 0 ? Number((cAnt / vAnt * 100).toFixed(1)) : 0
+      return {
+        v30, c30, vAnt, cAnt, conv30,
+        deltaV: compararPeriodo(v30, vAnt),
+        deltaC: compararPeriodo(c30, cAnt),
+        deltaConv: vAnt > 0 ? { valor:Number((conv30 - convAnt).toFixed(1)), nueva:false } : { valor:null, nueva:conv30 > 0 },
+      }
+    }
+
+    function renderDelta(delta, etiqueta = 'vs período anterior') {
+      if (delta.nueva) return '<div class="pv-kpi-delta pv-delta-pos">Actividad nueva</div>'
+      if (delta.valor === null) return '<div class="pv-kpi-delta pv-delta-neu">Sin comparación previa</div>'
+      if (delta.valor === 0) return `<div class="pv-kpi-delta pv-delta-neu">Sin variación ${esc(etiqueta)}</div>`
+      const positivo = delta.valor > 0
+      return `<div class="pv-kpi-delta ${positivo ? 'pv-delta-pos' : 'pv-delta-neg'}">${positivo ? '↑' : '↓'} ${Math.abs(delta.valor)}${etiqueta.startsWith('puntos') ? '' : '%'} ${esc(etiqueta)}</div>`
+    }
+
+    function fechaRelativa(dateStr) {
+      const diff = Math.max(0, Date.now() - new Date(dateStr).getTime())
+      const min = Math.floor(diff / 60000)
+      if (min < 1) return 'ahora'
+      if (min < 60) return `hace ${min} min`
+      const hs = Math.floor(min / 60)
+      if (hs < 24) return `hace ${hs} h`
+      const ds = Math.floor(hs / 24)
+      return `hace ${ds} día${ds === 1 ? '' : 's'}`
+    }
+
+    function renderActividadReciente(contactos) {
+      const eventos = [
+        ...visitas.map(v => ({ fecha:v.created_at, tipo:v.canal_via === 'qr' ? 'qr' : 'link', texto:v.canal_via === 'qr' ? 'Interacción desde el QR físico' : 'Visita desde el enlace compartido' })),
+        ...contactos.map(c => ({ fecha:c.created_at, tipo:'lead', texto:'Nueva oportunidad comercial generada' })),
+      ].filter(e => e.fecha).sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 8)
+
+      if (!eventos.length) return '<div class="pv-empty">Todavía no hay actividad registrada.</div>'
+      return `<div class="pv-feed">${eventos.map(e => `
+        <div class="pv-feed-row">
+          <span class="pv-feed-dot ${e.tipo}"></span>
+          <span class="pv-feed-desc">${esc(e.texto)}</span>
+          <span class="pv-feed-fecha">${fechaRelativa(e.fecha)}</span>
+        </div>`).join('')}</div>`
+    }
+
+    function renderMiniMapaPasivo(canal) {
+      const lat = Number(canal.latitud)
+      const lng = Number(canal.longitud)
+      const contenedor = document.getElementById('pvMiniMapa')
+      const leaflet = window.L
+      if (!contenedor || !Number.isFinite(lat) || !Number.isFinite(lng) || window.innerWidth <= 560 || !leaflet) return
+
+      const miniMap = leaflet.map(contenedor, {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        touchZoom: false,
+        keyboard: false,
+      }).setView([lat, lng], 13)
+
+      leaflet.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }).addTo(miniMap)
+
+      const icon = leaflet.divIcon({
+        className: '',
+        html: '<div style="width:14px;height:14px;background:#c9a84c;border:2px solid rgba(201,168,76,.5);border-radius:50%;box-shadow:0 0 12px rgba(201,168,76,.7),0 0 24px rgba(201,168,76,.3)"></div>',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      })
+
+      leaflet.marker([lat, lng], { icon }).addTo(miniMap)
+    }
+
+    function renderFunnelCRM(contactos) {
+      const totalInteracciones = visitas.length
+      const totalConsultas     = contactos.length
+      const totalContactadas   = contactos.filter(c => ['en_contacto','en_negociacion','cerrada'].includes(c.estado)).length
+      const totalVisitas       = contactos.filter(c => ['en_negociacion','cerrada'].includes(c.estado)).length
+      const totalCerradas      = contactos.filter(c => c.estado === 'cerrada').length
+      const totalDescartadas   = contactos.filter(c => c.estado === 'descartada').length
+
+      const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : null
+      const fmtPct = (a, b) => { const v = pct(a, b); return v !== null ? `${v}% convirtió` : null }
+
+      const convC = fmtPct(totalConsultas, totalInteracciones)
+      const convCo = fmtPct(totalContactadas, totalConsultas)
+      const convV = fmtPct(totalVisitas, totalContactadas)
+      const convCi = fmtPct(totalCerradas, totalVisitas)
+
+      const arrow = `<div class="pv-pipe-arrow">›</div>`
+
+      const paso = (cls, ico, n, label, conv) => `
+        <div class="pv-pipe-step ${cls}">
+          <div class="pv-pipe-ico">${ico}</div>
+          <div class="pv-pipe-n">${n.toLocaleString('es-AR')}</div>
+          <div class="pv-pipe-label">${label}</div>
+          ${conv ? `<div class="pv-pipe-conv">${conv}</div>` : '<div class="pv-pipe-conv">&nbsp;</div>'}
+        </div>`
+
+      const pasoLogro = totalCerradas > 0
+        ? `<div class="pv-pipe-step p4-logro">
+            <div class="pv-pipe-ico">★</div>
+            <div class="pv-pipe-n">${totalCerradas.toLocaleString('es-AR')}</div>
+            <div class="pv-pipe-label">Operación<br>cerrada</div>
+            <div class="pv-pipe-conv">${convCi ? convCi + ' a cierre' : 'El logro máximo'}</div>
+          </div>`
+        : `<div class="pv-pipe-step p4-vacio">
+            <div class="pv-pipe-ico">★</div>
+            <div class="pv-pipe-n">0</div>
+            <div class="pv-pipe-label">Operación<br>cerrada</div>
+            <div class="pv-pipe-conv">En camino al primer logro</div>
+          </div>`
+
+      return `<div class="pv-sec">
+        <div class="pv-sec-head">
+          <div>
+            <div class="pv-sec-titulo">Tu trayectoria comercial</div>
+            <div class="pv-sec-sub">Cada etapa que avanza acerca una operación al cierre.</div>
+          </div>
+        </div>
+        <div class="pv-pipeline">
+          ${paso('p0','⬛',totalInteracciones,'Interacciones',null)}
+          ${arrow}
+          ${paso('p1','✦',totalConsultas,'Consultas<br>generadas',convC)}
+          ${arrow}
+          ${paso('p2','◎',totalContactadas,'Contactadas',convCo)}
+          ${arrow}
+          ${paso('p3','⊙',totalVisitas,'Visita<br>programada',convV)}
+          ${arrow}
+          ${pasoLogro}
+        </div>
+        ${totalDescartadas > 0 ? `<div class="pv-funnel-descartadas">${totalDescartadas} descartada${totalDescartadas === 1 ? '' : 's'} — no avanzaron</div>` : ''}
+        ${totalInteracciones === 0 ? '<div class="pv-funnel-sin-actividad">Tu canal todavía no registra actividad. Cuando alguien escanee tu QR o visite tu enlace, lo vas a ver acá.</div>' : ''}
+      </div>`
+    }
+
+    function renderPasivo(contactos) {
+      const m = metricasPasivo(contactos)
+
+      const filas = contactos.length
+        ? contactos.slice(0, 40).map(c => {
+            return `<tr>
+              <td style="width:10px">${(c.estado || 'nueva') === 'nueva' ? '<div class="pv-dot-nueva"></div>' : ''}</td>
+              <td class="pv-fecha">${fmt(c.created_at)}</td>
+              <td><span class="pv-via ${c.canal_via === 'qr' ? 'qr' : 'link'}"><span class="pv-via-mark"></span>${c.canal_via === 'qr' ? 'QR físico' : 'Enlace'}</span></td>
+              <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL_PASIVO[c.estado]||'Nueva')}</span></td>
+            </tr>`
+          }).join('')
+        : '<tr><td colspan="4"><div class="pv-empty">Aún no hay oportunidades generadas desde tu canal.</div></td></tr>'
+
+      return `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Evolución de la actividad de tu canal</div>
+              <div class="pv-sec-sub">Interacciones y oportunidades reales generadas en el período seleccionado.</div>
+            </div>
+          </div>
+          <div id="pvLiveBar4" class="pv-live-bar">
+            <div class="pv-live-left">
+              <span class="pv-live-dot"></span>
+              <span class="pv-live-tag" id="pvLiveTag">En vivo · minuto a minuto</span>
+            </div>
+            <div class="pv-live-right">
+              <div class="pv-live-stat">
+                <div class="pv-live-stat-n blue" id="pvLiveScans4">0</div>
+                <div class="pv-live-stat-l" id="pvLiveScansL">Hoy · interacciones</div>
+              </div>
+              <div class="pv-live-stat">
+                <div class="pv-live-stat-n gold" id="pvLiveConsultas4">0</div>
+                <div class="pv-live-stat-l" id="pvLiveConsultasL">Hoy · consultas</div>
+              </div>
+              <div class="pv-live-stat com">
+                <div class="pv-live-stat-n com" id="pvLiveComisiones4">0</div>
+                <div class="pv-live-stat-l">Comisiones activas</div>
+              </div>
+            </div>
+          </div>
+          <div id="pvHoyZoomBar" style="display:none;flex-wrap:wrap;align-items:center;gap:.55rem;padding:.4rem .75rem;margin-bottom:.35rem;background:rgba(255,255,255,.03);border-radius:7px;border:1px solid rgba(255,255,255,.06);">
+            <span style="font-size:.6rem;color:rgba(255,255,255,.3);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;">Rango horario</span>
+            <select id="pvZoomDesde" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
+            <span style="color:rgba(255,255,255,.22);font-size:.7rem">→</span>
+            <select id="pvZoomHasta" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
+            <button onclick="pvZoomHoyReset()" style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.09);border-radius:5px;padding:.18rem .65rem;font-size:.62rem;font-family:Inter,sans-serif;cursor:pointer;letter-spacing:.05em;white-space:nowrap;">Ver todo el día</button>
+          </div>
+          <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
+          <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad de comisión</strong>: si compra una propiedad en los próximos 15 meses, cobrás. Mientras más registres, más chances de cobrar en el futuro.</div>
+          <div class="pv-mini-grid">
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Ayer</span><span id="pvMiniAyerN">0</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniAyer"></canvas></div>
+            </div>
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Últimos 7 días</span><span id="pvMiniSemN">0</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniSem"></canvas></div>
+            </div>
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Últimos 30 días</span><span id="pvMiniMesN">0</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniMes"></canvas></div>
+            </div>
+            <div class="pv-mini-card">
+              <div class="pv-mini-label"><span>Tasa de conversión</span><span id="pvMiniConvN" style="color:rgba(255,160,80,1)">0%</span></div>
+              <div class="pv-mini-wrap"><canvas id="pvMiniConv"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pv-impact-grid">
+          ${renderFunnelCRM(contactos)}
+          <div class="pv-sec" style="margin-bottom:0">
+            <div class="pv-sec-head"><div><div class="pv-sec-titulo">Actividad reciente</div><div class="pv-sec-sub">Últimos movimientos registrados.</div></div></div>
+            ${renderActividadReciente(contactos)}
+          </div>
+        </div>
+
+        <div class="pv-sec">
+          <div class="pv-sec-head"><div><div class="pv-sec-titulo">Estado de las oportunidades generadas</div><div class="pv-sec-sub">Seguimiento comercial de las consultas atribuidas a tu canal.</div></div></div>
+          <div style="overflow-x:auto">
+            <table class="pv-tabla">
+              <thead><tr><th></th><th>Fecha</th><th>Origen</th><th>Estado</th></tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>
+        </div>`
+    }
+
+    function datosEvolucionPasivo(contactos, desde, hasta) {
+      const inicio = new Date(desde)
+      inicio.setHours(0,0,0,0)
+      const fin = new Date(hasta)
+      fin.setHours(23,59,59,999)
+      const dias = Math.max(1, Math.ceil((fin - inicio) / 86400000))
+      const bloqueDias = dias <= 14 ? 1 : dias <= 45 ? 3 : dias <= 120 ? 7 : 30
+      const labelsEvol = [], dataScans = [], dataConsultas = []
+
+      for (let cursor = new Date(inicio); cursor <= fin; cursor = new Date(cursor.getTime() + bloqueDias * 86400000)) {
+        const bloqueIni = new Date(cursor)
+        const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
+        labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
+        dataScans.push(visitas.filter(v => { const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+      }
+      // Arrancar desde el primer día con actividad real
+      const firstIdx = dataScans.findIndex((v, i) => v > 0 || dataConsultas[i] > 0)
+      if (firstIdx > 0) {
+        labelsEvol.splice(0, firstIdx)
+        dataScans.splice(0, firstIdx)
+        dataConsultas.splice(0, firstIdx)
+      }
+      return { labelsEvol, dataScans, dataConsultas }
+    }
+
+    function pvGrad(ctx, rgb, alto = .45) {
+      const h = ctx.canvas.height || 260
+      const g = ctx.createLinearGradient(0, 0, 0, h)
+      g.addColorStop(0,   rgb.replace('rgb','rgba').replace(')',`, ${alto})`))
+      g.addColorStop(0.6, rgb.replace('rgb','rgba').replace(')',`, ${+(alto * .22).toFixed(2)})`))
+      g.addColorStop(1,   rgb.replace('rgb','rgba').replace(')',', 0)'))
+      return g
+    }
+
+    // ── Leyenda interactiva del gráfico principal (modo multi-slot) ──
+    // Total y Consultas siempre visibles (locked). Cada propiedad se oculta/muestra con click.
+    function renderLeyendaMultiSlot(ctx) {
+      const host = document.getElementById('pvLegendHost')
+      if (!host) return
+      const chips = []
+      // Total de interacciones (locked)
+      chips.push(`<div class="pv-legend-chip locked" title="Siempre visible">
+        <span class="pv-legend-dot" style="background:#7aaeff;color:#7aaeff;"></span>
+        <span class="pv-legend-name">Total interacciones</span>
+      </div>`)
+      // Consultas (locked)
+      chips.push(`<div class="pv-legend-chip locked" title="Siempre visible">
+        <span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;"></span>
+        <span class="pv-legend-name">Consultas</span>
+      </div>`)
+      // Una por slot activo con actividad (todos los slots activos, no solo propiedades reales)
+      misSlots.filter(s => s.activo !== false).forEach(slot => {
+        const color = colorDeSlot(slot.codigo)
+        const proy = proyImgs[slot.proyecto_slug]
+        const nombre = proy?.nombre || slot.nombre || slot.codigo
+        const off = window._pvSlotHidden[slot.codigo] === true ? ' off' : ''
+        chips.push(`<div class="pv-legend-chip${off}" data-slot="${esc(slot.codigo)}" title="Click para mostrar/ocultar">
+          <span class="pv-legend-dot" style="background:${color};color:${color};"></span>
+          <span class="pv-legend-name">${esc(nombre)}</span>
+        </div>`)
+      })
+      host.innerHTML = `<div class="pv-legend">${chips.join('')}</div>`
+      host.querySelectorAll('.pv-legend-chip[data-slot]').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const codigo = chip.dataset.slot
+          window._pvSlotHidden[codigo] = !(window._pvSlotHidden[codigo] === true)
+          // Re-render solo el chart sin recalcular datos
+          if (_pvChart4) {
+            _pvChart4.data.datasets.forEach(ds => {
+              if (ds._slotCodigo === codigo) ds.hidden = window._pvSlotHidden[codigo] === true
+            })
+            _pvChart4.update('none')
+          }
+          chip.classList.toggle('off')
+        })
+      })
+    }
+
+    function renderGraficoPasivo(contactos, dias, desdeCustom = null, hastaCustom = null, opciones = {}) {
+      if (typeof Chart === 'undefined') return
+
+      const multiSlot = opciones.multiSlot === true && misSlots && misSlots.length > 0
+      const modoHoy = dias === 0 && !desdeCustom
+
+      // ── Cleanup ──
+      if (_pvChart4) { _pvChart4.destroy(); _pvChart4 = null }
+      ;[_pvChart4a, _pvChart4b, _pvChart4c, _pvChart4d].forEach(ch => { if (ch) ch.destroy() })
+      _pvChart4a = _pvChart4b = _pvChart4c = _pvChart4d = null
+      if (_pvLiveRAF) { cancelAnimationFrame(_pvLiveRAF); _pvLiveRAF = null }
+      if (_pvLiveTimer) { clearInterval(_pvLiveTimer); _pvLiveTimer = null }
+      if (_pvDocMoveH) { document.removeEventListener('mousemove', _pvDocMoveH); _pvDocMoveH = null }
+      if (_pvDocUpH)   { document.removeEventListener('mouseup',   _pvDocUpH);   _pvDocUpH   = null }
+
+      const ctx4 = document.getElementById('pvChartEvol4')?.getContext('2d')
+      if (!ctx4) return
+
+      const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = typeof v === 'number' ? v.toLocaleString('es-AR') : v }
+
+      // ── Visibilidad de slots en el gráfico (persiste entre renders) ──
+      // El total SIEMPRE visible. Cada slot es togglable desde la leyenda.
+      if (typeof window._pvSlotHidden !== 'object' || window._pvSlotHidden === null) window._pvSlotHidden = {}
+
+      // ── Estilos comunes Z-Code ──
+      const tooltipBase = {
+        backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1,
+        titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)',
+        titleFont:{size:12,weight:'600'}, bodyFont:{size:12},
+        displayColors:true, usePointStyle:true, padding:12, cornerRadius:10, caretSize:6
+      }
+      const legendBase = {
+        position:'top', align:'end',
+        labels:{ color:'rgba(255,255,255,.7)', usePointStyle:true, pointStyle:'circle', boxWidth:7, boxHeight:7, padding:16, font:{size:11,weight:'500',family:'Inter'} }
+      }
+      const scalesBase = {
+        x:{ offset:true, border:{display:false}, grid:{display:false},
+            ticks:{color:'rgba(255,255,255,.4)', maxRotation:0, autoSkip:true, maxTicksLimit:10, padding:10, font:{size:10,family:'Inter'}} },
+        y:{ beginAtZero:true, grace:'8%', border:{display:false},
+            grid:{color:'rgba(255,255,255,.05)', drawTicks:false},
+            ticks:{color:'rgba(255,255,255,.35)', precision:0, padding:10, font:{size:10,family:'Inter'}, callback:(v) => Number(v).toLocaleString('es-AR')} }
+      }
+      const gradAzul = (c) => { const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.32)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.72)'); g.addColorStop(0.45,'rgba(122,174,255,.34)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g }
+      const pluginPeakMark = (peakIdx) => ({
+        id:'pvPeakMark4',
+        beforeDatasetsDraw(chart) {
+          const {ctx:c,chartArea,scales}=chart
+          if(!chartArea||peakIdx<0) return
+          const x=scales.x.getPixelForValue(peakIdx)
+          if(!Number.isFinite(x)) return
+          const g=c.createLinearGradient(x-40,0,x+40,0)
+          g.addColorStop(0,'rgba(232,201,106,0)'); g.addColorStop(0.5,'rgba(232,201,106,.12)'); g.addColorStop(1,'rgba(232,201,106,0)')
+          c.save(); c.fillStyle=g; c.fillRect(x-40,chartArea.top,80,chartArea.bottom-chartArea.top)
+          c.beginPath(); c.setLineDash([4,6]); c.strokeStyle='rgba(232,201,106,.35)'; c.lineWidth=1
+          c.moveTo(x,chartArea.top); c.lineTo(x,chartArea.bottom); c.stroke(); c.restore()
+        }
+      })
+      const pluginGoldGlow = {
+        id:'pvGoldGlow4',
+        beforeDatasetDraw(chart,args) {
+          if (args.index===0) { chart.ctx.save(); chart.ctx.shadowColor='rgba(122,174,255,.32)'; chart.ctx.shadowBlur=9 }
+          else if (args.index===1) { chart.ctx.save(); chart.ctx.shadowColor='rgba(232,201,106,.5)'; chart.ctx.shadowBlur=10 }
+        },
+        afterDatasetDraw(chart,args) { if(args.index===0||args.index===1) chart.ctx.restore() }
+      }
+      // datasetsBase ahora recibe también el array de líneas por propiedad (opcional)
+      const datasetsBase = (lblsData, slotLines = []) => {
+        const base = [
+          {
+            label:'Interacciones', data:lblsData[0], order:2,
+            borderColor:'#7aaeff', borderWidth: multiSlot ? 4 : 2.5, tension:0.4, fill: true,
+            cubicInterpolationMode:'monotone',
+            backgroundColor: gradAzul,
+            pointRadius:0, pointHoverRadius:6,
+            pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2
+          },
+          {
+            label:'Consultas', data:lblsData[1], order:1,
+            borderColor:'#e8c96a', borderWidth: multiSlot ? 2.5 : 3, tension:0.4, fill:false,
+            cubicInterpolationMode:'monotone', spanGaps:true,
+            pointRadius:0, pointHoverRadius:7,
+            pointBackgroundColor:'#0c0c0e', pointBorderColor:'#e8c96a', pointBorderWidth:2,
+            pointHoverBackgroundColor:'#e8c96a', pointHoverBorderColor:'#fff4c4', pointHoverBorderWidth:3
+          }
+        ]
+        if (multiSlot) {
+          base[0].label = 'Total de interacciones'
+          slotLines.forEach((ln, i) => {
+            const hidden = window._pvSlotHidden[ln.codigo] === true
+            base.push({
+              label: ln.nombre, _slotCodigo: ln.codigo, data: ln.data, order: 10 + i,
+              borderColor: ln.color, borderWidth: 1.6, tension: 0.4, fill: false,
+              cubicInterpolationMode: 'monotone', spanGaps: true,
+              pointRadius: 0, pointHoverRadius: 4,
+              pointHoverBackgroundColor: ln.color, pointHoverBorderColor: '#fff', pointHoverBorderWidth: 1.5,
+              hidden
+            })
+          })
+        }
+        return base
+      }
+
+      // ── MODO HOY: actividad real por ventana de 15 minutos (sube y baja) ──
+      if (modoHoy) {
+        const tagEl = document.getElementById('pvLiveTag')
+        const scansLEl = document.getElementById('pvLiveScansL')
+        const consultasLEl = document.getElementById('pvLiveConsultasL')
+        if (tagEl) tagEl.textContent = 'En vivo · actividad del día'
+        if (scansLEl) scansLEl.textContent = 'Hoy · interacciones'
+        if (consultasLEl) consultasLEl.textContent = 'Hoy · consultas'
+
+        const VENTANA = 15 // minutos por bucket
+        const hoyB0 = new Date(); hoyB0.setHours(0,0,0,0)
+        const ahoraMin = new Date()
+        const minutosDelDia = ahoraMin.getHours()*60 + ahoraMin.getMinutes() + 1
+        const numBuckets = Math.ceil(minutosDelDia / VENTANA)
+
+        const bucketScans = new Array(numBuckets).fill(0)
+        const bucketCons  = new Array(numBuckets).fill(0)
+        const inHoy = (iso) => { const d=new Date(iso); return d>=hoyB0&&d<=ahoraMin }
+        visitas.forEach(v => {
+          if (!inHoy(v.created_at)) return
+          const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes()
+          const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketScans[b]++
+        })
+        contactos.forEach(c => {
+          if (!inHoy(c.created_at)) return
+          const d=new Date(c.created_at); const m=d.getHours()*60+d.getMinutes()
+          const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketCons[b]++
+        })
+
+        const lbls = Array.from({length:numBuckets}, (_,i) => {
+          const m = i * VENTANA
+          const hh=String(Math.floor(m/60)).padStart(2,'0'), mm=String(m%60).padStart(2,'0')
+          return (i % 2 === 0) ? `${hh}:${mm}` : ''
+        })
+
+        const totalPorBucket = bucketScans.map((s,i)=>s+bucketCons[i])
+        const peakVal = Math.max(...totalPorBucket, 0)
+        const peakIdx = peakVal>0 ? totalPorBucket.indexOf(peakVal) : -1
+
+        // ── Líneas individuales por slot (modo Hoy, por bucket de 15min) ──
+        const slotLinesHoy = []
+        if (multiSlot) {
+          misSlots.filter(s => s.activo !== false).forEach(slot => {
+            const visSlot = visitas.filter(v => v.canal_ref === slot.codigo && inHoy(v.created_at))
+            const arr = new Array(numBuckets).fill(0)
+            visSlot.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
+            if (arr.some(x => x > 0)) {
+              const proy = proyImgs[slot.proyecto_slug]
+              slotLinesHoy.push({ codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr })
+            }
+          })
+        }
+
+        _pvChart4 = new Chart(ctx4, {
+          type:'line',
+          data:{ labels:lbls, datasets:datasetsBase([bucketScans, bucketCons], slotLinesHoy) },
+          plugins:[
+            {
+              id:'pvLivePulse4',
+              afterDatasetsDraw(chart) {
+                const {ctx:c,data}=chart
+                const t=(Date.now()%1600)/1600
+                const pulse=(1-t)*14, alpha=(1-t)*0.55
+                const lastIdx=(data.labels||[]).length-1
+                if(lastIdx<0) return
+                const drawPulse=(di,color)=>{
+                  const meta=chart.getDatasetMeta(di)
+                  if(!meta?.data?.length) return
+                  const pt=meta.data[lastIdx]; if(!pt) return
+                  c.save()
+                  c.beginPath(); c.arc(pt.x,pt.y,pulse,0,Math.PI*2)
+                  c.strokeStyle=color.replace('ALPHA',alpha.toFixed(3)); c.lineWidth=1.5; c.stroke()
+                  c.beginPath(); c.arc(pt.x,pt.y,4,0,Math.PI*2)
+                  c.fillStyle=color.replace('ALPHA','1'); c.shadowColor=color.replace('ALPHA','.8'); c.shadowBlur=12; c.fill()
+                  c.restore()
+                }
+                drawPulse(0,'rgba(122,174,255,ALPHA)')
+                drawPulse(1,'rgba(232,201,106,ALPHA)')
+              }
+            },
+            pluginPeakMark(peakIdx),
+            pluginGoldGlow
+          ],
+          options:{
+            responsive:true, maintainAspectRatio:false,
+            animation:{duration:900,easing:'easeOutQuart'},
+            interaction:{mode:'index',intersect:false},
+            layout:{padding:{top:14,right:16,bottom:2,left:2}},
+            plugins:{
+              legend: multiSlot ? {display:false} : legendBase,
+              tooltip:{
+                ...tooltipBase,
+                callbacks:{
+                  title(items){ const i=items[0]?.dataIndex||0; const m=i*VENTANA; const hh=String(Math.floor(m/60)).padStart(2,'0'); const mm=String(m%60).padStart(2,'0'); return `${hh}:${mm} – ${hh}:${String(m%60+VENTANA-1).padStart(2,'0')}` },
+                  label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` },
+                  // Filtra los slot ocultos del tooltip automáticamente (hidden los excluye Chart.js)
+                  afterBody(items){ return null }
+                }
+              }
+            },
+            scales:{
+              x:{...scalesBase.x, ticks:{...scalesBase.x.ticks, autoSkip:false, callback:(_,i)=>lbls[i]||''}},
+              y:scalesBase.y
+            }
+          }
+        })
+
+        // Contadores en vivo
+        const refrescarContadores = () => {
+          const hoy=new Date(); hoy.setHours(0,0,0,0)
+          setText('pvLiveScans4', visitas.filter(v=>new Date(v.created_at)>=hoy).length)
+          setText('pvLiveConsultas4', contactos.filter(v=>new Date(v.created_at)>=hoy).length)
+          setText('pvLiveComisiones4', contactos.length)
+        }
+        refrescarContadores()
+
+        // RAF loop para el pulso
+        const loopLive = () => { if(_pvChart4&&_pvChart4.canvas){_pvChart4.draw();_pvLiveRAF=requestAnimationFrame(loopLive)}else{_pvLiveRAF=null} }
+        setTimeout(() => { if(_pvChart4&&!_pvLiveRAF) loopLive() }, 950)
+
+        // Zoom/pan interactivo: viewport = hoy desde medianoche hasta ahora (sin futuro)
+        window._pvZoomDefaultFrom = hoyB0.getTime()
+        window._pvZoomDefaultTo   = Date.now()
+        if (!window._pvZoomFrom || window._pvZoomFrom < hoyB0.getTime()) window._pvZoomFrom = window._pvZoomDefaultFrom
+        if (!window._pvZoomTo)   window._pvZoomTo   = window._pvZoomDefaultTo
+        pvBindZoomPan(_pvChart4)
+
+        // Activar barra de zoom horario para modo Hoy
+        const pvZB = document.getElementById('pvHoyZoomBar')
+        if (pvZB) {
+          window._pvHoyLbls = lbls
+          window._pvHoyVENTANA = VENTANA
+          const hOpts = (from, to, sel) => Array.from({length:to-from+1},(_,i)=>{
+            const v=from+i; const hh=String(v).padStart(2,'0')
+            return `<option value="${v}"${v===sel?' selected':''}>${hh}:00</option>`
+          }).join('')
+          const horaMax = Math.min(24, new Date().getHours() + 1)
+          const elD = document.getElementById('pvZoomDesde'); if (elD) elD.innerHTML = hOpts(0,23,0)
+          const elH = document.getElementById('pvZoomHasta'); if (elH) elH.innerHTML = hOpts(1,horaMax,horaMax)
+          pvZB.style.display = 'flex'
+        }
+
+        // Refresco real cada 30s (re-fetch desde Supabase)
+        _pvLiveTimer = setInterval(async () => {
+          const [rV, rC] = await Promise.all([
+            supabase.from('visitas').select('created_at,canal_via,canal_ref').in('canal_ref', codigosRef),
+            supabase.from('contactos').select('*').in('canal_ref', codigosRef).order('created_at',{ascending:false})
+          ])
+          if (rV.data) visitas = rV.data
+          if (rC.data) contactos = rC.data
+          renderGraficoPasivo(contactos, 0, null, null, { multiSlot: opciones.multiSlot === true })
+          if (opciones.multiSlot) renderPanelesActivos(contactos)
+        }, 30000)
+
+      } else {
+        // ── MODO PERÍODO: diario acumulado ───────────────────────────────
+        // Ocultar barra de zoom (solo activa en modo Hoy)
+        const pvZBP = document.getElementById('pvHoyZoomBar'); if (pvZBP) pvZBP.style.display = 'none'
+        const hasta = hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : new Date()
+        const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime()-(dias-1)*86400000)
+        const { labelsEvol, dataScans, dataConsultas } = datosEvolucionPasivo(contactos, desde, hasta)
+
+        const combined = dataScans.map((s,i)=>s+dataConsultas[i])
+        const peakVal = Math.max(...combined, 0)
+        const peakIdx = peakVal>0 ? combined.indexOf(peakVal) : -1
+
+        // ── Líneas individuales por slot (modo período, alineadas al total) ──
+        // ETAPA 1: buckets idénticos a datosEvolucionPasivo para que ninguna
+        // línea individual pueda superar visualmente a la línea total.
+        const slotLinesPeriodo = []
+        if (multiSlot) {
+          // 1. Deduplicar misSlots por codigo solo en memoria
+          const _seenCod = new Set()
+          const slotsDedup = misSlots.filter(s => {
+            if (_seenCod.has(s.codigo)) { console.warn('[Etapa1] Slot duplicado omitido:', s.codigo); return false }
+            _seenCod.add(s.codigo); return true
+          })
+          // 2. Replicar la normalización exacta de datosEvolucionPasivo
+          const _ini = new Date(desde); _ini.setHours(0,0,0,0)
+          const _fin = new Date(hasta);  _fin.setHours(23,59,59,999)
+          const _dias = Math.max(1, Math.ceil((_fin - _ini) / 86400000))
+          const bloqueDias = _dias <= 14 ? 1 : _dias <= 45 ? 3 : _dias <= 120 ? 7 : 30
+          // 3. Construir los mismos buckets que usó la línea total
+          const _buckets = []
+          for (let _c = new Date(_ini); _c <= _fin; _c = new Date(_c.getTime() + bloqueDias * 86400000)) {
+            const bIni = new Date(_c)
+            const bFin = new Date(Math.min(_fin.getTime() + 1, bIni.getTime() + bloqueDias * 86400000))
+            _buckets.push({ bIni, bFin })
+          }
+          // 4. Eliminar los mismos buckets iniciales que recortó datosEvolucionPasivo
+          const _recorte = _buckets.length - labelsEvol.length
+          const _buckAlin = _recorte > 0 ? _buckets.slice(_recorte) : _buckets
+          // 5. Construir series con los buckets alineados (todos los slots activos)
+          slotsDedup.filter(s => s.activo !== false).forEach(slot => {
+            const visSlot = visitas.filter(v => v.canal_ref === slot.codigo)
+            const arr = _buckAlin.map(({ bIni, bFin }) =>
+              visSlot.filter(v => { const d = new Date(v.created_at); return d >= bIni && d < bFin }).length
+            )
+            if (arr.some(x => x > 0)) {
+              const proy = proyImgs[slot.proyecto_slug]
+              slotLinesPeriodo.push({ codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr })
+            }
+          })
+        }
+
+        const tagEl = document.getElementById('pvLiveTag')
+        const scansLEl = document.getElementById('pvLiveScansL')
+        const consultasLEl = document.getElementById('pvLiveConsultasL')
+        if (tagEl) tagEl.textContent = desdeCustom ? `${desdeCustom.replace(/-/g,'/')} → ${hastaCustom.replace(/-/g,'/')}` : `Últimos ${dias} días`
+        if (scansLEl) scansLEl.textContent = 'período · interacciones'
+        if (consultasLEl) consultasLEl.textContent = 'período · consultas'
+        setText('pvLiveScans4', dataScans.reduce((s,v)=>s+v,0))
+        setText('pvLiveConsultas4', dataConsultas.reduce((s,v)=>s+v,0))
+        setText('pvLiveComisiones4', contactos.length)
+
+        _pvChart4 = new Chart(ctx4, {
+          type:'line',
+          data:{ labels:labelsEvol, datasets:datasetsBase([dataScans, dataConsultas], slotLinesPeriodo) },
+          plugins:[pluginPeakMark(peakIdx), pluginGoldGlow],
+          options:{
+            responsive:true, maintainAspectRatio:false,
+            animation:{duration:900,easing:'easeOutQuart'},
+            interaction:{mode:'index',intersect:false},
+            layout:{padding:{top:14,right:16,bottom:2,left:2}},
+            plugins:{
+              legend: multiSlot ? {display:false} : legendBase,
+              tooltip:{
+                ...tooltipBase,
+                callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } }
+              }
+            },
+            scales:scalesBase
+          }
+        })
+        // Zoom/pan interactivo: viewport del período actual
+        window._pvZoomDefaultFrom = desde.getTime()
+        window._pvZoomDefaultTo   = hasta.getTime()
+        window._pvZoomFrom = window._pvZoomDefaultFrom
+        window._pvZoomTo   = window._pvZoomDefaultTo
+        pvBindZoomPan(_pvChart4)
+      }
+
+      // ── Leyenda interactiva (solo modo multi-slot) ──
+      if (multiSlot) renderLeyendaMultiSlot(ctx4)
+
+      // ── Mini sparklines (siempre, independiente del modo) ───────────────
+      const hoy0=new Date(); hoy0.setHours(0,0,0,0)
+      const ayer0=new Date(hoy0-86400000), ayerFin=new Date(hoy0-1)
+      const sem0=new Date(hoy0-7*86400000), mes0=new Date(hoy0-30*86400000)
+      const enRango=(iso,a,b)=>{ const d=new Date(iso); return d>=a&&d<=b }
+      const accPorDia=(arr,desde,hasta)=>{
+        const d=Math.max(1,Math.round((hasta-desde)/86400000)+1)
+        const out=new Array(d).fill(0)
+        arr.forEach(x=>{ if(!enRango(x.created_at,desde,hasta)) return; const idx=Math.floor((new Date(x.created_at)-desde)/86400000); if(idx>=0&&idx<d) out[idx]++ })
+        let run=0; return out.map(v=>{run+=v;return run})
+      }
+      const miniCfg=(data,color)=>({
+        type:'line',
+        data:{labels:data.map((_,i)=>i),datasets:[{data,borderColor:color,borderWidth:2,tension:0.4,fill:true,pointRadius:0,cubicInterpolationMode:'monotone',
+          backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(0,0,0,0)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,color.replace('1)','0.4)')); g.addColorStop(1,color.replace('1)','0)')); return g } }]},
+        options:{responsive:true,maintainAspectRatio:false,animation:{duration:600},plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}
+      })
+
+      const dAyerS=accPorDia(visitas,ayer0,ayerFin), dAyerC=accPorDia(contactos,ayer0,ayerFin)
+      const semAll=(()=>{ const d=7; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
+        visitas.forEach(v=>{ if(!enRango(v.created_at,sem0,new Date())) return; const i=Math.floor((new Date(v.created_at)-sem0)/86400000); if(i>=0&&i<d) oS[i]++ })
+        contactos.forEach(c=>{ if(!enRango(c.created_at,sem0,new Date())) return; const i=Math.floor((new Date(c.created_at)-sem0)/86400000); if(i>=0&&i<d) oC[i]++ })
+        let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
+      const mesAll=(()=>{ const d=30; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
+        visitas.forEach(v=>{ if(!enRango(v.created_at,mes0,new Date())) return; const i=Math.floor((new Date(v.created_at)-mes0)/86400000); if(i>=0&&i<d) oS[i]++ })
+        contactos.forEach(c=>{ if(!enRango(c.created_at,mes0,new Date())) return; const i=Math.floor((new Date(c.created_at)-mes0)/86400000); if(i>=0&&i<d) oC[i]++ })
+        let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
+
+      // Tasa de conversión diaria (últimos 30 días)
+      const convData=new Array(30).fill(0).map((_,i)=>{
+        const dIni=new Date(mes0.getTime()+i*86400000)
+        const dFin=new Date(dIni.getTime()+86400000)
+        const v=visitas.filter(x=>{ const d=new Date(x.created_at); return d>=dIni&&d<dFin }).length
+        const c=contactos.filter(x=>{ const d=new Date(x.created_at); return d>=dIni&&d<dFin }).length
+        return v>0 ? Number((c/v*100).toFixed(1)) : 0
+      })
+      const convDias=convData.filter(v=>v>0)
+      const convProm=convDias.length ? Number((convDias.reduce((s,v)=>s+v,0)/convDias.length).toFixed(1)) : 0
+
+      const ca=document.getElementById('pvMiniAyer')?.getContext('2d')
+      const cb=document.getElementById('pvMiniSem')?.getContext('2d')
+      const cc=document.getElementById('pvMiniMes')?.getContext('2d')
+      const cd=document.getElementById('pvMiniConv')?.getContext('2d')
+      if(ca) _pvChart4a=new Chart(ca,miniCfg(dAyerS.map((s,i)=>s+dAyerC[i]),'rgba(232,201,106,1)'))
+      if(cb) _pvChart4b=new Chart(cb,miniCfg(semAll.s.map((s,i)=>s+semAll.c[i]),'rgba(122,174,255,1)'))
+      if(cc) _pvChart4c=new Chart(cc,miniCfg(mesAll.s.map((s,i)=>s+mesAll.c[i]),'rgba(110,232,154,1)'))
+      if(cd) _pvChart4d=new Chart(cd,miniCfg(convData,'rgba(255,160,80,1)'))
+
+      setText('pvMiniAyerN', (dAyerS[dAyerS.length-1]||0)+(dAyerC[dAyerC.length-1]||0))
+      setText('pvMiniSemN', (semAll.s[semAll.s.length-1]||0)+(semAll.c[semAll.c.length-1]||0))
+      setText('pvMiniMesN', (mesAll.s[mesAll.s.length-1]||0)+(mesAll.c[mesAll.c.length-1]||0))
+      const convEl=document.getElementById('pvMiniConvN'); if(convEl) convEl.textContent=`${convProm}%`
+    }
+
+
+    // El modo multi-slot aplica solo al canal activo (cuando hay slots asignados)
+    const _modoMultiSlot = () => misSlots && misSlots.length > 0
+
+    // ── ETAPA 2: Actualizar KPI superiores según el período seleccionado ──
+    function actualizarKpisActivo(desde, hasta) {
+      const d0 = new Date(desde); d0.setHours(0,0,0,0)
+      const d1 = new Date(hasta); d1.setHours(23,59,59,999)
+
+      const vP  = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
+      const qrP = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 && v.canal_via==='qr' }).length
+      const cP  = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 }).length
+      const conv = vP > 0 ? Number((cP / vP * 100).toFixed(1)) : 0
+
+      const setEl   = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v }
+      const clearEl = (id)    => { const el=document.getElementById(id); if(el) el.innerHTML='' }
+
+      setEl('pvKpi1N',   vP.toLocaleString('es-AR'))
+      setEl('pvKpi1Sub', 'Interacciones en el período seleccionado.')
+      setEl('pvKpi2N',   qrP.toLocaleString('es-AR'))
+      clearEl('pvKpi2Delta')
+      setEl('pvKpi2Sub', 'Escaneos desde QR físico en el período.')
+      setEl('pvKpi3N',   cP.toLocaleString('es-AR'))
+      clearEl('pvKpi3Delta')
+      setEl('pvKpi3Sub', `${cP.toLocaleString('es-AR')} consultas en el período.`)
+      setEl('pvKpi4N',   `${conv}%`)
+      clearEl('pvKpi4Delta')
+      setEl('pvKpi4Sub', 'Consultas sobre interacciones del período.')
+    }
+
+    window.pvSetPeriodo = function(btn) {
+      document.querySelectorAll('.pv-flt-btn').forEach(b => b.classList.remove('activo'))
+      btn.classList.add('activo')
+      const valor = btn.dataset.dias
+      const custom = valor === 'custom'
+      document.getElementById('pvFltCustom').style.display = custom ? '' : 'none'
+      if (!custom) {
+        const dias = valor === 'hoy' ? 0 : parseInt(valor, 10)
+        const hasta = new Date()
+        const desde = new Date(hasta)
+        if (dias === 0) {
+          desde.setHours(0,0,0,0)
+        } else {
+          desde.setTime(hasta.getTime() - (dias - 1) * 86400000)
+          desde.setHours(0,0,0,0)
+        }
+        renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot() })
+        if (_modoMultiSlot()) renderPanelesActivos(contactos)
+        actualizarKpisActivo(desde, hasta)
+      }
+    }
+
+    window.pvAplicarFechas = function() {
+      const desde = document.getElementById('pvEvolDesde').value
+      const hasta = document.getElementById('pvEvolHasta').value
+      if (!desde || !hasta) { alert('Seleccioná una fecha desde y una hasta.'); return }
+      if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
+      const fechaLocal = val => { const [y,m,d] = val.split('-').map(Number); return new Date(y, m-1, d) }
+      renderGraficoPasivo(contactos, 30, desde, hasta, { multiSlot: _modoMultiSlot() })
+      if (_modoMultiSlot()) renderPanelesActivos(contactos)
+      actualizarKpisActivo(fechaLocal(desde), fechaLocal(hasta))
+    }
+
+    // ── Canal activo: propiedades con mini-chart individual ──────────────────
+    function renderSlotCards() {
+      if (!misSlots.length) return `
+        <div class="pv-sec">
+          <div class="pv-sec-head"><div>
+            <div class="pv-sec-titulo">Mis propiedades</div>
+            <div class="pv-sec-sub">Aún no tenés slots asignados. El administrador te los va a asignar.</div>
+          </div></div>
+        </div>`
+
+      const activosCount = misSlots.filter(s => s.activo !== false && esPropiedadReal(s)).length
+      const cards = misSlots.filter(esPropiedadReal).map(slot => {
+        const proy       = proyImgs[slot.proyecto_slug]
+        const prop       = findPropData(slot.proyecto_slug)
+        const fotoUrl    = proy?.foto_portada || prop?.imagenes?.[0] || ''
+        const proyNombre = proy?.nombre || prop?.titulo || slot.nombre || slot.codigo
+        const attrSrc    = prop || proy
+        const scans      = scansPorSlot[slot.codigo] || 0
+        const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
+        const conv       = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
+        const esActivo   = slot.activo !== false
+        const redirectUrl = `${location.origin}/r/${slot.codigo}`
+        const imgStyle = fotoUrl ? `background-image:url('${fotoUrl.replace(/'/g,"\\'")}')` : ''
+        const ptrOff = !esActivo ? 'pointer-events:none' : ''
+        const colorHex = colorDeSlot(slot.codigo)
+
+        // Atributos de propiedad (preferir propiedades sobre proyectos)
+        const attrs = []
+        if (attrSrc?.dormitorios)         attrs.push({ v: attrSrc.dormitorios,                     l: 'DORM.' })
+        if (attrSrc?.banos)               attrs.push({ v: attrSrc.banos,                            l: 'BAÑOS' })
+        if (attrSrc?.superficie_cubierta) attrs.push({ v: attrSrc.superficie_cubierta + ' m²',     l: 'M² CUB.' })
+        if (attrSrc?.superficie_total)    attrs.push({ v: attrSrc.superficie_total + ' m²',        l: 'M² TOT.' })
+        const attrsHtml = attrs.length ? `
+          <div class="slot-attrs">
+            ${attrs.map(a => `<div class="slot-attr"><span class="slot-attr-v">${a.v}</span><span class="slot-attr-l">${a.l}</span></div>`).join('')}
+          </div>` : ''
+
+        return `
+        <div class="slot-full-card${esActivo ? '' : ' slot-full-inactivo'}">
+          <div class="slot-full-left">
+            <div class="slot-full-img"${imgStyle ? ` style="${imgStyle}"` : ''}>
+              <div class="slot-full-img-overlay"></div>
+              <div class="slot-img-top">
+                <div class="slot-full-eyebrow">${esc(slot.codigo)}</div>
+                <div class="qr-slot-estado-badge ${esActivo?'activo':'inactivo'}">${esActivo?'● ACTIVO':'● INACTIVO'}</div>
+              </div>
+              <div class="slot-img-bottom">
+                <div class="slot-full-nombre">${esc(proyNombre)}</div>
+                ${attrsHtml}
+              </div>
+            </div>
+            <div class="slot-full-body">
+              <div class="slot-full-stats">
+                <div class="slot-stat">
+                  <span class="slot-stat-n" style="color:${colorHex};">${scans}</span>
+                  <span class="slot-stat-l">SCANS · 30D</span>
+                </div>
+                <div class="slot-stat">
+                  <span class="slot-stat-n" style="color:#e8c96a;">${slotCons.length}</span>
+                  <span class="slot-stat-l">CONSULTAS</span>
+                </div>
+                <div class="slot-stat">
+                  <span class="slot-stat-n">${conv}</span>
+                  <span class="slot-stat-l">CONVERSIÓN</span>
+                </div>
+              </div>
+              <div class="slot-full-qr-footer" style="${ptrOff}">
+                <div class="qr-slot-canvas-wrap" style="padding:5px;">
+                  <canvas id="qr-canvas-${slot.id}" width="70" height="70"></canvas>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:.35rem;">
+                  <button class="qr-slot-btn" onclick="descargarQR('qr-canvas-${slot.id}','${slot.codigo}')">Descargar QR</button>
+                  <button class="qr-slot-btn" onclick="copiarLink('${redirectUrl}',this)">Copiar link</button>
+                </div>
+              </div>
+              ${!esActivo ? '<div class="qr-slot-inactivo-banner">Esta propiedad ya no está disponible · Retirá el material impreso.</div>' : ''}
+            </div>
+          </div>
+          <div class="slot-full-right">
+            <div class="slot-chart-label" style="color:${colorHex};opacity:.8;">Interacciones · últimos 30 días</div>
+            <div class="slot-chart-wrap"><canvas id="slot-chart-${slot.id}"></canvas></div>
+            <div class="slot-chart-total">${scans} total</div>
+          </div>
+        </div>`
+      }).join('')
+
+      return `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Mis propiedades activas</div>
+              <div class="pv-sec-sub">QR, estadísticas y actividad individual de cada propiedad.</div>
+            </div>
+            <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activosCount} activa${activosCount!==1?'s':''}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.85rem;">${cards}</div>
+        </div>`
+    }
+
+    function renderSlotMiniCharts() {
+      if (typeof Chart === 'undefined') return
+      const ahora  = new Date()
+      const dias30 = Array.from({length: 30}, (_, i) => {
+        const d = new Date(ahora); d.setDate(d.getDate() - (29 - i)); d.setHours(0,0,0,0); return d
+      })
+      const labels = dias30.map(d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}))
+
+      const hace30Slot = new Date(Date.now() - 30 * 86400000)
+
+      misSlots.forEach(slot => {
+        const canvas = document.getElementById(`slot-chart-${slot.id}`)
+        if (!canvas) return
+        // Color determinístico de la propiedad
+        const colorHex = colorDeSlot(slot.codigo)
+        const rgba = (a) => colorHex.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)).join(',')+`,${a}`
+        // Solo últimos 30 días, filtrado por slot
+        const slotVis = visitas.filter(v =>
+          v.canal_ref === slot.codigo && new Date(v.created_at) >= hace30Slot
+        )
+        const data = dias30.map(dIni => {
+          const dFin = new Date(dIni.getTime() + 86400000)
+          return slotVis.filter(v => { const d = new Date(v.created_at); return d >= dIni && d < dFin }).length
+        })
+        const ctx2d = canvas.getContext('2d')
+        new Chart(ctx2d, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              data,
+              borderColor: colorHex,
+              borderWidth: 2.5,
+              tension: 0.4,
+              cubicInterpolationMode: 'monotone',
+              fill: true,
+              // Gradiente creado dentro del contexto del chart (cuando ya tiene dimensiones)
+              backgroundColor: (context) => {
+                const chart = context.chart
+                const { ctx: c, chartArea } = chart
+                if (!chartArea) return `rgba(${rgba(0.2)})`
+                const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+                g.addColorStop(0,   `rgba(${rgba(0.50)})`)
+                g.addColorStop(0.5, `rgba(${rgba(0.15)})`)
+                g.addColorStop(1,   `rgba(${rgba(0.00)})`)
+                return g
+              },
+              pointRadius: 0,
+              pointHoverRadius: 5,
+              pointHoverBackgroundColor: colorHex,
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 2,
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            animation: { duration: 800, easing: 'easeOutQuart' },
+            interaction: { mode: 'index', intersect: false },
+            layout: { padding: { top: 6, right: 4, bottom: 0, left: 0 } },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(18,18,21,.96)',
+                borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
+                titleColor: 'rgba(255,255,255,.55)', titleFont: { size: 10 },
+                bodyColor: colorHex, bodyFont: { size: 12, weight: '600' },
+                padding: 10, cornerRadius: 6,
+                callbacks: {
+                  title: ctx => ctx[0].label,
+                  label: ctx => ` ${ctx.raw} interacción${ctx.raw !== 1 ? 'es' : ''}`
+                }
+              }
+            },
+            scales: {
+              x: {
+                offset: true,
+                border: { display: false },
+                grid: { display: false },
+                ticks: {
+                  color: 'rgba(255,255,255,.28)',
+                  maxRotation: 0,
+                  autoSkip: true,
+                  maxTicksLimit: 6,
+                  padding: 4,
+                  font: { size: 9, family: 'Inter' },
+                  callback: (_, i) => labels[i] || ''
+                }
+              },
+              y: {
+                beginAtZero: true,
+                suggestedMax: Math.max(...data, 3),
+                border: { display: false },
+                grid: { color: 'rgba(255,255,255,.05)', drawTicks: false },
+                ticks: {
+                  color: 'rgba(255,255,255,.28)',
+                  precision: 0,
+                  maxTicksLimit: 4,
+                  padding: 6,
+                  font: { size: 9, family: 'Inter' },
+                  callback: v => Number(v).toLocaleString('es-AR')
+                }
+              }
+            }
+          }
+        })
+      })
+    }
+
+    // ── Canal activo: sección de gráfico + funnel (sin tabla de contactos) ──
+    // Inicializa los charts de los 4 paneles inferiores (Actividad 30d + Conversión 30d tienen chart).
+    function renderPanelesActivos(contactos) {
+      if (typeof Chart === 'undefined') return
+      if (_pvPanelAct) { _pvPanelAct.destroy(); _pvPanelAct = null }
+      if (_pvPanelConv) { _pvPanelConv.destroy(); _pvPanelConv = null }
+
+      // ── Panel 1: Actividad general · últimos 30 días ──
+      const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
+      const mes0 = new Date(hoy0 - 30*86400000)
+      const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
+      const labels = dias.map(d => d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}))
+      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
+      const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
+      const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
+        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        const proy = proyImgs[slot.proyecto_slug]
+        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
+      }).filter(ln => ln.data.some(x=>x>0))
+
+      const ctxAct = document.getElementById('pvPanelAct30')?.getContext('2d')
+      if (ctxAct && (dataScans.some(x=>x>0) || dataCons.some(x=>x>0))) {
+        const datasets = [
+          { label:'Total interacciones', data:dataScans, order:2, borderColor:'#7aaeff', borderWidth:3.5, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
+            backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.32)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.72)'); g.addColorStop(0.45,'rgba(122,174,255,.34)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g } },
+          { label:'Consultas', data:dataCons, order:1, borderColor:'#e8c96a', borderWidth:2.5, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#e8c96a', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2 }
+        ]
+        slotLines.forEach((ln,i) => datasets.push({ label:ln.nombre, _slotCodigo:ln.codigo, data:ln.data, order:10+i, borderColor:ln.color, borderWidth:1.4, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor:ln.color, pointHoverBorderColor:'#fff', pointHoverBorderWidth:1.5, hidden: window._pvPanelHidden?.[ln.codigo] === true }))
+        _pvPanelAct = new Chart(ctxAct, {
+          type:'line', data:{labels, datasets},
+          options:{ responsive:true, maintainAspectRatio:false, animation:{duration:700,easing:'easeOutQuart'}, interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)', titleFont:{size:11,weight:'600'}, bodyFont:{size:11}, displayColors:true, usePointStyle:true, padding:10, cornerRadius:8, callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } } } }, scales:{ x:{display:false}, y:{beginAtZero:true,display:false,grace:'10%'} } }
+        })
+        // Leyenda interactiva del panel (solo slots; total y consultas siempre visibles)
+        const legendHost = document.getElementById('pvPanelActLegend')
+        if (legendHost) {
+          if (typeof window._pvPanelHidden !== 'object' || window._pvPanelHidden === null) window._pvPanelHidden = {}
+          const chips = [`<div class="pv-legend-chip locked"><span class="pv-legend-dot" style="background:#7aaeff;color:#7aaeff;"></span><span class="pv-legend-name">Total</span></div>`,
+                         `<div class="pv-legend-chip locked"><span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;"></span><span class="pv-legend-name">Consultas</span></div>`]
+          slotLines.forEach(ln => {
+            const off = window._pvPanelHidden[ln.codigo] === true ? ' off' : ''
+            chips.push(`<div class="pv-legend-chip${off}" data-slot="${esc(ln.codigo)}" title="Click para mostrar/ocultar"><span class="pv-legend-dot" style="background:${ln.color};color:${ln.color};"></span><span class="pv-legend-name">${esc(ln.nombre)}</span></div>`)
+          })
+          legendHost.innerHTML = `<div class="pv-legend">${chips.join('')}</div>`
+          legendHost.querySelectorAll('.pv-legend-chip[data-slot]').forEach(chip => {
+            chip.addEventListener('click', () => {
+              const codigo = chip.dataset.slot
+              window._pvPanelHidden[codigo] = !(window._pvPanelHidden[codigo] === true)
+              if (_pvPanelAct) {
+                _pvPanelAct.data.datasets.forEach(ds => { if (ds._slotCodigo === codigo) ds.hidden = window._pvPanelHidden[codigo] === true })
+                _pvPanelAct.update('none')
+              }
+              chip.classList.toggle('off')
+            })
+          })
+        }
+      }
+
+      // ── Panel 2: Conversión · últimos 30 días ──
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const ctxConv = document.getElementById('pvPanelConv30')?.getContext('2d')
+      if (ctxConv && convDiaria.some(x=>x>0)) {
+        _pvPanelConv = new Chart(ctxConv, {
+          type:'line',
+          data:{ labels, datasets:[{ label:'Conversión diaria', data:convDiaria, borderColor:'#ffa050', borderWidth:2.5, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#ffa050', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2, backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(255,160,80,.2)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(255,160,80,.4)'); g.addColorStop(1,'rgba(255,160,80,0)'); return g } }] },
+          options:{ responsive:true, maintainAspectRatio:false, animation:{duration:700,easing:'easeOutQuart'}, interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#fff', bodyColor:'#ffa050', titleFont:{size:11,weight:'600'}, bodyFont:{size:11,weight:'600'}, padding:10, cornerRadius:8, callbacks:{ label(ctx){ return ` ${ctx.raw}% conversión` } } } }, scales:{ x:{display:false}, y:{beginAtZero:true,display:false,grace:'15%',ticks:{callback:v=>v+'%'}} } }
+        })
+      }
+    }
+
+    function renderActivoRico(contactos) {
+      return `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Evolución de la actividad</div>
+              <div class="pv-sec-sub">Interacciones y consultas de todos tus slots combinados.</div>
+            </div>
+          </div>
+          <div id="pvLiveBar4" class="pv-live-bar">
+            <div class="pv-live-left">
+              <span class="pv-live-dot"></span>
+              <span class="pv-live-tag" id="pvLiveTag">En vivo · minuto a minuto</span>
+            </div>
+            <div class="pv-live-right">
+              <div class="pv-live-stat">
+                <div class="pv-live-stat-n blue" id="pvLiveScans4">0</div>
+                <div class="pv-live-stat-l" id="pvLiveScansL">Hoy · interacciones</div>
+              </div>
+              <div class="pv-live-stat">
+                <div class="pv-live-stat-n gold" id="pvLiveConsultas4">0</div>
+                <div class="pv-live-stat-l" id="pvLiveConsultasL">Hoy · consultas</div>
+              </div>
+              <div class="pv-live-stat com">
+                <div class="pv-live-stat-n com" id="pvLiveComisiones4">0</div>
+                <div class="pv-live-stat-l">Comisiones activas</div>
+              </div>
+            </div>
+          </div>
+          <div id="pvHoyZoomBar" style="display:none;flex-wrap:wrap;align-items:center;gap:.55rem;padding:.4rem .75rem;margin-bottom:.35rem;background:rgba(255,255,255,.03);border-radius:7px;border:1px solid rgba(255,255,255,.06);">
+            <span style="font-size:.6rem;color:rgba(255,255,255,.3);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;">Rango horario</span>
+            <select id="pvZoomDesde" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
+            <span style="color:rgba(255,255,255,.22);font-size:.7rem">→</span>
+            <select id="pvZoomHasta" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
+            <button onclick="pvZoomHoyReset()" style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.09);border-radius:5px;padding:.18rem .65rem;font-size:.62rem;font-family:Inter,sans-serif;cursor:pointer;letter-spacing:.05em;white-space:nowrap;">Ver todo el día</button>
+          </div>
+          <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
+          <div id="pvLegendHost"></div>
+          <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad de comisión</strong>: si compra una propiedad en los próximos 15 meses, cobrás. Mientras más registres, más chances de cobrar en el futuro.</div>
+        </div>
+
+        ${renderCuatroPaneles(contactos)}
+
+        <div class="pv-impact-grid">
+          ${renderFunnelCRM(contactos)}
+          <div class="pv-sec" style="margin-bottom:0">
+            <div class="pv-sec-head"><div><div class="pv-sec-titulo">Actividad reciente</div><div class="pv-sec-sub">Últimos movimientos registrados.</div></div></div>
+            ${renderActividadReciente(contactos)}
+          </div>
+        </div>`
+    }
+
+    // ── 4 paneles inferiores nuevos: Actividad 30d / Conversión / Origen / Rendimiento ──
+    function renderCuatroPaneles(contactos) {
+      return `
+        <div class="pv-panels-grid">
+          ${panelActividad30d(contactos)}
+          ${panelConversion30d(contactos)}
+          ${panelOrigenInteracciones()}
+          ${panelRendimientoPropiedad(contactos)}
+        </div>`
+    }
+
+    // Panel 1 — Actividad general · últimos 30 días
+    function panelActividad30d(contactos) {
+      const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
+      const mes0 = new Date(hoy0 - 30*86400000)
+      const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
+      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
+      const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
+      const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
+        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        const proy = proyImgs[slot.proyecto_slug]
+        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
+      }).filter(ln => ln.data.some(x=>x>0))
+      const totalScans = dataScans.reduce((s,v)=>s+v,0)
+      const hayDatos = totalScans > 0 || dataCons.reduce((s,v)=>s+v,0) > 0
+      return `
+        <div class="pv-panel">
+          <div class="pv-panel-head">
+            <div>
+              <div class="pv-panel-titulo">Actividad general · últimos 30 días</div>
+              <div class="pv-panel-sub">Total de interacciones, consultas y cada propiedad.</div>
+            </div>
+          </div>
+          ${hayDatos ? `<div class="pv-panel-chart"><canvas id="pvPanelAct30"></canvas></div>
+            <div class="pv-panel-foot"><div id="pvPanelActLegend"></div></div>`
+            : `<div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Sin actividad en los últimos 30 días.</div></div>`}
+        </div>`
+    }
+
+    // Panel 2 — Conversión · últimos 30 días
+    function panelConversion30d(contactos) {
+      const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
+      const mes0 = new Date(hoy0 - 30*86400000)
+      const prev0 = new Date(hoy0 - 60*86400000)
+      const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const v30 = visitas.filter(v=>new Date(v.created_at)>=mes0).length
+      const c30 = contactos.filter(c=>new Date(c.created_at)>=mes0).length
+      const vAnt = visitas.filter(v=>{const d=new Date(v.created_at);return d>=prev0&&d<mes0}).length
+      const cAnt = contactos.filter(c=>{const d=new Date(c.created_at);return d>=prev0&&d<mes0}).length
+      const conv30 = v30 > 0 ? Number((c30/v30*100).toFixed(1)) : 0
+      const convAnt = vAnt > 0 ? Number((cAnt/vAnt*100).toFixed(1)) : null
+      const delta = convAnt !== null ? Number((conv30-convAnt).toFixed(1)) : null
+      const hayDatos = v30 > 0
+      return `
+        <div class="pv-panel">
+          <div class="pv-panel-head">
+            <div>
+              <div class="pv-panel-titulo">Conversión · últimos 30 días</div>
+              <div class="pv-panel-sub">Consultas ÷ interacciones × 100.</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:1.6rem;font-weight:300;color:#e8c96a;line-height:1;">${conv30}%</div>
+              ${delta !== null ? `<div style="font-size:.58rem;color:${delta>=0?'#6ee89a':'#d9825b'};margin-top:.2rem;">${delta>=0?'↑':'↓'} ${Math.abs(delta)} pts vs período anterior</div>` : (conv30>0?`<div style="font-size:.58rem;color:#6ee89a;margin-top:.2rem;">Actividad nueva</div>`:'')}
+            </div>
+          </div>
+          ${hayDatos ? `<div class="pv-panel-chart"><canvas id="pvPanelConv30"></canvas></div>
+            <div class="pv-panel-foot" style="display:flex;gap:1.2rem;font-size:.62rem;color:rgba(255,255,255,.4);">
+              <span><strong style="color:#7aaeff;">${v30}</strong> interacciones</span>
+              <span><strong style="color:#e8c96a;">${c30}</strong> consultas</span>
+            </div>`
+            : `<div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Sin interacciones en el período.</div></div>`}
+        </div>`
+    }
+
+    // Panel 3 — Origen de las interacciones
+    function panelOrigenInteracciones() {
+      const qr = visitas.filter(v => v.canal_via === 'qr').length
+      const link = visitas.filter(v => v.canal_via !== 'qr').length
+      const total = qr + link
+      const items = [
+        { key:'qr', label:'QR físico', color:'#50c878', n: qr },
+        { key:'link', label:'Link compartido', color:'#6495ed', n: link },
+      ].filter(i => i.n > 0)
+      if (total === 0) return `
+        <div class="pv-panel">
+          <div class="pv-panel-head"><div>
+            <div class="pv-panel-titulo">Origen de las interacciones</div>
+            <div class="pv-panel-sub">De dónde provienen los escaneos.</div>
+          </div></div>
+          <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Todavía no hay interacciones registradas.</div></div>
+        </div>`
+      const filas = items.map(i => {
+        const pct = total > 0 ? (i.n / total * 100) : 0
+        return `<div class="pv-origen-row">
+          <div>
+            <div class="pv-origen-label"><span class="pv-origen-dot" style="background:${i.color};color:${i.color};"></span>${esc(i.label)}</div>
+            <div class="pv-origen-bar-wrap"><div class="pv-origen-bar" style="width:${pct.toFixed(1)}%;background:${i.color};"></div></div>
+          </div>
+          <div class="pv-origen-val">
+            <div class="pv-origen-val-n">${i.n.toLocaleString('es-AR')}</div>
+            <div class="pv-origen-val-p">${pct.toFixed(1)}%</div>
+          </div>
+        </div>`
+      }).join('')
+      return `
+        <div class="pv-panel">
+          <div class="pv-panel-head"><div>
+            <div class="pv-panel-titulo">Origen de las interacciones</div>
+            <div class="pv-panel-sub">${total.toLocaleString('es-AR')} interacciones registradas.</div>
+          </div></div>
+          <div class="pv-origen-list">${filas}</div>
+        </div>`
+    }
+
+    // Panel 4 — Rendimiento por propiedad (ranking)
+    function panelRendimientoPropiedad(contactos) {
+      if (!misSlots.length) return `
+        <div class="pv-panel">
+          <div class="pv-panel-head"><div>
+            <div class="pv-panel-titulo">Rendimiento por propiedad</div>
+            <div class="pv-panel-sub">Ranking por interacciones.</div>
+          </div></div>
+          <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Aún no tenés propiedades asignadas.</div></div>
+        </div>`
+      const rows = misSlots.filter(esPropiedadReal).map(slot => {
+        const scans = scansPorSlot[slot.codigo] || 0
+        const slotCons = contactos.filter(c => c.canal_ref === slot.codigo).length
+        const conv = scans > 0 ? Number((slotCons/scans*100).toFixed(1)) : 0
+        const proy = proyImgs[slot.proyecto_slug]
+        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), scans, consultas: slotCons, conv }
+      }).sort((a,b) => b.scans - a.scans)
+      return `
+        <div class="pv-panel">
+          <div class="pv-panel-head"><div>
+            <div class="pv-panel-titulo">Rendimiento por propiedad</div>
+            <div class="pv-panel-sub">Ordenado por interacciones (mayor a menor).</div>
+          </div></div>
+          <div class="pv-rank-head"><span>#</span><span>Propiedad</span><span class="r">Scan</span><span class="r">Cons.</span><span class="r">Conv.</span></div>
+          ${rows.map((r,i) => `
+            <div class="pv-rank-row">
+              <div class="pv-rank-pos">${i+1}</div>
+              <div class="pv-rank-nombre"><span class="pv-rank-dot" style="background:${r.color};color:${r.color};"></span><span>${esc(r.nombre)}</span></div>
+              <div class="pv-rank-num" style="color:${r.color};">${r.scans}</div>
+              <div class="pv-rank-num" style="color:#e8c96a;">${r.consultas}</div>
+              <div class="pv-rank-conv">${r.scans>0?r.conv+'%':'—'}</div>
+            </div>`).join('')}
+        </div>`
+    }
+
+    // ── Canal activo: tabla de rendimiento por slot ──────────────────────────
+    function renderSlotBreakdown() {
+      if (!misSlots.length) return ''
+      const rows = misSlots.map(slot => {
+        const scans     = scansPorSlot[slot.codigo] || 0
+        const slotCons  = contactos.filter(c => c.canal_ref === slot.codigo)
+        const conv      = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
+        const proy      = proyImgs[slot.proyecto_slug]
+        const nombre    = proy?.nombre || slot.nombre || slot.codigo
+        const esActivo  = slot.activo !== false
+        return `
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:.55rem;">
+                <div style="width:8px;height:8px;border-radius:50%;background:${esActivo ? '#50c878' : '#555'};${esActivo ? 'box-shadow:0 0 7px rgba(80,200,120,.4)' : ''}"></div>
+                <span style="font-family:monospace;font-size:.68rem;color:#c9a84c;">${esc(slot.codigo)}</span>
+              </div>
+            </td>
+            <td>
+              <span style="font-size:.78rem;font-weight:500;">${esc(nombre)}</span>
+              ${!esActivo ? '<span style="display:block;font-size:.6rem;color:#e05c5c;margin-top:.1rem;">Inactivo</span>' : ''}
+            </td>
+            <td style="text-align:right;font-size:.82rem;font-weight:600;color:#9fc0ff;">${scans}</td>
+            <td style="text-align:right;font-size:.82rem;font-weight:600;color:#e8c96a;">${slotCons.length}</td>
+            <td style="text-align:right;font-size:.78rem;color:rgba(255,255,255,.5);">${conv}</td>
+          </tr>`
+      }).join('')
+      return `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Rendimiento por slot QR</div>
+              <div class="pv-sec-sub">Actividad individual de cada propiedad en los últimos 30 días.</div>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="pv-tabla">
+              <thead><tr>
+                <th>Código</th>
+                <th>Propiedad</th>
+                <th style="text-align:right">Scans 30d</th>
+                <th style="text-align:right">Consultas</th>
+                <th style="text-align:right">Conversión</th>
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`
+    }
+
+    // ── Canal activo: tabla de contactos enriquecida ─────────────────────────
+    function renderContactosActivo_pv(contactos) {
+      const nombreSlot = {}
+      ;(misSlots || []).forEach(s => {
+        nombreSlot[s.codigo] = proyImgs[s.proyecto_slug]?.nombre || s.nombre || s.codigo
+      })
+      canales.forEach(c => { if (!nombreSlot[c.codigo]) nombreSlot[c.codigo] = c.nombre })
+
+      const filas = contactos.length
+        ? contactos.slice(0, 50).map(c => `
+          <tr>
+            <td style="width:10px">${(c.estado||'nueva')==='nueva' ? '<div class="pv-dot-nueva"></div>' : ''}</td>
+            <td class="pv-fecha">${fmt(c.created_at)}</td>
+            <td>
+              <span style="font-weight:500">${esc(codificarNombre(c.nombre))}</span>
+              ${c.mensaje ? `<span style="display:block;font-size:.62rem;color:rgba(255,255,255,.35);margin-top:.1rem;">${esc(c.mensaje.slice(0,60))}${c.mensaje.length > 60 ? '…':''}</span>` : ''}
+            </td>
+            <td style="font-size:.7rem;color:rgba(255,255,255,.55);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
+            <td><span style="font-family:monospace;font-size:.65rem;color:#c9a84c;">${esc(nombreSlot[c.canal_ref] || c.canal_ref || '—')}</span></td>
+            <td><span class="pv-via ${c.canal_via==='qr'?'qr':'link'}"><span class="pv-via-mark"></span>${c.canal_via==='qr'?'QR':'Link'}</span></td>
+            <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
+          </tr>`).join('')
+        : '<tr><td colspan="7"><div class="pv-empty"><div class="pv-empty-mark"></div>Aún no hay consultas generadas desde tus slots.</div></td></tr>'
+
+      return `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Consultas generadas</div>
+              <div class="pv-sec-sub">Oportunidades de comisión vinculadas a tu actividad comercial.</div>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="pv-tabla">
+              <thead><tr>
+                <th></th><th>Fecha</th><th>Consulta</th><th>Propiedad</th><th>Slot</th><th>Origen</th><th>Estado</th>
+              </tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>
+        </div>`
+    }
+
+    function renderActivo(contactos) {
+      if (!contactos.length) return `
+        <div class="seccion">
+          <div class="sec-titulo">Consultas</div>
+          <div class="empty-msg">Aún no hay consultas de tus canales.</div>
+        </div>`
+
+      // Mapa codigo → nombre de canal para la columna Canal
+      const nombreCanal = {}
+      canales.forEach(c => { nombreCanal[c.codigo] = c.nombre })
+
+      const filas = contactos.slice(0, 50).map(c => `
+        <tr>
+          <td style="white-space:nowrap">${fmt(c.created_at)}</td>
+          <td>
+            <span style="font-weight:500">${esc(codificarNombre(c.nombre))}</span>
+            ${c.mensaje ? `<span style="display:block;font-size:.67rem;color:var(--gris);margin-top:.15rem;">${esc(c.mensaje.slice(0,70))}${c.mensaje.length > 70 ? '…':''}</span>` : ''}
+          </td>
+          <td style="font-size:.72rem;color:var(--gris);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
+          <td style="font-size:.7rem;color:var(--gris);">${esc(nombreCanal[c.canal_ref] || c.canal_ref || '—')}</td>
+          <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr':''}">${c.canal_via === 'qr' ? '⬛ QR' : '🔗 Link'}</span></td>
+          <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
+        </tr>`).join('')
+
+      return `
+        <div class="seccion">
+          <div class="sec-titulo">Tus consultas — todos los canales</div>
+          <div style="overflow-x:auto;">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Fecha</th><th>Nombre</th><th>Propiedad</th><th>Canal</th><th>Origen</th><th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>
+        </div>`
+    }
+
+    // ── Mensajes: toggle y respuesta ──
+    window.toggleMsg = (i) => {
+      document.getElementById(`msgBody-${i}`).classList.toggle('open')
+      const dot = document.getElementById(`dot-${i}`)
+      if (dot) dot.classList.add('leido')
+    }
+
+    window.enviarRespuesta = async (mensajeId, i, canalNombre) => {
+      const input = document.getElementById(`replyInput-${i}`)
+      const cuerpo = input.value.trim()
+      if (!cuerpo) return
+      const btn = input.nextElementSibling
+      btn.disabled = true; btn.textContent = 'Enviando...'
+      const { error } = await supabase.from('mensajes_respuestas').insert({
+        mensaje_id: mensajeId,
+        usuario_id: userId,
+        usuario_nombre: session.user.email,
+        canal_nombre: canalNombre,
+        cuerpo
+      })
+      if (error) {
+        btn.textContent = 'Error — intentá de nuevo'
+        btn.disabled = false
+      } else {
+        input.value = ''
+        btn.textContent = '✓ Respuesta enviada'
+        // Mostrar respuesta en pantalla
+        const replyArea = input.parentNode
+        const newItem = document.createElement('div')
+        newItem.className = 'reply-item-colab'
+        newItem.innerHTML = `<div class="reply-cuerpo">${esc(cuerpo)}</div><div class="reply-meta">Ahora</div>`
+        replyArea.insertBefore(newItem, input)
+        setTimeout(() => { btn.textContent = 'Enviar respuesta'; btn.disabled = false }, 2000)
+      }
+    }
+
+  })()
+</script>
+</body>
+</html>
