@@ -1480,27 +1480,27 @@
 
         <div class="pv-kpi-grid">
           <div class="pv-kpi" style="--pv-c:#6495ed">
-            <div class="pv-kpi-label">Interacciones totales</div>
-            <div class="pv-kpi-n">${totalScans.toLocaleString('es-AR')}</div>
-            <div class="pv-kpi-sub">Actividad histórica de todos tus QRs.</div>
+            <div class="pv-kpi-label">Interacciones del período</div>
+            <div class="pv-kpi-n" id="pvKpi1N">${totalScans.toLocaleString('es-AR')}</div>
+            <div class="pv-kpi-sub" id="pvKpi1Sub">Actividad histórica de todos tus QRs.</div>
           </div>
           <div class="pv-kpi" style="--pv-c:#89b4f7">
-            <div class="pv-kpi-label">Impulso reciente</div>
-            <div class="pv-kpi-n">${mAct.v30.toLocaleString('es-AR')}</div>
-            ${renderDelta(mAct.deltaV)}
-            <div class="pv-kpi-sub">Interacciones en los últimos 30 días.</div>
+            <div class="pv-kpi-label">Escaneos QR del período</div>
+            <div class="pv-kpi-n" id="pvKpi2N">${mAct.v30.toLocaleString('es-AR')}</div>
+            <div id="pvKpi2Delta"></div>
+            <div class="pv-kpi-sub" id="pvKpi2Sub">Escaneos desde QR físico en el período.</div>
           </div>
           <div class="pv-kpi" style="--pv-c:#c9a84c">
-            <div class="pv-kpi-label">Consultas generadas</div>
-            <div class="pv-kpi-n pv-dorado">${contactos.length.toLocaleString('es-AR')}</div>
-            ${renderDelta(mAct.deltaC)}
-            <div class="pv-kpi-sub">${mAct.c30.toLocaleString('es-AR')} en los últimos 30 días.</div>
+            <div class="pv-kpi-label">Consultas del período</div>
+            <div class="pv-kpi-n pv-dorado" id="pvKpi3N">${contactos.length.toLocaleString('es-AR')}</div>
+            <div id="pvKpi3Delta"></div>
+            <div class="pv-kpi-sub" id="pvKpi3Sub">${mAct.c30.toLocaleString('es-AR')} consultas en el período.</div>
           </div>
           <div class="pv-kpi" style="--pv-c:#50c878">
-            <div class="pv-kpi-label">Conversión a consulta</div>
-            <div class="pv-kpi-n">${mAct.conv30}%</div>
-            ${renderDelta(mAct.deltaConv, 'puntos vs período anterior')}
-            <div class="pv-kpi-sub">Scans que generaron una oportunidad.</div>
+            <div class="pv-kpi-label">Conversión del período</div>
+            <div class="pv-kpi-n" id="pvKpi4N">${mAct.conv30}%</div>
+            <div id="pvKpi4Delta"></div>
+            <div class="pv-kpi-sub" id="pvKpi4Sub">Scans que generaron una oportunidad.</div>
           </div>
           <div class="pv-kpi kpi-prop">
             <div class="pv-kpi-label">Propiedades activas</div>
@@ -1547,6 +1547,9 @@
           generarQRCanvases()
           renderSlotMiniCharts()
         }
+        // ETAPA 2: KPI iniciales en HOY (medianoche → ahora)
+        const _h = new Date(); const _d = new Date(_h); _d.setHours(0,0,0,0)
+        actualizarKpisActivo(_d, _h)
       })
     }
 
@@ -1842,8 +1845,8 @@
         <span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;"></span>
         <span class="pv-legend-name">Consultas</span>
       </div>`)
-      // Una por slot activo con actividad (solo propiedades reales)
-      misSlots.filter(esPropiedadReal).forEach(slot => {
+      // Una por slot activo con actividad (todos los slots activos, no solo propiedades reales)
+      misSlots.filter(s => s.activo !== false).forEach(slot => {
         const color = colorDeSlot(slot.codigo)
         const proy = proyImgs[slot.proyecto_slug]
         const nombre = proy?.nombre || slot.nombre || slot.codigo
@@ -2014,7 +2017,7 @@
         // ── Líneas individuales por slot (modo Hoy, por bucket de 15min) ──
         const slotLinesHoy = []
         if (multiSlot) {
-          misSlots.filter(esPropiedadReal).forEach(slot => {
+          misSlots.filter(s => s.activo !== false).forEach(slot => {
             const visSlot = visitas.filter(v => v.canal_ref === slot.codigo && inHoy(v.created_at))
             const arr = new Array(numBuckets).fill(0)
             visSlot.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
@@ -2138,19 +2141,38 @@
         const peakVal = Math.max(...combined, 0)
         const peakIdx = peakVal>0 ? combined.indexOf(peakVal) : -1
 
-        // ── Líneas individuales por slot (modo período, por bloque de días) ──
+        // ── Líneas individuales por slot (modo período, alineadas al total) ──
+        // ETAPA 1: buckets idénticos a datosEvolucionPasivo para que ninguna
+        // línea individual pueda superar visualmente a la línea total.
         const slotLinesPeriodo = []
         if (multiSlot) {
-          const bloqueDias = Math.ceil((hasta - desde) / 86400000) <= 14 ? 1 : Math.ceil((hasta - desde) / 86400000) <= 45 ? 3 : 7
-          misSlots.filter(esPropiedadReal).forEach(slot => {
-            const visSlot = visitas.filter(v => v.canal_ref === slot.codigo && new Date(v.created_at) >= desde && new Date(v.created_at) <= hasta)
-            if (!visSlot.length) return
-            const arr = []
-            for (let cursor = new Date(desde); cursor <= hasta; cursor = new Date(cursor.getTime() + bloqueDias * 86400000)) {
-              const bIni = new Date(cursor)
-              const bFin = new Date(Math.min(hasta.getTime() + 1, bIni.getTime() + bloqueDias * 86400000))
-              arr.push(visSlot.filter(v => { const d = new Date(v.created_at); return d >= bIni && d < bFin }).length)
-            }
+          // 1. Deduplicar misSlots por codigo solo en memoria
+          const _seenCod = new Set()
+          const slotsDedup = misSlots.filter(s => {
+            if (_seenCod.has(s.codigo)) { console.warn('[Etapa1] Slot duplicado omitido:', s.codigo); return false }
+            _seenCod.add(s.codigo); return true
+          })
+          // 2. Replicar la normalización exacta de datosEvolucionPasivo
+          const _ini = new Date(desde); _ini.setHours(0,0,0,0)
+          const _fin = new Date(hasta);  _fin.setHours(23,59,59,999)
+          const _dias = Math.max(1, Math.ceil((_fin - _ini) / 86400000))
+          const bloqueDias = _dias <= 14 ? 1 : _dias <= 45 ? 3 : _dias <= 120 ? 7 : 30
+          // 3. Construir los mismos buckets que usó la línea total
+          const _buckets = []
+          for (let _c = new Date(_ini); _c <= _fin; _c = new Date(_c.getTime() + bloqueDias * 86400000)) {
+            const bIni = new Date(_c)
+            const bFin = new Date(Math.min(_fin.getTime() + 1, bIni.getTime() + bloqueDias * 86400000))
+            _buckets.push({ bIni, bFin })
+          }
+          // 4. Eliminar los mismos buckets iniciales que recortó datosEvolucionPasivo
+          const _recorte = _buckets.length - labelsEvol.length
+          const _buckAlin = _recorte > 0 ? _buckets.slice(_recorte) : _buckets
+          // 5. Construir series con los buckets alineados (todos los slots activos)
+          slotsDedup.filter(s => s.activo !== false).forEach(slot => {
+            const visSlot = visitas.filter(v => v.canal_ref === slot.codigo)
+            const arr = _buckAlin.map(({ bIni, bFin }) =>
+              visSlot.filter(v => { const d = new Date(v.created_at); return d >= bIni && d < bFin }).length
+            )
             if (arr.some(x => x > 0)) {
               const proy = proyImgs[slot.proyecto_slug]
               slotLinesPeriodo.push({ codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr })
@@ -2256,6 +2278,32 @@
     // El modo multi-slot aplica solo al canal activo (cuando hay slots asignados)
     const _modoMultiSlot = () => misSlots && misSlots.length > 0
 
+    // ── ETAPA 2: Actualizar KPI superiores según el período seleccionado ──
+    function actualizarKpisActivo(desde, hasta) {
+      const d0 = new Date(desde); d0.setHours(0,0,0,0)
+      const d1 = new Date(hasta); d1.setHours(23,59,59,999)
+
+      const vP  = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
+      const qrP = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 && v.canal_via==='qr' }).length
+      const cP  = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 }).length
+      const conv = vP > 0 ? Number((cP / vP * 100).toFixed(1)) : 0
+
+      const setEl   = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v }
+      const clearEl = (id)    => { const el=document.getElementById(id); if(el) el.innerHTML='' }
+
+      setEl('pvKpi1N',   vP.toLocaleString('es-AR'))
+      setEl('pvKpi1Sub', 'Interacciones en el período seleccionado.')
+      setEl('pvKpi2N',   qrP.toLocaleString('es-AR'))
+      clearEl('pvKpi2Delta')
+      setEl('pvKpi2Sub', 'Escaneos desde QR físico en el período.')
+      setEl('pvKpi3N',   cP.toLocaleString('es-AR'))
+      clearEl('pvKpi3Delta')
+      setEl('pvKpi3Sub', `${cP.toLocaleString('es-AR')} consultas en el período.`)
+      setEl('pvKpi4N',   `${conv}%`)
+      clearEl('pvKpi4Delta')
+      setEl('pvKpi4Sub', 'Consultas sobre interacciones del período.')
+    }
+
     window.pvSetPeriodo = function(btn) {
       document.querySelectorAll('.pv-flt-btn').forEach(b => b.classList.remove('activo'))
       btn.classList.add('activo')
@@ -2264,8 +2312,17 @@
       document.getElementById('pvFltCustom').style.display = custom ? '' : 'none'
       if (!custom) {
         const dias = valor === 'hoy' ? 0 : parseInt(valor, 10)
+        const hasta = new Date()
+        const desde = new Date(hasta)
+        if (dias === 0) {
+          desde.setHours(0,0,0,0)
+        } else {
+          desde.setTime(hasta.getTime() - (dias - 1) * 86400000)
+          desde.setHours(0,0,0,0)
+        }
         renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot() })
         if (_modoMultiSlot()) renderPanelesActivos(contactos)
+        actualizarKpisActivo(desde, hasta)
       }
     }
 
@@ -2274,8 +2331,10 @@
       const hasta = document.getElementById('pvEvolHasta').value
       if (!desde || !hasta) { alert('Seleccioná una fecha desde y una hasta.'); return }
       if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
+      const fechaLocal = val => { const [y,m,d] = val.split('-').map(Number); return new Date(y, m-1, d) }
       renderGraficoPasivo(contactos, 30, desde, hasta, { multiSlot: _modoMultiSlot() })
       if (_modoMultiSlot()) renderPanelesActivos(contactos)
+      actualizarKpisActivo(fechaLocal(desde), fechaLocal(hasta))
     }
 
     // ── Canal activo: propiedades con mini-chart individual ──────────────────
