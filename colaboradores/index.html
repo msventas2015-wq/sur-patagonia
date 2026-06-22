@@ -967,16 +967,22 @@
     const slugify = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
     const canalCodigoMap = {}; canales.forEach(c => { canalCodigoMap[c.id] = c.codigo })
     // ── Color determinístico por slot.id (hash estable) ──────────────
-    // Paleta premium coherente con Sur Patagonia — 10 colores bien separados.
-    const SLOT_PALETTE = ['#6495ed','#50c878','#e8c96a','#d76f3f','#b06cd9','#4ec9b0','#f0956a','#7aaeff','#a8e063','#e85aae']
-    const SLOT_PALETTE_SOFT = ['#6495ed','#50c878','#e8c96a','#d76f3f','#b06cd9','#4ec9b0','#f0956a','#7aaeff','#a8e063','#e85aae']
+    // Paleta de slots: excluye colores reservados de líneas generales (total, QR, link).
+    const COLOR_TOTAL_GENERAL    = '#f5f3f0'
+    const COLOR_TOTAL_GRAFICO    = '#7aaeff'
+    const COLOR_QR_FISICO        = '#50c878'
+    const COLOR_LINK_COMPARTIDO  = '#6495ed'
+    const COLORES_RESERVADOS = [COLOR_TOTAL_GENERAL, COLOR_TOTAL_GRAFICO, COLOR_QR_FISICO, COLOR_LINK_COMPARTIDO]
+    const SLOT_PALETTE = ['#b56cff','#ff8a65','#4dd0e1','#ffb74d','#ba68c8','#81c784','#e57373','#f06292','#a1887f','#90a4ae']
+    const SLOT_PALETTE_SOFT = SLOT_PALETTE
     const slotColorMap = {} // slot.codigo → hex
     function colorDeSlot(codigo) {
       if (slotColorMap[codigo]) return slotColorMap[codigo]
       // FNV-1a hash del código → índice de paleta estable
       let h = 0x811c9dc5
       for (let i = 0; i < codigo.length; i++) { h ^= codigo.charCodeAt(i); h = (h * 0x01000193) >>> 0 }
-      const color = SLOT_PALETTE[h % SLOT_PALETTE.length]
+      let color = SLOT_PALETTE[h % SLOT_PALETTE.length]
+      if (COLORES_RESERVADOS.includes(color)) color = SLOT_PALETTE.find(c => !COLORES_RESERVADOS.includes(c)) || '#b56cff'
       slotColorMap[codigo] = color
       return color
     }
@@ -1327,12 +1333,26 @@
       }
     }
 
-    function descargarQR(canvasId, codigo) {
+    async function descargarQR(canvasId, codigo) {
       const canvas = document.getElementById(canvasId)
       if (!canvas) return
+      const SIZE = 1024
+      const offscreen = document.createElement('canvas')
+      offscreen.width = SIZE
+      offscreen.height = SIZE
+      const url = `${location.origin}/r/${codigo}`
+      try {
+        await QRCode.toCanvas(offscreen, url, {
+          width: SIZE, margin: 4,
+          color: { dark: '#000000', light: '#ffffff' }
+        })
+      } catch (e) {
+        console.error('[descargarQR] Error generando QR de alta resolución:', e)
+        return
+      }
       const a = document.createElement('a')
       a.download = `qr-${codigo}.png`
-      a.href = canvas.toDataURL('image/png')
+      a.href = offscreen.toDataURL('image/png')
       a.click()
     }
     window.descargarQR = descargarQR
@@ -2342,13 +2362,19 @@
       if (!misSlots.length) return `
         <div class="pv-sec">
           <div class="pv-sec-head"><div>
-            <div class="pv-sec-titulo">Mis propiedades</div>
+            <div class="pv-sec-titulo">Mis canales activos</div>
             <div class="pv-sec-sub">Aún no tenés slots asignados. El administrador te los va a asignar.</div>
           </div></div>
         </div>`
 
-      const activosCount = misSlots.filter(s => s.activo !== false && esPropiedadReal(s)).length
-      const cards = misSlots.filter(esPropiedadReal).map(slot => {
+      // ── ETAPA 1C: separar propiedades reales de canales generales ──
+      const slotsActivos = misSlots.filter(s => s.activo !== false)
+      const propSlots    = slotsActivos.filter(esPropiedadReal)
+      const canalSlots   = slotsActivos.filter(s => !esPropiedadReal(s))
+      const activosCount = propSlots.length
+
+      // ── Sección A: Propiedades activas (código sin cambios) ──
+      const cards = propSlots.map(slot => {
         const proy       = proyImgs[slot.proyecto_slug]
         const prop       = findPropData(slot.proyecto_slug)
         const fotoUrl    = proy?.foto_portada || prop?.imagenes?.[0] || ''
@@ -2423,7 +2449,77 @@
         </div>`
       }).join('')
 
-      return `
+      // ── Sección B: Canales generales (ETAPA 1C) ──
+      const canalCards = canalSlots.map(slot => {
+        const scans      = scansPorSlot[slot.codigo] || 0
+        const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
+        const conv       = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
+        const esActivo   = slot.activo !== false
+        const redirectUrl = `${location.origin}/r/${slot.codigo}`
+        const dest       = slot.destino || '/'
+        const esExterno  = dest.startsWith('http://') || dest.startsWith('https://')
+        const colorHex   = colorDeSlot(slot.codigo)
+        const rgb        = colorHex.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)).join(',')
+        const ptrOff     = !esActivo ? 'pointer-events:none' : ''
+        const badgeTxt   = esExterno ? 'Destino externo' : 'Canal general'
+        const badgeStyle = esExterno
+          ? 'background:rgba(232,140,106,.12);color:#f0956a;border:1px solid rgba(232,140,106,.25)'
+          : 'background:rgba(100,149,237,.10);color:#7aaeff;border:1px solid rgba(100,149,237,.22)'
+        const destLabel  = esExterno ? dest.replace(/^https?:\/\//, '') : dest
+
+        return `
+        <div class="slot-full-card${esActivo ? '' : ' slot-full-inactivo'}">
+          <div class="slot-full-left">
+            <div class="slot-full-img" style="background:linear-gradient(135deg,rgba(${rgb},0.18),rgba(17,16,14,0.95))">
+              <div class="slot-full-img-overlay"></div>
+              <div class="slot-img-top">
+                <div class="slot-full-eyebrow">${esc(slot.codigo)}</div>
+                <div class="qr-slot-estado-badge ${esActivo?'activo':'inactivo'}">${esActivo?'● ACTIVO':'● INACTIVO'}</div>
+              </div>
+              <div class="slot-img-bottom">
+                <div class="slot-full-nombre">${esc(slot.nombre || slot.codigo)}</div>
+                <div style="margin-top:.35rem;">
+                  <span style="font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .5rem;border-radius:999px;${badgeStyle}">${badgeTxt}</span>
+                </div>
+              </div>
+            </div>
+            <div class="slot-full-body">
+              <div style="font-size:.68rem;color:rgba(255,255,255,.38);letter-spacing:.03em;margin-bottom:.65rem;word-break:break-all;">${esc(destLabel)}</div>
+              <div class="slot-full-stats">
+                <div class="slot-stat">
+                  <span class="slot-stat-n" style="color:${colorHex};">${scans}</span>
+                  <span class="slot-stat-l">SCANS · 30D</span>
+                </div>
+                <div class="slot-stat">
+                  <span class="slot-stat-n" style="color:#e8c96a;">${slotCons.length}</span>
+                  <span class="slot-stat-l">CONSULTAS</span>
+                </div>
+                <div class="slot-stat">
+                  <span class="slot-stat-n">${conv}</span>
+                  <span class="slot-stat-l">CONVERSIÓN</span>
+                </div>
+              </div>
+              <div class="slot-full-qr-footer" style="${ptrOff}">
+                <div class="qr-slot-canvas-wrap" style="padding:5px;">
+                  <canvas id="qr-canvas-${slot.id}" width="70" height="70"></canvas>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:.35rem;">
+                  <button class="qr-slot-btn" onclick="descargarQR('qr-canvas-${slot.id}','${slot.codigo}')">Descargar QR</button>
+                  <button class="qr-slot-btn" onclick="copiarLink('${redirectUrl}',this)">Copiar link</button>
+                </div>
+              </div>
+              ${!esActivo ? '<div class="qr-slot-inactivo-banner">Este canal ya no está disponible · Retirá el material impreso.</div>' : ''}
+            </div>
+          </div>
+          <div class="slot-full-right">
+            <div class="slot-chart-label" style="color:${colorHex};opacity:.8;">Interacciones · últimos 30 días</div>
+            <div class="slot-chart-wrap"><canvas id="slot-chart-${slot.id}"></canvas></div>
+            <div class="slot-chart-total">${scans} total</div>
+          </div>
+        </div>`
+      }).join('')
+
+      const secPropiedades = propSlots.length ? `
         <div class="pv-sec">
           <div class="pv-sec-head">
             <div>
@@ -2433,7 +2529,21 @@
             <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activosCount} activa${activosCount!==1?'s':''}</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:.85rem;">${cards}</div>
-        </div>`
+        </div>` : ''
+
+      const secCanales = canalSlots.length ? `
+        <div class="pv-sec">
+          <div class="pv-sec-head">
+            <div>
+              <div class="pv-sec-titulo">Canales generales</div>
+              <div class="pv-sec-sub">QR y estadísticas de tus canales de difusión.</div>
+            </div>
+            <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6495ed;background:rgba(100,149,237,.10);border:1px solid rgba(100,149,237,.22);border-radius:999px;padding:.28rem .85rem;">${canalSlots.length} canal${canalSlots.length!==1?'es':''}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.85rem;">${canalCards}</div>
+        </div>` : ''
+
+      return secPropiedades + secCanales
     }
 
     function renderSlotMiniCharts() {
