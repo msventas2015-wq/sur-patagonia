@@ -418,7 +418,7 @@
     </div>
     <div class="sec-blk">
       <div class="sec-hdr evol-hdr">
-        <div class="sec-t">Evolución de actividad</div>
+        <div class="sec-t">Evolución de actividad <span style="font-size:.58rem;color:var(--gris2);font-weight:400;text-transform:none;letter-spacing:0">· rango del gráfico</span></div>
         <div class="evol-controls" role="group" aria-label="Período del gráfico">
           <button class="flt-btn" data-evol-periodo="dia" onclick="cambiarPeriodoEvolucion('dia')">Diario</button>
           <button class="flt-btn" data-evol-periodo="semana" onclick="cambiarPeriodoEvolucion('semana')">Semanal</button>
@@ -1026,8 +1026,9 @@ function renderEvolucion() {
           backgroundColor:crearGradiente(ctx, 'rgb(215,111,63)'),
           tension:.4,
           fill:true,
-          pointRadius:0,
-          pointHoverRadius:4,
+          pointRadius:dataC.map(v => v > 0 ? 5 : 0),
+          pointBackgroundColor:'#d76f3f',
+          pointHoverRadius:6,
           pointHoverBackgroundColor:'#d76f3f',
           pointHoverBorderColor:'#fff',
           pointHoverBorderWidth:1.5
@@ -1396,9 +1397,9 @@ function renderDynamic() {
   ]
   const estadoCount = {}
   PIPE_STAGES.forEach(s => estadoCount[s.key] = 0)
-  _contactos.forEach(c => { const e = c.estado||'nueva'; if(estadoCount[e]!==undefined) estadoCount[e]++ })
-  const totalPipe = _contactos.length
-  document.getElementById('pipeTotal').textContent = `${totalPipe} consultas totales`
+  filtC.forEach(c => { const e = c.estado||'nueva'; if(estadoCount[e]!==undefined) estadoCount[e]++ })
+  const totalPipe = filtC.length
+  document.getElementById('pipeTotal').textContent = `${totalPipe} consultas en período`
   document.getElementById('pipelineWrap').innerHTML = `
     <div class="pipe-flow">${PIPE_STAGES.map(s=>{
       const n   = estadoCount[s.key]||0
