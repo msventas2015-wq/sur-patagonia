@@ -118,7 +118,7 @@
 
     /* ── Card ── */
     .card { background:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%); border:1px solid rgba(255,255,255,.07); border-top:1px solid rgba(255,255,255,.12); border-radius:14px; padding:1.4rem; margin-bottom:1.2rem; backdrop-filter:blur(4px); }
-    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.2rem; }
+    .grid-2 { display:grid; grid-template-columns:2fr 1fr; gap:1rem; margin-bottom:1.2rem; }
     @media(max-width:768px){ .grid-2{ grid-template-columns:1fr; } }
 
     /* ── Canal table ── */
@@ -131,9 +131,16 @@
     .c-nombre { font-weight:600; color:var(--blanco); }
     .c-geo { font-size:.67rem; color:var(--gris); margin-top:.06rem; }
     .tipo-badge { display:inline-block; font-size:.6rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; padding:.14rem .45rem; border-radius:5px; border:1px solid; }
-    .tipo-inmobiliaria { color:#9b8cd4; border-color:rgba(155,140,212,.25); background:rgba(155,140,212,.08); }
-    .tipo-particular    { color:var(--dorado); border-color:rgba(201,168,76,.25); background:rgba(201,168,76,.08); }
-    .tipo-punto_venta   { color:#b8a8f0; border-color:rgba(148,130,210,.25); background:rgba(148,130,210,.08); }
+    /* Colores por tipo de canal — mapeo semántico:
+       inmobiliaria → azul (#7aaeff)  canal digital / broker
+       punto_venta  → dorado (#e8c96a) presencia física
+       particular   → verde (#6ee89a)  individual
+       campaña      → naranja (accent) push / campaña
+       evento       → magenta (#c070c0) evento
+       otro         → gris  */
+    .tipo-inmobiliaria { color:#7aaeff; border-color:rgba(122,174,255,.25); background:rgba(122,174,255,.08); }
+    .tipo-particular    { color:#6ee89a; border-color:rgba(110,232,154,.25); background:rgba(110,232,154,.08); }
+    .tipo-punto_venta   { color:#e8c96a; border-color:rgba(232,201,106,.25); background:rgba(232,201,106,.08); }
     .tipo-campana       { color:var(--accent); border-color:rgba(215,111,63,.25); background:rgba(215,111,63,.08); }
     .tipo-evento        { color:#c070c0; border-color:rgba(192,112,192,.25); background:rgba(192,112,192,.08); }
     .tipo-otro          { color:var(--gris); border-color:var(--border); }
@@ -146,6 +153,8 @@
 
     /* ── Chart container ── */
     .chart-wrap { position:relative; height:200px; }
+    .chart-wrap--evol { height:280px; }
+    .chart-wrap--hbar { height:260px; }
 
     /* ── Nuevos módulos comerciales ── */
     .sec-blk { background:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%); border:1px solid rgba(255,255,255,.07); border-top:1px solid rgba(255,255,255,.12); border-radius:14px; padding:1.4rem 1.6rem; margin-bottom:1.2rem; backdrop-filter:blur(4px); }
@@ -156,6 +165,9 @@
     .evol-hdr { display:block; }
     .evol-hdr .sec-t { margin-bottom:.75rem; }
     .evol-controls { display:flex; gap:.35rem; flex-wrap:wrap; }
+    /* Control bar unificado encima de los dos gráficos */
+    .graficos-ctrl { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.6rem; margin-bottom:.75rem; }
+    .graficos-ctrl-lbl { font-size:.58rem; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:rgba(255,255,255,.35); white-space:nowrap; }
     .evol-rango { display:none; grid-template-columns:minmax(120px,1fr) minmax(120px,1fr) auto; align-items:end; gap:.6rem; margin-bottom:1rem; padding:.8rem; border-radius:8px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); }
     .evol-rango.visible { display:grid; }
     .evol-campo { display:flex; flex-direction:column; gap:.3rem; }
@@ -419,34 +431,37 @@
     </div>
   </div>
 
-  <!-- Ranking + Evolución -->
+  <!-- Control temporal unificado para ambos gráficos -->
+  <div class="graficos-ctrl">
+    <span class="graficos-ctrl-lbl">Rango de gráficos</span>
+    <div class="evol-controls" role="group" aria-label="Período de los gráficos">
+      <button class="flt-btn" data-evol-periodo="dia" onclick="cambiarPeriodoEvolucion('dia')">Diario</button>
+      <button class="flt-btn" data-evol-periodo="semana" onclick="cambiarPeriodoEvolucion('semana')">Semanal</button>
+      <button class="flt-btn activo" data-evol-periodo="mes" onclick="cambiarPeriodoEvolucion('mes')">Mensual</button>
+      <button class="flt-btn" data-evol-periodo="3m" onclick="cambiarPeriodoEvolucion('3m')">3 meses</button>
+      <button class="flt-btn" data-evol-periodo="6m" onclick="cambiarPeriodoEvolucion('6m')">6 meses</button>
+      <button class="flt-btn" data-evol-periodo="personalizado" onclick="cambiarPeriodoEvolucion('personalizado')">Personalizado</button>
+    </div>
+  </div>
+  <div class="evol-rango" id="evolRango">
+    <label class="evol-campo"><span>Desde</span><input class="evol-fecha" id="evolDesde" type="date" /></label>
+    <label class="evol-campo"><span>Hasta</span><input class="evol-fecha" id="evolHasta" type="date" /></label>
+    <button class="evol-aplicar" type="button" onclick="aplicarRangoEvolucion()">Aplicar</button>
+    <div class="evol-error" id="evolRangoError"></div>
+  </div>
+
+  <!-- Evolución (principal, izquierda) + Canales (secundario, derecha) -->
   <div class="grid-2">
+    <div class="sec-blk">
+      <div class="sec-t" style="margin-bottom:.75rem">Evolución de actividad</div>
+      <div class="chart-wrap chart-wrap--evol"><canvas id="chartEvolucion"></canvas></div>
+      <div id="evolucionDelta" style="text-align:center;font-size:.72rem;color:var(--gris);margin-top:.5rem"></div>
+    </div>
     <div class="card">
       <div class="sec">
         <div class="sec-t">Clicks vs leads por canal</div>
       </div>
-      <div class="chart-wrap"><canvas id="chartCanales"></canvas></div>
-    </div>
-    <div class="sec-blk">
-      <div class="sec-hdr evol-hdr">
-        <div class="sec-t">Evolución de actividad <span style="font-size:.58rem;color:rgba(255,255,255,.28);font-weight:400;text-transform:none;letter-spacing:0">· rango del gráfico</span></div>
-        <div class="evol-controls" role="group" aria-label="Período del gráfico">
-          <button class="flt-btn" data-evol-periodo="dia" onclick="cambiarPeriodoEvolucion('dia')">Diario</button>
-          <button class="flt-btn" data-evol-periodo="semana" onclick="cambiarPeriodoEvolucion('semana')">Semanal</button>
-          <button class="flt-btn activo" data-evol-periodo="mes" onclick="cambiarPeriodoEvolucion('mes')">Mensual</button>
-          <button class="flt-btn" data-evol-periodo="3m" onclick="cambiarPeriodoEvolucion('3m')">3 meses</button>
-          <button class="flt-btn" data-evol-periodo="6m" onclick="cambiarPeriodoEvolucion('6m')">6 meses</button>
-          <button class="flt-btn" data-evol-periodo="personalizado" onclick="cambiarPeriodoEvolucion('personalizado')">Personalizado</button>
-        </div>
-      </div>
-      <div class="evol-rango" id="evolRango">
-        <label class="evol-campo"><span>Desde</span><input class="evol-fecha" id="evolDesde" type="date" /></label>
-        <label class="evol-campo"><span>Hasta</span><input class="evol-fecha" id="evolHasta" type="date" /></label>
-        <button class="evol-aplicar" type="button" onclick="aplicarRangoEvolucion()">Aplicar</button>
-        <div class="evol-error" id="evolRangoError"></div>
-      </div>
-      <div class="chart-wrap"><canvas id="chartEvolucion"></canvas></div>
-      <div id="evolucionDelta" style="text-align:center;font-size:.72rem;color:var(--gris);margin-top:.5rem"></div>
+      <div class="chart-wrap chart-wrap--hbar"><canvas id="chartCanales"></canvas></div>
     </div>
   </div>
 
@@ -536,6 +551,15 @@ const FALLBACK = ['#c070c0','#e08060','#9b7fcc','#e87090','#8a9fd4','#e0a860']
 let _fi=0, _zc={}
 const zonaColor = z => ZONA_COLORS[z] || (_zc[z] = _zc[z] || FALLBACK[_fi++ % FALLBACK.length])
 
+// Colores por canal — palette separada de zonaColor para no interferir con lotes/zonas
+const CANAL_PALETTE = ['#7aaeff','#e8c96a','#6ee89a','#f0956a','#c070c0','#4db8a4','#e87090','#9b7fcc','#e0a860','#8a9fd4']
+// canalColor: índice determinístico basado en hash de canalId → mismo canal = mismo color entre cargas
+const canalColor = id => {
+  if (!id) return 'rgba(255,255,255,.25)'
+  const h = String(id).split('').reduce((a,c) => (a*31 + c.charCodeAt(0)) & 0xffff, 0)
+  return CANAL_PALETTE[h % CANAL_PALETTE.length]
+}
+
 // Colores pipeline
 const PIPE_COLORS = {
   nueva:'#6495ed', contactado:'#c9a84c', visita:'#d76f3f',
@@ -613,6 +637,7 @@ window.cambiarPeriodoEvolucion = function(periodo) {
   }
 
   renderEvolucion()
+  renderChartCanales()
 }
 
 window.aplicarRangoEvolucion = function() {
@@ -636,6 +661,7 @@ window.aplicarRangoEvolucion = function() {
   _evolHasta = hasta
   if (error) { error.style.display = 'none'; error.textContent = '' }
   renderEvolucion()
+  renderChartCanales()
 }
 
 const hoyEvolucion = fechaParaInput(new Date())
@@ -1266,6 +1292,80 @@ function renderMapaLotesDash() {
   else img.addEventListener('load', dibujar, { once:true })
 }
 
+// ── Chart Canales — responde al período de gráficos (obtenerRangoEvolucion) ──
+function renderChartCanales() {
+  if (!Object.keys(_canalMap).length) {
+    const el = document.getElementById('chartCanales')
+    if (el) el.getContext('2d').clearRect(0,0,999,999)
+    return
+  }
+
+  const { inicio, fin } = obtenerRangoEvolucion()
+
+  // Filtrar visitas y contactos por el rango del selector de gráficos
+  const filtV = _visitas.filter(v  => { const d = new Date(v.created_at);  return d >= inicio && d < fin })
+  const filtC = _contactos.filter(c => { const d = new Date(c.created_at); return d >= inicio && d < fin })
+
+  // Calcular clicks y leads por canal para este rango
+  const cClicks = {}, cLeads = {}
+  filtV.forEach(v => { const id = _refToCanal[v.canal_ref]; if (id) cClicks[id] = (cClicks[id]||0)+1 })
+  filtC.forEach(c => { const id = _refToCanal[c.canal_ref]; if (id) cLeads[id]  = (cLeads[id] ||0)+1 })
+
+  const top8 = Object.keys(_canalMap)
+    .map(id => ({ nombre: _canalMap[id].nombre||'—', nombreFull: _canalMap[id].nombre||'—', clicks: cClicks[id]||0, leads: cLeads[id]||0 }))
+    .filter(c => c.clicks > 0 || c.leads > 0)
+    .sort((a,b) => (b.clicks + b.leads) - (a.clicks + a.leads))
+    .slice(0,8)
+
+  if (_chartInst) { _chartInst.destroy(); _chartInst = null }
+
+  if (top8.length) {
+    const ctx = document.getElementById('chartCanales').getContext('2d')
+    _chartInst = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: top8.map(c => c.nombre.length > 16 ? c.nombre.slice(0,16)+'…' : c.nombre),
+        datasets: [
+          { label:'Clicks', data:top8.map(c=>c.clicks), backgroundColor:'rgba(122,174,255,.72)', borderRadius:4, borderSkipped:false },
+          { label:'Leads',  data:top8.map(c=>c.leads),  backgroundColor:'rgba(215,111,63,.80)',  borderRadius:4, borderSkipped:false }
+        ]
+      },
+      options: {
+        indexAxis:'y',
+        responsive:true, maintainAspectRatio:false,
+        layout:{ padding:{ left:0 } },
+        plugins:{
+          legend:{
+            position:'top', align:'end',
+            labels:{ color:'rgba(255,255,255,.7)', usePointStyle:true, pointStyle:'circle', boxWidth:7, boxHeight:7, padding:16, font:{size:11,weight:'500',family:'Inter'} }
+          },
+          tooltip:{
+            backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1,
+            titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)',
+            titleFont:{size:12,weight:'600'}, bodyFont:{size:12},
+            padding:12, cornerRadius:10, caretSize:6,
+            displayColors:true, usePointStyle:true,
+            callbacks:{
+              title(items){ return top8[items[0].dataIndex]?.nombreFull || items[0].label },
+              label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` }
+            }
+          }
+        },
+        scales:{
+          x:{ beginAtZero:true, grace:'8%', border:{display:false},
+              grid:{color:'rgba(255,255,255,.05)',drawTicks:false},
+              ticks:{color:'rgba(255,255,255,.35)',precision:0,padding:6,font:{size:9,family:'Inter'},callback:(v)=>Number(v).toLocaleString('es-AR')} },
+          y:{ offset:true, border:{display:false}, grid:{display:false},
+              ticks:{color:'rgba(255,255,255,.6)',font:{size:9,family:'Inter'},padding:6} }
+        }
+      }
+    })
+  } else {
+    const el = document.getElementById('chartCanales')
+    if (el) el.getContext('2d').clearRect(0,0,999,999)
+  }
+}
+
 // ── DYNAMIC (cambia con periodo) ──────────────────────────────
 function renderDynamic() {
   const ahora = new Date()
@@ -1368,66 +1468,8 @@ function renderDynamic() {
       </table></div>`
     : `<div class="empty-msg">No hay canales registrados para este proyecto.<br><span style="font-size:.7rem">Asegurá que las referencias tengan proyecto_slug = "${esc(proyectoSlug)}".</span></div>`
 
-  // ── Chart canales ──
-  const top8 = sorted.slice(0,8)
-  if (_chartInst) { _chartInst.destroy(); _chartInst = null }
-  if (top8.length) {
-    const ctx = document.getElementById('chartCanales').getContext('2d')
-    _chartInst = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: top8.map(c => c.nombre?.length>14 ? c.nombre.slice(0,14)+'…' : c.nombre||'—'),
-        datasets: [
-          {
-            label:'Clicks',
-            data:top8.map(c=>c.clicks),
-            backgroundColor:ctx2 => {
-              const chartCtx = ctx2.chart.ctx
-              return crearGradienteBarra(chartCtx, 'rgba(122,174,255,.9)', 'rgba(122,174,255,.18)')
-            },
-            borderRadius:6,
-            borderSkipped:false
-          },
-          {
-            label:'Leads',
-            data:top8.map(c=>c.leads),
-            backgroundColor:ctx2 => {
-              const chartCtx = ctx2.chart.ctx
-              return crearGradienteBarra(chartCtx, 'rgba(215,111,63,.88)', 'rgba(215,111,63,.18)')
-            },
-            borderRadius:6,
-            borderSkipped:false
-          }
-        ]
-      },
-      options: {
-        responsive:true, maintainAspectRatio:false,
-        plugins:{
-          legend:{
-            position:'top', align:'end',
-            labels:{ color:'rgba(255,255,255,.7)', usePointStyle:true, pointStyle:'circle', boxWidth:7, boxHeight:7, padding:16, font:{size:11,weight:'500',family:'Inter'} }
-          },
-          tooltip:{
-            backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1,
-            titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)',
-            titleFont:{size:12,weight:'600'}, bodyFont:{size:12},
-            padding:12, cornerRadius:10, caretSize:6,
-            displayColors:true, usePointStyle:true,
-            callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } }
-          }
-        },
-        scales:{
-          x:{ offset:true, border:{display:false}, grid:{display:false},
-              ticks:{color:'rgba(255,255,255,.4)',maxRotation:0,font:{size:10,family:'Inter'},padding:10} },
-          y:{ beginAtZero:true, grace:'8%', border:{display:false},
-              grid:{color:'rgba(255,255,255,.05)',drawTicks:false},
-              ticks:{color:'rgba(255,255,255,.35)',precision:0,padding:10,font:{size:10,family:'Inter'},callback:(v) => Number(v).toLocaleString('es-AR')} }
-        }
-      }
-    })
-  } else {
-    document.getElementById('chartCanales').getContext('2d').clearRect(0,0,999,999)
-  }
+  // ── Chart canales — delegado a renderChartCanales() ──
+  renderChartCanales()
 
   renderMapaArgentina()
 
@@ -1498,11 +1540,12 @@ function renderDynamic() {
         <tbody>${ultimos.map(c=>{
           const canalId  = _refToCanal[c.canal_ref]
           const canalNm  = canalId&&_canalMap[canalId] ? _canalMap[canalId].nombre : (c.canal_ref||null)
+          const cColor   = canalColor(canalId)
           const est      = c.estado || 'nueva'
           const estLbl   = ESTADOS[est] || est
           return `<tr>
             <td><div class="l-name">${esc(c.nombre||'Sin nombre')}</div></td>
-            <td>${canalNm?`<span class="canal-bdg">${esc(canalNm)}</span>`:'<span style="color:var(--gris);font-size:.7rem">—</span>'}</td>
+            <td>${canalNm?`<span class="canal-bdg" style="color:${cColor};border-color:${cColor}44;background:${cColor}14">${esc(canalNm)}</span>`:'<span style="color:var(--gris);font-size:.7rem">—</span>'}</td>
             <td><span class="est-bdg est-${esc(est)}">${esc(estLbl)}</span></td>
             <td class="l-fecha">${fmtFecha(c.created_at)}</td>
           </tr>`
