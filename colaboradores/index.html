@@ -234,6 +234,10 @@
     .estado-en_negociacion { background: rgba(215,111,63,.12); color: var(--accent); }
     .estado-cerrada      { background: rgba(169,220,122,.12); color: #a9dc7a; }
     .estado-descartada   { background: rgba(136,136,136,.12); color: var(--gris); }
+    /* Estados reales de producción */
+    .estado-contactado   { background: rgba(201,168,76,.09); color: var(--dorado); border-color: rgba(201,168,76,.35); }
+    .estado-visita       { background: rgba(215,111,63,.09); color: var(--accent); border-color: rgba(215,111,63,.35); }
+    .estado-descartado   { background: rgba(136,136,136,.12); color: var(--gris); border-color: rgba(136,136,136,.25); }
 
     /* Via badge */
     .via-badge {
@@ -421,7 +425,32 @@
     .pv-main .estado-en_negociacion { background:rgba(215,111,63,.2); color:#f0956a; border:1px solid rgba(215,111,63,.3); }
     .pv-main .estado-cerrada { background:rgba(169,220,122,.2); color:#a9dc7a; border:1px solid rgba(169,220,122,.3); }
     .pv-main .estado-descartada { background:rgba(136,136,136,.14); color:rgba(255,255,255,.42); border:1px solid rgba(136,136,136,.22); }
+    /* Estados reales de producción — pv-main */
+    .pv-main .estado-contactado  { background:rgba(201,168,76,.2); color:#e8c96a; border:1px solid rgba(201,168,76,.3); }
+    .pv-main .estado-visita      { background:rgba(215,111,63,.2); color:#f0956a; border:1px solid rgba(215,111,63,.3); }
+    .pv-main .estado-descartado  { background:rgba(136,136,136,.14); color:rgba(255,255,255,.42); border:1px solid rgba(136,136,136,.22); }
     @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
+
+    /* ── Módulo Registros acumulados ── */
+    .pv-carta-resumen { display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:1.25rem; }
+    .pv-carta-stat { min-width:76px; padding:.75rem .9rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:10px; background:linear-gradient(155deg,rgba(255,255,255,.04),rgba(255,255,255,.012)); text-align:center; }
+    .pv-carta-stat-n { font-size:1.65rem; font-weight:300; line-height:1; margin-bottom:.3rem; }
+    .pv-carta-stat-l { font-size:.48rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.38); }
+    .pv-carta-evol-label { font-size:.52rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.3); margin-bottom:.65rem; padding-bottom:.45rem; border-bottom:1px solid rgba(255,255,255,.06); }
+    .pv-carta-evol { display:flex; align-items:flex-end; gap:.45rem; overflow-x:auto; padding:.2rem .1rem .4rem; margin-bottom:1.15rem; min-height:90px; }
+    .pv-carta-mes-col { display:flex; flex-direction:column; align-items:center; gap:.25rem; flex-shrink:0; min-width:34px; }
+    .pv-carta-mes-n { font-size:.56rem; font-weight:600; color:rgba(255,255,255,.5); line-height:1; }
+    .pv-carta-mes-bar { width:26px; background:linear-gradient(to top,rgba(201,168,76,.65),rgba(201,168,76,.2)); border-radius:3px 3px 0 0; min-height:2px; }
+    .pv-carta-mes-label { font-size:.44rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,.25); white-space:nowrap; }
+    .pv-carta-origen-row { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; margin-bottom:1rem; }
+    .pv-carta-origen-block { padding:.8rem .9rem; border:1px solid rgba(255,255,255,.07); border-radius:10px; background:rgba(255,255,255,.022); }
+    .pv-carta-origen-title { font-size:.5rem; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:rgba(255,255,255,.3); margin-bottom:.6rem; }
+    .pv-carta-origen-item { display:flex; align-items:center; gap:.5rem; font-size:.7rem; color:rgba(255,255,255,.58); margin-bottom:.32rem; }
+    .pv-carta-origen-item:last-child { margin-bottom:0; }
+    .pv-carta-origen-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .pv-carta-origen-item strong { margin-left:auto; color:rgba(255,255,255,.82); font-weight:600; font-size:.74rem; }
+    .pv-carta-nota { font-size:.61rem; color:rgba(255,255,255,.28); line-height:1.55; border-top:1px solid rgba(255,255,255,.05); padding-top:.75rem; margin-top:.2rem; }
+    @media(max-width:560px){ .pv-carta-origen-row{ grid-template-columns:1fr; } .pv-carta-stat{ min-width:66px; padding:.6rem .7rem; } .pv-carta-stat-n{ font-size:1.35rem; } }
 
     /* ── Dev-style hero pasivo ── */
     .badge-aliado { font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; background:rgba(201,168,76,.1); color:#e8c96a; border:1px solid rgba(201,168,76,.25); padding:.22rem .68rem; border-radius:999px; white-space:nowrap; flex-shrink:0; }
@@ -886,7 +915,7 @@
   const esc  = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
   const fmt  = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
   const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
-  const ESTADO_LABEL_PASIVO = { nueva:'Nueva', en_contacto:'Contactada', en_negociacion:'Visita programada', cerrada:'Operación cerrada', descartada:'Descartada' }
+  const ESTADO_LABEL_PASIVO = { nueva:'Nueva', contactado:'Contactado', visita:'En visita', descartado:'Descartado' }
 
   // Codifica el apellido: "Juan González" → "Juan Go***"
   const codificarNombre = nombre => {
@@ -1705,10 +1734,10 @@
     function renderFunnelCRM(contactos) {
       const totalInteracciones = visitas.length
       const totalConsultas     = contactos.length
-      const totalContactadas   = contactos.filter(c => ['en_contacto','en_negociacion','cerrada'].includes(c.estado)).length
-      const totalVisitas       = contactos.filter(c => ['en_negociacion','cerrada'].includes(c.estado)).length
-      const totalCerradas      = contactos.filter(c => c.estado === 'cerrada').length
-      const totalDescartadas   = contactos.filter(c => c.estado === 'descartada').length
+      const totalContactadas   = contactos.filter(c => ['contactado','visita'].includes(c.estado)).length
+      const totalVisitas       = contactos.filter(c => c.estado === 'visita').length
+      const totalDescartadas   = contactos.filter(c => c.estado === 'descartado').length
+      const totalActivos       = contactos.filter(c => c.estado !== 'descartado').length
 
       const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : null
       const fmtPct = (a, b) => { const v = pct(a, b); return v !== null ? `${v}% convirtió` : null }
@@ -1716,7 +1745,6 @@
       const convC = fmtPct(totalConsultas, totalInteracciones)
       const convCo = fmtPct(totalContactadas, totalConsultas)
       const convV = fmtPct(totalVisitas, totalContactadas)
-      const convCi = fmtPct(totalCerradas, totalVisitas)
 
       const arrow = `<div class="pv-pipe-arrow">›</div>`
 
@@ -1728,19 +1756,12 @@
           ${conv ? `<div class="pv-pipe-conv">${conv}</div>` : '<div class="pv-pipe-conv">&nbsp;</div>'}
         </div>`
 
-      const pasoLogro = totalCerradas > 0
-        ? `<div class="pv-pipe-step p4-logro">
-            <div class="pv-pipe-ico">★</div>
-            <div class="pv-pipe-n">${totalCerradas.toLocaleString('es-AR')}</div>
-            <div class="pv-pipe-label">Operación<br>cerrada</div>
-            <div class="pv-pipe-conv">${convCi ? convCi + ' a cierre' : 'El logro máximo'}</div>
-          </div>`
-        : `<div class="pv-pipe-step p4-vacio">
-            <div class="pv-pipe-ico">★</div>
-            <div class="pv-pipe-n">0</div>
-            <div class="pv-pipe-label">Operación<br>cerrada</div>
-            <div class="pv-pipe-conv">En camino al primer logro</div>
-          </div>`
+      const pasoActivos = `<div class="pv-pipe-step p3" style="border-top-color:rgba(71,212,138,.4)">
+          <div class="pv-pipe-ico" style="background:rgba(71,212,138,.1);color:#47d48a">✓</div>
+          <div class="pv-pipe-n">${totalActivos.toLocaleString('es-AR')}</div>
+          <div class="pv-pipe-label">Registros<br>activos</div>
+          <div class="pv-pipe-conv">${totalActivos > 0 ? 'En proceso comercial' : 'Sin activos aún'}</div>
+        </div>`
 
       return `<div class="pv-sec">
         <div class="pv-sec-head">
@@ -1758,10 +1779,100 @@
           ${arrow}
           ${paso('p3','⊙',totalVisitas,'Visita<br>programada',convV)}
           ${arrow}
-          ${pasoLogro}
+          ${pasoActivos}
         </div>
-        ${totalDescartadas > 0 ? `<div class="pv-funnel-descartadas">${totalDescartadas} descartada${totalDescartadas === 1 ? '' : 's'} — no avanzaron</div>` : ''}
+        ${totalDescartadas > 0 ? `<div class="pv-funnel-descartadas">${totalDescartadas} descartado${totalDescartadas === 1 ? '' : 's'} — no avanzaron</div>` : ''}
         ${totalInteracciones === 0 ? '<div class="pv-funnel-sin-actividad">Tu canal todavía no registra actividad. Cuando alguien escanee tu QR o visite tu enlace, lo vas a ver acá.</div>' : ''}
+      </div>`
+    }
+
+    function renderCarteraAcumulada(contactos) {
+      const total        = contactos.length
+      const totalNueva   = contactos.filter(c => c.estado === 'nueva').length
+      const totalContact = contactos.filter(c => c.estado === 'contactado').length
+      const totalVisita  = contactos.filter(c => c.estado === 'visita').length
+      const totalDescar  = contactos.filter(c => c.estado === 'descartado').length
+      const totalActivos = total - totalDescar
+
+      // Evolución mensual por fecha de ingreso (usa c.fecha || c.created_at — no toca crm_eventos)
+      const porMes = {}
+      contactos.forEach(c => {
+        const d = new Date(c.fecha || c.created_at)
+        if (isNaN(d.getTime())) return
+        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+        porMes[key] = (porMes[key] || 0) + 1
+      })
+      const mesesOrdenados = Object.keys(porMes).sort()
+      const MAX_BAR_H = 60
+      const maxMes = mesesOrdenados.length ? Math.max(...mesesOrdenados.map(k => porMes[k])) : 1
+      const nombresMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+
+      const barrasMes = mesesOrdenados.map(k => {
+        const h = Math.max(2, Math.round(porMes[k] / maxMes * MAX_BAR_H))
+        const [y, m] = k.split('-')
+        const label = nombresMes[parseInt(m) - 1] + ' ' + y.slice(2)
+        return `<div class="pv-carta-mes-col">
+          <div class="pv-carta-mes-n">${porMes[k]}</div>
+          <div class="pv-carta-mes-bar" style="height:${h}px"></div>
+          <div class="pv-carta-mes-label">${label}</div>
+        </div>`
+      }).join('')
+
+      // Origen de consulta — no expone nombre/email/teléfono/notas
+      const conPropiedad = contactos.filter(c => c.propiedad_id).length
+      const conProyecto  = contactos.filter(c => c.proyecto_slug && !c.propiedad_id).length
+      const general      = total - conPropiedad - conProyecto
+      const porQR        = contactos.filter(c => c.canal_via === 'qr').length
+      const porLink      = total - porQR
+
+      const statBox = (n, label, color) =>
+        `<div class="pv-carta-stat">
+          <div class="pv-carta-stat-n" style="color:${color}">${n.toLocaleString('es-AR')}</div>
+          <div class="pv-carta-stat-l">${label}</div>
+        </div>`
+
+      const origenItem = (color, texto, n) =>
+        `<div class="pv-carta-origen-item"><span class="pv-carta-origen-dot" style="background:${color}"></span>${texto}<strong>${n}</strong></div>`
+
+      return `<div class="pv-sec pv-cartera-sec">
+        <div class="pv-sec-head">
+          <div>
+            <div class="pv-sec-titulo">Registros acumulados</div>
+            <div class="pv-sec-sub">Personas que ingresaron a través de tu canal y su estado actual en el proceso comercial.</div>
+          </div>
+        </div>
+
+        <div class="pv-carta-resumen">
+          ${statBox(total,        'Total',      '#e8c96a')}
+          ${statBox(totalActivos, 'Activos',    '#47d48a')}
+          ${statBox(totalNueva,   'Nueva',      '#b39ddb')}
+          ${statBox(totalContact, 'Contactado', '#e8c96a')}
+          ${statBox(totalVisita,  'En visita',  '#f0956a')}
+          ${statBox(totalDescar,  'Descartado', 'rgba(255,255,255,.35)')}
+        </div>
+
+        ${mesesOrdenados.length > 0 ? `
+        <div class="pv-carta-evol-label">Evolución mensual — registros por mes de ingreso</div>
+        <div class="pv-carta-evol">${barrasMes}</div>
+        ` : ''}
+
+        <div class="pv-carta-origen-row">
+          <div class="pv-carta-origen-block">
+            <div class="pv-carta-origen-title">Origen de consulta</div>
+            ${conPropiedad > 0 ? origenItem('#6495ed','Propiedad específica',conPropiedad) : ''}
+            ${conProyecto  > 0 ? origenItem('#c9a84c','Proyecto',conProyecto) : ''}
+            ${general      > 0 ? origenItem('rgba(255,255,255,.3)','Consulta general',general) : ''}
+            ${total === 0  ? '<div style="color:rgba(255,255,255,.3);font-size:.7rem">Sin registros aún</div>' : ''}
+          </div>
+          <div class="pv-carta-origen-block">
+            <div class="pv-carta-origen-title">Canal de ingreso</div>
+            ${porQR   > 0 ? origenItem('#50c878','QR físico',porQR) : ''}
+            ${porLink > 0 ? origenItem('#6495ed','Enlace digital',porLink) : ''}
+            ${total === 0 ? '<div style="color:rgba(255,255,255,.3);font-size:.7rem">Sin registros aún</div>' : ''}
+          </div>
+        </div>
+
+        <div class="pv-carta-nota">El estado refleja el avance comercial actual. El proceso puede extenderse en el tiempo.</div>
       </div>`
     }
 
@@ -1843,6 +1954,8 @@
             ${renderActividadReciente(contactos)}
           </div>
         </div>
+
+        ${renderCarteraAcumulada(contactos)}
 
         <div class="pv-sec">
           <div class="pv-sec-head"><div><div class="pv-sec-titulo">Estado de las oportunidades generadas</div><div class="pv-sec-sub">Seguimiento comercial de las consultas atribuidas a tu canal.</div></div></div>
