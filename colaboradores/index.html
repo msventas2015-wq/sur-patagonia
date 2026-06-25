@@ -1523,6 +1523,32 @@
     }
     window.descargarQR = descargarQR
 
+    const QR_BASE_URL_CANONICA = 'https://surpatagonia.com.ar'
+    const linkQrCanonico = codigo => `${QR_BASE_URL_CANONICA}/r/${codigo}`
+    const codigoQrCanonicoPasivo = canal => canal.codigo
+
+    async function descargarQRPasivo(codigo) {
+      if (!codigo || typeof QRCode === 'undefined') return
+      const offscreen = document.createElement('canvas')
+      offscreen.width = 230
+      offscreen.height = 230
+      const url = linkQrCanonico(codigo)
+      try {
+        await QRCode.toCanvas(offscreen, url, {
+          width: 230, margin: 2,
+          color: { dark: '#1a1a1a', light: '#ffffff' }
+        })
+      } catch (e) {
+        console.error('[descargarQRPasivo] Error generando QR canónico:', e)
+        return
+      }
+      const a = document.createElement('a')
+      a.download = `qr-${codigo}.png`
+      a.href = offscreen.toDataURL('image/png')
+      a.click()
+    }
+    window.descargarQRPasivo = descargarQRPasivo
+
     function copiarLink(url, btn) {
       navigator.clipboard.writeText(url).then(() => {
         const orig = btn.textContent
@@ -1580,8 +1606,8 @@
         `<span class="pv-flip-digit" style="--fc:${color};animation-delay:${(i * 0.07).toFixed(2)}s">${d}</span>`
       ).join('')
 
-      const pvQrCodigo = canal.codigo_ref || canal.codigo
-      const pvQrUrl = `${location.origin}/r/${pvQrCodigo}`
+      const pvQrCodigo = codigoQrCanonicoPasivo(canal)
+      const pvQrUrl = linkQrCanonico(pvQrCodigo)
 
       main.innerHTML = `
         <div class="pv-hero-header">
@@ -1599,7 +1625,7 @@
               <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
               <div class="pv-hero-acciones">
                 <button class="pv-btn-link-canal" onclick="copiarLink('${pvQrUrl}', this)">Link</button>
-                <button class="pv-btn-qr-dl" onclick="descargarQR('pvHeroQrCanvas', '${pvQrCodigo}')">Descargar QR</button>
+                <button class="pv-btn-qr-dl" onclick="descargarQRPasivo('${pvQrCodigo}')">Descargar QR</button>
               </div>
             </div>
             <div class="pv-flt-custom" id="pvFltCustom" style="display:none;margin-top:.8rem;">
@@ -1668,9 +1694,9 @@
         renderGraficoPasivo(contactos, 0)
         renderMiniMapaPasivo(canal)
         const heroQrCanvas = document.getElementById('pvHeroQrCanvas')
-        const heroQrCodigo = canal.codigo_ref || canal.codigo
+        const heroQrCodigo = codigoQrCanonicoPasivo(canal)
         if (heroQrCanvas && heroQrCodigo && typeof QRCode !== 'undefined') {
-          const qrUrl = `${location.origin}/r/${heroQrCodigo}`
+          const qrUrl = linkQrCanonico(heroQrCodigo)
           QRCode.toCanvas(heroQrCanvas, qrUrl, {
             width: 72, margin: 1,
             color: { dark: '#111111', light: '#ffffff' }
