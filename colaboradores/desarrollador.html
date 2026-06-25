@@ -537,7 +537,26 @@ document.getElementById('btnSalir').addEventListener('click', async () => {
 
 // ── Helpers ───────────────────────────────────────────────────
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-const fmtFecha = s => s ? new Date(s).toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'}) : '—'
+const TZ_AR = 'America/Argentina/Buenos_Aires'
+const fmtFechaAR = (value, opts = { day:'2-digit', month:'2-digit' }) =>
+  new Intl.DateTimeFormat('es-AR', { timeZone: TZ_AR, ...opts }).format(new Date(value))
+const fmtHoraAR = value =>
+  new Intl.DateTimeFormat('es-AR', { timeZone: TZ_AR, hour:'2-digit', minute:'2-digit', hour12:false }).format(new Date(value))
+function partesFechaAR(value = new Date()) {
+  return Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ_AR,
+      year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', second:'2-digit',
+      hour12:false
+    }).formatToParts(new Date(value)).map(p => [p.type, p.value])
+  )
+}
+function inicioDiaAR(value = new Date()) {
+  const p = partesFechaAR(value)
+  return new Date(`${p.year}-${p.month}-${p.day}T00:00:00-03:00`)
+}
+const fmtFecha = s => s ? fmtFechaAR(s, { day:'2-digit', month:'short', year:'numeric' }) : '—'
 const TIPO_LBL = { inmobiliaria:'Inmobiliaria', particular:'Particular', punto_venta:'Punto de venta', 'campaña':'Campaña', evento:'Evento' }
 const fmtTipo  = t => TIPO_LBL[t] || t || '—'
 const ESTADOS  = { nueva:'Nuevo lead', contactado:'Contactado', visita:'Visita coordinada', visita_realizada:'Visita realizada', oferta:'Oferta enviada', cerrado:'Cerrado', descartado:'Descartado' }
@@ -729,7 +748,7 @@ function setSyncStatus(txt) {
 }
 
 function fmtHoraActualizacion() {
-  return new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+  return fmtHoraAR(new Date())
 }
 
 document.getElementById('btnRefresh').addEventListener('click', () => cargarTodo())
@@ -1023,8 +1042,8 @@ function obtenerRangoEvolucion() {
 
   if (_periodoEvolucion === 'dia') {
     fin = ahora
-    inicio = new Date(ahora.getTime() - DIA)
-    paso = 3 * 3600000
+    inicio = inicioDiaAR(ahora)
+    paso = 3600000
     formato = 'hora'
   } else if (_periodoEvolucion === 'semana') {
     fin = finHoy
@@ -1066,10 +1085,10 @@ function renderEvolucion() {
   for (let cursor = new Date(inicio); cursor < fin; cursor = new Date(cursor.getTime() + paso)) {
     const siguiente = new Date(Math.min(cursor.getTime() + paso, fin.getTime()))
     const label = formato === 'hora'
-      ? cursor.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+      ? fmtHoraAR(cursor)
       : formato === 'mes'
-        ? cursor.toLocaleDateString('es-AR', { month:'short', year:'2-digit' })
-        : cursor.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' })
+        ? fmtFechaAR(cursor, { month:'short', year:'2-digit' })
+        : fmtFechaAR(cursor, { day:'2-digit', month:'2-digit' })
     labels.push(label)
     dataV.push(_visitas.filter(v => { const d = new Date(v.created_at); return d >= cursor && d < siguiente }).length)
     dataC.push(_contactos.filter(c => { const d = new Date(c.created_at); return d >= cursor && d < siguiente }).length)
@@ -1081,7 +1100,7 @@ function renderEvolucion() {
   const delta = prevV > 0 ? Math.round((lastV - prevV) / prevV * 100) : null
   if (deltaEl) {
     const hastaVisible = new Date(fin.getTime() - 1)
-    const rangoTexto = `${inicio.toLocaleDateString('es-AR')} — ${hastaVisible.toLocaleDateString('es-AR')}`
+    const rangoTexto = `${fmtFechaAR(inicio)} — ${fmtFechaAR(hastaVisible)}`
     deltaEl.textContent = delta !== null
       ? `${rangoTexto} · Último tramo: ${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)}% en visualizaciones`
       : rangoTexto
