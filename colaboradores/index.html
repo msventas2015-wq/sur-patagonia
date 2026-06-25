@@ -435,6 +435,31 @@
     .pv-main .estado-descartado  { background:rgba(123,127,136,.14); color:#7b7f88; border:1px solid rgba(123,127,136,.28); }
     @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
 
+    /* ── Trazabilidad CRM — PASIVO-07B ── */
+    .pv-traza-sec {}
+    .pv-traza-sub-titulo { font-size:.6rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.28); margin-bottom:.6rem; margin-top:.15rem; }
+    .pv-traza-tabla { width:100%; border-collapse:collapse; font-size:.74rem; }
+    .pv-traza-tabla thead tr { border-bottom:1px solid rgba(255,255,255,.07); }
+    .pv-traza-tabla tbody tr:not(:last-child) { border-bottom:1px solid rgba(255,255,255,.04); }
+    .pv-traza-bloque { display:inline-block; min-width:1.6rem; text-align:center; padding:.18rem .48rem; border-radius:5px; border:1px solid; font-size:.73rem; font-weight:600; }
+    .pv-traza-cohorte-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:.38rem; flex-shrink:0; vertical-align:middle; }
+    .pv-traza-cards { display:flex; flex-direction:column; gap:.5rem; }
+    .pv-traza-card { padding:.7rem 1rem; border-left:3px solid; border-radius:0 8px 8px 0; background:rgba(255,255,255,.03); }
+    .pv-traza-card-head { display:flex; align-items:center; margin-bottom:.42rem; }
+    .pv-traza-card-titulo { font-size:.76rem; font-weight:600; color:rgba(255,255,255,.72); }
+    .pv-traza-evento { display:flex; align-items:center; gap:.42rem; font-size:.72rem; padding:.08rem 0; }
+    .pv-traza-arrow { color:rgba(255,255,255,.22); flex-shrink:0; }
+    .pv-traza-mes-evento { color:rgba(255,255,255,.4); min-width:5.5rem; flex-shrink:0; }
+    .pv-traza-estado-label { font-weight:600; }
+    .pv-traza-empty { padding:1.1rem 0; color:rgba(255,255,255,.3); font-size:.73rem; display:flex; align-items:center; gap:.65rem; line-height:1.5; }
+    .pv-traza-empty-icon { font-size:1rem; flex-shrink:0; }
+    .pv-traza-legacy { display:flex; flex-direction:column; gap:.38rem; }
+    .pv-traza-legacy-row { display:flex; align-items:center; gap:.42rem; font-size:.72rem; flex-wrap:wrap; }
+    .pv-traza-legacy-mes { color:rgba(255,255,255,.52); }
+    .pv-traza-legacy-n { font-weight:600; }
+    .pv-traza-legacy-hint { color:rgba(255,255,255,.2); font-size:.64rem; font-style:italic; }
+    .pv-traza-legacy-hint-global { color:rgba(255,255,255,.23); font-size:.65rem; margin-bottom:.5rem; line-height:1.4; }
+
     /* ── Flip clock contador ── */
     @keyframes pvFlipIn { 0%{transform:translateY(-30%) rotateX(55deg);opacity:0} 100%{transform:translateY(0) rotateX(0);opacity:1} }
     /* ── Contador flip en header — SPORT ── */
@@ -1151,6 +1176,16 @@
     // Log temporal — verificar en producción con F12 los slots filtrados como canales generales:
     console.warn('[esPropiedadReal] Slots filtrados como canales generales:', misSlots.filter(s => !esPropiedadReal(s)).map(s => s.codigo))
 
+    // ── Trazabilidad CRM — PASIVO-07B ─────────────────────────────────────────
+    // Lee crm_eventos SOLO via RPC con SECURITY DEFINER — nunca directo.
+    // filasTraza solo existe para panel pasivo; usuarios activos obtienen [].
+    let filasTraza = []
+    if (esPasivo) {
+      const { data: rpcTraza, error: errTraza } = await supabase.rpc('rpc_pasivo_trazabilidad_comercial')
+      if (!errTraza) filasTraza = rpcTraza || []
+      else console.warn('[trazabilidad] RPC error:', errTraza.message)
+    }
+
     let _pvChart4 = null, _pvChart4b = null, _pvChart4c = null
     let _pvPanelAct = null, _pvPanelConv = null  // charts de los paneles nuevos (Actividad 30d, Conversión 30d)
     let _pvLiveRAF = null   // loop de animación del "pulso en vivo"
@@ -1595,7 +1630,7 @@
           <div class="pv-kpi" style="--pv-c:#6ee89a"><div class="pv-kpi-label">Registros activos</div><div class="pv-kpi-n">${totalRegistrosActivos.toLocaleString('es-AR')}</div><div class="pv-kpi-sub">Oportunidades vigentes — excluye descartados.</div></div>
         </div>
 
-        ${renderPasivo(contactos)}
+        ${renderPasivo(contactos, filasTraza)}
 
         <div class="pv-sec pv-msg-sec" id="secMensajes">
           <div class="pv-sec-head"><div><div class="pv-sec-titulo">Novedades de la red${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem">${misMensajes.length}</span>` : ''}</div><div class="pv-sec-sub">Actualizaciones de Sur Patagonia para tu espacio.</div></div></div>
@@ -1990,7 +2025,196 @@
       </div>`
     }
 
-    function renderPasivo(contactos) {
+    // ── PASIVO-07B: Trazabilidad CRM ────────────────────────────────────────────
+    // Recibe filasTraza desde rpc_pasivo_trazabilidad_comercial (SECURITY DEFINER).
+    // NO lee crm_eventos directo. NO expone nombre, email, teléfono, notas, actor,
+    // contacto_id ni ningún dato personal. Solo usa campos públicos de la RPC.
+    function renderTrazabilidad(filasTraza) {
+      if (!filasTraza || filasTraza.length === 0) return ''
+
+      const COHORT_PALETTE_T = ['#3a4eb8','#c0603e','#2a9d7a','#c040a0','#c08a2e','#1e5fa0','#7a1f2e','#3eb489','#7b3fb0','#b87333']
+      const NOMBRES_MES_T    = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+
+      const fmtMesDesdeFecha = dateStr => {
+        if (!dateStr) return '—'
+        const d = new Date(dateStr + 'T00:00:00')
+        if (isNaN(d.getTime())) return '—'
+        return NOMBRES_MES_T[d.getMonth()] + ' ' + d.getFullYear()
+      }
+
+      // Separar por fila_tipo — cada sección usa SOLO su tipo correspondiente
+      const bloques      = filasTraza.filter(f => f.fila_tipo === 'bloque_estado_actual')
+      const movimientos  = filasTraza.filter(f => f.fila_tipo === 'movimiento_registro_anonimo')
+      const legacySinFec = filasTraza.filter(f => f.fila_tipo === 'estado_actual_sin_fecha_historica')
+
+      // Paleta de cohortes: color = mes de ingreso (nunca = estado CRM)
+      const todosLosKeys = [...new Set(filasTraza.map(f => f.mes_ingreso_key).filter(Boolean))].sort()
+      const cohortColorMap = {}
+      todosLosKeys.forEach((k, idx) => { cohortColorMap[k] = COHORT_PALETTE_T[idx % COHORT_PALETTE_T.length] })
+
+      const labelDeMesKey = k => {
+        if (!k) return '—'
+        const [y, m] = k.split('-')
+        return NOMBRES_MES_T[parseInt(m, 10) - 1] + ' ' + y
+      }
+
+      // ── Bloque: estado actual por cohorte (bloque_estado_actual) ─────────────
+      // Columnas = estados CRM con datos; filas = mes de ingreso (cohorte)
+      // color visual = cohorte — posición = estado actual
+      const EST_CLR = {
+        contactado: '#35c6b4', visita: '#f29a5a', oferta: '#7aaeff',
+        cerrado: '#50c878', descartado: '#7b7f88', nueva: '#b39ddb'
+      }
+      const ETAPAS_ORDEN = [
+        { key: 'nueva',      col: 1  },
+        { key: 'contactado', col: 2  },
+        { key: 'visita',     col: 3  },
+        { key: 'oferta',     col: 4  },
+        { key: 'cerrado',    col: 5  },
+        { key: 'descartado', col: 90 }
+      ]
+      // Solo mostrar etapas con al menos 1 bloque con cantidad > 0
+      const etapasConDatos = ETAPAS_ORDEN.filter(e =>
+        bloques.some(b => b.estado_publico === e.key && (b.cantidad || 0) > 0)
+      )
+      // Acumular cantidad por (mes_key, estado_publico)
+      const bloqueMap = {}
+      bloques.forEach(b => {
+        if (!bloqueMap[b.mes_ingreso_key]) bloqueMap[b.mes_ingreso_key] = {}
+        const prev = bloqueMap[b.mes_ingreso_key][b.estado_publico] || 0
+        bloqueMap[b.mes_ingreso_key][b.estado_publico] = prev + (b.cantidad || 0)
+      })
+
+      let bloqueHTML = ''
+      if (etapasConDatos.length > 0 && todosLosKeys.length > 0) {
+        const headerCols = etapasConDatos.map(e =>
+          `<th style="color:${EST_CLR[e.key]};font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:.38rem .6rem;white-space:nowrap;font-weight:700">${esc((bloques.find(b => b.estado_publico === e.key) || {}).estado_label || e.key)}</th>`
+        ).join('')
+        const filasBloques = todosLosKeys.map(k => {
+          const color = cohortColorMap[k]
+          const celdas = etapasConDatos.map(e => {
+            const n = (bloqueMap[k] || {})[e.key] || 0
+            return `<td style="text-align:center;padding:.38rem .6rem">
+              ${n > 0
+                ? `<span class="pv-traza-bloque" style="background:${color}1e;color:${color};border-color:${color}55">${n}</span>`
+                : `<span style="color:rgba(255,255,255,.12)">—</span>`}
+            </td>`
+          }).join('')
+          return `<tr>
+            <td style="padding:.38rem .6rem;white-space:nowrap">
+              <span class="pv-traza-cohorte-dot" style="background:${color}"></span>
+              <span style="color:rgba(255,255,255,.62);font-size:.72rem">${labelDeMesKey(k)}</span>
+            </td>
+            ${celdas}
+          </tr>`
+        }).join('')
+        bloqueHTML = `
+          <div class="pv-traza-sub-titulo">Estado actual por mes de ingreso</div>
+          <div style="overflow-x:auto;margin-bottom:1.1rem">
+            <table class="pv-traza-tabla">
+              <thead><tr>
+                <th style="font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:.38rem .6rem;color:rgba(255,255,255,.3);white-space:nowrap">Mes de ingreso</th>
+                ${headerCols}
+              </tr></thead>
+              <tbody>${filasBloques}</tbody>
+            </table>
+          </div>`
+      }
+
+      // ── Timeline: movimiento_registro_anonimo ─────────────────────────────────
+      // Agrupar por (mes_ingreso_key + registro_anon_n) → una card por lead
+      const timelineMap = {}
+      movimientos.forEach(mv => {
+        const cardKey = (mv.mes_ingreso_key || '') + '|' + (mv.registro_anon_n || 0)
+        if (!timelineMap[cardKey]) timelineMap[cardKey] = {
+          mes_ingreso_key: mv.mes_ingreso_key,
+          registro_anon_n: mv.registro_anon_n,
+          eventos: []
+        }
+        timelineMap[cardKey].eventos.push(mv)
+      })
+      const cards = Object.values(timelineMap).sort((a, b) => {
+        if (b.mes_ingreso_key > a.mes_ingreso_key) return 1
+        if (b.mes_ingreso_key < a.mes_ingreso_key) return -1
+        return (a.registro_anon_n || 0) - (b.registro_anon_n || 0)
+      })
+      // Contar cuántos leads hay por mes para saber si agregar número
+      const countPorMes = {}
+      cards.forEach(c => { countPorMes[c.mes_ingreso_key] = (countPorMes[c.mes_ingreso_key] || 0) + 1 })
+
+      let timelineHTML = ''
+      if (cards.length > 0) {
+        const cardEls = cards.map(card => {
+          const color = cohortColorMap[card.mes_ingreso_key] || '#888'
+          const numLabel = countPorMes[card.mes_ingreso_key] > 1 ? ` (${card.registro_anon_n})` : ''
+          const eventoEls = card.eventos
+            .slice()
+            .sort((a, b) => (a.orden_evento || 0) - (b.orden_evento || 0))
+            .map(ev => {
+              const evColor = EST_CLR[ev.estado_publico] || '#888'
+              // Mostrar solo mes — nunca día exacto
+              const mesEvLabel = fmtMesDesdeFecha(ev.fecha_evento_publica || ev.mes_evento)
+              return `<div class="pv-traza-evento">
+                <span class="pv-traza-arrow">→</span>
+                <span class="pv-traza-mes-evento">${esc(mesEvLabel)}</span>
+                <span class="pv-traza-estado-label" style="color:${evColor}">${esc(ev.estado_label || ev.estado_publico || '')}</span>
+              </div>`
+            }).join('')
+          return `<div class="pv-traza-card" style="border-left-color:${color}">
+            <div class="pv-traza-card-head">
+              <span class="pv-traza-cohorte-dot" style="background:${color}"></span>
+              <span class="pv-traza-card-titulo">Lead de ${labelDeMesKey(card.mes_ingreso_key)}${numLabel}</span>
+            </div>
+            ${eventoEls}
+          </div>`
+        }).join('')
+        timelineHTML = `
+          <div class="pv-traza-sub-titulo" style="margin-top:.75rem">Recorrido comercial</div>
+          <div class="pv-traza-cards">${cardEls}</div>`
+      } else {
+        // Sin movimientos todavía — mensaje claro, no es error
+        timelineHTML = `
+          <div class="pv-traza-empty">
+            <span class="pv-traza-empty-icon">⏳</span>
+            <span>Los avances comerciales se mostrarán a medida que el equipo actualice el CRM.</span>
+          </div>`
+      }
+
+      // ── Legacy sin fecha histórica (estado_actual_sin_fecha_historica) ────────
+      // Leads que avanzaron antes de que existiera el historial de eventos
+      let legacyHTML = ''
+      if (legacySinFec.length > 0) {
+        const legacyEls = legacySinFec.map(lf => {
+          const color    = cohortColorMap[lf.mes_ingreso_key] || '#888'
+          const estColor = EST_CLR[lf.estado_publico] || '#888'
+          return `<div class="pv-traza-legacy-row">
+            <span class="pv-traza-cohorte-dot" style="background:${color}"></span>
+            <span class="pv-traza-legacy-mes">${labelDeMesKey(lf.mes_ingreso_key)}</span>
+            <span class="pv-traza-arrow">·</span>
+            <span class="pv-traza-legacy-n" style="color:${estColor}">${lf.cantidad} ${esc(lf.estado_label || lf.estado_publico || '')}</span>
+            <span class="pv-traza-legacy-hint">(sin fecha de avance registrada)</span>
+          </div>`
+        }).join('')
+        legacyHTML = `
+          <div class="pv-traza-sub-titulo" style="margin-top:.85rem">Estado actual sin fecha histórica</div>
+          <div class="pv-traza-legacy-hint-global">Registros que ya tenían un estado avanzado cuando se activó el historial de eventos.</div>
+          <div class="pv-traza-legacy">${legacyEls}</div>`
+      }
+
+      return `<div class="pv-sec pv-traza-sec">
+        <div class="pv-sec-head">
+          <div>
+            <div class="pv-sec-titulo">Trayectoria comercial de tu canal</div>
+            <div class="pv-sec-sub">Seguimiento anónimo del recorrido CRM de los registros generados desde tu QR.</div>
+          </div>
+        </div>
+        ${bloqueHTML}
+        ${timelineHTML}
+        ${legacyHTML}
+      </div>`
+    }
+
+    function renderPasivo(contactos, filasTraza = []) {
       const m = metricasPasivo(contactos)
 
       const filas = contactos.length
@@ -2060,6 +2284,8 @@
         </div>
 
         ${renderCarteraAcumulada(contactos)}
+
+        ${renderTrazabilidad(filasTraza)}
 
         <div class="pv-sec">
           <div class="pv-sec-head"><div><div class="pv-sec-titulo">Estado de las oportunidades generadas</div><div class="pv-sec-sub">Seguimiento comercial de las consultas atribuidas a tu canal.</div></div></div>
