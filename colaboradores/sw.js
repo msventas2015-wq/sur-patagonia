@@ -1,4 +1,5 @@
-const CACHE_NAME = 'sur-patagonia-aliados-v1';
+const CACHE_NAME = 'sur-patagonia-aliados-v2';
+const CACHE_PREFIX = 'sur-patagonia-aliados-';
 
 const STATIC_ASSETS = [
   '/assets/app-icon-192.png',
@@ -19,7 +20,11 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME)
+          .map(k => caches.delete(k))
+      )
     )
   );
   self.clients.claim();
@@ -41,11 +46,19 @@ self.addEventListener('fetch', event => {
   // Dejar pasar CDNs externos (Chart.js, Leaflet, Google Fonts, etc.)
   if (!url.origin.includes('surpatagonia.com.ar') && url.origin !== self.location.origin) return;
 
-  // index.html → siempre red primero
-  if (url.pathname === '/colaboradores/' || url.pathname === '/colaboradores/index.html') {
-    event.respondWith(
-      fetch(req).catch(() => caches.match(req))
+  // HTML interno de colaboradores → siempre red primero
+  const isInternalHtml =
+    req.mode === 'navigate' ||
+    (
+      url.pathname.startsWith('/colaboradores/') &&
+      (
+        url.pathname.endsWith('.html') ||
+        url.pathname === '/colaboradores/'
+      )
     );
+
+  if (isInternalHtml) {
+    event.respondWith(fetch(req).catch(() => caches.match(req)));
     return;
   }
 
