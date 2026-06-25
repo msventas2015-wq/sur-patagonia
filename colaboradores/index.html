@@ -321,8 +321,8 @@
     .pv-monogram { width:82px; height:82px; display:grid; place-items:center; border:1px solid rgba(201,168,76,.32); border-radius:50%; background:rgba(201,168,76,.07); color:#e8c96a; font-family:'Cormorant Garamond',serif; font-size:1.75rem; letter-spacing:.08em; box-shadow:0 0 32px rgba(201,168,76,.08); }
     .pv-monogram-mobile { display:none; }
     .pv-mini-mapa-wrap { display:flex; flex-direction:column; align-items:center; gap:.45rem; }
-    .pv-mini-mapa { width:160px; height:160px; overflow:hidden; border:1px solid rgba(201,168,76,.25); border-radius:10px; background:#111; pointer-events:none; }
-    .pv-mini-mapa-label { max-width:160px; color:rgba(255,255,255,.3); font-size:.56rem; letter-spacing:.14em; text-align:center; text-transform:uppercase; }
+    .pv-mini-mapa { width:220px; height:220px; overflow:hidden; border:1px solid rgba(201,168,76,.25); border-radius:10px; background:#111; pointer-events:none; }
+    .pv-mini-mapa-label { max-width:220px; color:rgba(255,255,255,.3); font-size:.56rem; letter-spacing:.14em; text-align:center; text-transform:uppercase; }
     #pvMiniMapa .leaflet-control-zoom, #pvMiniMapa .leaflet-control-attribution { display:none !important; }
     .pv-hero-estado { display:flex; align-items:center; justify-content:center; gap:.5rem; color:rgba(255,255,255,.55); font-size:.61rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
     .pv-hero-code { color:rgba(255,255,255,.18); font-family:monospace; font-size:.56rem; }
@@ -469,10 +469,9 @@
       display:flex; align-items:flex-start; gap:1rem; flex-shrink:0;
     }
     .pv-hero-qr-block {
-      display:flex; flex-direction:column; align-items:center; gap:.4rem;
-      padding:.6rem .75rem; border:1px solid rgba(255,255,255,.07);
-      border-top:2px solid rgba(255,255,255,.12); border-radius:10px;
-      background:rgba(255,255,255,.02);
+      display:flex; flex-direction:column; align-items:center; gap:.6rem;
+      justify-content:space-between; align-self:stretch;
+      padding:0; border:none; border-radius:0; background:none;
     }
     .pv-hero-qr-block canvas {
       border-radius:5px; background:#fff; padding:3px; display:block;
@@ -488,9 +487,7 @@
     .pv-hero-counts {
       --sport-counter-accent: #6EE89A; /* Verde menta premium — activo */
       flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:.55rem;
-      padding:.75rem 1rem; border:1px solid rgba(255,255,255,.07);
-      border-top:2px solid rgba(110,232,154,.35); border-radius:10px;
-      background:rgba(255,255,255,.02); backdrop-filter:blur(6px);
+      padding:0; border:none; border-radius:0; background:none; backdrop-filter:none;
     }
     .pv-hero-count-item { display:flex; flex-direction:column; align-items:flex-end; gap:.15rem; }
     .pv-hero-count-l { font-size:.42rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.28); }
@@ -499,7 +496,7 @@
     .pv-flip-digit { display:inline-flex; align-items:center; justify-content:center; width:1.55rem; height:2rem; background:linear-gradient(180deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.03) 50%,rgba(0,0,0,.08) 51%,rgba(255,255,255,.04) 100%); border:1px solid rgba(255,255,255,.1); border-bottom:1px solid rgba(0,0,0,.25); border-radius:4px; font-size:1.3rem; font-weight:300; line-height:1; color:var(--fc,var(--sport-counter-accent)); font-variant-numeric:tabular-nums; box-shadow:0 2px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08); animation:pvFlipIn .42s cubic-bezier(.22,.61,.36,1) both; }
     .pv-flip-digit::after { content:''; position:absolute; inset:50% 0 auto; height:1px; background:rgba(0,0,0,.22); pointer-events:none; }
     .pv-flip-digit { position:relative; }
-    @media(max-width:700px){ .pv-hero-header{flex-direction:column} .pv-hero-right-cluster{flex-direction:column;align-items:flex-end;width:100%} .pv-hero-qr-block{flex-direction:row;padding:.5rem .65rem} .pv-hero-counts{align-items:flex-start;flex-direction:row;width:100%;justify-content:space-around;border-top-width:1px;box-sizing:border-box} .pv-hero-count-item{align-items:center} .pv-hero-count-sep{display:none} }
+    @media(max-width:700px){ .pv-hero-header{flex-direction:column} .pv-hero-right-cluster{flex-direction:column;align-items:flex-end;width:100%} .pv-hero-qr-block{flex-direction:row;padding:0} .pv-hero-counts{align-items:flex-start;flex-direction:row;width:100%;justify-content:space-around;border-top-width:1px;box-sizing:border-box} .pv-hero-count-item{align-items:center} .pv-hero-count-sep{display:none} }
     @media(max-width:560px){ .pv-flip-digit{width:1.35rem;height:1.75rem;font-size:1.1rem} }
 
     /* ── Módulo Registros acumulados ── */
@@ -1597,7 +1594,7 @@
           </div>
           <div class="pv-hero-right-cluster">
             <div class="pv-hero-qr-block">
-              <canvas id="pvHeroQrCanvas" width="72" height="72"></canvas>
+              <canvas id="pvHeroQrCanvas" width="130" height="130"></canvas>
               <div class="pv-hero-qr-badge ${estadoQR}">● ${esc(dotLabel)}</div>
             </div>
             <div class="pv-hero-counts">
@@ -1614,13 +1611,18 @@
           </div>
         </div>
 
+        ${canal.latitud && canal.longitud ? `
+        <div class="pv-mini-mapa-wrap">
+          <div class="pv-mini-mapa" id="pvMiniMapa"></div>
+          <div class="pv-mini-mapa-label">${esc(geo)}</div>
+        </div>` : ''}
+
         <div class="pv-img-hero">
           <div class="pv-img-hero-overlay"></div>
           <div class="pv-img-hero-content">
             <div class="pv-img-hero-nombre">${esc(canal.nombre)}</div>
             ${geo ? `<div class="pv-img-hero-slug">${esc(geo)}</div>` : ''}
           </div>
-          ${canal.latitud && canal.longitud ? `<div id="pvMiniMapa" style="position:absolute;inset:0;width:100%;height:100%;border-radius:0;overflow:hidden;z-index:0;pointer-events:none;opacity:0.55;"></div>` : ''}
         </div>
 
         <div class="pv-kpi-grid">
