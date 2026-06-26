@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sur Patagonia · Paleta deportiva runner — análisis comparativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f0e0c;
+    --blanco:#f5f3f0;
+    --dorado:#c9a84c;
+    --border:rgba(255,255,255,0.07);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--blanco);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:48px 56px 80px;max-width:1320px;margin:0 auto}
+
+  .h-eyebrow{color:var(--dorado);font-size:11px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;margin-bottom:8px}
+  h1{font-size:42px;font-weight:700;letter-spacing:-.02em;line-height:1.05;margin-bottom:8px}
+  .h-sub{font-size:15px;color:rgba(245,243,240,.55);font-weight:300;line-height:1.6;max-width:880px;margin-bottom:56px}
+  .h-sub strong{color:var(--dorado);font-weight:600}
+  code{font-family:monospace;font-size:12px;color:var(--dorado);background:rgba(201,168,76,.08);padding:1px 6px;border-radius:3px}
+
+  section{margin-bottom:64px}
+  .sec-num{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:22px;color:var(--dorado);opacity:.7}
+  h2{font-size:26px;font-weight:600;letter-spacing:-.015em;margin:4px 0 16px}
+  h3{font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:rgba(245,243,240,.5);margin:24px 0 14px}
+  p.lead{font-size:14.5px;line-height:1.7;color:rgba(245,243,240,.72);font-weight:300;margin-bottom:14px;max-width:900px}
+  p.lead strong{color:var(--blanco);font-weight:600}
+
+  /* === SWATCHES GRANDES === */
+  .palette-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
+  .sw{
+    border-radius:10px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.08);
+    display:flex;flex-direction:column
+  }
+  .sw-color{height:140px;background:var(--c);position:relative}
+  .sw-color::after{
+    content:attr(data-hex);position:absolute;bottom:12px;left:14px;
+    font-family:monospace;font-size:13px;color:rgba(0,0,0,.65);font-weight:700;
+    background:rgba(255,255,255,.7);padding:3px 9px;border-radius:4px
+  }
+  .sw-color.dark::after{color:rgba(255,255,255,.95);background:rgba(0,0,0,.4)}
+  .sw-meta{padding:12px 14px;background:rgba(15,14,12,.95);border-top:1px solid var(--border)}
+  .sw-name{font-size:14px;font-weight:600;color:var(--blanco);line-height:1.2;margin-bottom:3px}
+  .sw-hex{font-family:monospace;font-size:11px;color:var(--dorado);opacity:.85}
+  .sw-note{font-size:11px;color:rgba(245,243,240,.45);margin-top:6px;line-height:1.4}
+  .sw-verdict{display:inline-block;margin-top:8px;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+  .v-ok{color:#50c878;background:rgba(80,200,120,.12);border:1px solid rgba(80,200,120,.3)}
+  .v-warn{color:#f29a5a;background:rgba(242,154,90,.12);border:1px solid rgba(242,154,90,.3)}
+  .v-bad{color:#e05c5c;background:rgba(224,92,92,.12);border:1px solid rgba(224,92,92,.3)}
+  .v-add{color:#7aaeff;background:rgba(122,174,255,.12);border:1px solid rgba(122,174,255,.3)}
+
+  /* === MARCAS DE REFERENCIA === */
+  .brand-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .brand-card{
+    background:linear-gradient(160deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
+    border:1px solid var(--border);border-radius:10px;padding:18px 20px
+  }
+  .brand-name{font-size:16px;font-weight:700;color:var(--blanco);margin-bottom:4px}
+  .brand-desc{font-size:12px;color:rgba(245,243,240,.5);margin-bottom:14px;line-height:1.5}
+  .brand-swatches{display:flex;gap:6px;flex-wrap:wrap}
+  .brand-sw{width:60px;height:60px;border-radius:8px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-family:monospace;font-size:9px;color:rgba(0,0,0,.7);font-weight:700;background:var(--c)}
+  .brand-sw.dark{color:rgba(255,255,255,.95)}
+
+  /* === COMPARATIVA LADO A LADO === */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  .compare-col{
+    background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;padding:18px
+  }
+  .compare-t{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+  .compare-t.now{color:rgba(245,243,240,.5)}
+  .compare-t.prop{color:var(--dorado)}
+  .compare-list{display:flex;flex-direction:column;gap:8px}
+  .compare-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .compare-item:last-child{border-bottom:none}
+  .compare-dot{width:28px;height:28px;border-radius:50%;background:var(--c);flex-shrink:0;border:1px solid rgba(255,255,255,.1)}
+  .compare-info{flex:1}
+  .compare-name{font-size:13px;font-weight:600;color:var(--blanco)}
+  .compare-hex{font-family:monospace;font-size:10px;color:var(--dorado);opacity:.8}
+  .compare-action{font-size:10px;font-weight:700;padding:3px 7px;border-radius:3px;letter-spacing:.06em;text-transform:uppercase}
+  .a-keep{color:#50c878;background:rgba(80,200,120,.1)}
+  .a-out{color:#e05c5c;background:rgba(224,92,92,.1)}
+  .a-add{color:#7aaeff;background:rgba(122,174,255,.1)}
+  .a-change{color:#f29a5a;background:rgba(242,154,90,.1)}
+
+  /* === MOCKUPS DE APLICACIÓN === */
+  .mockup-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px}
+  .mock{
+    background:linear-gradient(160deg,rgba(255,255,255,.03),rgba(255,255,255,.008));
+    border:1px solid var(--border);border-radius:10px;padding:20px;
+    display:flex;flex-direction:column;align-items:center;gap:12px
+  }
+  .mock-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(245,243,240,.45);font-weight:600;align-self:flex-start}
+  .mock-hex{font-family:monospace;font-size:10px;color:var(--c);font-weight:700;align-self:flex-end;margin-top:-18px}
+
+  .m-shirt{
+    width:130px;height:130px;background:var(--bg);
+    clip-path:polygon(18% 0,33% 14%,67% 14%,82% 0,100% 20%,90% 100%,10% 100%,0 20%);
+    display:flex;align-items:center;justify-content:center;position:relative;
+    border-radius:0 0 4px 4px
+  }
+  .m-shirt::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#0a0908,#161513)}
+  .m-shirt-picos{position:relative;height:34px;width:auto}
+
+  .m-cap{
+    width:120px;height:70px;position:relative
+  }
+  .m-cap-body{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:108px;height:58px;background:#0a0908;border-radius:60px 60px 6px 6px/40px 40px 6px 6px;border:1px solid rgba(255,255,255,.08)}
+  .m-cap-visor{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:118px;height:16px;background:#0a0908;border-radius:0 0 60px 60px;border:1px solid rgba(255,255,255,.08)}
+  .m-cap-picos{position:absolute;top:12px;left:50%;transform:translateX(-50%);height:26px;width:auto}
+
+  .m-bib{
+    width:110px;height:130px;background:var(--c);border-radius:4px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    position:relative;box-shadow:0 8px 24px rgba(0,0,0,.4)
+  }
+  .m-bib-num{font-family:'Inter',sans-serif;font-size:32px;font-weight:800;color:#0f0e0c;line-height:1}
+  .m-bib-picos{height:22px;width:auto}
+  .m-bib-sp{font-size:8px;font-weight:700;color:rgba(0,0,0,.6);letter-spacing:.2em}
+
+  .m-shoe{
+    width:140px;height:80px;position:relative
+  }
+  .m-shoe-body{position:absolute;bottom:8px;left:0;right:0;height:48px;background:#0a0908;border-radius:60px 12px 12px 60px/30px 12px 12px 30px;border:1px solid rgba(255,255,255,.08)}
+  .m-shoe-sole{position:absolute;bottom:4px;left:4px;right:4px;height:10px;background:var(--c);border-radius:50px}
+  .m-shoe-laces{position:absolute;top:18px;left:40px;width:30px;height:12px;background:var(--c);border-radius:4px;opacity:.85}
+
+  /* === PIE === */
+  .footer{margin-top:72px;padding-top:24px;border-top:1px solid var(--border);font-size:10px;color:rgba(245,243,240,.3);letter-spacing:.14em;text-transform:uppercase}
+  .footer strong{color:var(--dorado)}
+  .src{margin-top:12px;font-size:9px;color:rgba(245,243,240,.25);line-height:1.7;letter-spacing:0;text-transform:none;font-weight:300}
+  .src a{color:rgba(201,168,76,.5);text-decoration:none}
+</style>
+</head>
+<body>
+
+<div class="h-eyebrow">Research & análisis · Línea deportiva</div>
+<h1>Paleta runner para Sur Patagonia</h1>
+<p class="h-sub">
+  Análisis comparativo entre la paleta cromática actual y la paleta que usan las marcas reales de running
+  (Nike, Brooks, On Running, HOKA, Salomon, HEAD). Propuesta de <strong>Excepción Deportiva</strong>
+  del Manual de Marca para merchandising y eventos con perfil corredor.
+</p>
+
+<!-- ════════════ A. MARCAS DE REFERENCIA ════════════ -->
+<section>
+  <div class="sec-num">A</div>
+  <h2>Lo que usan las marcas reales de running</h2>
+  <p class="lead">Antes de juzgar tu paleta, esto es lo que efectivamente usan las marcas top en performance running y trail. Los HEX son los oficiales de cada identidad + los colorways neón más recurrentes.</p>
+
+  <div class="brand-grid">
+    <div class="brand-card">
+      <div class="brand-name">Nike Running</div>
+      <div class="brand-desc">Volt, Hyper Pink y Total Orange son los 3 neones signature desde 2012.</div>
+      <div class="brand-swatches">
+        <div class="brand-sw" style="--c:#CCFF00">VOLT<br>#CCFF00</div>
+        <div class="brand-sw dark" style="--c:#E0186B">HYPER PINK<br>#E0186B</div>
+        <div class="brand-sw" style="--c:#FF5C00">TOTAL ORANGE<br>#FF5C00</div>
+        <div class="brand-sw" style="--c:#39FF14">NEON GREEN<br>#39FF14</div>
+      </div>
+    </div>
+
+    <div class="brand-card">
+      <div class="brand-name">Brooks</div>
+      <div class="brand-desc">El "Volt" de Brooks es tan signature que la marca lo registra como propio.</div>
+      <div class="brand-swatches">
+        <div class="brand-sw" style="--c:#CCFF00">VOLT<br>#CCFF00</div>
+        <div class="brand-sw dark" style="--c:#1A66A0">MATISSE BLUE<br>#1A66A0</div>
+        <div class="brand-sw" style="--c:#DFFF00">LIME<br>#DFFF00</div>
+      </div>
+    </div>
+
+    <div class="brand-card">
+      <div class="brand-name">On Running</div>
+      <div class="brand-desc">Estética suiza minimalista. Negro/blanco/gris + acentos en cyan eléctrico y rojo alerta.</div>
+      <div class="brand-swatches">
+        <div class="brand-sw dark" style="--c:#0099E5">CERULEAN<br>#0099E5</div>
+        <div class="brand-sw dark" style="--c:#E2231A">ALERT RED<br>#E2231A</div>
+        <div class="brand-sw dark" style="--c:#000000">BLACK<br>#000000</div>
+        <div class="brand-sw" style="--c:#FFFFFF;color:#000">WHITE<br>#FFFFFF</div>
+      </div>
+    </div>
+
+    <div class="brand-card">
+      <div class="brand-name">HOKA</div>
+      <div class="brand-desc">Pacific Blue institucional + Supernova Yellow en colorways de performance.</div>
+      <div class="brand-swatches">
+        <div class="brand-sw dark" style="--c:#0077B8">PACIFIC BLUE<br>#0077B8</div>
+        <div class="brand-sw" style="--c:#FFCC00">SUPERNOVA<br>#FFCC00</div>
+        <div class="brand-sw dark" style="--c:#F000FF">ACID MAGENTA<br>#F000FF</div>
+      </div>
+    </div>
+
+    <div class="brand-card">
+      <div class="brand-name">Salomon</div>
+      <div class="brand-desc">Trail running puro. Negro + acentos neón en calzado (Speedcross).</div>
+      <div class="brand-swatches">
+        <div class="brand-sw dark" style="--c:#000000">BLACK<br>#000000</div>
+        <div class="brand-sw" style="--c:#D4ED00">NEON YELLOW<br>#D4ED00</div>
+        <div class="brand-sw" style="--c:#FF5C00">RANGER ORANGE<br>#FF5C00</div>
+        <div class="brand-sw dark" style="--c:#001EFF">PHANTOM BLUE<br>#001EFF</div>
+      </div>
+    </div>
+
+    <div class="brand-card">
+      <div class="brand-name">HEAD (BOOM NEON)</div>
+      <div class="brand-desc">Línea especial con neones agresivos en tenis/running.</div>
+      <div class="brand-swatches">
+        <div class="brand-sw" style="--c:#D4ED00">NEON YELLOW<br>#D4ED00</div>
+        <div class="brand-sw" style="--c:#FF5C00">NEON ORANGE<br>#FF5C00</div>
+        <div class="brand-sw dark" style="--c:#E0186B">NEON PINK<br>#E0186B</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ B. TU PALETA ACTUAL ════════════ -->
+<section>
+  <div class="sec-num">B</div>
+  <h2>Tu paleta actual (8 picos cromáticos)</h2>
+  <p class="lead">Evaluación color por color contra el lenguaje runner real.</p>
+
+  <div class="palette-row">
+    <div class="sw" style="--c:#EA3341">
+      <div class="sw-color" data-hex="#EA3341"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Rojo Intenso</div>
+        <div class="sw-hex">#EA3341</div>
+        <div class="sw-note">Rojo de alta energía, no flúor.</div>
+        <span class="sw-verdict v-ok">✓ Funciona</span>
+      </div>
+    </div>
+    <div class="sw" style="--c:#D4ED00">
+      <div class="sw-color" data-hex="#D4ED00"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Amarillo Flúor</div>
+        <div class="sw-hex">#D4ED00</div>
+        <div class="sw-note">Idéntico a HOKA Supernova / Salomon.</div>
+        <span class="sw-verdict v-ok">✓✓ Perfecto</span>
+      </div>
+    </div>
+    <div class="sw" style="--c:#39FF14">
+      <div class="sw-color dark" data-hex="#39FF14"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Verde Matrix</div>
+        <div class="sw-hex">#39FF14</div>
+        <div class="sw-note">Neón puro tipo Nike/Adidas.</div>
+        <span class="sw-verdict v-ok">✓✓ Perfecto</span>
+      </div>
+    </div>
+    <div class="sw" style="--c:#C9A84C">
+      <div class="sw-color dark" data-hex="#C9A84C"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Dorado SP</div>
+        <div class="sw-hex">#C9A84C</div>
+        <div class="sw-note">Luxury / institucional. No es deportivo.</div>
+        <span class="sw-verdict v-bad">✗ Fuera de lugar</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="palette-row">
+    <div class="sw" style="--c:#7AAEFF">
+      <div class="sw-color" data-hex="#7AAEFF"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Azul Visual</div>
+        <div class="sw-hex">#7AAEFF</div>
+        <div class="sw-note">Demasiado suave. El runner usa #0099E5.</div>
+        <span class="sw-verdict v-warn">⚠ Flojo</span>
+      </div>
+    </div>
+    <div class="sw" style="--c:#E0186B">
+      <div class="sw-color dark" data-hex="#E0186B"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Magenta Neón</div>
+        <div class="sw-hex">#E0186B</div>
+        <div class="sw-note">Idéntico a Nike Hyper Pink.</div>
+        <span class="sw-verdict v-ok">✓✓ Perfecto</span>
+      </div>
+    </div>
+    <div class="sw" style="--c:#4DFF4D">
+      <div class="sw-color dark" data-hex="#4DFF4D"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Verde Claro</div>
+        <div class="sw-hex">#4DFF4D</div>
+        <div class="sw-note">Similar al Volt de Brooks.</div>
+        <span class="sw-verdict v-ok">✓ Funciona</span>
+      </div>
+    </div>
+    <div class="sw" style="--c:#FF5C00;background:rgba(122,174,255,.04)">
+      <div class="sw-color" data-hex="#FF5C00"></div>
+      <div class="sw-meta">
+        <div class="sw-name" style="color:#7aaeff">+ Naranja Fusión (nuevo)</div>
+        <div class="sw-hex">#FF5C00</div>
+        <div class="sw-note">Te falta este. Es el 4° color canónico.</div>
+        <span class="sw-verdict v-add">+ Sumar</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ C. PROPUESTA FINAL ════════════ -->
+<section>
+  <div class="sec-num">C</div>
+  <h2>Propuesta · Excepción Deportiva (8 colores)</h2>
+  <p class="lead">La paleta runner definitiva para Sur Patagonia. 5 colores vigentes + 1 cambio + 2 sumados. Solo para merchandising y eventos deportivos, nunca para identidad institucional.</p>
+
+  <div class="palette-row">
+    <div class="sw" style="--c:#CCFF00">
+      <div class="sw-color" data-hex="#CCFF00"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Volt SP</div>
+        <div class="sw-hex">#CCFF00</div>
+        <div class="sw-note">Signature Brooks/Nike. El rey del running.</div>
+      </div>
+    </div>
+    <div class="sw" style="--c:#74EE15">
+      <div class="sw-color dark" data-hex="#74EE15"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Lima Neón</div>
+        <div class="sw-hex">#74EE15</div>
+        <div class="sw-note">Verde lima performance, distinto del Volt.</div>
+      </div>
+    </div>
+    <div class="sw" style="--c:#FF5C00">
+      <div class="sw-color" data-hex="#FF5C00"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Naranja Fusión</div>
+        <div class="sw-hex">#FF5C00</div>
+        <div class="sw-note">Trail running puro (Salomon).</div>
+      </div>
+    </div>
+    <div class="sw" style="--c:#E0186B">
+      <div class="sw-color dark" data-hex="#E0186B"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Magenta Hyper</div>
+        <div class="sw-hex">#E0186B</div>
+        <div class="sw-note">Nike Hyper Pink / HOKA Acid.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="palette-row">
+    <div class="sw" style="--c:#0099E5">
+      <div class="sw-color dark" data-hex="#0099E5"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Cyan Eléctrico</div>
+        <div class="sw-hex">#0099E5</div>
+        <div class="sw-note">Reemplaza al azul suave. On Running.</div>
+      </div>
+    </div>
+    <div class="sw" style="--c:#EA3341">
+      <div class="sw-color" data-hex="#EA3341"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Rojo Rush</div>
+        <div class="sw-hex">#EA3341</div>
+        <div class="sw-note">Energía deportiva, no error.</div>
+      </div>
+    </div>
+    <div class="sw" style="--c:#39FF14">
+      <div class="sw-color dark" data-hex="#39FF14"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Verde Tóxico</div>
+        <div class="sw-hex">#39FF14</div>
+        <div class="sw-note">El más extremo. Matrix puro.</div>
+      </div>
+    </div>
+    <div class="sw" style="--c:#D4ED00">
+      <div class="sw-color" data-hex="#D4ED00"></div>
+      <div class="sw-meta">
+        <div class="sw-name">Amarillo Volt</div>
+        <div class="sw-hex">#D4ED00</div>
+        <div class="sw-note">HOKA Supernova. Tu acierto original.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ D. COMPARATIVA LADO A LADO ════════════ -->
+<section>
+  <div class="sec-num">D</div>
+  <h2>De tu paleta actual → a la propuesta runner</h2>
+
+  <div class="compare">
+    <div class="compare-col">
+      <div class="compare-t now">Paleta actual</div>
+      <div class="compare-list">
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#EA3341"></div>
+          <div class="compare-info"><div class="compare-name">Rojo Intenso</div><div class="compare-hex">#EA3341</div></div>
+          <span class="compare-action a-keep">Mantener</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#D4ED00"></div>
+          <div class="compare-info"><div class="compare-name">Amarillo Flúor</div><div class="compare-hex">#D4ED00</div></div>
+          <span class="compare-action a-keep">Mantener</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#39FF14"></div>
+          <div class="compare-info"><div class="compare-name">Verde Matrix</div><div class="compare-hex">#39FF14</div></div>
+          <span class="compare-action a-keep">Mantener</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#C9A84C"></div>
+          <div class="compare-info"><div class="compare-name">Dorado SP</div><div class="compare-hex">#C9A84C</div></div>
+          <span class="compare-action a-out">Sacar</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#7AAEFF"></div>
+          <div class="compare-info"><div class="compare-name">Azul Visual</div><div class="compare-hex">#7AAEFF</div></div>
+          <span class="compare-action a-change">Cambiar</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#E0186B"></div>
+          <div class="compare-info"><div class="compare-name">Magenta Neón</div><div class="compare-hex">#E0186B</div></div>
+          <span class="compare-action a-keep">Mantener</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#4DFF4D"></div>
+          <div class="compare-info"><div class="compare-name">Verde Claro</div><div class="compare-hex">#4DFF4D</div></div>
+          <span class="compare-action a-out">Sacar (redundante)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-col">
+      <div class="compare-t prop">Propuesta runner</div>
+      <div class="compare-list">
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#EA3341"></div>
+          <div class="compare-info"><div class="compare-name">Rojo Rush</div><div class="compare-hex">#EA3341</div></div>
+          <span class="compare-action a-keep">Mantener</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#CCFF00"></div>
+          <div class="compare-info"><div class="compare-name">Volt SP</div><div class="compare-hex">#CCFF00</div></div>
+          <span class="compare-action a-add">Sumar</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#39FF14"></div>
+          <div class="compare-info"><div class="compare-name">Verde Tóxico</div><div class="compare-hex">#39FF14</div></div>
+          <span class="compare-action a-keep">Mantener</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#FF5C00"></div>
+          <div class="compare-info"><div class="compare-name">Naranja Fusión</div><div class="compare-hex">#FF5C00</div></div>
+          <span class="compare-action a-add">Sumar</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#0099E5"></div>
+          <div class="compare-info"><div class="compare-name">Cyan Eléctrico</div><div class="compare-hex">#0099E5</div></div>
+          <span class="compare-action a-change">Nuevo azul</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#E0186B"></div>
+          <div class="compare-info"><div class="compare-name">Magenta Hyper</div><div class="compare-hex">#E0186B</div></div>
+          <span class="compare-action a-keep">Mantener</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#74EE15"></div>
+          <div class="compare-info"><div class="compare-name">Lima Neón</div><div class="compare-hex">#74EE15</div></div>
+          <span class="compare-action a-add">Sumar</span>
+        </div>
+        <div class="compare-item">
+          <div class="compare-dot" style="--c:#D4ED00"></div>
+          <div class="compare-info"><div class="compare-name">Amarillo Volt</div><div class="compare-hex">#D4ED00</div></div>
+          <span class="compare-action a-keep">Mantener</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ E. MOCKUPS ════════════ -->
+<section>
+  <div class="sec-num">E</div>
+  <h2>Aplicación en merchandising deportivo</h2>
+  <p class="lead">Simulación sobre 4 soportes típicos de running. Los picos se muestran planos, sin glow, corte limpio sobre fondo oscuro.</p>
+
+  <div class="mockup-grid">
+    <div class="mock" style="--c:#CCFF00">
+      <div class="mock-label">Remera técnica</div>
+      <div class="m-shirt"><img src="picos-color/picos-amarillo-fluor.png" class="m-shirt-picos" alt=""></div>
+      <div class="mock-hex">#CCFF00</div>
+    </div>
+    <div class="mock" style="--c:#FF5C00">
+      <div class="mock-label">Gorra runner</div>
+      <div class="m-cap">
+        <div class="m-cap-body"></div>
+        <img src="picos-color/picos-rojo-intenso.png" class="m-cap-picos" style="filter:hue-rotate(15deg) saturate(1.5)" alt="">
+        <div class="m-cap-visor"></div>
+      </div>
+      <div class="mock-hex">#FF5C00</div>
+    </div>
+    <div class="mock" style="--c:#0099E5">
+      <div class="mock-label">Número de carrera</div>
+      <div class="m-bib" style="--c:#0099E5">
+        <div class="m-bib-num">042</div>
+        <img src="picos-color/picos-azul-visual.png" class="m-bib-picos" alt="">
+        <div class="m-bib-sp">SUR PATAGONIA</div>
+      </div>
+      <div class="mock-hex">#0099E5</div>
+    </div>
+    <div class="mock" style="--c:#E0186B">
+      <div class="mock-label">Calzado (suela)</div>
+      <div class="m-shoe">
+        <div class="m-shoe-body"></div>
+        <div class="m-shoe-laces"></div>
+        <div class="m-shoe-sole"></div>
+      </div>
+      <div class="mock-hex">#E0186B</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ F. REGLA DE USO ════════════ -->
+<section>
+  <div class="sec-num">F</div>
+  <h2>Regla de uso de la Excepción Deportiva</h2>
+  <p class="lead">Para que esta paleta no contamine la identidad institucional de Sur Patagonia, aplica solo en estos casos:</p>
+  <p class="lead">
+    <strong>✓ Permitido:</strong> remeras técnicas, gorras, números de carrera, bidones, bandoleras,lonas de evento, vallas de carrera, medallas, stickers, parches, calzado co-branded.<br><br>
+    <strong>✗ Prohibido:</strong> logo institucional, web, paneles, documentos, PDF, propuestas comerciales, firma de email, tarjetas de presentación, factura. En esos casos siempre se usa la paleta institucional (<code>#0f0e0c</code> + <code>#c9a84c</code> + blanco/negro).
+  </p>
+</section>
+
+<div class="footer">
+  SUR PATAGONIA · Research paleta runner · <strong>Zcode · solo análisis</strong> · No implementa, no edita repo, no toca desarrollador.html
+  <div class="src">
+    Fuentes: <a href="https://www.nytimes.com/2013/11/12/sports/running-in-the-dazzle-of-neon.html">NYT – Running in the Dazzle of Neon</a> ·
+    <a href="https://www.irunfar.com/best-reflective-running-gear">iRunFar – Best Reflective Gear 2026</a> ·
+    <a href="https://www.runnersworld.com/gear/a38254827/reflective-gear-to-run-safely-in-the-dark/">Runner's World</a> ·
+    <a href="https://www.brandcolorcode.com/hoka-one-one">HOKA brand colors</a> ·
+    <a href="https://brandpalettes.com/salomon-color-codes/">Salomon colors</a> ·
+    <a href="https://brandpalettes.com/brooks-color-codes/">Brooks colors</a> ·
+    <a href="https://www.tennistraveller.net/en/blog/head-boom-new-york">HEAD BOOM NEON</a>
+  </div>
+</div>
+
+</body>
+</html>

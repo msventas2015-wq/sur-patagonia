@@ -592,50 +592,175 @@ Reglas:
 
 ---
 
-## 19. SPORT / contador pasivo
+## 19. SPORT / Excepción Deportiva
 
-Paleta SPORT disponible como acento visual:
+### 19.1 Concepto
+
+La "Excepción Deportiva" es un subsistema de color separado del sistema visual institucional. Su propósito es dotar a Sur Patagonia de lenguaje visual de alto impacto para contextos de running, trail, eventos deportivos y merchandising físico, sin contaminar la paleta institucional.
+
+Fuente: análisis comparativo con Nike, Brooks, On Running, HOKA, Salomon y HEAD, realizado por Zcode. Referencia: `docs/auditorias/research-paleta-runner.html`.
+
+### 19.2 Paleta SPORT (8 colores — Excepción Deportiva)
+
+| Nombre | HEX | Referencia de industria |
+|---|---:|---|
+| Rojo Rush | `#EA3341` | Energía deportiva |
+| Volt SP | `#CCFF00` | Signature Brooks / Nike |
+| Verde Tóxico | `#39FF14` | Nike Neon Green / Matrix |
+| Naranja Fusión | `#FF5C00` | Salomon Ranger Orange |
+| Cyan Eléctrico | `#0099E5` | On Running Cerulean |
+| Magenta Hyper | `#E0186B` | Nike Hyper Pink / HOKA Acid |
+| Lima Neón | `#74EE15` | Verde lima performance |
+| Amarillo Volt | `#D4ED00` | HOKA Supernova |
+
+Tokens CSS:
 
 ```css
---sport-rojo-rush: #EA3341;
---sport-volt-sp: #CCFF00;
---sport-verde-toxico: #39FF14;
+--sport-rojo-rush:      #EA3341;
+--sport-volt-sp:        #CCFF00;
+--sport-verde-toxico:   #39FF14;
 --sport-naranja-fusion: #FF5C00;
 --sport-cyan-electrico: #0099E5;
---sport-magenta-hyper: #E0186B;
---sport-lima-neon: #74EE15;
---sport-amarillo-volt: #D4ED00;
+--sport-magenta-hyper:  #E0186B;
+--sport-lima-neon:      #74EE15;
+--sport-amarillo-volt:  #D4ED00;
 ```
 
-Reglas:
+### 19.3 Regla de uso — Excepción Deportiva
 
-- Puede usarse como acento de impacto visual.
-- No debe significar comisión, dinero, éxito comercial ni cierre.
-- No debe mezclarse con estados CRM.
-- No debe reemplazar colores semánticos del sistema.
+Permitido:
 
-Estado operativo aprobado para contador pasivo:
+- remeras técnicas;
+- gorras runner;
+- números de carrera / dorsales;
+- bidones y vasos térmicos;
+- bandoleras;
+- lonas de evento y stands;
+- vallas de carrera;
+- medallas y premios;
+- stickers y parches;
+- calzado co-branded;
+- ploteos de vehículo en contexto deportivo;
+- merchandising físico con perfil corredor.
+
+Prohibido:
+
+- logo institucional digital;
+- web, paneles, dashboards;
+- documentos internos;
+- PDFs;
+- propuestas comerciales;
+- firma de email;
+- tarjetas de presentación;
+- facturación.
+
+> En todos los contextos institucionales (web, paneles, documentos) siempre se usa la paleta institucional: `#0f0e0c` + `#c9a84c` + blanco/negro.
+
+### 19.4 Colores SPORT excluidos de la paleta
+
+| Color excluido | Motivo |
+|---|---|
+| `#C9A84C` Dorado SP | Luxury / institucional, no deportivo |
+| `#7AAEFF` Azul visual | Reservado para visualizaciones |
+| `#4DFF4D` Verde claro | Redundante con Verde Tóxico y Lima Neón |
+
+### 19.5 Estado operativo — contador pasivo
+
+Color operativo aprobado para el contador pasivo de actividad:
 
 ```txt
 #6EE89A
 ```
 
+Reglas adicionales:
+
+- No debe significar comisión, dinero, éxito comercial ni cierre.
+- No debe mezclarse con estados CRM.
+- No debe reemplazar colores semánticos del sistema institucional.
+
 ---
 
-## 20. Logo y marca
+## 20. Isotipo cromático — picos en color
 
-Activos oficiales verificados:
+### 20.1 Concepto
 
-| Archivo | Dimensión | Uso |
+El isotipo "picos" puede aplicarse en variantes cromáticas sobre soportes físicos oscuros. Por su naturaleza de forma pura (sin texto), admite color sin perder identidad, similar a marcas como Nike Swoosh, Gymshark o Arc'teryx.
+
+**Estado: exploración pendiente de aprobación vectorial. No oficial como sistema todavía.**
+
+Fuente: análisis de Zcode. Referencia: `docs/auditorias/exploracion-picos-cromaticos.html`. Archivos PNG de muestra: `manual-marca-sp/picos-color/`.
+
+### 20.2 Variantes cromáticas exploradas
+
+Las variantes se evaluaron sobre dos fondos oscuros: negro profundo `#0f0e0c` y gris carbón `#211e1a`.
+
+| Nombre | HEX | Lectura sobre negro | Lectura sobre carbón |
+|---|---:|---|---|
+| Rojo Intenso | `#EA3341` | ✓ Funciona | ✓ Funciona |
+| Amarillo Flúor | `#D4ED00` | ✓ Funciona | ✓ Funciona |
+| Verde Matrix | `#39FF14` | ✓ Funciona | ✓ Funciona |
+| Dorado SP | `#C9A84C` | ✓ Funciona | ⚠ Flojo — preferir negro |
+| Azul Visual | `#7AAEFF` | ✓ Funciona | ✓ Funciona |
+| Magenta Neón | `#E0186B` | ✓ Funciona | ✓ Funciona |
+| Verde Claro | `#4DFF4D` | ✓ Funciona | ✓ Funciona |
+
+### 20.3 Reglas de aplicación física
+
+- Sin glow, sin halo, sin degradado de luz — corte limpio entre color y fondo.
+- Solo sobre fondos oscuros: `#0f0e0c` o `#211e1a`.
+- No aplicar filtros CSS al logo institucional — los archivos cromáticos son PNG propios generados por separado.
+- Para producción real: generar desde archivos vectoriales **SVG/EPS** aprobados por dirección.
+- Dorado SP (`#C9A84C`) solo sobre negro profundo, no sobre carbón.
+
+### 20.4 Contextos de uso
+
+Permitido (cuando estén aprobadas variantes vectoriales):
+
+- gorra bordada;
+- remera serigrafiada;
+- vaso térmico láser-grabado;
+- ploteo de vehículo;
+- lona de evento;
+- tarjeta black premium;
+- sticker y vidriera.
+
+Prohibido:
+
+- usar filtros CSS para recolorear el isotipo institucional en producción web;
+- presentar variante cromática como oficial sin aprobación vectorial;
+- aplicar más de un color por pieza (isotipo = un color por soporte).
+
+---
+
+## 21. Logo y marca
+
+### 21.1 Carpeta organizada oficial — `assets/logos/`
+
+Carpeta canonical para activos de logo organizados. Usar estos archivos como referencia primaria para implementaciones nuevas.
+
+| Archivo | Variante | Uso recomendado |
 |---|---|---|
-| `logohorizontal.png` / `.webp` | 1600×205 | Logo horizontal — fondo oscuro |
-| `logohorizontalnegro.png` / `.webp` | 1600×205 | Logo horizontal — versión negra |
-| `logovertical.png` / `.webp` | 1600×800 | Logo vertical — fondo oscuro |
-| `logoverticalnegro.png` / `.webp` | 1046×444 | Logo vertical — versión negra |
-| `picos.png` / `.webp` | 918×613 | Isotipo / picos |
-| `assets/logohorizontalnegro.png` | 1600×205 | Duplicado en assets |
-| `assets/logoverticalnegro.png` | 1046×444 | Duplicado en assets |
-| `assets/PICOS.png` | 394×225 | Isotipo reducido |
+| `assets/logos/logo-horizontal-blanco.png` | Horizontal blanco | Sobre fondos oscuros |
+| `assets/logos/logo-horizontal-negro.png` | Horizontal negro | Sobre fondos claros |
+| `assets/logos/logo-vertical-blanco.png` | Vertical blanco | Sobre fondos oscuros |
+| `assets/logos/logo-vertical-negro.png` | Vertical negro | Sobre fondos claros |
+| `assets/logos/picos-blanco.png` | Isotipo blanco | Sobre fondos oscuros |
+| `assets/logos/picos-negro.png` | Isotipo negro | Sobre fondos claros |
+
+### 21.2 Activos legacy verificados (raíz del proyecto)
+
+Activos existentes en raíz — mantener compatibilidad con código actual que los referencia, pero no usar en implementaciones nuevas.
+
+| Archivo | Dimensión | Estado |
+|---|---|---|
+| `logohorizontal.png` / `.webp` | 1600×205 | Legacy — mantener |
+| `logohorizontalnegro.png` / `.webp` | 1600×205 | Legacy — mantener |
+| `logovertical.png` / `.webp` | 1600×800 | Legacy — mantener |
+| `logoverticalnegro.png` / `.webp` | 1046×444 | Legacy — mantener |
+| `picos.png` / `.webp` | 918×613 | Legacy — mantener |
+| `assets/logohorizontalnegro.png` | 1600×205 | Duplicado legacy |
+| `assets/logoverticalnegro.png` | 1046×444 | Duplicado legacy |
+| `assets/PICOS.png` | 394×225 | Isotipo reducido legacy |
 
 > `assets/logo.png` = archivo de 1 byte. **No es imagen utilizable. No usar.**
 
@@ -651,7 +776,7 @@ Reglas:
 
 ---
 
-## 21. Reglas de alcance para etapas visuales
+## 22. Reglas de alcance para etapas visuales
 
 En cambios visuales **no se debe tocar**:
 
@@ -691,7 +816,7 @@ No se permite:
 
 ---
 
-## 22. Checklist de auditoría visual
+## 23. Checklist de auditoría visual
 
 Antes de aprobar un cambio visual, verificar:
 
@@ -708,7 +833,7 @@ Antes de aprobar un cambio visual, verificar:
 
 ---
 
-## 23. Criterio de aprobación
+## 24. Criterio de aprobación
 
 Un cambio visual puede aprobarse si:
 
@@ -732,17 +857,18 @@ Debe rechazarse si:
 
 ---
 
-## 24. Estado pendiente para formalización futura
+## 25. Estado pendiente para formalización futura
 
 Para convertir este documento en parte definitiva del sistema rector, queda pendiente:
 
 - separar tokens oficiales de tokens legacy;
-- definir qué colores SPORT quedan realmente autorizados;
-- confirmar variantes de logo faltantes vs aprobadas;
+- confirmar variantes de logo faltantes vs aprobadas en `assets/logos/`;
 - decidir si `#d76f3f` queda como accent de marca o uso comercial específico;
 - revisar colores de paletas extensas contra accesibilidad;
 - definir una fuente única de tokens compartidos para evitar duplicación entre HTMLs;
-- crear checklist de implementación para Cloud / Zcode / Codex.
+- crear checklist de implementación para Cloud / Zcode / Codex;
+- aprobar variantes vectoriales SVG/EPS del isotipo cromático para producción física;
+- confirmar qué variantes SPORT quedan autorizadas para cada tipo de soporte físico.
 
 ---
 
