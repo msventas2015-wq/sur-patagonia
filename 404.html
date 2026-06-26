@@ -1053,6 +1053,85 @@ function agregarTrackingDestino(destino, codigo, via) {
   const sep = base.includes('?') ? '&' : '?'
   return `${base}${sep}canal=${encodeURIComponent(codigo)}&via=${encodeURIComponent(via)}${hash}`
 }
+
+function normalizarDestinoUrl(destino) {
+  try {
+    return new URL(destino || '/', location.origin)
+  } catch (e) {
+    return new URL('/', location.origin)
+  }
+}
+
+function dispositivoRedirectActual() {
+  const ua = navigator.userAgent
+  if (/Mobi|Android/i.test(ua)) return 'mobile'
+  if (/Tablet|iPad/i.test(ua)) return 'tablet'
+  return 'desktop'
+}
+
+function referrerRedirectActual() {
+  try {
+    return document.referrer ? new URL(document.referrer).hostname : 'directo'
+  } catch (e) {
+    return 'directo'
+  }
+}
+
+async function esSlugProyectoInstrumentado(path) {
+  const slug = path.replace(/^\/+|\/+$/g, '')
+  if (!slug) return false
+  try {
+    const { data } = await supabase
+      .from('proyectos')
+      .select('slug')
+      .eq('slug', slug)
+      .maybeSingle()
+    return Boolean(data?.slug)
+  } catch (e) {
+    return false
+  }
+}
+
+async function destinoInstrumentado(destino) {
+  const url = normalizarDestinoUrl(destino)
+  if (url.origin !== location.origin) return false
+
+  const path = url.pathname.replace(/\/+$/, '') || '/'
+  const rutasInstrumentadas = new Set([
+    '/',
+    '/index.html',
+    '/proyectos.html',
+    '/propiedades.html',
+    '/servicios.html',
+    '/propiedad.html',
+  ])
+  if (rutasInstrumentadas.has(path)) return true
+
+  const rutasNoInstrumentadas = new Set([
+    '/proximamente',
+    '/proximamente.html',
+  ])
+  if (rutasNoInstrumentadas.has(path)) return false
+
+  if (/^\/[a-z0-9-]+$/i.test(path)) return esSlugProyectoInstrumentado(path)
+  return false
+}
+
+async function registrarVisitaRedirectNoInstrumentado(codigo) {
+  try {
+    await supabase.from('visitas').insert({
+      pagina: 'url_personalizada',
+      propiedad_id: null,
+      referrer: referrerRedirectActual(),
+      dispositivo: dispositivoRedirectActual(),
+      canal_ref: codigo,
+      canal_via: 'qr',
+    })
+  } catch (e) {
+    console.warn('[redirect tracking] No se pudo registrar visita previa a redirección:', e)
+  }
+}
+
 if (_rMatch) {
   document.documentElement.style.visibility = 'hidden'
   const { data: _r } = await supabase
@@ -1076,6 +1155,9 @@ if (_rMatch) {
           && (!c.fecha_fin    || c.fecha_fin    >= _now))
         .sort((a, b) => (b.fecha_inicio || '').localeCompare(a.fecha_inicio || ''))[0]
       if (_camp) _dest = _camp.url_destino
+    }
+    if (!(await destinoInstrumentado(_dest))) {
+      await registrarVisitaRedirectNoInstrumentado(_r.codigo)
     }
     location.replace(agregarTrackingDestino(_dest, _r.codigo, 'qr'))
   } else {
