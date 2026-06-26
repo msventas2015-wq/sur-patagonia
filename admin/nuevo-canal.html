@@ -561,6 +561,11 @@ const supabaseAux = createClient(
 const BASE_URL = 'https://surpatagonia.com.ar'
 const params   = new URLSearchParams(location.search)
 const editId   = params.get('id')
+function construirLinkDirecto(destino, codigo) {
+  const url = new URL(destino || '/', BASE_URL)
+  url.searchParams.set('canal', codigo)
+  return url.toString()
+}
 
 let _canalId            = editId || null
 let _proyectos          = []
@@ -920,11 +925,7 @@ window.verQR = (codigo, nombreEnc, destinoEnc) => {
   const nombre  = decodeURIComponent(nombreEnc)
   const destino = decodeURIComponent(destinoEnc)
   const linkQR      = `${BASE_URL}/r/${codigo}`
-  const hashIdx     = destino.indexOf('#')
-  const destBase    = hashIdx >= 0 ? destino.slice(0, hashIdx) : destino
-  const destHash    = hashIdx >= 0 ? destino.slice(hashIdx) : ''
-  const sep         = destBase.includes('?') ? '&' : '?'
-  const linkDirecto = `${BASE_URL}${destBase}${sep}canal=${encodeURIComponent(codigo)}${destHash}`
+  const linkDirecto = construirLinkDirecto(destino, codigo)
 
   document.getElementById('modalNombre').textContent    = nombre
   document.getElementById('modalSub').textContent       = codigo

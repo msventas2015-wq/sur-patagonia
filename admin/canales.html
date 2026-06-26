@@ -258,6 +258,11 @@ const TIPO_LABEL = {
   punto_venta: 'Punto de venta', 'campaña': 'Campaña', evento: 'Evento'
 }
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+function construirLinkDirecto(destino, codigo) {
+  const url = new URL(destino || '/', BASE_URL)
+  url.searchParams.set('canal', codigo)
+  return url.toString()
+}
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -422,11 +427,7 @@ window.verQRBtn = (btn) => {
 
 window.verQR = (codigo, nombre, tipo, destino) => {
   const linkQR      = `${BASE_URL}/r/${codigo}`
-  const hashIdx     = destino.indexOf('#')
-  const destBase    = hashIdx >= 0 ? destino.slice(0, hashIdx) : destino
-  const destHash    = hashIdx >= 0 ? destino.slice(hashIdx) : ''
-  const sep         = destBase.includes('?') ? '&' : '?'
-  const linkDirecto = `${BASE_URL}${destBase}${sep}canal=${encodeURIComponent(codigo)}${destHash}`
+  const linkDirecto = construirLinkDirecto(destino, codigo)
   document.getElementById('modalNombre').textContent      = nombre
   document.getElementById('modalTipo').textContent        = TIPO_LABEL[tipo] || tipo
   document.getElementById('modalLinkQR').textContent      = linkQR
