@@ -1077,6 +1077,11 @@ function referrerRedirectActual() {
   }
 }
 
+function viaRedirectActual() {
+  const via = new URLSearchParams(location.search).get('via')
+  return via === 'link' ? 'link' : 'qr'
+}
+
 async function esSlugProyectoInstrumentado(path) {
   const slug = path.replace(/^\/+|\/+$/g, '')
   if (!slug) return false
@@ -1117,7 +1122,7 @@ async function destinoInstrumentado(destino) {
   return false
 }
 
-async function registrarVisitaRedirectNoInstrumentado(codigo) {
+async function registrarVisitaRedirectNoInstrumentado(codigo, via) {
   try {
     await supabase.from('visitas').insert({
       pagina: 'url_personalizada',
@@ -1125,7 +1130,7 @@ async function registrarVisitaRedirectNoInstrumentado(codigo) {
       referrer: referrerRedirectActual(),
       dispositivo: dispositivoRedirectActual(),
       canal_ref: codigo,
-      canal_via: 'qr',
+      canal_via: via,
     })
   } catch (e) {
     console.warn('[redirect tracking] No se pudo registrar visita previa a redirección:', e)
@@ -1156,10 +1161,11 @@ if (_rMatch) {
         .sort((a, b) => (b.fecha_inicio || '').localeCompare(a.fecha_inicio || ''))[0]
       if (_camp) _dest = _camp.url_destino
     }
+    const _via = viaRedirectActual()
     if (!(await destinoInstrumentado(_dest))) {
-      await registrarVisitaRedirectNoInstrumentado(_r.codigo)
+      await registrarVisitaRedirectNoInstrumentado(_r.codigo, _via)
     }
-    location.replace(agregarTrackingDestino(_dest, _r.codigo, 'qr'))
+    location.replace(agregarTrackingDestino(_dest, _r.codigo, _via))
   } else {
     location.replace('/')
   }
