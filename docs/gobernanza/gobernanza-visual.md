@@ -71,6 +71,22 @@ Ejemplos prohibidos:
 - Activo y QR usando el mismo verde si "Activo" funciona como estado distinto.
 - Tipo de canal e identidad individual de canal usando el mismo color.
 
+### 3.2 Convención documental de estado
+
+Las reglas de este documento deben marcarse o interpretarse con una de estas categorías cuando haya riesgo de confusión entre criterio aprobado e implementación existente:
+
+| Estado | Significado |
+|---|---|
+| VIGENTE | Regla aprobada y aplicable hoy. Debe usarse para auditar nuevas etapas. |
+| OBJETIVO_PENDIENTE | Regla deseada o dirección aprobada, pero aún no aplicada en todas las pantallas o dependiente de una etapa futura. |
+
+Ejemplos:
+
+- `color_index` para identidad individual de canales: VIGENTE como regla del sistema; OBJETIVO_PENDIENTE en pantallas admin que todavía no lo consumen.
+- Canal activo `#52d68c`: VIGENTE como significado visual; OBJETIVO_PENDIENTE donde todavía se use otro verde en tablas admin.
+- Profundidad, glow y cards premium: VIGENTE como lenguaje visual de dashboards modernos; OBJETIVO_PENDIENTE en pantallas admin legacy.
+- Logo real como `<img>`: VIGENTE como regla; OBJETIVO_PENDIENTE donde todavía exista logo reconstruido con texto.
+
 ---
 
 ## 4. Tipografías
@@ -230,6 +246,12 @@ Uso:
 - badges de canal;
 - series o marcas individuales.
 
+Estado:
+
+- VIGENTE: `paleta-canales.md` es la fuente única de verdad.
+- VIGENTE: la paleta operativa correcta tiene **54 colores únicos** y 25 familias.
+- OBJETIVO_PENDIENTE: que todas las pantallas admin consuman `color_index` real.
+
 Reglas:
 
 - No debe coincidir con colores reservados de KPIs.
@@ -237,67 +259,16 @@ Reglas:
 - No debe coincidir con eventos/fuentes.
 - La asignación debe ser determinística por `color_index` persistido en tabla `canales`.
 - Debe evitar colisiones visibles mientras haya colores libres.
+- No hardcodear identidad individual de canal en CSS puro si el dato depende de `color_index`.
+- Si todavía no existe integración JS + CSS para color individual, usar neutro provisional y marcarlo como OBJETIVO_PENDIENTE.
 
-Paleta completa (54 colores, 25 familias) — ver `paleta-canales.md` para especificación completa con nombres, familias y algoritmo de asignación.
-
-Orden de asignación (máxima separación perceptual):
+Fuente única:
 
 ```txt
-#3a4eb8
-#c0603e
-#2a9d7a
-#c040a0
-#c08a2e
-#1e5fa0
-#7a1f2e
-#3eb489
-#7b3fb0
-#b87333
-#1d7a8c
-#d20c5c
-#8c7853
-#1f4ed8
-#a0c850
-#d65d7a
-#1a7a7a
-#a86fb5
-#dc143c
-#a89878
-#8a7d72
-#5d2e5d
-#d4ed00
-#6b7a2c
-#ff6b5b
-#39ff14
-#2c3e9c
-#a8512f
-#1f8473
-#a82c8f
-#cc9333
-#2a6db5
-#8b2236
-#4fca9e
-#6b3fa0
-#c8843e
-#0f6e80
-#e0186b
-#a0825d
-#2e5cb8
-#bcd96e
-#c94869
-#0d6b6b
-#b87fc0
-#e63946
-#6b3470
-#e6f23a
-#7a8a3e
-#e85a4f
-#4dff4d
-#4556a8
-#3aa68a
-#9c2740
-#8a5fc4
+docs/gobernanza/paleta-canales.md
 ```
+
+No duplicar arrays, conteos ni listas extensas de colores en este documento. Si hay conflicto documental, manda `paleta-canales.md`. No usar “65 colores” como número oficial.
 
 ---
 
@@ -523,6 +494,67 @@ Reglas:
 - Deben ser sutiles.
 - No deben parecer errores.
 - No deben competir con KPIs o alertas.
+
+### 15.8 Sistema de profundidad y layering
+
+Estado:
+
+- VIGENTE como lenguaje visual de dashboards modernos.
+- OBJETIVO_PENDIENTE en pantallas admin legacy que aún se ven planas.
+
+Reglas:
+
+- No alcanza con copiar HEX: el sistema visual depende de profundidad, capas, bordes, sombras y opacidades.
+- Las superficies principales deben separar fondo, card, borde superior y contenido.
+- La profundidad debe ser sutil, no “neón” ni gamer.
+- El contenido funcional siempre queda por encima de capas decorativas.
+- No usar capas que bloqueen clicks, inputs, tablas, mapas, gráficos o acciones.
+
+Orden conceptual:
+
+```txt
+fondo oscuro cálido
+→ ambient background sutil
+→ card / superficie
+→ borde superior o glow fino
+→ contenido funcional
+→ badges / estados / acciones
+```
+
+### 15.9 Efectos: glow, blur, sombras
+
+Estado:
+
+- VIGENTE para cards premium, KPIs, headers y módulos destacados.
+
+Reglas:
+
+- Glow: permitido solo como énfasis suave de borde, estado activo o acento premium.
+- Blur: permitido para fondos o cards con lectura clara; no debe reducir contraste.
+- Sombras: deben reforzar jerarquía, no simular relieve excesivo.
+- Gradientes: usar para profundidad y lectura premium, no para inventar significado semántico.
+- No aplicar glow a colores reservados si eso cambia el significado visible del dato.
+
+Base recomendada:
+
+```css
+box-shadow: 0 18px 52px rgba(0,0,0,.28);
+backdrop-filter: blur(4px);
+```
+
+### 15.10 Ambient background
+
+Estado:
+
+- VIGENTE como criterio visual de paneles internos modernos.
+
+Reglas:
+
+- El fondo puede tener halos radiales muy sutiles para evitar plano negro.
+- El ambient background no debe competir con KPIs, tablas ni gráficos.
+- No usar paleta SPORT en dashboards/admin.
+- No usar ambient con colores semánticos si el usuario puede interpretarlos como dato.
+- El fondo base sigue siendo `#0f0e0c` o una variante oscura cálida compatible.
 
 ---
 
@@ -869,6 +901,224 @@ Para convertir este documento en parte definitiva del sistema rector, queda pend
 - crear checklist de implementación para Cloud / Zcode / Codex;
 - aprobar variantes vectoriales SVG/EPS del isotipo cromático para producción física;
 - confirmar qué variantes SPORT quedan autorizadas para cada tipo de soporte físico.
+
+---
+
+## 26. Referencias canónicas de implementación
+
+Estado:
+
+- VIGENTE como criterio de auditoría visual.
+
+Referencias principales:
+
+```txt
+colaboradores/index.html = referencia canónica para panel activo y panel pasivo.
+colaboradores/desarrollador.html = referencia canónica para panel desarrollador.
+```
+
+Reglas:
+
+- No alcanza con copiar HEX.
+- Al migrar estética entre paneles se debe copiar el tratamiento visual completo:
+  - gradientes;
+  - profundidad;
+  - blur;
+  - glow;
+  - sombras;
+  - bordes elevados;
+  - opacidades;
+  - jerarquía;
+  - chips;
+  - pills;
+  - tooltips;
+  - gráficos;
+  - logo real.
+- Cualquier pantalla nueva o migración admin debe auditarse contra esas referencias, sin alterar lógica ni datos.
+
+---
+
+## 27. Logo en paneles internos y admin
+
+Estado:
+
+- VIGENTE como regla de marca.
+- OBJETIVO_PENDIENTE donde todavía exista logo reconstruido con texto.
+
+Reglas:
+
+- En paneles internos/admin, el logo debe ser activo real `<img>`, no texto reconstruido.
+- Fuente de activos para implementaciones nuevas:
+
+```txt
+assets/logos/
+```
+
+- No inventar ubicación nueva.
+- No deformar el logo.
+- No cambiar color, filtro u opacidad salvo brief explícito.
+- No reconstruir con HTML/texto si existe activo oficial.
+
+No válido salvo excepción explícita ya autorizada:
+
+```html
+<div class="logo">SUR <span>PATAGONIA</span></div>
+```
+
+---
+
+## 28. Identidad persistente de canal — reglas cross-panel
+
+Estado:
+
+- VIGENTE como regla del sistema.
+- OBJETIVO_PENDIENTE en pantallas que todavía no consumen `color_index`.
+
+Reglas:
+
+- El color de identidad de un canal debe ser consistente en todos los paneles.
+- Debe venir de `color_index` / `PALETA_CANALES`.
+- No se hardcodea en CSS.
+- Requiere JS + CSS cuando el color depende de datos.
+- Si todavía no está implementado, usar neutro provisional.
+- La fuente única para colores individuales de canal es `docs/gobernanza/paleta-canales.md`.
+
+Prohibido:
+
+- usar colores reservados para identidad de canal;
+- mezclar identidad de canal con tipo de canal;
+- mezclar identidad de canal con estado CRM;
+- recalcular por hash visual si existe `color_index` persistido.
+
+---
+
+## 29. Estado activo de canal vs QR activo
+
+Estado:
+
+- VIGENTE.
+
+Regla:
+
+```txt
+Canal activo ≠ QR activo.
+```
+
+Colores:
+
+| Concepto | Color |
+|---|---:|
+| Canal activo | `#52d68c` |
+| QR físico / scan / QR activo | `#50c878` |
+
+Reglas:
+
+- No usar `#50c878` para canal activo en tablas admin.
+- No usar `#52d68c` para QR físico.
+- Si una pantalla legacy usa verde QR para activo, marcar como deuda técnica y no replicar.
+
+---
+
+## 30. Chips y pills para gráficos comparativos
+
+Estado:
+
+- VIGENTE como patrón visual.
+- OBJETIVO_PENDIENTE donde todavía no exista integración con `color_index`.
+
+Reglas:
+
+- Chips de canal usan `var(--ch)`, alimentado por `color_index`.
+- Estado activo del chip usa `border-color: var(--ch)`.
+- No usar colores reservados para chips de identidad de canal.
+- Los chips pueden usar opacidad del color de canal para fondo, manteniendo lectura en oscuro.
+- Si el color no está disponible desde datos, usar neutro provisional.
+
+Ejemplo conceptual:
+
+```css
+.chip-canal {
+  --ch: color-de-canal-desde-color-index;
+  border-color: var(--ch);
+  background: color-mix(in srgb, var(--ch) 14%, transparent);
+}
+```
+
+No aplicar este ejemplo en producción sin verificar compatibilidad y alcance del browser objetivo.
+
+---
+
+## 31. Admin — reglas específicas de capa visual
+
+Estado:
+
+- VIGENTE para `ADMIN-VISUAL-GOV-01`.
+
+Reglas:
+
+- `css/admin-theme.css` es capa visual de override del admin.
+- Debe cargarse después de `css/estilos.css` y después del `<style>` local de cada pantalla autorizada.
+- No reemplaza `css/estilos.css`.
+- No debe contener JS.
+- No debe tener `@import`.
+- No debe usar `!important` salvo autorización excepcional.
+- La extensión a otras pantallas admin debe hacerse pantalla por pantalla.
+- No se debe tocar `admin/crm.html`, `admin/contactos.html` ni `admin/canales.html` sin aprobación explícita de Mariano.
+
+---
+
+## 32. Separación de etapas CSS vs JS
+
+Estado:
+
+- VIGENTE como criterio de alcance técnico.
+
+| Necesidad visual | Capa correcta |
+|---|---|
+| Profundidad, gradientes, glow, sombras | CSS puro |
+| Ambient background | CSS puro |
+| Cards premium, bordes, blur | CSS puro |
+| Color individual de canal con `color_index` | JS + CSS |
+| Canal activo por dato `activo:true` | JS + CSS |
+| Chips por color de canal | JS + CSS |
+| Chart.js datasets visuales | JS, solo con autorización explícita |
+
+Reglas:
+
+- No simular dato dinámico con CSS fijo.
+- No resolver identidad de canal con un color hardcodeado global.
+- Si una mejora requiere datos (`color_index`, `activo`, tipo de canal), documentar como OBJETIVO_PENDIENTE hasta tener etapa JS autorizada.
+
+---
+
+## 33. Deuda técnica visual conocida
+
+Estado:
+
+- OBJETIVO_PENDIENTE.
+- Esta sección documenta deuda; no autoriza implementación.
+
+### `admin/canales.html`
+
+- Usa `#6495ed` para `tipo-inmobiliaria`, pero `#6495ed` es link compartido.
+- Usa `#50c878` para `tipo-punto_venta`, pero `#50c878` es QR físico.
+- Usa `#50c878` para `.activo`, pero canal activo debe ser `#52d68c`.
+- Archivo con restricción absoluta; no tocar sin aprobación explícita.
+
+### `admin/contactos.html`
+
+- Pendiente homologar cards, tablas, chips y profundidad.
+- Archivo con restricción absoluta; no tocar sin aprobación explícita.
+
+### `admin/dashboard.html`
+
+- Pendiente logo real si aún usa texto reconstruido.
+- Color individual por canal con `color_index` queda para etapa futura.
+
+### `css/admin-theme.css`
+
+- Capa piloto.
+- No extender a otras pantallas sin auditoría visual y técnica.
 
 ---
 

@@ -1,14 +1,18 @@
 # Paleta de Canales — Sur Patagonia
 **Fuente de verdad para colores de identidad de canal.**
-Creada por Zcode · Análisis visual v2 · 25 familias · 50 colores.
+Creada por Zcode · Análisis visual v2 · 25 familias · 54 colores únicos.
 
 Todo agente debe leer este archivo antes de asignar, modificar o renderizar colores de canal.
+
+**Estado:** VIGENTE como fuente única de verdad para identidad individual de canales.
+
+**Regla operativa:** la paleta extendida oficial tiene **54 colores únicos** (`0..53`). No usar “65 colores” como número oficial. Los 54 colores deben evitar colores semánticos reservados y no deben confundirse con KPIs, QR, link, estados CRM, tipos de canal ni estados activos.
 
 ---
 
 ## Colores reservados — zona prohibida para canales
 
-Estos 11 colores tienen significado semántico fijo en el sistema. **No pueden usarse para identidad de canal bajo ninguna circunstancia.** La paleta de identidad los evita con margen de ±15° de matiz y ±8% de luminosidad.
+Estos colores tienen significado semántico fijo en el sistema. **No pueden usarse para identidad de canal bajo ninguna circunstancia.** La paleta de identidad los evita con margen de ±15° de matiz y ±8% de luminosidad.
 
 | Hex | Uso exclusivo |
 |---|---|
@@ -23,11 +27,11 @@ Estos 11 colores tienen significado semántico fijo en el sistema. **No pueden u
 | `#f29a5a` | Visita coordinada (CRM) |
 | `#7b7f88` | Descartado (CRM) |
 
-*(10 colores listados — el sistema original define 11; verificar si hay actualización pendiente)*
+La lista de colores reservados debe contrastarse con `gobernanza-visual.md` cuando se agregue un concepto semántico nuevo.
 
 ---
 
-## Paleta de identidad · 50 colores · 25 familias
+## Paleta de identidad · 54 colores únicos · 25 familias
 
 Distribución: 2 colores por familia en promedio; Índigo, Violeta, Borgoña y Jade admiten 3 por riqueza de sub-tonos.
 
@@ -83,12 +87,12 @@ Distribución: 2 colores por familia en promedio; Índigo, Violeta, Borgoña y J
 | 47 | Verde Petróleo | `#0d6b6b` | Teal |
 | 48 | Cyan Oxidado | `#1d7a8c` | Cyan oscuro |
 | 49 | Cyan Profundo | `#0f6e80` | Cyan oscuro |
-| — | Arena Dorada | `#a89878` | Arena cálida |
-| — | Gris Taupe | `#8a7d72` | Gris cálido |
-| — | Oliva Clásica | `#6b7a2c` | Oliva |
-| — | Oliva Dorada | `#7a8a3e` | Oliva |
+| 50 | Arena Dorada | `#a89878` | Arena cálida |
+| 51 | Gris Taupe | `#8a7d72` | Gris cálido |
+| 52 | Oliva Clásica | `#6b7a2c` | Oliva |
+| 53 | Oliva Dorada | `#7a8a3e` | Oliva |
 
-> **Nota:** Arena cálida, Gris cálido y Oliva son las 4 últimas entradas (índices 50–53 si se amplía el pool a 54). El array de asignación usa los índices 0–49 por defecto.
+> **Nota:** Los índices `0..49` son la base histórica. Los índices `50..53` completan la paleta extendida vigente a 54 colores únicos. No documentar ni usar otra cantidad oficial.
 
 ---
 
@@ -97,7 +101,7 @@ Distribución: 2 colores por familia en promedio; Índigo, Violeta, Borgoña y J
 ### Reglas del sistema
 
 **1. Orden fijo de la paleta.**
-Los 50 colores tienen un índice `0..49` ordenados para máxima separación perceptual: familias alternadas, nunca dos de la misma familia seguidos en el array de asignación.
+Los 54 colores tienen un índice `0..53` ordenado para máxima separación perceptual: familias alternadas, evitando cercanía excesiva y sin usar colores semánticos reservados para identidad individual de canal.
 
 **2. Mapa determinístico persistente.**
 En la creación del canal se asigna `colorIndex = siguienteColorLibre()`. Se persiste en la columna `color_index` de la tabla `canales`. **No se recalcula nunca**, porque el usuario asocia visualmente el canal a ese color.
@@ -105,7 +109,7 @@ En la creación del canal se asigna `colorIndex = siguienteColorLibre()`. Se per
 **3. "Libre" = no usado por canal activo visible.**
 Si dos canales comparten vista (ej: Últimas Consultas) y uno fue eliminado, su color vuelve al pool. `siguienteColorLibre()` excluye los índices en uso por canales con `activo = true` en la misma vista.
 
-**4. Más de 50 canales activos simultáneos.**
+**4. Más de 54 canales activos simultáneos.**
 Cuando el pool se agota, se generan colores nuevos con la regla `H = (baseHue + 7°) mod 360`, saltando familias reservadas (azul ~220°, verde ~145°, dorado ~45°). Es la única situación donde se permite un color "extra-paleta", y se marca como derivado.
 
 **5. Migración desde el sistema anterior.**
@@ -115,13 +119,13 @@ Si ya hay canales con colores viejos, se ejecuta una pasada única que reasigna 
 
 ```sql
 -- Tabla: canales
-color_index INTEGER  -- índice 0..49 de la paleta, asignado al crear el canal
+color_index INTEGER  -- índice 0..53 de la paleta, asignado al crear el canal
 ```
 
 ### Uso en código
 
 ```js
-// Array de 50 colores en orden de asignación (máxima separación perceptual)
+// Array de 54 colores en orden de asignación (máxima separación perceptual)
 const PALETA_CANALES = [
   '#3a4eb8', '#dc143c', '#2a9d7a', '#c040a0', '#c08a2e',
   '#1f4ed8', '#7a1f2e', '#3eb489', '#d20c5c', '#b87333',
@@ -133,6 +137,7 @@ const PALETA_CANALES = [
   '#2a6db5', '#a8512f', '#1d7a8c', '#e63946', '#bcd96e',
   '#8a5fc4', '#b87fc0', '#0f6e80', '#6b3470', '#d4ed00',
   '#2e5cb8', '#a86fb5', '#39ff14', '#4dff4d', '#e6f23a',
+  '#a89878', '#8a7d72', '#6b7a2c', '#7a8a3e',
 ]
 
 // Obtener color de un canal
