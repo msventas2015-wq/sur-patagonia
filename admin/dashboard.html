@@ -339,6 +339,24 @@ import { supabase } from '../js/config.js'
 const $ = id => document.getElementById(id)
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 const dia = d => new Date(d).toISOString().slice(0, 10)
+const PALETA_CANALES = [
+  '#3a4eb8', '#dc143c', '#2a9d7a', '#c040a0', '#c08a2e',
+  '#1f4ed8', '#7a1f2e', '#3eb489', '#d20c5c', '#b87333',
+  '#7b3fb0', '#e85a4f', '#1a7a7a', '#a82c8f', '#cc9333',
+  '#1e5fa0', '#9c2740', '#4fca9e', '#e0186b', '#8c7853',
+  '#4556a8', '#5d2e5d', '#3aa68a', '#c94869', '#c8843e',
+  '#2c3e9c', '#8b2236', '#1f8473', '#ff6b5b', '#a0825d',
+  '#6b3fa0', '#c0603e', '#0d6b6b', '#d65d7a', '#a0c850',
+  '#2a6db5', '#a8512f', '#1d7a8c', '#e63946', '#bcd96e',
+  '#8a5fc4', '#b87fc0', '#0f6e80', '#6b3470', '#d4ed00',
+  '#2e5cb8', '#a86fb5', '#39ff14', '#4dff4d', '#e6f23a',
+  '#a89878', '#8a7d72', '#6b7a2c', '#7a8a3e',
+]
+const colorCanal = (idx) => {
+  const n = Number(idx)
+  const safeIndex = Number.isInteger(n) && n >= 0 && n < PALETA_CANALES.length ? n : 0
+  return PALETA_CANALES[safeIndex]
+}
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -360,7 +378,7 @@ async function cargar() {
       .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }),
     supabase.from('visitas').select('canal_ref, canal_via, created_at')
       .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }).limit(50000),
-    supabase.from('canales').select('id, nombre, codigo, activo'),
+    supabase.from('canales').select('id, nombre, codigo, activo, color_index'),
     supabase.from('referencias').select('codigo, canal_id'),
     supabase.from('propiedades').select('id, titulo, precio, moneda, operacion, imagenes, activa').order('created_at', { ascending: false }).limit(8),
     supabase.from('propiedades').select('*', { count: 'exact', head: true }).eq('activa', true),
@@ -506,15 +524,16 @@ async function cargar() {
   })
 
   const filas = canalesActivos
-    .map(c => ({ nombre: c.nombre, clics: clicksPorCanal[c.nombre] || 0, leads: leadsPorCanal[c.nombre] || 0 }))
+    .map(c => ({ nombre: c.nombre, color_index: c.color_index, clics: clicksPorCanal[c.nombre] || 0, leads: leadsPorCanal[c.nombre] || 0 }))
     .sort((a, b) => b.clics - a.clics)
 
   const maxClics = Math.max(...filas.map(f => f.clics), 1)
   document.getElementById('tablaCanales').innerHTML = filas.length
     ? filas.map(f => {
         const conv = f.clics > 0 ? ((f.leads / f.clics) * 100).toFixed(1) + '%' : '—'
+        const color = colorCanal(f.color_index)
         return `<tr>
-          <td><span class="canal-nombre"><span class="canal-dot canal-on"></span>${esc(f.nombre)}</span></td>
+          <td><span class="canal-nombre"><span class="canal-dot canal-on" style="background:${color};"></span>${esc(f.nombre)}</span></td>
           <td>${f.clics}</td>
           <td>${f.leads}</td>
           <td>${conv}</td>
