@@ -441,7 +441,17 @@ async function cargar() {
       labels: dias.map(d => d.slice(8,10) + '/' + d.slice(5,7)),
       datasets: [{
         data: dias.map(d => porDia[d] || 0),
-        borderColor: '#d76f3f', backgroundColor: 'rgba(215,111,63,.12)',
+        borderColor: '#d76f3f',
+        backgroundColor: (context) => {
+          const { chart } = context
+          const { ctx, chartArea } = chart
+          if (!chartArea) return 'rgba(215,111,63,.12)'
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+          gradient.addColorStop(0, 'rgba(215,111,63,.28)')
+          gradient.addColorStop(0.55, 'rgba(215,111,63,.08)')
+          gradient.addColorStop(1, 'rgba(215,111,63,0)')
+          return gradient
+        },
         fill: true, tension: 0.35, pointRadius: 0, pointHitRadius: 8, borderWidth: 2,
       }]
     },
@@ -454,8 +464,12 @@ async function cargar() {
           borderWidth: 1,
           titleColor: '#f5f3f0',
           bodyColor: 'rgba(255,255,255,.72)',
+          titleFont: { size: 11, weight: '600' },
+          bodyFont: { size: 11 },
           padding: 10,
           cornerRadius: 8,
+          caretSize: 5,
+          caretPadding: 8,
           displayColors: false,
         }
       },
@@ -471,18 +485,25 @@ async function cargar() {
   new Chart($('chOrigen'), {
     type: 'doughnut',
     data: { labels: ['QR físico','Link directo','Directas'],
-      datasets: [{ data: [qr, li, di], backgroundColor: ['#50c878','#6495ed','#5a5a55'], borderWidth: 0 }] },
+      datasets: [{
+        data: [qr, li, di],
+        backgroundColor: ['#50c878','#6495ed','#5a5a55'],
+        borderColor: 'rgba(15,14,12,.95)',
+        borderWidth: 2,
+        hoverOffset: 4
+      }] },
     options: {
-      cutout: '68%',
+      cutout: '72%',
       plugins: {
         legend: {
           position: 'bottom',
           labels: {
-            boxWidth: 10,
-            padding: 12,
+            boxWidth: 8,
+            padding: 14,
             usePointStyle: true,
             pointStyle: 'circle',
             color: 'rgba(255,255,255,.7)',
+            font: { size: 10, weight: '600' },
           }
         },
         tooltip: {
@@ -491,8 +512,13 @@ async function cargar() {
           borderWidth: 1,
           titleColor: '#f5f3f0',
           bodyColor: 'rgba(255,255,255,.72)',
+          titleFont: { size: 11, weight: '600' },
+          bodyFont: { size: 11 },
           padding: 10,
           cornerRadius: 8,
+          caretSize: 5,
+          caretPadding: 8,
+          boxPadding: 4,
         }
       },
       maintainAspectRatio: false
