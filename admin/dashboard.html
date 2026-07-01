@@ -287,12 +287,16 @@
     <!-- CHARTS -->
     <div class="charts-grid">
       <div class="chart-card">
-        <h4>Consultas — últimos 30 días</h4>
+        <h4>Actividad — últimos 30 días</h4>
         <div class="chart-wrap"><canvas id="chEvolucion"></canvas></div>
+        <div class="adm-legend" aria-label="Leyenda actividad">
+          <span class="adm-legend-chip"><span class="adm-legend-dot" style="background:#7aaeff;"></span>Clicks de canales</span>
+          <span class="adm-legend-chip"><span class="adm-legend-dot" style="background:#e8c96a;"></span>Consultas</span>
+        </div>
       </div>
       <div class="chart-card">
         <h4>Origen de visitas — 30 días</h4>
-        <div class="chart-wrap"><canvas id="chOrigen"></canvas></div>
+        <div id="chOrigenModulo"></div>
       </div>
     </div>
 
@@ -458,12 +462,16 @@ async function cargar() {
     beforeDatasetDraw(chart, args) {
       if (args.index === 0) {
         chart.ctx.save()
-        chart.ctx.shadowColor = 'rgba(232,201,106,.45)'
+        chart.ctx.shadowColor = 'rgba(122,174,255,.28)'
+        chart.ctx.shadowBlur = 6
+      } else if (args.index === 1) {
+        chart.ctx.save()
+        chart.ctx.shadowColor = 'rgba(232,201,106,.5)'
         chart.ctx.shadowBlur = 10
       }
     },
     afterDatasetDraw(chart, args) {
-      if (args.index === 0) chart.ctx.restore()
+      if (args.index === 0 || args.index === 1) chart.ctx.restore()
     }
   }
   const pluginLastPointGlow = {
@@ -472,40 +480,69 @@ async function cargar() {
       const { ctx: c, data } = chart
       const lastIdx = (data.labels || []).length - 1
       if (lastIdx < 0) return
-      const meta = chart.getDatasetMeta(0)
-      if (!meta?.data?.length) return
-      const pt = meta.data[lastIdx]
-      if (!pt) return
-      c.save()
-      c.beginPath()
-      c.arc(pt.x, pt.y, 11, 0, Math.PI * 2)
-      c.strokeStyle = 'rgba(232,201,106,.28)'
-      c.lineWidth = 1.4
-      c.stroke()
-      c.beginPath()
-      c.arc(pt.x, pt.y, 4, 0, Math.PI * 2)
-      c.fillStyle = 'rgba(232,201,106,1)'
-      c.shadowColor = 'rgba(232,201,106,.72)'
-      c.shadowBlur = 12
-      c.fill()
-      c.restore()
+      const drawGlow = (datasetIndex, color) => {
+        const meta = chart.getDatasetMeta(datasetIndex)
+        if (!meta?.data?.length) return
+        const pt = meta.data[lastIdx]
+        if (!pt) return
+        c.save()
+        c.beginPath()
+        c.arc(pt.x, pt.y, 14, 0, Math.PI * 2)
+        c.strokeStyle = color.replace('ALPHA', '.18')
+        c.lineWidth = 1.2
+        c.stroke()
+        c.beginPath()
+        c.arc(pt.x, pt.y, 8, 0, Math.PI * 2)
+        c.strokeStyle = color.replace('ALPHA', '.32')
+        c.lineWidth = 1.35
+        c.stroke()
+        c.beginPath()
+        c.arc(pt.x, pt.y, 4, 0, Math.PI * 2)
+        c.fillStyle = color.replace('ALPHA', '1')
+        c.shadowColor = color.replace('ALPHA', '.72')
+        c.shadowBlur = 12
+        c.fill()
+        c.restore()
+      }
+      drawGlow(0, 'rgba(122,174,255,ALPHA)')
+      drawGlow(1, 'rgba(232,201,106,ALPHA)')
     }
   }
 
   const dias = []
   for (let i = 29; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); dias.push(dia(d)) }
-  const porDia = {}
-  l30.forEach(l => { const d = dia(l.created_at); porDia[d] = (porDia[d] || 0) + 1 })
-  const evolucionData = dias.map(d => porDia[d] || 0)
-  const maxEvolucion = Math.max(...evolucionData, 0)
-  const peakIdx = maxEvolucion > 0 ? evolucionData.indexOf(maxEvolucion) : -1
+  const porDiaConsultas = {}
+  const porDiaClicks = {}
+  l30.forEach(l => { const d = dia(l.created_at); porDiaConsultas[d] = (porDiaConsultas[d] || 0) + 1 })
+  vCan30.forEach(v => { const d = dia(v.created_at); porDiaClicks[d] = (porDiaClicks[d] || 0) + 1 })
+  const clicksData = dias.map(d => porDiaClicks[d] || 0)
+  const consultasData = dias.map(d => porDiaConsultas[d] || 0)
+  const actividadTotal = dias.map((_, i) => clicksData[i] + consultasData[i])
+  const maxEvolucion = Math.max(...actividadTotal, 0)
+  const peakIdx = maxEvolucion > 0 ? actividadTotal.indexOf(maxEvolucion) : -1
 
   new Chart($('chEvolucion'), {
     type: 'line',
     data: {
       labels: dias.map(d => d.slice(8,10) + '/' + d.slice(5,7)),
       datasets: [{
-        data: evolucionData,
+        label: 'Clicks de canales',
+        data: clicksData,
+        borderColor: '#7aaeff',
+        backgroundColor: (context) => {
+          const { chart } = context
+          const { ctx, chartArea } = chart
+          if (!chartArea) return 'rgba(122,174,255,.16)'
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+          gradient.addColorStop(0, 'rgba(122,174,255,.32)')
+          gradient.addColorStop(0.55, 'rgba(122,174,255,.10)')
+          gradient.addColorStop(1, 'rgba(122,174,255,0)')
+          return gradient
+        },
+        fill: true, tension: 0.35, pointRadius: 0, pointHitRadius: 8, borderWidth: 2,
+      }, {
+        label: 'Consultas',
+        data: consultasData,
         borderColor: '#e8c96a',
         backgroundColor: (context) => {
           const { chart } = context
@@ -540,7 +577,8 @@ async function cargar() {
           cornerRadius: 8,
           caretSize: 5,
           caretPadding: 8,
-          displayColors: false,
+          displayColors: true,
+          usePointStyle: true,
         }
       },
       scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } },
@@ -552,48 +590,26 @@ async function cargar() {
   const qr = vCan30.filter(v => v.canal_via === 'qr').length
   const li = vCan30.length - qr
   const di = Math.max(v30.length - qr - li, 0)
-  new Chart($('chOrigen'), {
-    type: 'doughnut',
-    data: { labels: ['QR físico','Link directo','Directas'],
-      datasets: [{
-        data: [qr, li, di],
-        backgroundColor: ['#50c878','#6495ed','#5a5a55'],
-        borderColor: 'rgba(15,14,12,.95)',
-        borderWidth: 2,
-        hoverOffset: 4
-      }] },
-    options: {
-      cutout: '72%',
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            boxWidth: 8,
-            padding: 14,
-            usePointStyle: true,
-            pointStyle: 'circle',
-            color: 'rgba(255,255,255,.7)',
-            font: { size: 10, weight: '600' },
-          }
-        },
-        tooltip: {
-          backgroundColor: 'rgba(15,14,12,.96)',
-          borderColor: 'rgba(255,255,255,.12)',
-          borderWidth: 1,
-          titleColor: '#f5f3f0',
-          bodyColor: 'rgba(255,255,255,.72)',
-          titleFont: { size: 11, weight: '600' },
-          bodyFont: { size: 11 },
-          padding: 10,
-          cornerRadius: 8,
-          caretSize: 5,
-          caretPadding: 8,
-          boxPadding: 4,
-        }
-      },
-      maintainAspectRatio: false
-    }
-  })
+  const totalOrigen = qr + li + di
+  const origenItems = [
+    { label: 'QR físico', value: qr, color: '#50c878' },
+    { label: 'Link directo', value: li, color: '#6495ed' },
+    { label: 'Directas', value: di, color: '#9aa7b2' },
+  ]
+  $('chOrigenModulo').innerHTML = totalOrigen === 0
+    ? '<div class="empty-state adm-origen-empty">Sin datos de tráfico en el período.</div>'
+    : `<div class="adm-origen-wrap">
+        ${origenItems.map(item => {
+          const pct = totalOrigen > 0 ? Math.round((item.value / totalOrigen) * 100) : 0
+          return `<div class="adm-origen-row" style="--adm-origen-c:${item.color};--adm-origen-w:${pct}%;">
+            <span class="adm-origen-dot"></span>
+            <span class="adm-origen-lbl">${item.label}</span>
+            <span class="adm-origen-track"><span class="adm-origen-bar"></span></span>
+            <span class="adm-origen-n">${item.value}</span>
+            <span class="adm-origen-pct">${pct}%</span>
+          </div>`
+        }).join('')}
+      </div>`
 
   // ── Canales activos — rendimiento 30 días ───────────────
   const canalesActivos = canales.filter(c => c.activo)
@@ -629,7 +645,7 @@ async function cargar() {
         const conv = f.clics > 0 ? ((f.leads / f.clics) * 100).toFixed(1) + '%' : '—'
         const color = colorCanal(f.color_index)
         return `<tr>
-          <td><span class="canal-nombre"><span class="canal-dot canal-on" style="background:${color};box-shadow:0 0 6px ${color}44;"></span>${esc(f.nombre)}</span></td>
+          <td><span class="canal-nombre"><span class="canal-dot canal-on" style="background:${color};box-shadow:0 0 7px ${color}55,0 0 16px ${color}22;"></span>${esc(f.nombre)}</span></td>
           <td>${f.clics}</td>
           <td>${f.leads}</td>
           <td>${conv}</td>
