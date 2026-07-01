@@ -4,6 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard — Sur Patagonia Admin</title>
+  <link rel="manifest" href="/admin/manifest.json">
+  <meta name="theme-color" content="#0f0e0c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SP Admin">
+  <link rel="apple-touch-icon" href="/assets/admin-icon-180.png">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/admin/sw.js', { scope: '/admin/' });
+      });
+    }
+  </script>
   <link rel="stylesheet" href="../css/estilos.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -19,7 +33,18 @@
     .admin-main { font-family: 'Inter', system-ui, sans-serif; }
 
     .dash-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
-    .dash-header h2 { font-weight: 300; font-size: 1.7rem; margin-bottom: 0.15rem; font-family: 'Cormorant Garamond', serif; }
+    .dash-header h2 {
+      font-weight: 800;
+      font-size: 2.6rem;
+      margin-bottom: 0.15rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      background: linear-gradient(120deg, #ffffff 0%, rgba(255,255,255,0.55) 60%, #d76f3f 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
     .dash-header p  { font-size: 0.76rem; color: var(--gris-claro); }
 
     .acciones-rapidas { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -44,7 +69,6 @@
     .kpi-valor { font-size: 1.8rem; font-weight: 700; line-height: 1; color: var(--blanco); }
     .kpi-sub { font-size: 0.66rem; color: var(--gris-claro); margin-top: 0.45rem; }
     .delta { font-size: 0.66rem; font-weight: 600; margin-left: 0.35rem; }
-    .delta.up { color: var(--c-verde); }
     .delta.down { color: #e05c5c; }
     .kpi.alerta .kpi-valor { color: var(--accent); }
 
@@ -57,7 +81,7 @@
 
     /* Secciones */
     .sec-header { display: flex; align-items: center; justify-content: space-between; margin: 1.6rem 0 0.9rem; }
-    .sec-header h3 { font-weight: 300; font-size: 1.15rem; font-family: 'Cormorant Garamond', serif; }
+    .sec-header h3 { font-weight: 300; font-size: 1.15rem; font-family: 'Inter', system-ui, sans-serif; }
     .sec-link { font-size: 0.7rem; color: var(--accent); text-decoration: none; font-weight: 600; }
     .sec-link:hover { text-decoration: underline; }
 
@@ -88,11 +112,21 @@
       padding: 0.28rem 0.75rem; border-radius: 999px;
       font-size: 0.65rem; font-weight: 600; letter-spacing: 0.03em; white-space: nowrap;
     }
-    .badge-canal   { background: rgba(201,168,76,.13);  color: #c9a84c; border: 1px solid rgba(201,168,76,.2); }
     .badge-qr      { background: rgba(80,200,120,.12);  color: #5ec98a; border: 1px solid rgba(80,200,120,.2); }
     .badge-link    { background: rgba(100,149,237,.12); color: #7aa8ed; border: 1px solid rgba(100,149,237,.2); }
     .badge-directo { background: rgba(150,150,150,.1);  color: #888; border: 1px solid rgba(255,255,255,.08); }
     .badge-nueva   { background: rgba(255,255,255,.08); color: var(--blanco); border: 1px solid rgba(255,255,255,.18); }
+
+    /* Tabla canales */
+    .canales-tabla { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-family: 'Inter', system-ui, sans-serif; }
+    .canales-tabla th { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris-claro); font-weight: 600; text-align: left; padding: 0 1rem 0.8rem; }
+    .canales-tabla th:not(:first-child) { text-align: right; }
+    .canales-tabla td { padding: 0.8rem 1rem; border-top: 1px solid var(--card-border); color: #c8c5bf; vertical-align: middle; white-space: nowrap; }
+    .canales-tabla td:not(:first-child) { text-align: right; }
+    .canales-tabla tr:hover td { background: rgba(255,255,255,0.02); }
+    .canal-nombre { font-weight: 600; color: var(--blanco); display: flex; align-items: center; gap: 0.5rem; }
+    .canal-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .sec-header.canales-header h3 { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 0.85rem; letter-spacing: 0.01em; }
 
     /* Propiedades recientes */
     .props-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.8rem; padding-bottom: 2rem; }
@@ -117,13 +151,17 @@
     .btn-mini.danger:hover { border-color: #e05c5c; color: #e05c5c; }
     .empty-state { text-align: center; padding: 2.5rem; color: var(--gris-claro); font-size: 0.8rem; }
   </style>
+  <link rel="stylesheet" href="../css/admin-theme.css?v=admin-visual-fix-detalles-completo" />
 </head>
 <body>
+<div class="adm-bg-brand"></div>
 <div class="admin-layout">
 
   <!-- SIDEBAR -->
   <aside class="admin-sidebar">
-    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <div class="admin-sidebar-logo">
+      <img src="../assets/logos/logo-horizontal-blanco.png" alt="Sur Patagonia">
+    </div>
     <nav class="admin-nav">
       <a href="dashboard.html" class="admin-nav-item activo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -181,6 +219,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
         Colaboradores
       </a>
+      <a href="paneles.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
+        Visual paneles
+      </a>
 
       <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
@@ -196,18 +238,26 @@
   <!-- MAIN -->
   <main class="admin-main">
 
-    <div class="dash-header">
-      <div>
-        <h2>Dashboard</h2>
+    <section class="dash-header adm-hero">
+      <div class="adm-hero-copy">
+        <div class="adm-hero-eyebrow">Panel de gestión</div>
+        <h1>Dashboard</h1>
         <p id="saludo">El pulso de Sur Patagonia, de un vistazo</p>
+        <div class="acciones-rapidas adm-hero-actions">
+          <a href="nueva-propiedad.html" class="accion-btn">+ Propiedad</a>
+          <a href="nuevo-proyecto.html" class="accion-btn">+ Proyecto</a>
+          <a href="nuevo-canal.html" class="accion-btn">+ Canal</a>
+          <a href="contactos.html" class="accion-btn primary">Ver consultas</a>
+        </div>
       </div>
-      <div class="acciones-rapidas">
-        <a href="nueva-propiedad.html" class="accion-btn">+ Propiedad</a>
-        <a href="nuevo-proyecto.html" class="accion-btn">+ Proyecto</a>
-        <a href="nuevo-canal.html" class="accion-btn">+ Canal</a>
-        <a href="contactos.html" class="accion-btn primary">Ver consultas</a>
+      <div class="adm-hero-identity" aria-hidden="true">
+        <div class="adm-hero-mark"><img src="../assets/logos/picos-blanco.png" alt=""></div>
+        <div>
+          <div class="adm-hero-brand">Sur Patagonia Admin</div>
+          <div class="adm-hero-state">Sistema operativo comercial</div>
+        </div>
       </div>
-    </div>
+    </section>
 
     <!-- KPIs -->
     <div class="kpi-grid">
@@ -222,7 +272,7 @@
         <div class="kpi-sub">consultas en estado "nueva"</div>
       </a>
       <a href="canales.html" class="kpi">
-        <div class="kpi-label">Vía canales 30 días</div>
+        <div class="kpi-label">Clicks canales 30 días</div>
         <div class="kpi-valor" id="kVia">—</div>
         <div class="kpi-sub" id="kViaSub"></div>
       </a>
@@ -246,13 +296,36 @@
     <!-- CHARTS -->
     <div class="charts-grid">
       <div class="chart-card">
-        <h4>Consultas — últimos 30 días</h4>
+        <h4>Actividad — últimos 30 días</h4>
         <div class="chart-wrap"><canvas id="chEvolucion"></canvas></div>
+        <div class="adm-legend" aria-label="Leyenda actividad">
+          <span class="adm-legend-chip"><span class="adm-legend-dot" style="background:#7aaeff;"></span>Clicks de canales</span>
+          <span class="adm-legend-chip"><span class="adm-legend-dot" style="background:#e8c96a;"></span>Consultas</span>
+        </div>
       </div>
       <div class="chart-card">
-        <h4>Origen (30 días)</h4>
-        <div class="chart-wrap"><canvas id="chOrigen"></canvas></div>
+        <h4>Origen de visitas — 30 días</h4>
+        <div id="chOrigenModulo"></div>
       </div>
+    </div>
+
+    <!-- CANALES ACTIVOS -->
+    <div class="sec-header canales-header">
+      <h3>Canales activos — rendimiento 30 días</h3>
+      <a href="canales.html" class="sec-link">Ver todos →</a>
+    </div>
+    <div class="chart-card" style="margin-bottom:1.4rem; overflow-x:auto;">
+      <table class="canales-tabla">
+        <thead>
+          <tr>
+            <th>Canal</th>
+            <th style="text-align:right">Clics</th>
+            <th style="text-align:right">Leads</th>
+            <th style="text-align:right">Conversión</th>
+          </tr>
+        </thead>
+        <tbody id="tablaCanales"><tr><td colspan="4" style="color:var(--gris-claro);padding:1rem 0.8rem">Cargando…</td></tr></tbody>
+      </table>
     </div>
 
     <!-- ÚLTIMAS CONSULTAS -->
@@ -279,11 +352,29 @@ import { supabase } from '../js/config.js'
 const $ = id => document.getElementById(id)
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 const dia = d => new Date(d).toISOString().slice(0, 10)
+const PALETA_CANALES = [
+  '#3a4eb8', '#dc143c', '#2a9d7a', '#c040a0', '#c08a2e',
+  '#1f4ed8', '#7a1f2e', '#3eb489', '#d20c5c', '#b87333',
+  '#7b3fb0', '#e85a4f', '#1a7a7a', '#a82c8f', '#cc9333',
+  '#1e5fa0', '#9c2740', '#4fca9e', '#e0186b', '#8c7853',
+  '#4556a8', '#5d2e5d', '#3aa68a', '#c94869', '#c8843e',
+  '#2c3e9c', '#8b2236', '#1f8473', '#ff6b5b', '#a0825d',
+  '#6b3fa0', '#c0603e', '#0d6b6b', '#d65d7a', '#a0c850',
+  '#2a6db5', '#a8512f', '#1d7a8c', '#e63946', '#bcd96e',
+  '#8a5fc4', '#b87fc0', '#0f6e80', '#6b3470', '#d4ed00',
+  '#2e5cb8', '#a86fb5', '#39ff14', '#4dff4d', '#e6f23a',
+  '#a89878', '#8a7d72', '#6b7a2c', '#7a8a3e',
+]
+const colorCanal = (idx) => {
+  const n = Number(idx)
+  const safeIndex = Number.isInteger(n) && n >= 0 && n < PALETA_CANALES.length ? n : 0
+  return PALETA_CANALES[safeIndex]
+}
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if ((session.user.app_metadata?.rol ?? session.user.user_metadata?.rol) !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
 })
@@ -295,10 +386,12 @@ $('saludo').textContent = (hora < 13 ? 'Buen día' : hora < 20 ? 'Buenas tardes'
 async function cargar() {
   const hace60 = new Date(); hace60.setDate(hace60.getDate() - 60)
 
-  const [rLeads60, rCanales, rRefs, rProps, rNumProps, rNumProy, rNuevas] = await Promise.all([
+  const [rLeads60, rVisitas60, rCanales, rRefs, rProps, rNumProps, rNumProy, rNuevas] = await Promise.all([
     supabase.from('contactos').select('nombre, mensaje, canal_ref, canal_via, proyecto_slug, estado, leido, created_at, propiedades(titulo)')
       .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }),
-    supabase.from('canales').select('id, nombre, codigo, activo'),
+    supabase.from('visitas').select('canal_ref, canal_via, created_at')
+      .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }).limit(50000),
+    supabase.from('canales').select('id, nombre, codigo, activo, color_index'),
     supabase.from('referencias').select('codigo, canal_id'),
     supabase.from('propiedades').select('id, titulo, precio, moneda, operacion, imagenes, activa').order('created_at', { ascending: false }).limit(8),
     supabase.from('propiedades').select('*', { count: 'exact', head: true }).eq('activa', true),
@@ -307,6 +400,7 @@ async function cargar() {
   ])
 
   const leads60 = rLeads60.data || []
+  const visitas60 = rVisitas60.data || []
   const canales = rCanales.data || []
   const refs    = rRefs.data || []
 
@@ -321,6 +415,7 @@ async function cargar() {
   const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
   const l30  = leads60.filter(l => new Date(l.created_at) >= hace30)
   const lPrev = leads60.filter(l => new Date(l.created_at) < hace30)
+  const v30 = visitas60.filter(v => new Date(v.created_at) >= hace30)
 
   // KPIs
   $('k30').textContent = l30.length
@@ -332,53 +427,240 @@ async function cargar() {
   }
   $('k30Sub').textContent = `vs ${lPrev.length} en los 30 días previos`
   $('kNuevas').textContent = rNuevas.count ?? 0
-  const via30 = l30.filter(l => l.canal_ref)
-  $('kVia').textContent = via30.length
-  const qr30 = via30.filter(l => l.canal_via === 'qr').length
-  $('kViaSub').textContent = `${qr30} por QR · ${via30.length - qr30} por link`
+  const vCan30 = v30.filter(v => v.canal_ref)
+  $('kVia').textContent = vCan30.length
+  const qrClicks30 = vCan30.filter(v => v.canal_via === 'qr').length
+  const linkClicks30 = vCan30.length - qrClicks30
+  $('kViaSub').textContent = `${qrClicks30} por QR · ${linkClicks30} por link · ${v30.length} visitas totales`
   $('kProps').textContent = rNumProps.count ?? 0
   $('kProy').textContent  = rNumProy.count ?? 0
   $('kCan').textContent   = canales.length
   $('kCanSub').textContent = `${canales.filter(c => c.activo).length} activos`
 
   // ── Gráficos ────────────────────────────────────────────
-  Chart.defaults.color = '#8a8a82'
+  Chart.defaults.color = 'rgba(255,255,255,.42)'
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif"
   Chart.defaults.font.size = 10
   const GRID = 'rgba(255,255,255,0.05)'
+  const pluginPeakMark = (peakIdx) => ({
+    id: 'pvPeakMark4',
+    beforeDatasetsDraw(chart) {
+      const { ctx: c, chartArea, scales } = chart
+      if (!chartArea || peakIdx < 0) return
+      const x = scales.x.getPixelForValue(peakIdx)
+      if (!Number.isFinite(x)) return
+      const g = c.createLinearGradient(x - 40, 0, x + 40, 0)
+      g.addColorStop(0, 'rgba(232,201,106,0)')
+      g.addColorStop(0.5, 'rgba(232,201,106,.12)')
+      g.addColorStop(1, 'rgba(232,201,106,0)')
+      c.save()
+      c.fillStyle = g
+      c.fillRect(x - 40, chartArea.top, 80, chartArea.bottom - chartArea.top)
+      c.beginPath()
+      c.setLineDash([4, 6])
+      c.strokeStyle = 'rgba(232,201,106,.35)'
+      c.lineWidth = 1
+      c.moveTo(x, chartArea.top)
+      c.lineTo(x, chartArea.bottom)
+      c.stroke()
+      c.restore()
+    }
+  })
+  const pluginGoldGlow = {
+    id: 'pvGoldGlow4',
+    beforeDatasetDraw(chart, args) {
+      if (args.index === 0) {
+        chart.ctx.save()
+        chart.ctx.shadowColor = 'rgba(122,174,255,.28)'
+        chart.ctx.shadowBlur = 6
+      } else if (args.index === 1) {
+        chart.ctx.save()
+        chart.ctx.shadowColor = 'rgba(232,201,106,.5)'
+        chart.ctx.shadowBlur = 10
+      }
+    },
+    afterDatasetDraw(chart, args) {
+      if (args.index === 0 || args.index === 1) chart.ctx.restore()
+    }
+  }
+  const pluginLastPointGlow = {
+    id: 'pvStaticLastPointGlow4',
+    afterDatasetsDraw(chart) {
+      const { ctx: c, data } = chart
+      const lastIdx = (data.labels || []).length - 1
+      if (lastIdx < 0) return
+      const drawGlow = (datasetIndex, color) => {
+        const meta = chart.getDatasetMeta(datasetIndex)
+        if (!meta?.data?.length) return
+        const pt = meta.data[lastIdx]
+        if (!pt) return
+        c.save()
+        c.beginPath()
+        c.arc(pt.x, pt.y, 14, 0, Math.PI * 2)
+        c.strokeStyle = color.replace('ALPHA', '.18')
+        c.lineWidth = 1.2
+        c.stroke()
+        c.beginPath()
+        c.arc(pt.x, pt.y, 8, 0, Math.PI * 2)
+        c.strokeStyle = color.replace('ALPHA', '.32')
+        c.lineWidth = 1.35
+        c.stroke()
+        c.beginPath()
+        c.arc(pt.x, pt.y, 4, 0, Math.PI * 2)
+        c.fillStyle = color.replace('ALPHA', '1')
+        c.shadowColor = color.replace('ALPHA', '.72')
+        c.shadowBlur = 12
+        c.fill()
+        c.restore()
+      }
+      drawGlow(0, 'rgba(122,174,255,ALPHA)')
+      drawGlow(1, 'rgba(232,201,106,ALPHA)')
+    }
+  }
 
   const dias = []
   for (let i = 29; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); dias.push(dia(d)) }
-  const porDia = {}
-  l30.forEach(l => { const d = dia(l.created_at); porDia[d] = (porDia[d] || 0) + 1 })
+  const porDiaConsultas = {}
+  const porDiaClicks = {}
+  l30.forEach(l => { const d = dia(l.created_at); porDiaConsultas[d] = (porDiaConsultas[d] || 0) + 1 })
+  vCan30.forEach(v => { const d = dia(v.created_at); porDiaClicks[d] = (porDiaClicks[d] || 0) + 1 })
+  const clicksData = dias.map(d => porDiaClicks[d] || 0)
+  const consultasData = dias.map(d => porDiaConsultas[d] || 0)
+  const actividadTotal = dias.map((_, i) => clicksData[i] + consultasData[i])
+  const maxEvolucion = Math.max(...actividadTotal, 0)
+  const peakIdx = maxEvolucion > 0 ? actividadTotal.indexOf(maxEvolucion) : -1
 
   new Chart($('chEvolucion'), {
     type: 'line',
     data: {
       labels: dias.map(d => d.slice(8,10) + '/' + d.slice(5,7)),
       datasets: [{
-        data: dias.map(d => porDia[d] || 0),
-        borderColor: '#d76f3f', backgroundColor: 'rgba(215,111,63,.12)',
+        label: 'Clicks de canales',
+        data: clicksData,
+        borderColor: '#7aaeff',
+        backgroundColor: (context) => {
+          const { chart } = context
+          const { ctx, chartArea } = chart
+          if (!chartArea) return 'rgba(122,174,255,.16)'
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+          gradient.addColorStop(0, 'rgba(122,174,255,.32)')
+          gradient.addColorStop(0.55, 'rgba(122,174,255,.10)')
+          gradient.addColorStop(1, 'rgba(122,174,255,0)')
+          return gradient
+        },
+        fill: true, tension: 0.35, pointRadius: 0, pointHitRadius: 8, borderWidth: 2,
+      }, {
+        label: 'Consultas',
+        data: consultasData,
+        borderColor: '#e8c96a',
+        backgroundColor: (context) => {
+          const { chart } = context
+          const { ctx, chartArea } = chart
+          if (!chartArea) return 'rgba(232,201,106,.14)'
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+          gradient.addColorStop(0, 'rgba(232,201,106,.32)')
+          gradient.addColorStop(0.55, 'rgba(232,201,106,.10)')
+          gradient.addColorStop(1, 'rgba(232,201,106,0)')
+          return gradient
+        },
         fill: true, tension: 0.35, pointRadius: 0, pointHitRadius: 8, borderWidth: 2,
       }]
     },
+    plugins: [
+      pluginPeakMark(peakIdx),
+      pluginGoldGlow,
+      pluginLastPointGlow
+    ],
     options: {
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15,14,12,.96)',
+          borderColor: 'rgba(255,255,255,.12)',
+          borderWidth: 1,
+          titleColor: '#f5f3f0',
+          bodyColor: 'rgba(255,255,255,.72)',
+          titleFont: { size: 11, weight: '600' },
+          bodyFont: { size: 11 },
+          padding: 10,
+          cornerRadius: 8,
+          caretSize: 5,
+          caretPadding: 8,
+          displayColors: true,
+          usePointStyle: true,
+        }
+      },
       scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } },
                 y: { grid: { color: GRID }, ticks: { precision: 0 }, beginAtZero: true } },
       maintainAspectRatio: false,
     }
   })
 
-  const qr = l30.filter(l => l.canal_ref && l.canal_via === 'qr').length
-  const li = l30.filter(l => l.canal_ref && l.canal_via !== 'qr').length
-  const di = l30.length - qr - li
-  new Chart($('chOrigen'), {
-    type: 'doughnut',
-    data: { labels: ['QR físico','Link directo','Directas'],
-      datasets: [{ data: [qr, li, di], backgroundColor: ['#50c878','#6495ed','#5a5a55'], borderWidth: 0 }] },
-    options: { cutout: '68%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } } }, maintainAspectRatio: false }
+  const qr = vCan30.filter(v => v.canal_via === 'qr').length
+  const li = vCan30.length - qr
+  const di = Math.max(v30.length - qr - li, 0)
+  const totalOrigen = qr + li + di
+  const origenItems = [
+    { label: 'QR físico', value: qr, color: '#50c878' },
+    { label: 'Link directo', value: li, color: '#6495ed' },
+    { label: 'Directas', value: di, color: '#9aa7b2' },
+  ]
+  $('chOrigenModulo').innerHTML = totalOrigen === 0
+    ? '<div class="empty-state adm-origen-empty">Sin datos de tráfico en el período.</div>'
+    : `<div class="adm-origen-wrap">
+        ${origenItems.map(item => {
+          const pct = totalOrigen > 0 ? Math.round((item.value / totalOrigen) * 100) : 0
+          return `<div class="adm-origen-row" style="--adm-origen-c:${item.color};--adm-origen-w:${pct}%;">
+            <span class="adm-origen-dot"></span>
+            <span class="adm-origen-lbl">${item.label}</span>
+            <span class="adm-origen-track"><span class="adm-origen-bar"></span></span>
+            <span class="adm-origen-n">${item.value}</span>
+            <span class="adm-origen-pct">${pct}%</span>
+          </div>`
+        }).join('')}
+      </div>`
+
+  // ── Canales activos — rendimiento 30 días ───────────────
+  const canalesActivos = canales.filter(c => c.activo)
+
+  const canalRefDeVisita = v => {
+    if (!v.canal_ref) return null
+    const porRef = canalPorRef[v.canal_ref]
+    if (porRef) return porRef
+    const directo = canales.find(k => v.canal_ref === k.codigo || v.canal_ref.startsWith(k.codigo + '-'))
+    return directo?.nombre || null
+  }
+
+  const clicksPorCanal = {}
+  const leadsPorCanal  = {}
+  canalesActivos.forEach(c => { clicksPorCanal[c.nombre] = 0; leadsPorCanal[c.nombre] = 0 })
+
+  v30.filter(v => v.canal_ref).forEach(v => {
+    const nombre = canalRefDeVisita(v)
+    if (nombre && clicksPorCanal[nombre] !== undefined) clicksPorCanal[nombre]++
   })
+  l30.filter(l => l.canal_ref).forEach(l => {
+    const nombre = canalDe(l)
+    if (nombre && leadsPorCanal[nombre] !== undefined) leadsPorCanal[nombre]++
+  })
+
+  const filas = canalesActivos
+    .map(c => ({ nombre: c.nombre, color_index: c.color_index, clics: clicksPorCanal[c.nombre] || 0, leads: leadsPorCanal[c.nombre] || 0 }))
+    .sort((a, b) => b.clics - a.clics)
+
+  const maxClics = Math.max(...filas.map(f => f.clics), 1)
+  document.getElementById('tablaCanales').innerHTML = filas.length
+    ? filas.map(f => {
+        const conv = f.clics > 0 ? ((f.leads / f.clics) * 100).toFixed(1) + '%' : '—'
+        const color = colorCanal(f.color_index)
+        return `<tr>
+          <td><span class="canal-nombre"><span class="canal-dot canal-on" style="background:${color};box-shadow:0 0 7px ${color}55,0 0 16px ${color}22;"></span>${esc(f.nombre)}</span></td>
+          <td>${f.clics}</td>
+          <td>${f.leads}</td>
+          <td>${conv}</td>
+        </tr>`
+      }).join('')
+    : '<tr><td colspan="4" style="color:var(--gris-claro)">Sin canales activos.</td></tr>'
 
   // ── Últimas consultas (6) ───────────────────────────────
   const ult = leads60.slice(0, 6)
