@@ -151,7 +151,7 @@
     .btn-mini.danger:hover { border-color: #e05c5c; color: #e05c5c; }
     .empty-state { text-align: center; padding: 2.5rem; color: var(--gris-claro); font-size: 0.8rem; }
   </style>
-  <link rel="stylesheet" href="../css/admin-theme.css" />
+  <link rel="stylesheet" href="../css/admin-theme.css?v=admin-visual-port-real-01" />
 </head>
 <body>
 <div class="admin-layout">
@@ -429,18 +429,83 @@ async function cargar() {
   Chart.defaults.font.family = "'Inter', system-ui, sans-serif"
   Chart.defaults.font.size = 10
   const GRID = 'rgba(255,255,255,0.05)'
+  const pluginPeakMark = (peakIdx) => ({
+    id: 'pvPeakMark4',
+    beforeDatasetsDraw(chart) {
+      const { ctx: c, chartArea, scales } = chart
+      if (!chartArea || peakIdx < 0) return
+      const x = scales.x.getPixelForValue(peakIdx)
+      if (!Number.isFinite(x)) return
+      const g = c.createLinearGradient(x - 40, 0, x + 40, 0)
+      g.addColorStop(0, 'rgba(232,201,106,0)')
+      g.addColorStop(0.5, 'rgba(232,201,106,.12)')
+      g.addColorStop(1, 'rgba(232,201,106,0)')
+      c.save()
+      c.fillStyle = g
+      c.fillRect(x - 40, chartArea.top, 80, chartArea.bottom - chartArea.top)
+      c.beginPath()
+      c.setLineDash([4, 6])
+      c.strokeStyle = 'rgba(232,201,106,.35)'
+      c.lineWidth = 1
+      c.moveTo(x, chartArea.top)
+      c.lineTo(x, chartArea.bottom)
+      c.stroke()
+      c.restore()
+    }
+  })
+  const pluginGoldGlow = {
+    id: 'pvGoldGlow4',
+    beforeDatasetDraw(chart, args) {
+      if (args.index === 0) {
+        chart.ctx.save()
+        chart.ctx.shadowColor = 'rgba(215,111,63,.42)'
+        chart.ctx.shadowBlur = 10
+      }
+    },
+    afterDatasetDraw(chart, args) {
+      if (args.index === 0) chart.ctx.restore()
+    }
+  }
+  const pluginLastPointGlow = {
+    id: 'pvStaticLastPointGlow4',
+    afterDatasetsDraw(chart) {
+      const { ctx: c, data } = chart
+      const lastIdx = (data.labels || []).length - 1
+      if (lastIdx < 0) return
+      const meta = chart.getDatasetMeta(0)
+      if (!meta?.data?.length) return
+      const pt = meta.data[lastIdx]
+      if (!pt) return
+      c.save()
+      c.beginPath()
+      c.arc(pt.x, pt.y, 11, 0, Math.PI * 2)
+      c.strokeStyle = 'rgba(215,111,63,.28)'
+      c.lineWidth = 1.4
+      c.stroke()
+      c.beginPath()
+      c.arc(pt.x, pt.y, 4, 0, Math.PI * 2)
+      c.fillStyle = 'rgba(215,111,63,1)'
+      c.shadowColor = 'rgba(215,111,63,.72)'
+      c.shadowBlur = 12
+      c.fill()
+      c.restore()
+    }
+  }
 
   const dias = []
   for (let i = 29; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); dias.push(dia(d)) }
   const porDia = {}
   l30.forEach(l => { const d = dia(l.created_at); porDia[d] = (porDia[d] || 0) + 1 })
+  const evolucionData = dias.map(d => porDia[d] || 0)
+  const maxEvolucion = Math.max(...evolucionData, 0)
+  const peakIdx = maxEvolucion > 0 ? evolucionData.indexOf(maxEvolucion) : -1
 
   new Chart($('chEvolucion'), {
     type: 'line',
     data: {
       labels: dias.map(d => d.slice(8,10) + '/' + d.slice(5,7)),
       datasets: [{
-        data: dias.map(d => porDia[d] || 0),
+        data: evolucionData,
         borderColor: '#d76f3f',
         backgroundColor: (context) => {
           const { chart } = context
@@ -455,6 +520,11 @@ async function cargar() {
         fill: true, tension: 0.35, pointRadius: 0, pointHitRadius: 8, borderWidth: 2,
       }]
     },
+    plugins: [
+      pluginPeakMark(peakIdx),
+      pluginGoldGlow,
+      pluginLastPointGlow
+    ],
     options: {
       plugins: {
         legend: { display: false },
