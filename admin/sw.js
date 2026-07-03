@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sur-patagonia-admin-v1';
+const CACHE_NAME = 'sur-patagonia-admin-v2';
 
 const STATIC_ASSETS = [
   '/assets/admin-icon-192.png',
@@ -35,6 +35,14 @@ self.addEventListener('fetch', event => {
 
   // HTML del admin → siempre red primero
   if (url.pathname.startsWith('/admin/')) {
+    event.respondWith(
+      fetch(req).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // CSS → siempre red primero (evita servir estilos viejos tras deploy)
+  if (url.pathname.startsWith('/css/')) {
     event.respondWith(
       fetch(req).catch(() => caches.match(req))
     );
