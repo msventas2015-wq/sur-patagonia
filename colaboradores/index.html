@@ -437,6 +437,47 @@
     .pv-main .estado-visita      { background:rgba(242,154,90,.18); color:#f29a5a; border:1px solid rgba(242,154,90,.35); }
     .pv-main .estado-descartado  { background:rgba(123,127,136,.14); color:#7b7f88; border:1px solid rgba(123,127,136,.28); }
 
+    .pv-recorrido-placeholder {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:1rem;
+      padding:1.25rem 1.35rem;
+      margin-bottom:1rem;
+      border:1px solid rgba(255,255,255,.08);
+      border-top-color:rgba(255,255,255,.14);
+      border-radius:14px;
+      background:linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+    }
+    .pv-recorrido-placeholder span {
+      display:block;
+      margin-bottom:.45rem;
+      color:rgba(255,255,255,.34);
+      font-size:.58rem;
+      font-weight:800;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+    }
+    .pv-recorrido-placeholder h3 {
+      margin:0 0 .4rem;
+      color:#f5f3f0;
+      font-size:1rem;
+      font-weight:700;
+      letter-spacing:.03em;
+    }
+    .pv-recorrido-placeholder p {
+      max-width:42rem;
+      margin:0;
+      color:rgba(255,255,255,.55);
+      font-size:.78rem;
+      line-height:1.55;
+    }
+    .pv-recorrido-placeholder small {
+      color:rgba(255,255,255,.32);
+      font-size:.66rem;
+      white-space:nowrap;
+    }
+    @media(max-width:720px){ .pv-recorrido-placeholder{display:block}.pv-recorrido-placeholder small{display:block;margin-top:.85rem;white-space:normal} }
     @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
 
     /* ── Trazabilidad CRM — PASIVO-07B ── */
@@ -1008,7 +1049,7 @@
   const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
   const ESTADO_LABEL_PASIVO = { nueva:'Sin avance', contactado:'Contactado', visita:'En visita', descartado:'Descartado' }
 
-  const RECORRIDO_ENABLED = false;
+  const RECORRIDO_ENABLED = true;
   const REC_ESTADO_ORDEN = {
     nueva: 0,
     contactado: 1,
@@ -1062,7 +1103,16 @@
   }
 
   function renderRecorrido(contactos, canal, filasTraza = []) {
-    return '';
+    const nombreCanal = canal?.nombre ? esc(canal.nombre) : 'tu canal';
+    const cantidad = Array.isArray(contactos) ? contactos.length : 0;
+    return `<section class="pv-recorrido-placeholder">
+      <div>
+        <span>Nuevo lector CRM</span>
+        <h3>El recorrido de tu gente</h3>
+        <p>Acá vamos a visualizar cómo avanza tu gente desde el primer contacto hasta la operación.</p>
+      </div>
+      <small>${cantidad.toLocaleString('es-AR')} registros · ${nombreCanal}</small>
+    </section>`;
   }
 
   // Codifica el apellido: "Juan González" → "Juan Go***"
