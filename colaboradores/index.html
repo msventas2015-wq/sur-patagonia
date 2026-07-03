@@ -438,10 +438,6 @@
     .pv-main .estado-descartado  { background:rgba(123,127,136,.14); color:#7b7f88; border:1px solid rgba(123,127,136,.28); }
 
     .pv-recorrido-placeholder {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:1rem;
       padding:1.25rem 1.35rem;
       margin-bottom:1rem;
       border:1px solid rgba(255,255,255,.08);
@@ -449,7 +445,7 @@
       border-radius:14px;
       background:linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
     }
-    .pv-recorrido-placeholder span {
+    .pv-recorrido-kicker {
       display:block;
       margin-bottom:.45rem;
       color:rgba(255,255,255,.34);
@@ -472,12 +468,73 @@
       font-size:.78rem;
       line-height:1.55;
     }
-    .pv-recorrido-placeholder small {
+    .pv-recorrido-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:1rem;
+      margin-bottom:1.15rem;
+    }
+    .pv-recorrido-canal {
       color:rgba(255,255,255,.32);
       font-size:.66rem;
       white-space:nowrap;
     }
-    @media(max-width:720px){ .pv-recorrido-placeholder{display:block}.pv-recorrido-placeholder small{display:block;margin-top:.85rem;white-space:normal} }
+    .pv-recorrido-line {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:.7rem;
+      position:relative;
+    }
+    .pv-recorrido-step {
+      min-height:112px;
+      padding:.9rem .9rem .85rem;
+      border:1px solid rgba(255,255,255,.075);
+      border-top-color:rgba(255,255,255,.13);
+      border-radius:12px;
+      background:linear-gradient(135deg, rgba(255,255,255,.052), rgba(255,255,255,.018));
+    }
+    .pv-recorrido-node {
+      display:inline-block;
+      width:9px;
+      height:9px;
+      margin-bottom:.72rem;
+      border-radius:50%;
+      background:var(--rc);
+      box-shadow:0 0 14px rgba(255,255,255,.08);
+    }
+    .pv-recorrido-step strong {
+      display:block;
+      margin-bottom:.35rem;
+      color:rgba(255,255,255,.8);
+      font-size:.58rem;
+      font-weight:800;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+    }
+    .pv-recorrido-step em {
+      display:block;
+      color:#f5f3f0;
+      font-style:normal;
+      font-size:1.85rem;
+      line-height:1;
+      font-weight:500;
+      letter-spacing:-.03em;
+    }
+    .pv-recorrido-step small {
+      display:block;
+      margin-top:.5rem;
+      color:rgba(255,255,255,.38);
+      font-size:.66rem;
+      line-height:1.35;
+    }
+    .pv-recorrido-note {
+      margin-top:.9rem;
+      color:rgba(255,255,255,.36);
+      font-size:.68rem;
+      line-height:1.45;
+    }
+    @media(max-width:720px){ .pv-recorrido-head{display:block}.pv-recorrido-canal{display:block;margin-top:.85rem;white-space:normal}.pv-recorrido-line{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-recorrido-step{min-height:104px} }
     @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
 
     /* ── Trazabilidad CRM — PASIVO-07B ── */
@@ -1082,7 +1139,14 @@
 
   function normalizarEstadoRecorrido(estado) {
     const key = String(estado || 'nueva').toLowerCase();
-    return Object.prototype.hasOwnProperty.call(REC_ESTADO_ORDEN, key) ? key : 'nueva';
+    const map = {
+      en_contacto: 'contactado',
+      en_negociacion: 'visita',
+      cerrada: 'cerrado',
+      descartada: 'descartado'
+    };
+    const normalizado = map[key] || key;
+    return Object.prototype.hasOwnProperty.call(REC_ESTADO_ORDEN, normalizado) ? normalizado : 'nueva';
   }
 
   function obtenerClavePersonaRecorrido(c) {
@@ -1104,14 +1168,48 @@
 
   function renderRecorrido(contactos, canal, filasTraza = []) {
     const nombreCanal = canal?.nombre ? esc(canal.nombre) : 'tu canal';
-    const cantidad = Array.isArray(contactos) ? contactos.length : 0;
+    const lista = Array.isArray(contactos) ? contactos : [];
+    const estados = lista.map(c => normalizarEstadoRecorrido(c?.estado));
+    const total = lista.length;
+    const contacto = estados.filter(e => e === 'contactado').length;
+    const visita = estados.filter(e => e === 'visita').length;
+    const operacion = estados.filter(e => e === 'oferta' || e === 'cerrado').length;
     return `<section class="pv-recorrido-placeholder">
-      <div>
-        <span>Nuevo lector CRM</span>
-        <h3>El recorrido de tu gente</h3>
-        <p>Acá vamos a visualizar cómo avanza tu gente desde el primer contacto hasta la operación.</p>
+      <div class="pv-recorrido-head">
+        <div>
+          <span class="pv-recorrido-kicker">Nuevo lector CRM</span>
+          <h3>El recorrido de tu gente</h3>
+          <p>Acá vamos a visualizar cómo avanza tu gente desde el primer contacto hasta la operación.</p>
+        </div>
+        <div class="pv-recorrido-canal">${total.toLocaleString('es-AR')} registros · ${nombreCanal}</div>
       </div>
-      <small>${cantidad.toLocaleString('es-AR')} registros · ${nombreCanal}</small>
+      <div class="pv-recorrido-line" aria-label="Resumen visual anónimo del recorrido comercial">
+        <div class="pv-recorrido-step" style="--rc:#6495ed">
+          <span class="pv-recorrido-node"></span>
+          <strong>Ingreso</strong>
+          <em>${total.toLocaleString('es-AR')}</em>
+          <small>Registros generados por el canal.</small>
+        </div>
+        <div class="pv-recorrido-step" style="--rc:#35c6b4">
+          <span class="pv-recorrido-node"></span>
+          <strong>Contacto</strong>
+          <em>${contacto.toLocaleString('es-AR')}</em>
+          <small>Personas ya contactadas.</small>
+        </div>
+        <div class="pv-recorrido-step" style="--rc:#f29a5a">
+          <span class="pv-recorrido-node"></span>
+          <strong>Visita</strong>
+          <em>${visita.toLocaleString('es-AR')}</em>
+          <small>Oportunidades en visita.</small>
+        </div>
+        <div class="pv-recorrido-step" style="--rc:#c9a84c">
+          <span class="pv-recorrido-node"></span>
+          <strong>Operación</strong>
+          <em>${operacion.toLocaleString('es-AR')}</em>
+          <small>Oferta enviada o cierre registrado.</small>
+        </div>
+      </div>
+      <div class="pv-recorrido-note">Lectura agregada y anónima. No muestra nombre, teléfono, email ni mensajes.</div>
     </section>`;
   }
 
