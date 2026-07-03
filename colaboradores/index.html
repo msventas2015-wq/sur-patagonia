@@ -1008,6 +1008,63 @@
   const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
   const ESTADO_LABEL_PASIVO = { nueva:'Sin avance', contactado:'Contactado', visita:'En visita', descartado:'Descartado' }
 
+  const RECORRIDO_ENABLED = false;
+  const REC_ESTADO_ORDEN = {
+    nueva: 0,
+    contactado: 1,
+    visita: 2,
+    oferta: 3,
+    cerrado: 4,
+    descartado: -1
+  };
+
+  const REC_ESTADO_LABEL = {
+    nueva: 'Sin avance',
+    contactado: 'En contacto',
+    visita: 'Visita programada',
+    oferta: 'Oferta enviada',
+    cerrado: 'Cerrado'
+  };
+
+  const REC_COHORT_PALETTE = [
+    '#3a4eb8',
+    '#c0603e',
+    '#2a9d7a',
+    '#c040a0',
+    '#c08a2e',
+    '#1e5fa0',
+    '#7a1f2e',
+    '#3eb489',
+    '#7b3fb0',
+    '#b87333'
+  ];
+
+  function normalizarEstadoRecorrido(estado) {
+    const key = String(estado || 'nueva').toLowerCase();
+    return Object.prototype.hasOwnProperty.call(REC_ESTADO_ORDEN, key) ? key : 'nueva';
+  }
+
+  function obtenerClavePersonaRecorrido(c) {
+    const tel = String(c?.telefono || c?.telefono_contacto || '').replace(/\D/g, '');
+    const email = String(c?.email || c?.mail || '').trim().toLowerCase();
+    return tel || email || ('id:' + String(c?.id || Math.random()));
+  }
+
+  function renderRecorridoSeguro(contactos, canal, filasTraza) {
+    if (!RECORRIDO_ENABLED) return '';
+
+    try {
+      return renderRecorrido(contactos || [], canal || {}, filasTraza || []);
+    } catch (error) {
+      console.warn('[recorrido] fallback:', error);
+      return '';
+    }
+  }
+
+  function renderRecorrido(contactos, canal, filasTraza = []) {
+    return '';
+  }
+
   // Codifica el apellido: "Juan González" → "Juan Go***"
   const codificarNombre = nombre => {
     if (!nombre) return '—'
@@ -1674,7 +1731,7 @@
           <div class="pv-kpi" style="--pv-c:#6ee89a"><div class="pv-kpi-label">Registros activos</div><div class="pv-kpi-n">${totalRegistrosActivos.toLocaleString('es-AR')}</div><div class="pv-kpi-sub">Oportunidades vigentes — excluye descartados.</div></div>
         </div>
 
-        ${renderPasivo(contactos, filasTraza)}
+        ${renderPasivo(contactos, filasTraza, canal)}
 
         <div class="pv-sec pv-msg-sec" id="secMensajes">
           <div class="pv-sec-head"><div><div class="pv-sec-titulo">Novedades de la red${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem">${misMensajes.length}</span>` : ''}</div><div class="pv-sec-sub">Actualizaciones de Sur Patagonia para tu espacio.</div></div></div>
@@ -2258,7 +2315,7 @@
       </div>`
     }
 
-    function renderPasivo(contactos, filasTraza = []) {
+    function renderPasivo(contactos, filasTraza = [], canal = null) {
       const m = metricasPasivo(contactos)
 
       const filas = contactos.length
@@ -2318,6 +2375,8 @@
             </div>
           </div>
         </div>
+
+        ${RECORRIDO_ENABLED ? renderRecorridoSeguro(contactos, canal, filasTraza) : ''}
 
         <div class="pv-impact-grid">
           ${renderFunnelCRM(contactos)}
