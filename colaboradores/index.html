@@ -437,13 +437,20 @@
     .pv-main .estado-visita      { background:rgba(242,154,90,.18); color:#f29a5a; border:1px solid rgba(242,154,90,.35); }
     .pv-main .estado-descartado  { background:rgba(123,127,136,.14); color:#7b7f88; border:1px solid rgba(123,127,136,.28); }
 
-    .pv-recorrido-placeholder {
-      padding:1.25rem 1.35rem;
+    .pv-recorrido-card {
       margin-bottom:1rem;
       border:1px solid rgba(255,255,255,.08);
       border-top-color:rgba(255,255,255,.14);
       border-radius:14px;
       background:linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+      overflow:hidden;
+    }
+    .pv-recorrido-head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:1rem;
+      padding:1.15rem 1.25rem .9rem;
     }
     .pv-recorrido-kicker {
       display:block;
@@ -454,87 +461,41 @@
       letter-spacing:.16em;
       text-transform:uppercase;
     }
-    .pv-recorrido-placeholder h3 {
+    .pv-recorrido-card h3 {
       margin:0 0 .4rem;
       color:#f5f3f0;
       font-size:1rem;
       font-weight:700;
       letter-spacing:.03em;
     }
-    .pv-recorrido-placeholder p {
+    .pv-recorrido-card p {
       max-width:42rem;
       margin:0;
       color:rgba(255,255,255,.55);
       font-size:.78rem;
       line-height:1.55;
     }
-    .pv-recorrido-head {
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:1rem;
-      margin-bottom:1.15rem;
-    }
     .pv-recorrido-canal {
       color:rgba(255,255,255,.32);
       font-size:.66rem;
       white-space:nowrap;
     }
-    .pv-recorrido-line {
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:.7rem;
-      position:relative;
-    }
-    .pv-recorrido-step {
-      min-height:112px;
-      padding:.9rem .9rem .85rem;
-      border:1px solid rgba(255,255,255,.075);
-      border-top-color:rgba(255,255,255,.13);
-      border-radius:12px;
-      background:linear-gradient(135deg, rgba(255,255,255,.052), rgba(255,255,255,.018));
-    }
-    .pv-recorrido-node {
-      display:inline-block;
-      width:9px;
-      height:9px;
-      margin-bottom:.72rem;
-      border-radius:50%;
-      background:var(--rc);
-      box-shadow:0 0 14px rgba(255,255,255,.08);
-    }
-    .pv-recorrido-step strong {
+    .pv-recorrido-svg {
       display:block;
-      margin-bottom:.35rem;
-      color:rgba(255,255,255,.8);
-      font-size:.58rem;
-      font-weight:800;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-    }
-    .pv-recorrido-step em {
-      display:block;
-      color:#f5f3f0;
-      font-style:normal;
-      font-size:1.85rem;
-      line-height:1;
-      font-weight:500;
-      letter-spacing:-.03em;
-    }
-    .pv-recorrido-step small {
-      display:block;
-      margin-top:.5rem;
-      color:rgba(255,255,255,.38);
-      font-size:.66rem;
-      line-height:1.35;
+      width:100%;
+      min-height:290px;
+      background:#05060a;
+      border-top:1px solid rgba(255,255,255,.055);
     }
     .pv-recorrido-note {
-      margin-top:.9rem;
+      padding:.85rem 1.25rem 1rem;
+      border-top:1px solid rgba(255,255,255,.055);
       color:rgba(255,255,255,.36);
       font-size:.68rem;
       line-height:1.45;
+      background:rgba(0,0,0,.16);
     }
-    @media(max-width:720px){ .pv-recorrido-head{display:block}.pv-recorrido-canal{display:block;margin-top:.85rem;white-space:normal}.pv-recorrido-line{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-recorrido-step{min-height:104px} }
+    @media(max-width:720px){ .pv-recorrido-head{display:block}.pv-recorrido-canal{display:block;margin-top:.85rem;white-space:normal}.pv-recorrido-svg{min-height:235px} }
     @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
 
     /* ── Trazabilidad CRM — PASIVO-07B ── */
@@ -1149,10 +1110,20 @@
     return Object.prototype.hasOwnProperty.call(REC_ESTADO_ORDEN, normalizado) ? normalizado : 'nueva';
   }
 
-  function obtenerClavePersonaRecorrido(c) {
+  function obtenerClavePersonaRecorrido(c, index = 0) {
     const tel = String(c?.telefono || c?.telefono_contacto || '').replace(/\D/g, '');
     const email = String(c?.email || c?.mail || '').trim().toLowerCase();
-    return tel || email || ('id:' + String(c?.id || Math.random()));
+    return tel ? `tel:${tel}` : email ? `email:${email}` : ('id:' + String(c?.id || `fila-${index}`));
+  }
+
+  function fechaIngresoRecorrido(c) {
+    return c?.fecha || c?.created_at || null;
+  }
+
+  function mesKeyRecorrido(value) {
+    const d = value ? new Date(value) : null;
+    if (!d || isNaN(d.getTime())) return 'sin-fecha';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
   function renderRecorridoSeguro(contactos, canal, filasTraza) {
@@ -1167,48 +1138,131 @@
   }
 
   function renderRecorrido(contactos, canal, filasTraza = []) {
-    const nombreCanal = canal?.nombre ? esc(canal.nombre) : 'tu canal';
     const lista = Array.isArray(contactos) ? contactos : [];
-    const estados = lista.map(c => normalizarEstadoRecorrido(c?.estado));
-    const total = lista.length;
-    const contacto = estados.filter(e => e === 'contactado').length;
-    const visita = estados.filter(e => e === 'visita').length;
-    const operacion = estados.filter(e => e === 'oferta' || e === 'cerrado').length;
-    return `<section class="pv-recorrido-placeholder">
+    const personasMap = new Map();
+
+    lista.forEach((c, index) => {
+      const clave = obtenerClavePersonaRecorrido(c, index);
+      const estado = normalizarEstadoRecorrido(c?.estado);
+      const ingreso = fechaIngresoRecorrido(c);
+      const ingresoTime = ingreso ? new Date(ingreso).getTime() : Number.POSITIVE_INFINITY;
+      const actual = personasMap.get(clave);
+
+      if (!actual) {
+        personasMap.set(clave, { clave, estado, ingresoTime, mesKey: mesKeyRecorrido(ingreso) });
+        return;
+      }
+
+      if ((REC_ESTADO_ORDEN[estado] ?? 0) > (REC_ESTADO_ORDEN[actual.estado] ?? 0)) actual.estado = estado;
+      if (ingresoTime < actual.ingresoTime) {
+        actual.ingresoTime = ingresoTime;
+        actual.mesKey = mesKeyRecorrido(ingreso);
+      }
+    });
+
+    const personas = [...personasMap.values()].sort((a, b) => {
+      const ta = Number.isFinite(a.ingresoTime) ? a.ingresoTime : 0;
+      const tb = Number.isFinite(b.ingresoTime) ? b.ingresoTime : 0;
+      return ta - tb;
+    }).filter(p => p.estado !== 'descartado');
+
+    const meses = [...new Set(personas.map(p => p.mesKey))].sort();
+    const colorMes = {};
+    meses.forEach((mes, index) => { colorMes[mes] = REC_COHORT_PALETTE[index % REC_COHORT_PALETTE.length]; });
+    personas.forEach(p => { p.color = colorMes[p.mesKey] || REC_COHORT_PALETTE[0]; });
+
+    const local = personas.filter(p => p.estado === 'nueva' || p.estado === 'contactado');
+    const visita = personas.filter(p => p.estado === 'visita');
+    const oferta = personas.filter(p => p.estado === 'oferta');
+    const cerrado = personas.filter(p => p.estado === 'cerrado');
+    const localMax = 15;
+    const localVisibles = local.slice(0, localMax);
+    const localExtra = Math.max(0, local.length - localVisibles.length);
+    const nombreCanal = canal?.nombre ? esc(canal.nombre) : 'TU LOCAL';
+    const total = personas.length;
+
+    const localSlots = [
+      [68,214],[84,216],[100,214],[116,216],[132,214],
+      [76,198],[94,196],[112,198],[130,196],
+      [86,180],[104,178],[122,180],
+      [94,162],[112,160],[130,162]
+    ];
+    const visitaSlots = [[360,226],[378,226],[396,226],[414,226]];
+    const ofertaSlots = [[610,226],[628,226],[646,226],[664,226]];
+    const cerradoSlots = [[855,226],[873,226],[891,226],[909,226]];
+
+    const tipito = (p, x, y, extra = '') => `
+      <g color="${p.color}" transform="translate(${x},${y})">
+        <ellipse cx="0" cy="8" rx="7" ry="2" fill="rgba(0,0,0,.38)"/>
+        <use href="#tipo"/>
+        ${extra}
+      </g>`;
+    const drawList = (arr, slots, extraFactory = () => '') => arr.slice(0, slots.length).map((p, i) => tipito(p, slots[i][0], slots[i][1], extraFactory(p, i))).join('');
+    const localTipitos = localVisibles.map((p, i) => tipito(p, localSlots[i][0], localSlots[i][1])).join('');
+    const visitaTipitos = drawList(visita, visitaSlots);
+    const ofertaTipitos = drawList(oferta, ofertaSlots, () => '<rect x="5" y="-17" width="11" height="6" rx="1" fill="#3bbf88"/><text x="10.5" y="-12.2" text-anchor="middle" fill="#06251a" font-size="5" font-weight="800">$</text>');
+    const cerradoTipitos = drawList(cerrado, cerradoSlots);
+    const badge = (x, y, n, color) => n > 0 ? `<g transform="translate(${x},${y})"><rect x="-14" y="-9" width="28" height="18" rx="9" fill="rgba(0,0,0,.48)" stroke="${color}" stroke-opacity=".5"/><text x="0" y="3" text-anchor="middle" fill="${color}" font-size="8" font-weight="800" font-family="Inter">${n}</text></g>` : '';
+
+    return `<section class="pv-recorrido-card">
       <div class="pv-recorrido-head">
         <div>
           <span class="pv-recorrido-kicker">Nuevo lector CRM</span>
           <h3>El recorrido de tu gente</h3>
           <p>Acá vamos a visualizar cómo avanza tu gente desde el primer contacto hasta la operación.</p>
         </div>
-        <div class="pv-recorrido-canal">${total.toLocaleString('es-AR')} registros · ${nombreCanal}</div>
+        <div class="pv-recorrido-canal">${total.toLocaleString('es-AR')} personas · ${nombreCanal}</div>
       </div>
-      <div class="pv-recorrido-line" aria-label="Resumen visual anónimo del recorrido comercial">
-        <div class="pv-recorrido-step" style="--rc:#6495ed">
-          <span class="pv-recorrido-node"></span>
-          <strong>Ingreso</strong>
-          <em>${total.toLocaleString('es-AR')}</em>
-          <small>Registros generados por el canal.</small>
-        </div>
-        <div class="pv-recorrido-step" style="--rc:#35c6b4">
-          <span class="pv-recorrido-node"></span>
-          <strong>Contacto</strong>
-          <em>${contacto.toLocaleString('es-AR')}</em>
-          <small>Personas ya contactadas.</small>
-        </div>
-        <div class="pv-recorrido-step" style="--rc:#f29a5a">
-          <span class="pv-recorrido-node"></span>
-          <strong>Visita</strong>
-          <em>${visita.toLocaleString('es-AR')}</em>
-          <small>Oportunidades en visita.</small>
-        </div>
-        <div class="pv-recorrido-step" style="--rc:#c9a84c">
-          <span class="pv-recorrido-node"></span>
-          <strong>Operación</strong>
-          <em>${operacion.toLocaleString('es-AR')}</em>
-          <small>Oferta enviada o cierre registrado.</small>
-        </div>
-      </div>
+      <svg class="pv-recorrido-svg" viewBox="0 0 1000 310" role="img" aria-label="Recorrido visual anónimo del canal">
+        <defs>
+          <g id="tipo" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round">
+            <circle cx="0" cy="-12" r="3" fill="currentColor" stroke="none"/>
+            <line x1="0" y1="-8.6" x2="0" y2="-1"/>
+            <line x1="-4" y1="-5.8" x2="4" y2="-5.8"/>
+            <line x1="0" y1="-1" x2="-3.5" y2="5.8"/>
+            <line x1="0" y1="-1" x2="3.5" y2="5.8"/>
+          </g>
+        </defs>
+        <rect x="0" y="0" width="1000" height="310" fill="#05060a"/>
+        <path d="M0 172 L110 126 L205 160 L315 92 L445 158 L575 108 L690 155 L815 112 L1000 148 L1000 310 L0 310 Z" fill="#0c0f16" opacity=".82"/>
+        <path d="M0 222 L140 188 L285 220 L445 178 L620 215 L790 188 L1000 220 L1000 310 L0 310 Z" fill="#08090c"/>
+        <path d="M44 246 C188 238 310 236 430 236 C570 236 700 239 952 246" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="3" stroke-linecap="round"/>
+        <path d="M44 246 C188 238 310 236 430 236 C570 236 700 239 952 246" fill="none" stroke="rgba(201,168,76,.16)" stroke-width="1" stroke-dasharray="10 12" stroke-linecap="round"/>
+
+        <g transform="translate(105,244)">
+          <rect x="-78" y="-142" width="156" height="142" rx="4" fill="rgba(255,255,255,.035)" stroke="rgba(255,255,255,.18)"/>
+          <rect x="-88" y="-166" width="176" height="25" rx="4" fill="rgba(201,168,76,.10)" stroke="rgba(201,168,76,.46)"/>
+          <text x="0" y="-149" text-anchor="middle" fill="#c9a84c" font-size="12" font-weight="800" letter-spacing="2" font-family="Inter">${nombreCanal}</text>
+          <rect x="-62" y="-124" width="124" height="124" rx="3" fill="rgba(0,0,0,.18)" stroke="rgba(255,255,255,.09)"/>
+        </g>
+        ${localTipitos}
+        ${localExtra > 0 ? `<g transform="translate(166,190)"><rect x="-13" y="-9" width="26" height="18" rx="9" fill="rgba(0,0,0,.48)" stroke="rgba(255,255,255,.24)"/><text x="0" y="3" text-anchor="middle" fill="#f5f3f0" font-size="8" font-weight="800" font-family="Inter">+${localExtra}</text></g>` : ''}
+
+        <g transform="translate(360,244)">
+          <line x1="0" y1="0" x2="0" y2="-45" stroke="#35c6b4" stroke-opacity=".62" stroke-width="2"/>
+          <circle cx="0" cy="-50" r="6" fill="rgba(53,198,180,.12)" stroke="#35c6b4"/>
+          <text x="0" y="28" text-anchor="middle" fill="#35c6b4" font-size="9" letter-spacing="1.6" font-family="Inter">PROCESO DE CONTACTO</text>
+        </g>
+        ${visitaTipitos}
+        ${badge(430, 214, visita.length, '#f29a5a')}
+
+        <g transform="translate(610,244)">
+          <path d="M-32 0 L-32 -36 L0 -58 L32 -36 L32 0 Z" fill="rgba(242,154,90,.07)" stroke="#f29a5a" stroke-width="1.6"/>
+          <rect x="-9" y="-21" width="18" height="21" fill="rgba(242,154,90,.24)" stroke="rgba(242,154,90,.45)"/>
+          <text x="0" y="28" text-anchor="middle" fill="#f29a5a" font-size="9" letter-spacing="1.6" font-family="Inter">VISITA PROGRAMADA</text>
+        </g>
+        ${ofertaTipitos}
+        ${badge(700, 214, oferta.length, '#3bbf88')}
+        <text x="674" y="184" text-anchor="middle" fill="#3bbf88" font-size="9" letter-spacing="1.4" font-family="Inter">OFERTA ENVIADA</text>
+
+        <g transform="translate(875,244)">
+          <path d="M-38 0 L-38 -42 L0 -68 L38 -42 L38 0 Z" fill="rgba(201,168,76,.10)" stroke="#c9a84c" stroke-width="1.8"/>
+          <rect x="-11" y="-26" width="22" height="26" rx="1" fill="rgba(201,168,76,.18)" stroke="rgba(201,168,76,.48)"/>
+          <text x="0" y="28" text-anchor="middle" fill="#c9a84c" font-size="9" letter-spacing="1.6" font-family="Inter">SU CASA</text>
+        </g>
+        ${cerradoTipitos}
+        ${badge(932, 214, cerrado.length, '#c9a84c')}
+      </svg>
       <div class="pv-recorrido-note">Lectura agregada y anónima. No muestra nombre, teléfono, email ni mensajes.</div>
     </section>`;
   }
