@@ -495,6 +495,52 @@
       line-height:1.45;
       background:rgba(0,0,0,.16);
     }
+    @keyframes ansioso { 0%,100%{transform:translateY(0)} 40%{transform:translateY(-4.5px)} 70%{transform:translateY(-1px)} }
+    @keyframes legA { 0%,100%{transform:rotate(24deg)} 50%{transform:rotate(-24deg)} }
+    @keyframes legB { 0%,100%{transform:rotate(-24deg)} 50%{transform:rotate(24deg)} }
+    @keyframes armSwing { 0%,100%{transform:rotate(-16deg)} 50%{transform:rotate(16deg)} }
+    @keyframes titilar { 0%,100%{opacity:.25} 50%{opacity:1} }
+    @keyframes caminataPareja { 0%{transform:translateX(0);opacity:0} 6%{opacity:1} 78%{transform:translateX(168px);opacity:1} 90%{transform:translateX(168px);opacity:0} 100%{transform:translateX(0);opacity:0} }
+    @keyframes caminataBillete { 0%{transform:translateX(0);opacity:0} 8%{opacity:1} 80%{transform:translateX(150px);opacity:1} 92%{transform:translateX(150px);opacity:0} 100%{transform:translateX(0);opacity:0} }
+    @keyframes billetear { 0%,100%{transform:rotate(-22deg)} 50%{transform:rotate(14deg)} }
+    @keyframes festejo { 0%,100%{transform:rotate(-150deg)} 50%{transform:rotate(-190deg)} }
+    @keyframes festejoB { 0%,100%{transform:rotate(150deg)} 50%{transform:rotate(190deg)} }
+    @keyframes brinco { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+    @keyframes humo { 0%{transform:translateY(0);opacity:.4} 100%{transform:translateY(-18px);opacity:0} }
+    @keyframes aparecer { 0%{opacity:0;transform:scale(.3)} 70%{opacity:1;transform:scale(1.15)} 100%{opacity:1;transform:scale(1)} }
+    @keyframes yaEstoy { 0%,100%{transform:translateY(0) scale(1)} 30%{transform:translateY(-9px) scale(1.25)} 60%{transform:translateY(0) scale(1.25)} 80%{transform:translateY(-5px) scale(1.25)} }
+    .anx { animation:ansioso .55s ease-in-out infinite; }
+    .estrella { animation:titilar 3s ease-in-out infinite; }
+    .pareja { animation:caminataPareja 7s linear infinite; }
+    .solo { animation:caminataBillete 6s linear 2s infinite; }
+    .lA { transform-origin:0px -1px; animation:legA .4s ease-in-out infinite; }
+    .lB { transform-origin:0px -1px; animation:legB .4s ease-in-out infinite; }
+    .aS { transform-origin:0px -5.5px; animation:armSwing .4s ease-in-out infinite; }
+    .bill { transform-origin:1px 3px; animation:billetear .3s ease-in-out infinite; }
+    .fiesta { animation:brinco .6s ease-in-out infinite; }
+    .fiesta .fA { transform-origin:0px -5.5px; animation:festejo .6s ease-in-out infinite; }
+    .fiesta .fB { transform-origin:0px -5.5px; animation:festejoB .6s ease-in-out infinite; }
+    .humo1 { animation:humo 2.4s linear infinite; }
+    .humo2 { animation:humo 2.4s linear 1.2s infinite; }
+    .aparece { animation:aparecer .45s ease-out; }
+    .ya-estoy { animation:yaEstoy .8s ease-in-out; }
+    @media (prefers-reduced-motion: reduce) {
+      .pv-recorrido-card .anx,
+      .pv-recorrido-card .estrella,
+      .pv-recorrido-card .pareja,
+      .pv-recorrido-card .solo,
+      .lA,
+      .lB,
+      .aS,
+      .pv-recorrido-card .bill,
+      .pv-recorrido-card .fiesta,
+      .pv-recorrido-card .fA,
+      .pv-recorrido-card .fB,
+      .pv-recorrido-card .humo1,
+      .pv-recorrido-card .humo2,
+      .pv-recorrido-card .aparece,
+      .pv-recorrido-card .ya-estoy { animation:none !important; }
+    }
     @media(max-width:720px){ .pv-recorrido-head{display:block}.pv-recorrido-canal{display:block;margin-top:.85rem;white-space:normal}.pv-recorrido-svg{min-height:235px} }
     @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
 
@@ -1181,86 +1227,162 @@
     const nombreCanal = canal?.nombre ? esc(canal.nombre) : 'TU LOCAL';
     const total = personas.length;
 
-    const localSlots = [
-      [68,214],[84,216],[100,214],[116,216],[132,214],
-      [76,198],[94,196],[112,198],[130,196],
-      [86,180],[104,178],[122,180],
-      [94,162],[112,160],[130,162]
-    ];
-    const visitaSlots = [[360,226],[378,226],[396,226],[414,226]];
-    const ofertaSlots = [[610,226],[628,226],[646,226],[664,226]];
-    const cerradoSlots = [[855,226],[873,226],[891,226],[909,226]];
+    const estrellas = Array.from({ length: 70 }, (_, i) => {
+      const x = ((i * 137.508) % 1000).toFixed(1);
+      const y = ((i * 53.173) % 175).toFixed(1);
+      const r = ((i % 7) * 0.13 + 0.35).toFixed(2);
+      const delay = ((i % 17) * 0.17).toFixed(2);
+      const dur = (2.2 + (i % 11) * 0.22).toFixed(2);
+      return `<circle cx="${x}" cy="${y}" r="${r}" fill="#dde2ee" class="estrella" style="opacity:.45;animation-delay:${delay}s;animation-duration:${dur}s"/>`;
+    }).join('');
 
-    const tipito = (p, x, y, extra = '') => `
-      <g color="${p.color}" transform="translate(${x},${y})">
-        <ellipse cx="0" cy="8" rx="7" ry="2" fill="rgba(0,0,0,.38)"/>
-        <use href="#tipo"/>
-        ${extra}
+    const localSlots = [
+      [-54,-11],[-36,-8],[-18,-11],[0,-8],[18,-11],[36,-8],[54,-11],
+      [-45,-28],[-27,-31],[-9,-28],[9,-31],[27,-28],[45,-31],
+      [-35,-48],[-17,-51]
+    ];
+
+    const localTipitos = localVisibles.map((p, i) => {
+      const [x, y] = localSlots[i % localSlots.length];
+      const delay = (i * 0.09 % .55).toFixed(2);
+      return `<g class="anx" style="animation-delay:${delay}s" color="${p.color}">
+        <ellipse cx="${x}" cy="${y + 7}" rx="6" ry="1.6" fill="url(#sombraGrad)" opacity=".65"/>
+        <use href="#tipo" x="${x}" y="${y}"/>
       </g>`;
-    const drawList = (arr, slots, extraFactory = () => '') => arr.slice(0, slots.length).map((p, i) => tipito(p, slots[i][0], slots[i][1], extraFactory(p, i))).join('');
-    const localTipitos = localVisibles.map((p, i) => tipito(p, localSlots[i][0], localSlots[i][1])).join('');
-    const visitaTipitos = drawList(visita, visitaSlots);
-    const ofertaTipitos = drawList(oferta, ofertaSlots, () => '<rect x="5" y="-17" width="11" height="6" rx="1" fill="#3bbf88"/><text x="10.5" y="-12.2" text-anchor="middle" fill="#06251a" font-size="5" font-weight="800">$</text>');
-    const cerradoTipitos = drawList(cerrado, cerradoSlots);
+    }).join('');
+
+    const visitaColor = visita[0]?.color || REC_COHORT_PALETTE[0];
+    const ofertaColor = oferta[0]?.color || REC_COHORT_PALETTE[1];
+    const cerradoColor = cerrado[0]?.color || REC_COHORT_PALETTE[2];
     const badge = (x, y, n, color) => n > 0 ? `<g transform="translate(${x},${y})"><rect x="-14" y="-9" width="28" height="18" rx="9" fill="rgba(0,0,0,.48)" stroke="${color}" stroke-opacity=".5"/><text x="0" y="3" text-anchor="middle" fill="${color}" font-size="8" font-weight="800" font-family="Inter">${n}</text></g>` : '';
 
     return `<section class="pv-recorrido-card">
       <div class="pv-recorrido-head">
         <div>
-          <span class="pv-recorrido-kicker">Nuevo lector CRM</span>
           <h3>El recorrido de tu gente</h3>
-          <p>Acá vamos a visualizar cómo avanza tu gente desde el primer contacto hasta la operación.</p>
+          <p>De tu local a su casa — Sur Patagonia los acompaña en cada paso.</p>
         </div>
         <div class="pv-recorrido-canal">${total.toLocaleString('es-AR')} personas · ${nombreCanal}</div>
       </div>
-      <svg class="pv-recorrido-svg" viewBox="0 0 1000 310" role="img" aria-label="Recorrido visual anónimo del canal">
+      <svg class="pv-recorrido-svg" viewBox="0 0 1000 330" role="img" aria-label="Camino animado desde el local hasta la casita">
         <defs>
+          <radialGradient id="sombraGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(0,0,0,.55)"/>
+            <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+          </radialGradient>
+          <radialGradient id="luzLocal" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(255,180,80,.22)"/>
+            <stop offset="60%" stop-color="rgba(255,180,80,.06)"/>
+            <stop offset="100%" stop-color="rgba(255,180,80,0)"/>
+          </radialGradient>
+          <linearGradient id="horizonte" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="rgba(70,90,140,0)"/>
+            <stop offset="70%" stop-color="rgba(70,90,140,.08)"/>
+            <stop offset="100%" stop-color="rgba(110,130,170,.16)"/>
+          </linearGradient>
+          <radialGradient id="haloLuna" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(220,225,240,.4)"/>
+            <stop offset="40%" stop-color="rgba(220,225,240,.08)"/>
+            <stop offset="100%" stop-color="rgba(220,225,240,0)"/>
+          </radialGradient>
           <g id="tipo" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round">
-            <circle cx="0" cy="-12" r="3" fill="currentColor" stroke="none"/>
+            <circle cx="0" cy="-12" r="2.9" fill="currentColor" stroke="none"/>
             <line x1="0" y1="-8.6" x2="0" y2="-1"/>
-            <line x1="-4" y1="-5.8" x2="4" y2="-5.8"/>
-            <line x1="0" y1="-1" x2="-3.5" y2="5.8"/>
-            <line x1="0" y1="-1" x2="3.5" y2="5.8"/>
+            <line x1="-3.8" y1="-5.8" x2="3.8" y2="-5.8"/>
+            <line x1="0" y1="-1" x2="-3.4" y2="5.4"/>
+            <line x1="0" y1="-1" x2="3.4" y2="5.4"/>
+          </g>
+          <g id="tipoWalk" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round">
+            <circle cx="0" cy="-12" r="2.9" fill="currentColor" stroke="none"/>
+            <line x1="0" y1="-8.6" x2="0" y2="-1"/>
+            <line class="aS" x1="0" y1="-5.8" x2="3.8" y2="-2.4"/>
+            <line class="lA" x1="0" y1="-1" x2="0" y2="6.4"/>
+            <line class="lB" x1="0" y1="-1" x2="0" y2="6.4"/>
           </g>
         </defs>
-        <rect x="0" y="0" width="1000" height="310" fill="#05060a"/>
-        <path d="M0 172 L110 126 L205 160 L315 92 L445 158 L575 108 L690 155 L815 112 L1000 148 L1000 310 L0 310 Z" fill="#0c0f16" opacity=".82"/>
-        <path d="M0 222 L140 188 L285 220 L445 178 L620 215 L790 188 L1000 220 L1000 310 L0 310 Z" fill="#08090c"/>
-        <path d="M44 246 C188 238 310 236 430 236 C570 236 700 239 952 246" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="3" stroke-linecap="round"/>
-        <path d="M44 246 C188 238 310 236 430 236 C570 236 700 239 952 246" fill="none" stroke="rgba(201,168,76,.16)" stroke-width="1" stroke-dasharray="10 12" stroke-linecap="round"/>
 
-        <g transform="translate(105,244)">
-          <rect x="-78" y="-142" width="156" height="142" rx="4" fill="rgba(255,255,255,.035)" stroke="rgba(255,255,255,.18)"/>
-          <rect x="-88" y="-166" width="176" height="25" rx="4" fill="rgba(201,168,76,.10)" stroke="rgba(201,168,76,.46)"/>
-          <text x="0" y="-149" text-anchor="middle" fill="#c9a84c" font-size="12" font-weight="800" letter-spacing="2" font-family="Inter">${nombreCanal}</text>
-          <rect x="-62" y="-124" width="124" height="124" rx="3" fill="rgba(0,0,0,.18)" stroke="rgba(255,255,255,.09)"/>
+        <rect x="0" y="0" width="1000" height="330" fill="#05060a"/>
+        <rect x="0" y="180" width="1000" height="92" fill="url(#horizonte)"/>
+        <g id="estrellas">${estrellas}</g>
+        <g transform="translate(845,52)">
+          <circle r="34" fill="url(#haloLuna)"/>
+          <circle r="14" fill="#dde2ee" opacity=".95"/>
+          <circle cx="-4" cy="-3" r="3" fill="#c8cdd9" opacity=".6"/>
+          <circle cx="5" cy="4" r="2.4" fill="#c8cdd9" opacity=".5"/>
+          <circle cx="-2" cy="6" r="1.8" fill="#c8cdd9" opacity=".4"/>
         </g>
-        ${localTipitos}
-        ${localExtra > 0 ? `<g transform="translate(166,190)"><rect x="-13" y="-9" width="26" height="18" rx="9" fill="rgba(0,0,0,.48)" stroke="rgba(255,255,255,.24)"/><text x="0" y="3" text-anchor="middle" fill="#f5f3f0" font-size="8" font-weight="800" font-family="Inter">+${localExtra}</text></g>` : ''}
+        <path d="M 0 150 L 90 95 L 180 140 L 290 70 L 410 130 L 530 62 L 660 120 L 790 78 L 900 130 L 1000 104 L 1000 272 L 0 272 Z" fill="#0d1018" opacity=".85"/>
+        <path d="M 0 200 L 120 150 L 260 195 L 400 135 L 540 185 L 690 140 L 830 185 L 1000 158 L 1000 272 L 0 272 Z" fill="#0a0c12" opacity=".9"/>
+        <path d="M 0 238 L 140 205 L 300 235 L 460 198 L 620 232 L 780 210 L 1000 238 L 1000 272 L 0 272 Z" fill="#070809"/>
 
-        <g transform="translate(360,244)">
-          <line x1="0" y1="0" x2="0" y2="-45" stroke="#35c6b4" stroke-opacity=".62" stroke-width="2"/>
-          <circle cx="0" cy="-50" r="6" fill="rgba(53,198,180,.12)" stroke="#35c6b4"/>
-          <text x="0" y="28" text-anchor="middle" fill="#35c6b4" font-size="9" letter-spacing="1.6" font-family="Inter">PROCESO DE CONTACTO</text>
+        <line x1="30" y1="272" x2="970" y2="272" stroke="#2a2a2a" stroke-width="3"/>
+        <line x1="42" y1="272" x2="958" y2="272" stroke="#3a3a36" stroke-width="1" stroke-dasharray="9 11"/>
+        <ellipse cx="130" cy="274" rx="150" ry="52" fill="url(#luzLocal)"/>
+
+        <g transform="translate(130,272)">
+          <rect x="-88" y="-232" width="176" height="24" rx="4" fill="rgba(201,168,76,.12)" stroke="#c9a84c" stroke-width="1.5"/>
+          <text x="0" y="-215" text-anchor="middle" fill="#c9a84c" font-size="13" font-weight="700" letter-spacing="2.5" font-family="Inter">${nombreCanal}</text>
+          <rect x="-80" y="-208" width="160" height="208" rx="3" fill="rgba(255,255,255,.028)" stroke="#8a8f99" stroke-opacity=".5" stroke-width="1.5"/>
+          <rect x="-69" y="-196" width="138" height="196" rx="2" fill="rgba(255,255,255,.014)" stroke="#8a8f99" stroke-opacity=".28" stroke-width="1"/>
+          <line x1="-69" y1="-49" x2="69" y2="-49" stroke="#ffffff" stroke-opacity=".04"/>
+          <line x1="-69" y1="-98" x2="69" y2="-98" stroke="#ffffff" stroke-opacity=".04"/>
+          <line x1="-69" y1="-147" x2="69" y2="-147" stroke="#ffffff" stroke-opacity=".04"/>
+          <text x="0" y="-176" text-anchor="middle" fill="#5f6068" font-size="9.5" font-family="Inter" opacity=".8">lugar para muchos más…</text>
+          <ellipse cx="0" cy="-2" rx="64" ry="3" fill="url(#sombraGrad)" opacity=".5"/>
+          ${localTipitos}
+          ${localExtra > 0 ? `<text x="76" y="-38" text-anchor="middle" fill="#8a8f99" font-size="9" font-family="Inter">+${localExtra}</text>` : ''}
+          <text x="0" y="26" text-anchor="middle" fill="#8a8f99" font-size="9.5" letter-spacing="1.8" font-family="Inter">TUS CONTACTOS · ${total.toLocaleString('es-AR')} Y SUMANDO</text>
         </g>
-        ${visitaTipitos}
+
+        <g transform="translate(340,272)">
+          <text x="0" y="-64" text-anchor="middle" fill="#8a8f99" font-size="8.5" letter-spacing="2.6" font-family="Inter" opacity=".8">SUR PATAGONIA</text>
+          <line x1="0" y1="0" x2="0" y2="-28" stroke="#35c6b4" stroke-opacity=".5" stroke-width="1.5"/>
+          <circle cx="0" cy="-35" r="5.5" fill="none" stroke="#35c6b4" stroke-opacity=".7" stroke-width="1.5"/>
+          <circle cx="0" cy="-35" r="2" fill="#35c6b4" opacity=".7"/>
+          <text x="0" y="24" text-anchor="middle" fill="#35c6b4" font-size="9" letter-spacing="1.6" font-family="Inter" opacity=".85">PROCESO DE CONTACTO</text>
+        </g>
+
+        ${visita.length > 0 ? `<g class="pareja">
+          <g transform="translate(368,265)" color="${visitaColor}"><ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)"/><use href="#tipoWalk"/></g>
+          <g transform="translate(385,265)" color="#f5f3f0" opacity=".92"><ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)"/><use href="#tipoWalk"/></g>
+        </g>` : ''}
         ${badge(430, 214, visita.length, '#f29a5a')}
 
-        <g transform="translate(610,244)">
-          <path d="M-32 0 L-32 -36 L0 -58 L32 -36 L32 0 Z" fill="rgba(242,154,90,.07)" stroke="#f29a5a" stroke-width="1.6"/>
-          <rect x="-9" y="-21" width="18" height="21" fill="rgba(242,154,90,.24)" stroke="rgba(242,154,90,.45)"/>
-          <text x="0" y="28" text-anchor="middle" fill="#f29a5a" font-size="9" letter-spacing="1.6" font-family="Inter">VISITA PROGRAMADA</text>
+        <g transform="translate(590,272)">
+          <path d="M -32 0 L -32 -36 L 0 -56 L 32 -36 L 32 0 Z" fill="rgba(242,154,90,.07)" stroke="#f29a5a" stroke-width="1.6"/>
+          <rect x="-9" y="-21" width="18" height="21" fill="#f29a5a" opacity=".4"/>
+          <line x1="42" y1="0" x2="42" y2="-30" stroke="#f29a5a" stroke-width="1.5"/>
+          <rect x="42" y="-30" width="27" height="13" rx="2" fill="rgba(242,154,90,.14)" stroke="#f29a5a" stroke-width="1.2"/>
+          <text x="55.5" y="-20.5" text-anchor="middle" fill="#f29a5a" font-size="6.5" font-family="Inter">VENTA</text>
+          <text x="0" y="24" text-anchor="middle" fill="#f29a5a" font-size="9" letter-spacing="1.6" font-family="Inter">VISITA PROGRAMADA</text>
         </g>
-        ${ofertaTipitos}
-        ${badge(700, 214, oferta.length, '#3bbf88')}
-        <text x="674" y="184" text-anchor="middle" fill="#3bbf88" font-size="9" letter-spacing="1.4" font-family="Inter">OFERTA ENVIADA</text>
 
-        <g transform="translate(875,244)">
-          <path d="M-38 0 L-38 -42 L0 -68 L38 -42 L38 0 Z" fill="rgba(201,168,76,.10)" stroke="#c9a84c" stroke-width="1.8"/>
-          <rect x="-11" y="-26" width="22" height="26" rx="1" fill="rgba(201,168,76,.18)" stroke="rgba(201,168,76,.48)"/>
-          <text x="0" y="28" text-anchor="middle" fill="#c9a84c" font-size="9" letter-spacing="1.6" font-family="Inter">SU CASA</text>
+        ${oferta.length > 0 ? `<g class="solo">
+          <g transform="translate(660,265)" color="${ofertaColor}">
+            <ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)"/>
+            <use href="#tipoWalk"/>
+            <g class="bill"><rect x="4.5" y="-15" width="11" height="6.5" rx="1" fill="#3bbf88"/><text x="10" y="-9.8" text-anchor="middle" fill="#06251a" font-size="5.5" font-weight="700" font-family="Inter">$</text></g>
+          </g>
+        </g>` : ''}
+        ${badge(700, 214, oferta.length, '#3bbf88')}
+        <text x="672" y="222" text-anchor="middle" fill="#3bbf88" font-size="8" letter-spacing="1.4" font-family="Inter" opacity=".85">OFERTA ENVIADA</text>
+
+        <g transform="translate(880,272)">
+          <path d="M -30 0 L -30 -34 L 0 -54 L 30 -34 L 30 0 Z" fill="rgba(201,168,76,.12)" stroke="#c9a84c" stroke-width="2"/>
+          <rect x="14" y="-49" width="7" height="13" fill="rgba(201,168,76,.45)"/>
+          ${cerrado.length > 0 ? `<circle class="humo1" cx="17.5" cy="-54" r="2.6" fill="#8a8f99"/><circle class="humo2" cx="17.5" cy="-54" r="2.1" fill="#8a8f99"/>` : ''}
+          <rect x="-10" y="-25" width="20" height="25" rx="1" fill="rgba(201,168,76,.16)" stroke="#c9a84c" stroke-width="1"/>
+          ${cerrado.length > 0 ? `<g class="fiesta"><g transform="translate(0,-7)" color="${cerradoColor}">
+            <g stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round">
+              <circle cx="0" cy="-12" r="2.9" fill="currentColor" stroke="none"/>
+              <line x1="0" y1="-8.6" x2="0" y2="-1"/>
+              <line class="fA" x1="0" y1="-5.8" x2="3.8" y2="-2.4"/>
+              <line class="fB" x1="0" y1="-5.8" x2="-3.8" y2="-2.4"/>
+              <line x1="0" y1="-1" x2="-3.4" y2="5.4"/><line x1="0" y1="-1" x2="3.4" y2="5.4"/>
+            </g>
+          </g></g>` : ''}
+          <text x="0" y="24" text-anchor="middle" fill="#c9a84c" font-size="9" letter-spacing="1.6" font-family="Inter">SU CASA</text>
         </g>
-        ${cerradoTipitos}
         ${badge(932, 214, cerrado.length, '#c9a84c')}
       </svg>
       <div class="pv-recorrido-note">Lectura agregada y anónima. No muestra nombre, teléfono, email ni mensajes.</div>
