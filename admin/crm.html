@@ -20,6 +20,19 @@
     .crm-kpi { background:var(--crm-surface); border:1px solid var(--card-border); border-top:1px solid rgba(255,255,255,.12); border-radius:10px; padding:0.5rem 1rem; font-size:0.7rem; color:var(--gris); box-shadow:0 12px 34px rgba(0,0,0,.22); }
     .crm-kpi strong { display:block; font-size:1.1rem; font-weight:700; color:var(--blanco); }
 
+    /* ── Filtros CRM ── */
+    .crm-filtros { margin:1rem 1.5rem 0; padding:0.95rem; background:var(--crm-surface); border:1px solid var(--card-border); border-top:1px solid rgba(255,255,255,.12); border-radius:var(--card-radius); box-shadow:0 16px 42px rgba(0,0,0,.22); }
+    .crm-filtros-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0.7rem; align-items:end; }
+    .crm-filtro-grupo { min-width:0; }
+    .crm-filtro-grupo label { display:block; margin-bottom:0.28rem; font-size:0.56rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,.38); }
+    .crm-filtro-control { width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.72rem; outline:none; }
+    .crm-filtro-control:focus { border-color:rgba(255,255,255,.22); }
+    .crm-filtro-control option { background:#141414; color:var(--blanco); }
+    .crm-filtros-footer { display:flex; align-items:center; justify-content:space-between; gap:0.8rem; margin-top:0.8rem; flex-wrap:wrap; }
+    .crm-filtro-resumen { font-size:0.68rem; color:rgba(255,255,255,.5); }
+    .crm-filtro-limpiar { padding:0.48rem 0.9rem; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.035); color:rgba(245,243,240,.74); font-family:'Inter',sans-serif; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; cursor:pointer; transition:all .15s; }
+    .crm-filtro-limpiar:hover { border-color:rgba(255,255,255,.18); color:var(--blanco); background:rgba(255,255,255,.055); }
+
     /* ── Board ── */
     .crm-board {
       display:flex; gap:0.8rem; padding:1.2rem 1.5rem 2rem;
@@ -134,7 +147,12 @@
     .crm-nota-new-label { font-size:0.6rem; color:var(--gris); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem; }
 
     @media (max-width:560px) {
+      .crm-filtros-grid { grid-template-columns:1fr; }
       .crm-persona-grid { grid-template-columns:1fr; }
+    }
+
+    @media (min-width:561px) and (max-width:980px) {
+      .crm-filtros-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
 
     /* spinner */
@@ -234,6 +252,77 @@
       <div class="crm-kpis" id="crmKpis"><div class="sp"></div></div>
     </div>
 
+    <!-- Filtros -->
+    <div class="crm-filtros" id="crmFiltros">
+      <div class="crm-filtros-grid">
+        <div class="crm-filtro-grupo">
+          <label for="fFecha">Fecha</label>
+          <select class="crm-filtro-control" id="fFecha">
+            <option value="todo">Todo</option>
+            <option value="hoy">Hoy</option>
+            <option value="7">7 días</option>
+            <option value="30">30 días</option>
+            <option value="custom">Rango custom</option>
+          </select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fDesde">Desde</label>
+          <input class="crm-filtro-control" type="date" id="fDesde">
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fHasta">Hasta</label>
+          <input class="crm-filtro-control" type="date" id="fHasta">
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fProvincia">Provincia</label>
+          <select class="crm-filtro-control" id="fProvincia"></select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fCiudad">Ciudad</label>
+          <select class="crm-filtro-control" id="fCiudad"></select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fProyecto">Proyecto</label>
+          <select class="crm-filtro-control" id="fProyecto"></select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fCanal">Canal</label>
+          <select class="crm-filtro-control" id="fCanal"></select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fTipo">Categoría</label>
+          <select class="crm-filtro-control" id="fTipo">
+            <option value="">Todas las categorías</option>
+            <option value="inmobiliaria">Inmobiliaria</option>
+            <option value="particular">Particular</option>
+            <option value="punto_venta">Punto de venta</option>
+            <option value="Sin categoría">Sin categoría</option>
+          </select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fAcceso">Acceso</label>
+          <select class="crm-filtro-control" id="fAcceso">
+            <option value="">Todos los accesos</option>
+            <option value="activo">Activo</option>
+            <option value="pasivo">Pasivo</option>
+          </select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fVia">Vía</label>
+          <select class="crm-filtro-control" id="fVia">
+            <option value="">Todas las vías</option>
+            <option value="QR">QR</option>
+            <option value="Link">Link</option>
+            <option value="Directo">Directo</option>
+          </select>
+        </div>
+      </div>
+      <div class="crm-filtros-footer">
+        <span class="crm-filtro-resumen" id="crmFiltroResumen">Mostrando 0 de 0 consultas</span>
+        <button class="crm-filtro-limpiar" type="button" id="btnLimpiarFiltros">Limpiar filtros</button>
+      </div>
+    </div>
+
     <!-- Board -->
     <div class="crm-board" id="crmBoard">
       <div style="margin:auto; color:var(--gris); font-size:0.8rem;">Cargando leads...</div>
@@ -289,6 +378,237 @@ const ETAPAS = [
 let _leads = []
 let _dragged = null
 let _modalId = null
+let _mapasFiltrosCargados = false
+let _canalPorCodigo = new Map()
+let _canalPorReferencia = new Map()
+let _proyectoPorSlug = new Map()
+let _filtros = {
+  fecha: 'todo',
+  desde: '',
+  hasta: '',
+  provincia: '',
+  ciudad: '',
+  proyecto: '',
+  canal: '',
+  tipo: '',
+  acceso: '',
+  via: ''
+}
+
+function textoPlano(v) {
+  return (v == null ? '' : String(v)).trim()
+}
+
+function claveMapa(v) {
+  return textoPlano(v).toLowerCase()
+}
+
+function ordenarValores(valores) {
+  return [...new Set(valores.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+}
+
+function setOpcionesFiltro(id, valores, placeholder) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const actual = el.value
+  const lista = ordenarValores(valores)
+  el.innerHTML = `<option value="">${esc(placeholder)}</option>` + lista
+    .map(v => `<option value="${esc(v)}">${esc(v)}</option>`)
+    .join('')
+  el.value = lista.includes(actual) ? actual : ''
+}
+
+function leerFiltrosDesdeDom() {
+  _filtros = {
+    fecha: document.getElementById('fFecha')?.value || 'todo',
+    desde: document.getElementById('fDesde')?.value || '',
+    hasta: document.getElementById('fHasta')?.value || '',
+    provincia: document.getElementById('fProvincia')?.value || '',
+    ciudad: document.getElementById('fCiudad')?.value || '',
+    proyecto: document.getElementById('fProyecto')?.value || '',
+    canal: document.getElementById('fCanal')?.value || '',
+    tipo: document.getElementById('fTipo')?.value || '',
+    acceso: document.getElementById('fAcceso')?.value || '',
+    via: document.getElementById('fVia')?.value || ''
+  }
+}
+
+function renderFiltroOpciones() {
+  setOpcionesFiltro('fProvincia', _leads.map(l => l._provincia), 'Todas las provincias')
+  leerFiltrosDesdeDom()
+  const baseCiudad = _filtros.provincia ? _leads.filter(l => l._provincia === _filtros.provincia) : _leads
+  setOpcionesFiltro('fCiudad', baseCiudad.map(l => l._ciudad), 'Todas las ciudades')
+  setOpcionesFiltro('fProyecto', _leads.map(l => l._proyectoNombre), 'Todos los proyectos')
+  setOpcionesFiltro('fCanal', _leads.map(l => l._canalNombre), 'Todos los canales')
+  leerFiltrosDesdeDom()
+}
+
+function fechaLead(l) {
+  const d = new Date(l.fecha || l.created_at)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function fechaDesdeInput(v) {
+  if (!v) return null
+  const d = new Date(`${v}T00:00:00`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function fechaHastaInput(v) {
+  if (!v) return null
+  const d = new Date(`${v}T23:59:59.999`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function pasaFiltroFecha(l) {
+  const d = fechaLead(l)
+  if (!d) return true
+  const ahora = new Date()
+  if (_filtros.fecha === 'hoy') {
+    const ini = new Date(ahora); ini.setHours(0,0,0,0)
+    const fin = new Date(ini); fin.setDate(fin.getDate() + 1)
+    return d >= ini && d < fin
+  }
+  if (_filtros.fecha === '7' || _filtros.fecha === '30') {
+    const ini = new Date(ahora)
+    ini.setDate(ini.getDate() - Number(_filtros.fecha))
+    return d >= ini
+  }
+  if (_filtros.fecha === 'custom') {
+    const desde = fechaDesdeInput(_filtros.desde)
+    const hasta = fechaHastaInput(_filtros.hasta)
+    if (desde && d < desde) return false
+    if (hasta && d > hasta) return false
+  }
+  return true
+}
+
+function getLeadsFiltrados() {
+  return _leads.filter(l => {
+    if (!pasaFiltroFecha(l)) return false
+    if (_filtros.provincia && l._provincia !== _filtros.provincia) return false
+    if (_filtros.ciudad && l._ciudad !== _filtros.ciudad) return false
+    if (_filtros.proyecto && l._proyectoNombre !== _filtros.proyecto) return false
+    if (_filtros.canal && l._canalNombre !== _filtros.canal) return false
+    if (_filtros.tipo && l._tipo !== _filtros.tipo) return false
+    if (_filtros.acceso && l._tipoAcceso !== _filtros.acceso) return false
+    if (_filtros.via && l._via !== _filtros.via) return false
+    return true
+  })
+}
+
+function resolverCanal(canalRef) {
+  const ref = textoPlano(canalRef)
+  if (!ref) return null
+  return _canalPorReferencia.get(claveMapa(ref)) || _canalPorCodigo.get(claveMapa(ref)) || null
+}
+
+function enriquecerLead(l) {
+  const directo = !textoPlano(l.canal_ref)
+  const canal = resolverCanal(l.canal_ref)
+  const proyectoSlug = textoPlano(l.proyecto_slug)
+  const proyecto = proyectoSlug ? _proyectoPorSlug.get(claveMapa(proyectoSlug)) : null
+  return {
+    ...l,
+    _propTitulo: l.propiedades?.titulo || null,
+    _canalNombre: directo ? 'Directo' : (canal?.nombre || 'Sin canal'),
+    _ciudad: canal?.ciudad || 'Sin ubicación',
+    _provincia: canal?.provincia || 'Sin ubicación',
+    _tipo: canal?.tipo || 'Sin categoría',
+    _tipoAcceso: canal?.tipo_acceso || 'pasivo',
+    _via: directo ? 'Directo' : (String(l.canal_via || '').toLowerCase() === 'qr' ? 'QR' : 'Link'),
+    _directo: directo,
+    _proyectoNombre: proyectoSlug ? (proyecto?.nombre || proyectoSlug) : 'Sin proyecto',
+    estado: l.estado || 'nueva'
+  }
+}
+
+async function cargarMapasFiltros() {
+  if (_mapasFiltrosCargados) return
+  _mapasFiltrosCargados = true
+
+  _canalPorCodigo = new Map()
+  _canalPorReferencia = new Map()
+  _proyectoPorSlug = new Map()
+
+  try {
+    const [canalesRes, referenciasRes, proyectosRes] = await Promise.all([
+      supabase.from('canales').select('id, codigo, nombre, ciudad, provincia, tipo, tipo_acceso'),
+      supabase.from('referencias').select('codigo, canal_id'),
+      supabase.from('proyectos').select('slug, nombre')
+    ])
+
+    if (canalesRes.error) console.warn('[crm filtros] error cargando canales', canalesRes.error)
+    if (referenciasRes.error) console.warn('[crm filtros] error cargando referencias', referenciasRes.error)
+    if (proyectosRes.error) console.warn('[crm filtros] error cargando proyectos', proyectosRes.error)
+
+    const canales = Array.isArray(canalesRes.data) ? canalesRes.data : []
+    const referencias = Array.isArray(referenciasRes.data) ? referenciasRes.data : []
+    const proyectos = Array.isArray(proyectosRes.data) ? proyectosRes.data : []
+    const canalPorId = new Map()
+
+    canales.forEach(c => {
+      if (c.id) canalPorId.set(String(c.id), c)
+      if (c.codigo) _canalPorCodigo.set(claveMapa(c.codigo), c)
+    })
+
+    referencias.forEach(r => {
+      const canal = r.canal_id ? canalPorId.get(String(r.canal_id)) : null
+      if (r.codigo && canal) _canalPorReferencia.set(claveMapa(r.codigo), canal)
+    })
+
+    proyectos.forEach(p => {
+      if (p.slug) _proyectoPorSlug.set(claveMapa(p.slug), p)
+    })
+  } catch (error) {
+    console.warn('[crm filtros] error cargando mapas auxiliares', error)
+  }
+}
+
+function aplicarFiltrosDesdeDom() {
+  leerFiltrosDesdeDom()
+  renderFiltroOpciones()
+  leerFiltrosDesdeDom()
+  renderKpis()
+  renderBoard()
+}
+
+function limpiarFiltros() {
+  const valores = {
+    fFecha: 'todo',
+    fDesde: '',
+    fHasta: '',
+    fProvincia: '',
+    fCiudad: '',
+    fProyecto: '',
+    fCanal: '',
+    fTipo: '',
+    fAcceso: '',
+    fVia: ''
+  }
+  Object.entries(valores).forEach(([id, value]) => {
+    const el = document.getElementById(id)
+    if (el) el.value = value
+  })
+  leerFiltrosDesdeDom()
+  renderFiltroOpciones()
+  renderKpis()
+  renderBoard()
+}
+
+function inicializarFiltros() {
+  ;['fFecha','fProvincia','fCiudad','fProyecto','fCanal','fTipo','fAcceso','fVia'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', aplicarFiltrosDesdeDom)
+  })
+  ;['fDesde','fHasta'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => {
+      const fecha = document.getElementById('fFecha')
+      if (fecha) fecha.value = 'custom'
+      aplicarFiltrosDesdeDom()
+    })
+  })
+  document.getElementById('btnLimpiarFiltros')?.addEventListener('click', limpiarFiltros)
+}
 
 // ── Cargar leads ──
 async function cargar() {
@@ -297,23 +617,25 @@ async function cargar() {
     .select('*, propiedades(id, titulo)')
     .order('created_at', { ascending: false })
 
-  if (error || !data) return
-  _leads = data.map(l => ({
-    ...l,
-    _propTitulo: l.propiedades?.titulo || null,
-    estado: l.estado || 'nueva'
-  }))
+  await cargarMapasFiltros()
 
+  if (error || !data) return
+  _leads = data.map(enriquecerLead)
+
+  renderFiltroOpciones()
   renderKpis()
   renderBoard()
 }
 
 // ── KPIs ──
 function renderKpis() {
-  const total   = _leads.length
-  const nuevos  = _leads.filter(l => l.estado === 'nueva').length
-  const cerrados = _leads.filter(l => l.estado === 'cerrado').length
+  const leads = getLeadsFiltrados()
+  const total   = leads.length
+  const nuevos  = leads.filter(l => l.estado === 'nueva').length
+  const cerrados = leads.filter(l => l.estado === 'cerrado').length
   const tasa    = total > 0 ? ((cerrados / total) * 100).toFixed(0) : 0
+  const resumen = document.getElementById('crmFiltroResumen')
+  if (resumen) resumen.textContent = `Mostrando ${total} de ${_leads.length} consultas`
   document.getElementById('crmKpis').innerHTML = `
     <div class="crm-kpi"><strong>${total}</strong>Total leads</div>
     <div class="crm-kpi"><strong style="color:#d76f3f">${nuevos}</strong>Sin contactar</div>
@@ -325,8 +647,9 @@ function renderKpis() {
 // ── Board ──
 function renderBoard() {
   const board = document.getElementById('crmBoard')
+  const filtrados = getLeadsFiltrados()
   board.innerHTML = ETAPAS.map(etapa => {
-    const leads = _leads.filter(l => (l.estado || 'nueva') === etapa.id)
+    const leads = filtrados.filter(l => (l.estado || 'nueva') === etapa.id)
     return `
       <div class="crm-col ${esc(etapa.clase)}" data-etapa="${esc(etapa.id)}">
         <div class="crm-col-head">
@@ -718,6 +1041,7 @@ document.getElementById('modalNotaSave').addEventListener('click', async () => {
   setTimeout(() => { btn.textContent = '+ Agregar nota' }, 1200)
 })
 
+inicializarFiltros()
 cargar()
 </script>
 </body>
