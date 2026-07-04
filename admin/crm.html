@@ -8,14 +8,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris:#888; --blanco:#f5f3f0; }
+    :root { --crm-bg:#090909; --card-bg:#141414; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris:#888; --blanco:#f5f3f0; --crm-surface:linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.02)); }
     html, body { overflow-x: visible !important; }
-    .admin-main { font-family:'Inter',system-ui,sans-serif; max-width:none; padding:0; overflow-x:auto; }
+    body { background:var(--crm-bg); }
+    .admin-layout { background:var(--crm-bg); }
+    .admin-main { font-family:'Inter',system-ui,sans-serif; max-width:none; padding:0; overflow-x:auto; background:var(--crm-bg); color:var(--blanco); }
 
     /* ── Header ── */
     .crm-header { padding:1.5rem 1.5rem 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
     .crm-kpis { display:flex; gap:0.6rem; flex-wrap:wrap; }
-    .crm-kpi { background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:0.5rem 1rem; font-size:0.7rem; color:var(--gris); }
+    .crm-kpi { background:var(--crm-surface); border:1px solid var(--card-border); border-top:1px solid rgba(255,255,255,.12); border-radius:10px; padding:0.5rem 1rem; font-size:0.7rem; color:var(--gris); box-shadow:0 12px 34px rgba(0,0,0,.22); }
     .crm-kpi strong { display:block; font-size:1.1rem; font-weight:700; color:var(--blanco); }
 
     /* ── Board ── */
@@ -28,10 +30,12 @@
     /* ── Columna ── */
     .crm-col {
       flex:0 0 260px; min-width:260px;
-      background:rgba(255,255,255,0.02);
+      background:linear-gradient(160deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
       border:1px solid var(--card-border);
+      border-top:1px solid rgba(255,255,255,.11);
       border-radius:var(--card-radius);
       display:flex; flex-direction:column;
+      box-shadow:0 16px 42px rgba(0,0,0,.24);
     }
     .crm-col-head {
       padding:0.9rem 1rem 0.7rem;
@@ -39,19 +43,21 @@
       display:flex; align-items:center; justify-content:space-between;
     }
     .crm-col-title { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; }
-    .crm-col-count { font-size:0.65rem; font-weight:600; background:rgba(255,255,255,0.07); color:var(--gris); padding:0.15rem 0.5rem; border-radius:999px; }
+    .crm-col-count { font-size:0.65rem; font-weight:600; background:rgba(255,255,255,0.06); color:rgba(245,243,240,.62); padding:0.15rem 0.5rem; border-radius:999px; border:1px solid rgba(255,255,255,.06); }
     .crm-col-body { flex:1; padding:0.6rem; display:flex; flex-direction:column; gap:0.5rem; min-height:80px; }
-    .crm-col-body.drag-over { background:rgba(215,111,63,0.06); border-radius:8px; }
+    .crm-col-body.drag-over { background:rgba(255,255,255,0.045); border-radius:8px; }
 
     /* ── Card ── */
     .crm-card {
-      background:var(--card-bg); border:1px solid var(--card-border);
+      background:var(--crm-surface); border:1px solid var(--card-border);
+      border-top:1px solid rgba(255,255,255,.12);
       border-radius:10px; padding:0.8rem 0.9rem;
       cursor:grab; user-select:none;
-      transition:box-shadow .15s, border-color .15s;
+      transition:box-shadow .15s, border-color .15s, transform .15s, background .15s;
       position:relative;
+      box-shadow:0 10px 26px rgba(0,0,0,.2);
     }
-    .crm-card:hover { border-color:rgba(255,255,255,0.15); }
+    .crm-card:hover { border-color:rgba(255,255,255,0.16); transform:translateY(-1px); box-shadow:0 14px 34px rgba(0,0,0,.26); }
     .crm-card.dragging { opacity:0.4; cursor:grabbing; }
     .crm-card-nombre { font-size:0.82rem; font-weight:600; color:var(--blanco); margin-bottom:0.25rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .crm-card-prop { font-size:0.68rem; color:var(--accent); margin-bottom:0.35rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -59,9 +65,9 @@
     .crm-card-footer { display:flex; align-items:center; justify-content:space-between; }
     .crm-card-fecha { font-size:0.6rem; color:var(--gris); }
     .crm-card-actions { display:flex; gap:0.3rem; }
-    .crm-card-btn { font-size:0.6rem; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid rgba(255,255,255,0.1); background:none; color:var(--gris); cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; }
+    .crm-card-btn { font-size:0.6rem; padding:0.2rem 0.5rem; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,.025); color:var(--gris); cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; }
     .crm-card-btn:hover { border-color:var(--accent); color:var(--accent); }
-    .crm-card-canal { font-size:0.6rem; color:var(--gris); background:rgba(255,255,255,0.04); border-radius:4px; padding:0.15rem 0.4rem; display:inline-block; margin-bottom:0.35rem; }
+    .crm-card-canal { font-size:0.6rem; color:rgba(245,243,240,.56); background:rgba(255,255,255,0.045); border:1px solid rgba(255,255,255,.07); border-radius:6px; padding:0.15rem 0.4rem; display:inline-block; margin-bottom:0.35rem; }
     .crm-card-nueva::after { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--accent); border-radius:10px 0 0 10px; }
     .crm-badge-vehiculo { font-size:0.55rem; background:rgba(74,208,196,0.1); color:#4ad0c4; border:1px solid rgba(74,208,196,0.2); border-radius:4px; padding:0.1rem 0.4rem; margin-left:0.3rem; }
 
@@ -74,14 +80,14 @@
     .col-descartado .crm-col-title { color:#666; }
 
     /* ── Modal detalle ── */
-    .crm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center; }
+    .crm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); z-index:1000; align-items:center; justify-content:center; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
     .crm-overlay.open { display:flex; }
-    .crm-modal { background:#1a1814; border:1px solid var(--card-border); border-radius:var(--card-radius); padding:1.8rem; width:90%; max-width:480px; max-height:90vh; overflow-y:auto; }
+    .crm-modal { background:linear-gradient(160deg, rgba(20,20,20,.98), rgba(12,12,12,.98)); border:1px solid var(--card-border); border-top:1px solid rgba(255,255,255,.12); border-radius:var(--card-radius); padding:1.8rem; width:90%; max-width:480px; max-height:90vh; overflow-y:auto; box-shadow:0 28px 80px rgba(0,0,0,.48); }
     .crm-modal h3 { font-size:1rem; font-weight:600; color:var(--blanco); margin-bottom:1.2rem; }
     .crm-modal-row { display:flex; justify-content:space-between; align-items:flex-start; padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.75rem; }
     .crm-modal-label { color:var(--gris); flex-shrink:0; width:110px; }
     .crm-modal-val { color:var(--blanco); text-align:right; flex:1; word-break:break-word; }
-    .crm-modal-msg { padding:0.8rem; background:rgba(255,255,255,0.03); border-radius:8px; font-size:0.75rem; color:rgba(255,255,255,0.7); line-height:1.6; margin:0.8rem 0; }
+    .crm-modal-msg { padding:0.8rem; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,.06); border-radius:8px; font-size:0.75rem; color:rgba(255,255,255,0.7); line-height:1.6; margin:0.8rem 0; }
     .crm-modal-actions { display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1.2rem; }
     .crm-modal-actions a { flex:1; text-align:center; padding:0.6rem; border-radius:8px; font-size:0.72rem; font-weight:600; text-decoration:none; }
     .btn-wsp { background:rgba(37,211,102,0.1); color:#25d366; border:1px solid rgba(37,211,102,0.25); }
@@ -89,17 +95,19 @@
     .crm-modal-close { float:right; background:none; border:none; color:var(--gris); font-size:1.2rem; cursor:pointer; }
 
     /* Etapa select en modal */
-    .crm-etapa-select { width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.78rem; margin-top:0.8rem; }
+    .crm-etapa-select { width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.78rem; margin-top:0.8rem; outline:none; }
+    .crm-etapa-select:focus { border-color:rgba(255,255,255,.22); }
 
     /* ── Nota ── */
     .crm-nota-wrap { margin-top:0.8rem; }
-    .crm-nota-input { width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.75rem; resize:vertical; min-height:60px; box-sizing:border-box; }
+    .crm-nota-input { width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.75rem; resize:vertical; min-height:60px; box-sizing:border-box; outline:none; }
+    .crm-nota-input:focus { border-color:rgba(255,255,255,.22); }
     .crm-nota-save { margin-top:0.4rem; padding:0.4rem 1rem; background:var(--accent); color:#fff; border:none; border-radius:6px; font-size:0.72rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
 
     /* ── Log de notas ── */
     .crm-notas-titulo { font-size:0.6rem; color:var(--gris); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem; margin-top:0.8rem; }
     .crm-notas-log { display:flex; flex-direction:column; gap:0.4rem; max-height:210px; overflow-y:auto; margin-bottom:0.8rem; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.1) transparent; }
-    .crm-nota-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:0.55rem 0.75rem; }
+    .crm-nota-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-top-color:rgba(255,255,255,.11); border-radius:8px; padding:0.55rem 0.75rem; }
     .crm-nota-item-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.28rem; }
     .crm-nota-item-fecha { font-size:0.6rem; color:var(--gris); }
     .crm-nota-item-del { background:none; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size:0.65rem; padding:0; line-height:1; transition:color .15s; font-family:'Inter',sans-serif; }
