@@ -98,6 +98,13 @@
     .crm-persona-label { display:block; font-size:0.56rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,.36); margin-bottom:0.16rem; }
     .crm-persona-val { display:block; font-size:0.72rem; color:rgba(245,243,240,.84); word-break:break-word; }
     .crm-persona-loading { font-size:0.72rem; color:rgba(255,255,255,.42); }
+    .crm-oportunidades-list { display:flex; flex-direction:column; gap:0.45rem; }
+    .crm-oportunidad-item { padding:0.62rem 0.68rem; border:1px solid rgba(255,255,255,.065); border-radius:8px; background:rgba(255,255,255,.025); }
+    .crm-oportunidad-item.actual { border-color:rgba(245,243,240,.18); background:rgba(255,255,255,.045); }
+    .crm-oportunidad-head { display:flex; align-items:flex-start; justify-content:space-between; gap:0.55rem; margin-bottom:0.35rem; }
+    .crm-oportunidad-titulo { font-size:0.74rem; font-weight:700; color:rgba(245,243,240,.88); line-height:1.35; }
+    .crm-oportunidad-badge { flex-shrink:0; font-size:0.52rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:rgba(245,243,240,.74); border:1px solid rgba(255,255,255,.1); border-radius:999px; padding:0.13rem 0.42rem; background:rgba(255,255,255,.04); }
+    .crm-oportunidad-meta { display:flex; flex-wrap:wrap; gap:0.28rem 0.45rem; font-size:0.62rem; color:rgba(255,255,255,.45); }
     .crm-modal-actions { display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1.2rem; }
     .crm-modal-actions a { flex:1; text-align:center; padding:0.6rem; border-radius:8px; font-size:0.72rem; font-weight:600; text-decoration:none; }
     .btn-wsp { background:rgba(37,211,102,0.1); color:#25d366; border:1px solid rgba(37,211,102,0.25); }
@@ -242,6 +249,7 @@
     <h3 id="modalNombre">—</h3>
     <div id="modalRows"></div>
     <div id="modalPersonaFicha"></div>
+    <div id="modalPersonaOportunidades"></div>
     <div class="crm-modal-msg" id="modalMensaje" style="display:none;"></div>
     <select class="crm-etapa-select" id="modalEtapa"></select>
     <div class="crm-nota-wrap">
@@ -460,6 +468,74 @@ function renderPersonaError() {
     </div>`
 }
 
+function oportunidadTitulo(o) {
+  if (o.propiedades?.titulo) return esc(o.propiedades.titulo)
+  if (o.proyecto_slug) return `Proyecto: ${esc(o.proyecto_slug)}`
+  if (o.propiedad_id) return `Propiedad ${esc(o.propiedad_id)}`
+  return 'Oportunidad sin propiedad asociada'
+}
+
+function oportunidadCanal(o) {
+  if (!o.canal_ref) return 'Directo'
+  const via = o.canal_via === 'qr' ? 'QR' : 'Link'
+  return `${esc(o.canal_ref)} · ${via}`
+}
+
+function renderOportunidadesSinPersona() {
+  return `
+    <div class="crm-persona-card muted">
+      <div class="crm-persona-kicker">Oportunidades</div>
+      <div class="crm-persona-title">Sin ficha de persona vinculada</div>
+      <p class="crm-persona-copy">Cuando este contacto tenga una ficha de persona, acá se verán sus oportunidades relacionadas.</p>
+    </div>`
+}
+
+function renderOportunidadesError() {
+  return `
+    <div class="crm-persona-card muted">
+      <div class="crm-persona-kicker">Oportunidades</div>
+      <div class="crm-persona-title">No se pudieron cargar las oportunidades de esta persona</div>
+      <p class="crm-persona-copy">Podés seguir trabajando esta oportunidad. La lista se intentará cargar nuevamente al reabrir el modal.</p>
+    </div>`
+}
+
+function renderOportunidadesPersona(oportunidades, actualId) {
+  const total = Array.isArray(oportunidades) ? oportunidades.length : 0
+  if (total <= 1) {
+    return `
+      <div class="crm-persona-card muted">
+        <div class="crm-persona-kicker">Oportunidades</div>
+        <div class="crm-persona-title">Oportunidades de esta persona</div>
+        <p class="crm-persona-copy">Esta persona todavía tiene una sola oportunidad registrada.</p>
+      </div>`
+  }
+
+  return `
+    <div class="crm-persona-card">
+      <div class="crm-persona-kicker">Oportunidades</div>
+      <div class="crm-persona-title">Oportunidades de esta persona</div>
+      <div class="crm-oportunidades-list">
+        ${oportunidades.map(o => {
+          const actual = String(o.id) === String(actualId)
+          return `
+            <div class="crm-oportunidad-item${actual ? ' actual' : ''}">
+              <div class="crm-oportunidad-head">
+                <div class="crm-oportunidad-titulo">${oportunidadTitulo(o)}</div>
+                ${actual ? '<span class="crm-oportunidad-badge">Esta oportunidad</span>' : ''}
+              </div>
+              <div class="crm-oportunidad-meta">
+                <span>${esc(fmtPersonaFecha(o.created_at || o.fecha))}</span>
+                <span>·</span>
+                <span>${esc(o.estado || 'nueva')}</span>
+                <span>·</span>
+                <span>${oportunidadCanal(o)}</span>
+              </div>
+            </div>`
+        }).join('')}
+      </div>
+    </div>`
+}
+
 async function cargarPersonaFicha(lead) {
   const cont = document.getElementById('modalPersonaFicha')
   if (!cont) return
@@ -495,6 +571,41 @@ async function cargarPersonaFicha(lead) {
   }
 }
 
+async function cargarPersonaOportunidades(lead) {
+  const cont = document.getElementById('modalPersonaOportunidades')
+  if (!cont) return
+  if (!lead.persona_id) {
+    cont.innerHTML = renderOportunidadesSinPersona()
+    return
+  }
+
+  const leadId = lead.id
+  cont.innerHTML = `
+    <div class="crm-persona-card muted">
+      <div class="crm-persona-loading">Cargando oportunidades de esta persona…</div>
+    </div>`
+
+  try {
+    const { data, error } = await supabase
+      .from('contactos')
+      .select('id, created_at, fecha, estado, canal_ref, canal_via, propiedad_id, proyecto_slug, mensaje, propiedades(id, titulo)')
+      .eq('persona_id', lead.persona_id)
+      .order('created_at', { ascending: false })
+
+    if (_modalId !== leadId) return
+    if (error) {
+      console.warn('[crm persona] error cargando oportunidades', error)
+      cont.innerHTML = renderOportunidadesError()
+      return
+    }
+    cont.innerHTML = renderOportunidadesPersona(data || [], lead.id)
+  } catch (error) {
+    if (_modalId !== leadId) return
+    console.warn('[crm persona] error cargando oportunidades', error)
+    cont.innerHTML = renderOportunidadesError()
+  }
+}
+
 function abrirModal(id) {
   const l = _leads.find(l => l.id === id)
   if (!l) return
@@ -513,6 +624,7 @@ function abrirModal(id) {
     `<div class="crm-modal-row"><span class="crm-modal-label">${k}</span><span class="crm-modal-val">${v}</span></div>`
   ).join('')
   cargarPersonaFicha(l)
+  cargarPersonaOportunidades(l)
 
   const msg = document.getElementById('modalMensaje')
   if (l.mensaje) { msg.style.display = 'block'; msg.textContent = l.mensaje }
