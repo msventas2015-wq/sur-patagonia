@@ -911,6 +911,36 @@
 
 <script type="module">
 import { supabase, getRef, getRefVia, getSiteConfig } from './js/config.js'
+
+/* ── CONTACTO ── */
+document.getElementById('formContacto').addEventListener('submit', async function(e) {
+  e.preventDefault()
+  const alerta = document.getElementById('alertaContacto')
+  const btn = this.querySelector('.btn-submit')
+  btn.textContent = 'Enviando...'
+  btn.disabled = true
+  try {
+    const { error } = await supabase.from('contactos').insert([{
+      nombre: document.getElementById('cNombre').value,
+      email: document.getElementById('cEmail').value,
+      telefono: document.getElementById('cTelefono').value,
+      mensaje: document.getElementById('cMensaje').value,
+      canal_ref: getRef(),
+      canal_via: getRefVia(),
+      fecha: new Date().toISOString()
+    }])
+    if (error) throw error
+    alerta.innerHTML = '<div class="alerta alerta-ok">¡Mensaje enviado! Te respondemos a la brevedad.</div>'
+    this.reset()
+  } catch(err) {
+    console.warn('[form contacto servicios] error insert contactos', err)
+    alerta.innerHTML = '<div class="alerta alerta-err">Error al enviar. Por favor escribinos directamente a info@surpatagonia.com.ar</div>'
+  } finally {
+    btn.textContent = 'Enviar mensaje'
+    btn.disabled = false
+  }
+})
+
 async function aplicarSiteConfig() {
   try {
     const cfg = await getSiteConfig()
@@ -1016,34 +1046,6 @@ document.addEventListener('mouseleave', () => cur.classList.add('hidden'))
 document.querySelectorAll('a, button, [onclick], .ac, .pub-path').forEach(el => {
   el.addEventListener('mouseenter', () => cur.classList.add('big'))
   el.addEventListener('mouseleave', () => cur.classList.remove('big'))
-})
-
-/* ── CONTACTO ── */
-document.getElementById('formContacto').addEventListener('submit', async function(e) {
-  e.preventDefault()
-  const alerta = document.getElementById('alertaContacto')
-  const btn = this.querySelector('.btn-submit')
-  btn.textContent = 'Enviando...'
-  btn.disabled = true
-  try {
-    const { error } = await supabase.from('contactos').insert([{
-      nombre: document.getElementById('cNombre').value,
-      email: document.getElementById('cEmail').value,
-      telefono: document.getElementById('cTelefono').value,
-      mensaje: document.getElementById('cMensaje').value,
-      canal_ref: getRef(),
-      canal_via: getRefVia(),
-      fecha: new Date().toISOString()
-    }])
-    if (error) throw error
-    alerta.innerHTML = '<div class="alerta alerta-ok">¡Mensaje enviado! Te respondemos a la brevedad.</div>'
-    this.reset()
-  } catch(err) {
-    alerta.innerHTML = '<div class="alerta alerta-err">Error al enviar. Por favor escribinos directamente a info@surpatagonia.com.ar</div>'
-  } finally {
-    btn.textContent = 'Enviar mensaje'
-    btn.disabled = false
-  }
 })
 </script>
 
