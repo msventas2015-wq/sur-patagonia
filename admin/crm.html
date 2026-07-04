@@ -80,7 +80,29 @@
     .crm-card-actions { display:flex; gap:0.3rem; }
     .crm-card-btn { font-size:0.6rem; padding:0.2rem 0.5rem; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,.025); color:var(--gris); cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; }
     .crm-card-btn:hover { border-color:var(--accent); color:var(--accent); }
-    .crm-card-canal { font-size:0.6rem; color:rgba(245,243,240,.56); background:rgba(255,255,255,0.045); border:1px solid rgba(255,255,255,.07); border-radius:6px; padding:0.15rem 0.4rem; display:inline-block; margin-bottom:0.35rem; }
+    .crm-card-chips,
+    .crm-inline-chips { display:flex; flex-wrap:wrap; gap:0.28rem; align-items:center; margin-bottom:0.38rem; }
+    .crm-inline-chips { justify-content:flex-end; margin-bottom:0; }
+    .crm-color-chip {
+      --chip-color:#888;
+      display:inline-flex; align-items:center; gap:0.26rem;
+      max-width:100%;
+      font-size:0.58rem; font-weight:700; letter-spacing:0.035em; text-transform:uppercase;
+      color:rgba(245,243,240,.72);
+      background:rgba(255,255,255,0.035);
+      border:1px solid rgba(255,255,255,.075);
+      border-left-color:var(--chip-color);
+      border-radius:999px;
+      padding:0.14rem 0.42rem 0.14rem 0.34rem;
+      line-height:1.25;
+    }
+    .crm-color-chip::before {
+      content:'';
+      width:0.42rem; height:0.42rem;
+      border-radius:999px;
+      background:var(--chip-color);
+      flex:0 0 auto;
+    }
     .crm-card-nueva::after { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--accent); border-radius:10px 0 0 10px; }
     .crm-badge-vehiculo { font-size:0.55rem; background:rgba(74,208,196,0.1); color:#4ad0c4; border:1px solid rgba(74,208,196,0.2); border-radius:4px; padding:0.1rem 0.4rem; margin-left:0.3rem; }
 
@@ -383,6 +405,21 @@ const ETAPAS = [
   { id: 'descartado', label: 'Descartado',          clase: 'col-descartado' }
 ]
 
+const PALETA_CANALES = [
+  '#3a4eb8', '#2c3e9c', '#4556a8', '#1e5fa0', '#2a6db5', '#1f4ed8',
+  '#2e5cb8', '#7b3fb0', '#6b3fa0', '#8a5fc4', '#a86fb5', '#b87fc0',
+  '#c040a0', '#a82c8f', '#d20c5c', '#e0186b', '#d65d7a', '#c94869',
+  '#ff6b5b', '#e85a4f', '#dc143c', '#e63946', '#7a1f2e', '#8b2236',
+  '#9c2740', '#5d2e5d', '#6b3470', '#c0603e', '#a8512f', '#b87333',
+  '#c8843e', '#8c7853', '#a0825d', '#c08a2e', '#cc9333', '#d4ed00',
+  '#e6f23a', '#a0c850', '#bcd96e', '#39ff14', '#4dff4d', '#3eb489',
+  '#4fca9e', '#2a9d7a', '#1f8473', '#3aa68a', '#1a7a7a', '#0d6b6b',
+  '#1d7a8c', '#0f6e80', '#a89878', '#8a7d72', '#6b7a2c', '#7a8a3e',
+]
+const COLOR_VIA_QR = '#50c878'
+const COLOR_VIA_LINK = '#6495ed'
+const COLOR_NEUTRO = '#888'
+
 let _leads = []
 let _dragged = null
 let _modalId = null
@@ -409,6 +446,52 @@ function textoPlano(v) {
 
 function claveMapa(v) {
   return textoPlano(v).toLowerCase()
+}
+
+function colorCssSeguro(color) {
+  return /^#[0-9a-f]{6}$/i.test(String(color || '')) ? String(color) : COLOR_NEUTRO
+}
+
+function colorCanalDesdeIndex(colorIndex) {
+  const n = Number(colorIndex)
+  return Number.isInteger(n) && n >= 0 && n < PALETA_CANALES.length
+    ? PALETA_CANALES[n]
+    : COLOR_NEUTRO
+}
+
+function infoVia(canalVia, directo = false) {
+  if (directo) return { label: 'Directo', color: COLOR_NEUTRO }
+  const via = claveMapa(canalVia)
+  if (via === 'qr') return { label: 'QR', color: COLOR_VIA_QR }
+  if (via === 'link') return { label: 'Link', color: COLOR_VIA_LINK }
+  if (via === 'directo' || via === 'directa') return { label: 'Directo', color: COLOR_NEUTRO }
+  return { label: 'Link', color: COLOR_VIA_LINK }
+}
+
+function infoCanal(canalRef, colorFallback = null) {
+  const ref = textoPlano(canalRef)
+  if (!ref) return null
+  const canal = resolverCanal(ref)
+  return {
+    label: ref,
+    color: colorCssSeguro(colorFallback || colorCanalDesdeIndex(canal?.color_index))
+  }
+}
+
+function renderColorChip(label, color) {
+  const txt = textoPlano(label)
+  if (!txt) return ''
+  return `<span class="crm-color-chip" style="--chip-color:${colorCssSeguro(color)}">${esc(txt)}</span>`
+}
+
+function renderCanalViaChips(canalRef, canalVia, canalColor = null) {
+  const directo = !textoPlano(canalRef) && !textoPlano(canalVia)
+  const canal = infoCanal(canalRef, canalColor)
+  const via = infoVia(canalVia, directo)
+  return [
+    canal ? renderColorChip(canal.label, canal.color) : '',
+    renderColorChip(via.label, via.color)
+  ].filter(Boolean).join('')
 }
 
 function ordenarValores(valores) {
@@ -514,17 +597,20 @@ function resolverCanal(canalRef) {
 function enriquecerLead(l) {
   const directo = !textoPlano(l.canal_ref)
   const canal = resolverCanal(l.canal_ref)
+  const via = infoVia(l.canal_via, directo)
   const proyectoSlug = textoPlano(l.proyecto_slug)
   const proyecto = proyectoSlug ? _proyectoPorSlug.get(claveMapa(proyectoSlug)) : null
   return {
     ...l,
     _propTitulo: l.propiedades?.titulo || null,
     _canalNombre: directo ? 'Directo' : (canal?.nombre || 'Sin canal'),
+    _canalColor: directo ? COLOR_NEUTRO : colorCanalDesdeIndex(canal?.color_index),
     _ciudad: canal?.ciudad || 'Sin ubicación',
     _provincia: canal?.provincia || 'Sin ubicación',
     _tipo: canal?.tipo || 'Sin categoría',
     _tipoAcceso: canal?.tipo_acceso || 'pasivo',
-    _via: directo ? 'Directo' : (String(l.canal_via || '').toLowerCase() === 'qr' ? 'QR' : 'Link'),
+    _via: via.label,
+    _viaColor: via.color,
     _directo: directo,
     _proyectoNombre: proyectoSlug ? (proyecto?.nombre || proyectoSlug) : 'Sin proyecto',
     estado: l.estado || 'nueva'
@@ -541,7 +627,7 @@ async function cargarMapasFiltros() {
 
   try {
     const [canalesRes, referenciasRes, proyectosRes] = await Promise.all([
-      supabase.from('canales').select('id, codigo, nombre, ciudad, provincia, tipo, tipo_acceso'),
+      supabase.from('canales').select('id, codigo, nombre, ciudad, provincia, tipo, tipo_acceso, color_index'),
       supabase.from('referencias').select('codigo, canal_id'),
       supabase.from('proyectos').select('slug, nombre')
     ])
@@ -686,11 +772,12 @@ function renderBoard() {
 function renderCard(l) {
   const fecha = new Date(l.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short' })
   const esNuevo = (l.estado || 'nueva') === 'nueva' && !l.leido
+  const chips = renderCanalViaChips(l.canal_ref, l.canal_via, l._canalColor)
   return `
     <div class="crm-card${esNuevo ? ' crm-card-nueva' : ''}" draggable="true" data-id="${esc(l.id)}">
       <div class="crm-card-nombre">${esc(l.nombre) || 'Sin nombre'}</div>
       ${l._propTitulo ? `<div class="crm-card-prop">🏠 ${esc(l._propTitulo)}</div>` : ''}
-      ${l.canal_ref ? `<div class="crm-card-canal">📎 ${esc(l.canal_ref)}${l.canal_via === 'qr' ? ' · QR' : ''}</div>` : ''}
+      ${chips ? `<div class="crm-card-chips">${chips}</div>` : ''}
       ${l.mensaje ? `<div class="crm-card-msg">${esc(l.mensaje)}</div>` : ''}
       <div class="crm-card-footer">
         <span class="crm-card-fecha">${fecha}</span>
@@ -807,9 +894,7 @@ function oportunidadTitulo(o) {
 }
 
 function oportunidadCanal(o) {
-  if (!o.canal_ref) return 'Directo'
-  const via = o.canal_via === 'qr' ? 'QR' : 'Link'
-  return `${esc(o.canal_ref)} · ${via}`
+  return `<span class="crm-inline-chips">${renderCanalViaChips(o.canal_ref, o.canal_via)}</span>`
 }
 
 function renderOportunidadesSinPersona() {
@@ -888,9 +973,8 @@ function eventoEstados(e) {
 }
 
 function eventoCanal(e) {
-  if (!e.canal_ref) return ''
-  const via = e.canal_via ? ` · ${esc(e.canal_via)}` : ''
-  return `<span>${esc(e.canal_ref)}${via}</span>`
+  if (!e.canal_ref && !e.canal_via) return ''
+  return `<span class="crm-inline-chips">${renderCanalViaChips(e.canal_ref, e.canal_via)}</span>`
 }
 
 function renderHistorialError() {
@@ -1058,7 +1142,7 @@ function abrirModal(id) {
     ['Email',      l.email     ? `<a href="mailto:${esc(l.email)}" style="color:var(--accent)">${esc(l.email)}</a>` : '—'],
     ['Teléfono',   l.telefono  || '—'],
     ['Propiedad',  l._propTitulo || '—'],
-    ['Canal',      l.canal_ref ? `${esc(l.canal_ref)}${l.canal_via === 'qr' ? ' (QR)' : ' (Link)'}` : 'Directo'],
+    ['Canal',      `<span class="crm-inline-chips">${renderCanalViaChips(l.canal_ref, l.canal_via, l._canalColor)}</span>`],
     ['Fecha',      new Date(l.created_at).toLocaleString('es-AR')],
   ]
   document.getElementById('modalRows').innerHTML = rows.map(([k,v]) =>
