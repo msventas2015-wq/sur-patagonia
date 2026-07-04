@@ -118,6 +118,13 @@
     .crm-oportunidad-titulo { font-size:0.74rem; font-weight:700; color:rgba(245,243,240,.88); line-height:1.35; }
     .crm-oportunidad-badge { flex-shrink:0; font-size:0.52rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:rgba(245,243,240,.74); border:1px solid rgba(255,255,255,.1); border-radius:999px; padding:0.13rem 0.42rem; background:rgba(255,255,255,.04); }
     .crm-oportunidad-meta { display:flex; flex-wrap:wrap; gap:0.28rem 0.45rem; font-size:0.62rem; color:rgba(255,255,255,.45); }
+    .crm-eventos-list { display:flex; flex-direction:column; gap:0.45rem; }
+    .crm-evento-item { padding:0.62rem 0.68rem; border:1px solid rgba(255,255,255,.065); border-radius:8px; background:rgba(255,255,255,.025); }
+    .crm-evento-item.actual { border-color:rgba(245,243,240,.18); background:rgba(255,255,255,.045); }
+    .crm-evento-head { display:flex; align-items:flex-start; justify-content:space-between; gap:0.55rem; margin-bottom:0.35rem; }
+    .crm-evento-tipo { font-size:0.74rem; font-weight:700; color:rgba(245,243,240,.88); line-height:1.35; text-transform:none; }
+    .crm-evento-badge { flex-shrink:0; font-size:0.52rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:rgba(245,243,240,.74); border:1px solid rgba(255,255,255,.1); border-radius:999px; padding:0.13rem 0.42rem; background:rgba(255,255,255,.04); }
+    .crm-evento-meta { display:flex; flex-wrap:wrap; gap:0.28rem 0.45rem; font-size:0.62rem; color:rgba(255,255,255,.45); }
     .crm-modal-actions { display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1.2rem; }
     .crm-modal-actions a { flex:1; text-align:center; padding:0.6rem; border-radius:8px; font-size:0.72rem; font-weight:600; text-decoration:none; }
     .btn-wsp { background:rgba(37,211,102,0.1); color:#25d366; border:1px solid rgba(37,211,102,0.25); }
@@ -339,6 +346,7 @@
     <div id="modalRows"></div>
     <div id="modalPersonaFicha"></div>
     <div id="modalPersonaOportunidades"></div>
+    <div id="modalPersonaHistorial"></div>
     <div class="crm-modal-msg" id="modalMensaje" style="display:none;"></div>
     <select class="crm-etapa-select" id="modalEtapa"></select>
     <div class="crm-nota-wrap">
@@ -859,6 +867,78 @@ function renderOportunidadesPersona(oportunidades, actualId) {
     </div>`
 }
 
+function fmtEventoFecha(v) {
+  if (!v) return '—'
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' })
+    + ' ' + d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+}
+
+function eventoLabel(v) {
+  const txt = textoPlano(v)
+  return txt ? txt.replace(/_/g, ' ') : 'Evento CRM'
+}
+
+function eventoEstados(e) {
+  if (!e.estado_anterior && !e.estado_nuevo) return ''
+  const anterior = e.estado_anterior ? esc(e.estado_anterior) : '—'
+  const nuevo = e.estado_nuevo ? esc(e.estado_nuevo) : '—'
+  return `<span>${anterior} → ${nuevo}</span>`
+}
+
+function eventoCanal(e) {
+  if (!e.canal_ref) return ''
+  const via = e.canal_via ? ` · ${esc(e.canal_via)}` : ''
+  return `<span>${esc(e.canal_ref)}${via}</span>`
+}
+
+function renderHistorialError() {
+  return `
+    <div class="crm-persona-card muted">
+      <div class="crm-persona-kicker">Historial</div>
+      <div class="crm-persona-title">No se pudo cargar el historial CRM</div>
+      <p class="crm-persona-copy">Podés seguir trabajando esta oportunidad. El historial se intentará cargar nuevamente al reabrir el modal.</p>
+    </div>`
+}
+
+function renderHistorialPersona(eventos, actualId) {
+  const lista = Array.isArray(eventos) ? eventos : []
+  if (!lista.length) {
+    return `
+      <div class="crm-persona-card muted">
+        <div class="crm-persona-kicker">Historial</div>
+        <div class="crm-persona-title">Historial CRM</div>
+        <p class="crm-persona-copy">Todavía no hay eventos registrados para esta oportunidad.</p>
+      </div>`
+  }
+
+  return `
+    <div class="crm-persona-card">
+      <div class="crm-persona-kicker">Historial</div>
+      <div class="crm-persona-title">Historial CRM</div>
+      <div class="crm-eventos-list">
+        ${lista.map(e => {
+          const actual = String(e.contacto_id) === String(actualId)
+          const meta = [
+            `<span>${esc(fmtEventoFecha(e.fecha_evento || e.created_at))}</span>`,
+            eventoEstados(e),
+            eventoCanal(e),
+            e.origen ? `<span>${esc(e.origen)}</span>` : ''
+          ].filter(Boolean)
+          return `
+            <div class="crm-evento-item${actual ? ' actual' : ''}">
+              <div class="crm-evento-head">
+                <div class="crm-evento-tipo">${esc(eventoLabel(e.tipo_evento))}</div>
+                ${actual ? '<span class="crm-evento-badge">Esta oportunidad</span>' : ''}
+              </div>
+              <div class="crm-evento-meta">${meta.join('<span>·</span>')}</div>
+            </div>`
+        }).join('')}
+      </div>
+    </div>`
+}
+
 async function cargarPersonaFicha(lead) {
   const cont = document.getElementById('modalPersonaFicha')
   if (!cont) return
@@ -891,6 +971,44 @@ async function cargarPersonaFicha(lead) {
     if (_modalId !== leadId) return
     console.warn('[crm persona] error cargando ficha', error)
     cont.innerHTML = renderPersonaError()
+  }
+}
+
+async function cargarPersonaHistorial(lead) {
+  const cont = document.getElementById('modalPersonaHistorial')
+  if (!cont) return
+
+  const leadId = lead.id
+  cont.innerHTML = `
+    <div class="crm-persona-card muted">
+      <div class="crm-persona-loading">Cargando historial CRM…</div>
+    </div>`
+
+  try {
+    let query = supabase
+      .from('crm_eventos')
+      .select('id, contacto_id, persona_id, tipo_evento, estado_anterior, estado_nuevo, origen, canal_ref, canal_via, fecha_evento, created_at')
+      .order('fecha_evento', { ascending: false })
+
+    if (lead.persona_id) {
+      query = query.or(`persona_id.eq.${lead.persona_id},contacto_id.eq.${lead.id}`)
+    } else {
+      query = query.eq('contacto_id', lead.id)
+    }
+
+    const { data, error } = await query
+
+    if (_modalId !== leadId) return
+    if (error) {
+      console.warn('[crm persona] error cargando historial', error)
+      cont.innerHTML = renderHistorialError()
+      return
+    }
+    cont.innerHTML = renderHistorialPersona(data || [], lead.id)
+  } catch (error) {
+    if (_modalId !== leadId) return
+    console.warn('[crm persona] error cargando historial', error)
+    cont.innerHTML = renderHistorialError()
   }
 }
 
@@ -948,6 +1066,7 @@ function abrirModal(id) {
   ).join('')
   cargarPersonaFicha(l)
   cargarPersonaOportunidades(l)
+  cargarPersonaHistorial(l)
 
   const msg = document.getElementById('modalMensaje')
   if (l.mensaje) { msg.style.display = 'block'; msg.textContent = l.mensaje }
