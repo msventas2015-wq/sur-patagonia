@@ -324,7 +324,7 @@
     /* Nodo de canal: núcleo + anillos sonar (divIcon) */
     .canal-nodo { position:relative; width:100%; height:100%; }
     .canal-nodo .nodo-core { position:absolute; inset:0; border-radius:50%; border:1px solid rgba(255,255,255,.55); display:block; }
-    .canal-nodo .sonar-ring { position:absolute; inset:0; border-radius:50%; border:1.1px solid currentColor; opacity:0; pointer-events:none; display:block; }
+    .canal-nodo .sonar-ring { position:absolute; inset:0; border-radius:50%; border:1.1px solid currentColor; opacity:0; pointer-events:none; display:block; transform-origin:center; transform-box:fill-box; }
     .sonar-ring.r1 { animation:sonar 3s ease-out infinite; }
     .sonar-ring.r2 { animation:sonar 3s ease-out infinite; animation-delay:1.5s; }
     @keyframes sonar {
@@ -894,6 +894,16 @@ function render() {
 // Canales = nodos con sonar (consultas de hoy), proyectos = rombos hueso.
 // Misma lógica de datos y colores que el mapa anterior; solo cambia el motor de render.
 
+function coordValida(lat, lng) {
+  if (lat == null || lng == null) return false
+  const la = Number(lat), ln = Number(lng)
+  if (!Number.isFinite(la) || !Number.isFinite(ln)) return false
+  // Rango Argentina + algo de margen patagónico
+  if (la < -56 || la > -21) return false
+  if (ln < -74 || ln > -53) return false
+  return true
+}
+
 function initMapa() {
   if (_mapaLeaflet || !window.L) return
   _mapaLeaflet = L.map('mapaLeaflet', {
@@ -909,13 +919,14 @@ function initMapa() {
 
   _capaMarcadores = L.layerGroup().addTo(_mapaLeaflet)
 
-  // Encuadre inicial: todos los puntos con coordenadas (canales + proyectos)
+  // Encuadre inicial: solo puntos con coordenada válida
   const coords = [
-    ...Object.values(_metaCanal).filter(m => m.lat != null && m.lng != null).map(m => [m.lat, m.lng]),
-    ...Object.values(_proyGeo).map(g => [g.lat, g.lng]),
+    ...Object.values(_metaCanal).filter(m => coordValida(m.lat, m.lng)).map(m => [Number(m.lat), Number(m.lng)]),
+    ...Object.values(_proyGeo).filter(g => coordValida(g.lat, g.lng)).map(g => [Number(g.lat), Number(g.lng)]),
   ]
   if (coords.length > 1) _mapaLeaflet.fitBounds(L.latLngBounds(coords), { padding: [30, 30] })
   else if (coords.length === 1) _mapaLeaflet.setView(coords[0], 9)
+  else _mapaLeaflet.setView([-40.5, -65.0], 4)
 }
 
 function renderMapa(rows) {
@@ -934,7 +945,9 @@ function renderMapa(rows) {
   })
 
   // Proyectos (rombos color hueso)
+  const proySinCoords = []
   Object.entries(_proyGeo).forEach(([nombre, geo]) => {
+    if (!coordValida(geo.lat, geo.lng)) { proySinCoords.push(nombre); return }
     const n = porProy[nombre] || 0
     const icon = L.divIcon({
       className: '',
@@ -942,7 +955,7 @@ function renderMapa(rows) {
       iconSize: [14, 14],
       iconAnchor: [7, 7],
     })
-    L.marker([geo.lat, geo.lng], { icon })
+    L.marker([Number(geo.lat), Number(geo.lng)], { icon })
       .bindTooltip(`<b>${esc(nombre)}</b><br>${n} consulta${n === 1 ? '' : 's'} recibida${n === 1 ? '' : 's'}`,
         { sticky: true, direction: 'top', opacity: 1, className: 'mapa-tip' })
       .addTo(_capaMarcadores)
@@ -953,16 +966,43 @@ function renderMapa(rows) {
     inmobiliaria: 'Inmobiliaria', particular: 'Vendedor particular', punto_venta: 'Punto de venta',
     'campaña': 'Campaña', evento: 'Evento',
   }
-  let sinCoords = []
+  const sinCoords = []
+  const invalidas = []
+
+  // Detectar coordenadas duplicadas para aplicar offset radial (no pisar nodos)
+  const coordCount = {}
+  Object.entries(_metaCanal).forEach(([_, m]) => {
+    if (!coordValida(m.lat, m.lng)) return
+    const key = `${m.lat},${m.lng}`
+    coordCount[key] = (coordCount[key] || 0) + 1
+  })
+  const coordIndex = {}
+
   Object.entries(_metaCanal).forEach(([nombre, m]) => {
-    const n = porCanal[nombre] || 0
     if (m.lat == null || m.lng == null) { sinCoords.push(nombre); return }
-    const r = n > 0 ? Math.min(5 + Math.sqrt(n) * 3.5, 17) : 3.5
-    const size = Math.max(Math.round(r * 2), 8)
+    if (!coordValida(m.lat, m.lng)) { invalidas.push(nombre); return }
+
+    // Offset radial si comparte coordenada exacta con otros canales
+    const key = `${m.lat},${m.lng}`
+    const totalEnCoord = coordCount[key] || 1
+    const idxEnCoord = coordIndex[key] || 0
+    coordIndex[key] = idxEnCoord + 1
+    let latRender = Number(m.lat)
+    let lngRender = Number(m.lng)
+    if (totalEnCoord > 1) {
+      const ang = (idxEnCoord / totalEnCoord) * Math.PI * 2
+      const off = 0.012
+      latRender += Math.sin(ang) * off
+      lngRender += Math.cos(ang) * off
+    }
+
+    const n = porCanal[nombre] || 0
     const nHoy = nuevasHoy[nombre] || 0
     const col = colorCssSeguro(colorCanalDesdeIndex(m.color_index), '#8a8a82')
+    const r = Math.min(5 + Math.sqrt(n) * 3, 14)
+    const size = Math.max(Math.round(r * 2), 12)
     const maxScale = Math.min(1.8 + nHoy * 0.45, 4)
-    const coreOpacity = ((n > 0 ? 0.85 : 0.4) * (nHoy > 0 ? 1 : 0.35)).toFixed(2)
+    const coreOpacity = nHoy > 0 ? 0.95 : (n > 0 ? 0.85 : 0.65)
     const anillos = nHoy > 0 ? '<i class="sonar-ring r1"></i><i class="sonar-ring r2"></i>' : ''
     const icon = L.divIcon({
       className: '',
@@ -972,7 +1012,7 @@ function renderMapa(rows) {
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
     })
-    L.marker([m.lat, m.lng], { icon })
+    L.marker([latRender, lngRender], { icon })
       .bindTooltip(
         `<b>${esc(nombre)}</b> · ${esc(LABEL_TIPO[m.tipo] || m.tipo || 'Canal')}` +
         `${m.ciudad ? '<br>' + esc(m.ciudad) + (m.provincia ? ', ' + esc(m.provincia) : '') : ''}` +
@@ -982,9 +1022,11 @@ function renderMapa(rows) {
       .addTo(_capaMarcadores)
   })
 
-  $('mapaNota').textContent = sinCoords.length
-    ? `Sin coordenadas (no aparecen en el mapa): ${sinCoords.join(', ')}. Cargalas en Canales, Editar, Ubicación.`
-    : ''
+  const notas = []
+  if (sinCoords.length) notas.push(`Sin coordenada: ${sinCoords.join(', ')}`)
+  if (invalidas.length) notas.push(`Coordenada inválida (fuera de Argentina): ${invalidas.join(', ')}`)
+  if (proySinCoords.length) notas.push(`Proyectos sin coordenada válida: ${proySinCoords.join(', ')}`)
+  $('mapaNota').textContent = notas.join(' · ')
 }
 
 // ── KPIs (con delta vs período anterior) ──────────────────
