@@ -96,14 +96,17 @@
     .crm-inline-chips { display:flex; flex-wrap:wrap; gap:0.34rem; align-items:center; }
     .crm-inline-chips { justify-content:flex-end; margin-bottom:0; }
     .canal-solid,
+    .canal-kanban,
     .canal-badge,
     .canal-dot { --bc:#8a8a82; }
-    .canal-solid {
-      display:inline-flex; align-items:center; gap:6px; max-width:100%;
-      padding:4px 8px; border-radius:999px;
-      font-size:10.5px; font-weight:800; letter-spacing:.055em; text-transform:uppercase;
-      line-height:1; color:#0f0e0c; background:var(--bc);
-      border:1px solid var(--bc);
+    .canal-kanban {
+      display:inline-flex; align-items:center; width:fit-content; max-width:100%;
+      padding:3px 8px; border-radius:7px;
+      font-size:.63rem; font-weight:500; letter-spacing:.015em;
+      line-height:1.15; color:var(--bc);
+      border:1px solid var(--bc-border);
+      background:var(--bc-bg);
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
     .canal-badge {
       display:inline-flex; align-items:center; gap:6px; max-width:100%;
@@ -578,10 +581,22 @@ function textoSobreColor(color) {
   return lum > 0.56 ? '#0f0e0c' : '#f5f3f0'
 }
 
+function hexToRgbaLocal(color, alpha) {
+  const clean = String(color || '').replace('#', '')
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return `rgba(138,138,130,${alpha})`
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
 function renderCanalChip(label, color, variante = 'badge') {
   const txt = textoPlano(label)
   if (!txt) return ''
   const safe = colorCssSeguro(color)
+  if (variante === 'kanban') {
+    return `<span class="canal-kanban" style="--bc:${safe};--bc-border:${hexToRgbaLocal(safe, 0.44)};--bc-bg:${hexToRgbaLocal(safe, 0.13)}">${esc(txt)}</span>`
+  }
   if (variante === 'solid') {
     return `<span class="canal-solid" style="--bc:${safe}">${esc(txt)}</span>`
   }
@@ -904,8 +919,8 @@ function renderCard(l) {
   const esNuevo = (l.estado || 'nueva') === 'nueva' && !l.leido
   const canalInfo = infoCanal(l.canal_ref, l._canalColor)
   const canalChip = canalInfo
-    ? renderCanalChip(canalInfo.label, canalInfo.color, 'solid')
-    : renderCanalChip('Sin canal', COLOR_NEUTRO, 'solid')
+    ? renderCanalChip(canalInfo.label, canalInfo.color, 'kanban')
+    : renderCanalChip('Sin canal', COLOR_NEUTRO, 'kanban')
   const viaBadge = renderViaBadge(l.canal_via, l._directo)
   const destino = destinoLead(l)
   const mensaje = textoPlano(l.mensaje)
