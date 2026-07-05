@@ -102,8 +102,8 @@
       display:inline-flex; align-items:center; gap:6px; max-width:100%;
       padding:4px 8px; border-radius:999px;
       font-size:10.5px; font-weight:800; letter-spacing:.055em; text-transform:uppercase;
-      line-height:1; color:var(--txt,#0f0e0c); background:var(--bc);
-      border:1px solid color-mix(in srgb, var(--bc) 82%, white);
+      line-height:1; color:#0f0e0c; background:var(--bc);
+      border:1px solid var(--bc);
     }
     .canal-badge {
       display:inline-flex; align-items:center; gap:6px; max-width:100%;
@@ -454,9 +454,42 @@ const CANAL_COLOR_HELPERS = window.SPCanalColors || {}
 const COLOR_VIA_QR = CANAL_COLOR_HELPERS.COLOR_VIA_QR || '#50c878'
 const COLOR_VIA_LINK = CANAL_COLOR_HELPERS.COLOR_VIA_LINK || '#6495ed'
 const COLOR_NEUTRO = CANAL_COLOR_HELPERS.COLOR_NEUTRO || '#8a8a82'
+const PALETA_CANALES_CRM_FALLBACK = [
+  '#3a4eb8','#2c3e9c','#4556a8','#1e5fa0','#2a6db5','#1f4ed8','#2e5cb8',
+  '#7b3fb0','#6b3fa0','#8a5fc4',
+  '#a86fb5','#b87fc0','#c040a0','#a82c8f','#d20c5c','#e0186b',
+  '#d65d7a','#c94869','#ff6b5b','#e85a4f',
+  '#dc143c','#e63946','#7a1f2e','#8b2236','#9c2740',
+  '#5d2e5d','#6b3470','#c0603e','#a8512f','#b87333',
+  '#c8843e','#8c7853','#a0825d','#c08a2e','#cc9333',
+  '#a0c850','#bcd96e','#2a9d7a','#1f8473','#3aa68a',
+  '#3eb489','#4fca9e','#1a7a7a','#0d6b6b','#1d7a8c','#0f6e80',
+  '#a89878','#8a7d72','#6b7a2c','#7a8a3e',
+  '#4a5568','#607080','#364152','#5d6571',
+  '#3a7d6e','#4ba89a','#658e67','#2e6b5e',
+  '#40e0d0','#26b8a8','#5ed4c4',
+  '#7fb3d5','#9ec5de','#5e9ec5',
+  '#2774ae','#1d5a8a','#3a8fce',
+  '#8e9bff','#6f7fe8','#a3b0ff',
+  '#8b5cf6','#7c3aed','#a78bfa',
+  '#9bc534','#b6d44e','#84a728',
+  '#c8d96f','#aab546','#d8e58a',
+  '#6b4226','#8b4513','#5d3818',
+  '#6b2c2c','#8b3a3a','#4d2020',
+  '#ba2b2b','#c81e3c','#a02222',
+  '#ea553b','#f06842','#d44528',
+  '#b3a369','#9c8c5a','#c8b885',
+  '#ff7e5f','#feb47b','#ff6b6b',
+  '#a47864','#8b6552','#b88a76'
+]
 const colorCssSeguro = CANAL_COLOR_HELPERS.colorCssSeguro || ((color, fallback = COLOR_NEUTRO) =>
   /^#[0-9a-f]{6}$/i.test(String(color || '')) ? String(color) : fallback)
-const colorCanalDesdeIndex = CANAL_COLOR_HELPERS.colorCanalDesdeIndex || (() => COLOR_NEUTRO)
+const colorCanalDesdeIndex = CANAL_COLOR_HELPERS.colorCanalDesdeIndex || ((colorIndex, fallback = COLOR_NEUTRO) => {
+  const n = Number(colorIndex)
+  return Number.isInteger(n) && n >= 0 && n < PALETA_CANALES_CRM_FALLBACK.length
+    ? PALETA_CANALES_CRM_FALLBACK[n]
+    : fallback
+})
 
 const ESTADO_COLOR = {
   nueva: '#b39ddb',
@@ -512,13 +545,26 @@ function viaClase(label) {
   return 'badge-directo'
 }
 
+function colorIndexValido(colorIndex) {
+  const n = Number(colorIndex)
+  return Number.isInteger(n) && n >= 0 && n < PALETA_CANALES_CRM_FALLBACK.length
+}
+
+function colorCanalDeRegistro(canal, fallback = null) {
+  if (colorIndexValido(canal?.color_index)) {
+    return colorCssSeguro(colorCanalDesdeIndex(canal.color_index))
+  }
+  return colorCssSeguro(fallback, COLOR_NEUTRO)
+}
+
 function infoCanal(canalRef, colorFallback = null) {
   const ref = textoPlano(canalRef)
   if (!ref) return null
   const canal = resolverCanal(ref)
   return {
     label: ref,
-    color: colorCssSeguro(colorFallback || colorCanalDesdeIndex(canal?.color_index))
+    color: colorCanalDeRegistro(canal, colorFallback),
+    colorIndex: colorIndexValido(canal?.color_index) ? Number(canal.color_index) : null
   }
 }
 
@@ -537,7 +583,7 @@ function renderCanalChip(label, color, variante = 'badge') {
   if (!txt) return ''
   const safe = colorCssSeguro(color)
   if (variante === 'solid') {
-    return `<span class="canal-solid" style="--bc:${safe};--txt:${textoSobreColor(safe)}">${esc(txt)}</span>`
+    return `<span class="canal-solid" style="--bc:${safe}">${esc(txt)}</span>`
   }
   if (variante === 'dot') {
     return `<span class="canal-dot" style="--bc:${safe}" title="${esc(txt)}"></span>`
@@ -687,7 +733,8 @@ function enriquecerLead(l) {
     ...l,
     _propTitulo: l.propiedades?.titulo || null,
     _canalNombre: directo ? 'Directo' : (canal?.nombre || 'Sin canal'),
-    _canalColor: directo ? COLOR_NEUTRO : colorCanalDesdeIndex(canal?.color_index),
+    _canalColorIndex: colorIndexValido(canal?.color_index) ? Number(canal.color_index) : null,
+    _canalColor: directo ? COLOR_NEUTRO : colorCanalDeRegistro(canal),
     _ciudad: canal?.ciudad || 'Sin ubicación',
     _provincia: canal?.provincia || 'Sin ubicación',
     _tipo: canal?.tipo || 'Sin categoría',
