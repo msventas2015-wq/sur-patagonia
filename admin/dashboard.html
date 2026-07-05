@@ -136,7 +136,7 @@
     .btn-mini.danger:hover { border-color: #e05c5c; color: #e05c5c; }
     .empty-state { text-align: center; padding: 2.5rem; color: var(--gris-claro); font-size: 0.8rem; }
   </style>
-  <link rel="stylesheet" href="../css/admin-theme.css?v=admin-fondo-neutro-03" />
+  <link rel="stylesheet" href="../css/admin-theme.css?v=admin-header-dashboard-01b" />
 </head>
 <body>
 <div class="adm-bg-brand"></div>
@@ -223,25 +223,19 @@
   <!-- MAIN -->
   <main class="admin-main">
 
-    <section class="adm-hero">
-      <div class="adm-hero-copy">
-        <h1 class="admin-page-title">Dashboard</h1>
+    <div class="admin-header adm-hero">
+      <div class="admin-header-copy adm-hero-copy">
+        <h2 class="admin-page-title">Dashboard</h2>
         <p id="saludo" class="admin-page-subtitle">El pulso de Sur Patagonia, de un vistazo</p>
-        <div class="acciones-rapidas adm-hero-actions">
-          <a href="nueva-propiedad.html" class="accion-btn accion-propiedad">+ Propiedad</a>
-          <a href="nuevo-proyecto.html" class="accion-btn accion-proyecto">+ Proyecto</a>
-          <a href="nuevo-canal.html" class="accion-btn accion-canal">+ Canal</a>
-          <a href="contactos.html" class="accion-btn primary accion-consultas">Ver consultas</a>
-        </div>
       </div>
-      <div class="adm-hero-identity" aria-hidden="true">
-        <div class="adm-hero-mark"><img src="../assets/logos/picos-blanco.png" alt=""></div>
-        <div>
-          <div class="adm-hero-brand">Sur Patagonia Admin</div>
-          <div class="adm-hero-state">Sistema operativo comercial</div>
-        </div>
+
+      <div class="admin-header-actions adm-hero-actions">
+        <a href="nueva-propiedad.html" class="accion-btn accion-propiedad">+ Propiedad</a>
+        <a href="nuevo-proyecto.html" class="accion-btn accion-proyecto">+ Proyecto</a>
+        <a href="nuevo-canal.html" class="accion-btn accion-canal">+ Canal</a>
+        <a href="contactos.html" class="accion-btn primary accion-consultas">Ver consultas</a>
       </div>
-    </section>
+    </div>
 
     <!-- KPIs -->
     <div class="kpi-grid">
@@ -329,6 +323,7 @@
   </main>
 </div>
 
+<script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
@@ -336,24 +331,8 @@ import { supabase } from '../js/config.js'
 const $ = id => document.getElementById(id)
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 const dia = d => new Date(d).toISOString().slice(0, 10)
-const PALETA_CANALES = [
-  '#3a4eb8', '#dc143c', '#2a9d7a', '#c040a0', '#c08a2e',
-  '#1f4ed8', '#7a1f2e', '#3eb489', '#d20c5c', '#b87333',
-  '#7b3fb0', '#e85a4f', '#1a7a7a', '#a82c8f', '#cc9333',
-  '#1e5fa0', '#9c2740', '#4fca9e', '#e0186b', '#8c7853',
-  '#4556a8', '#5d2e5d', '#3aa68a', '#c94869', '#c8843e',
-  '#2c3e9c', '#8b2236', '#1f8473', '#ff6b5b', '#a0825d',
-  '#6b3fa0', '#c0603e', '#0d6b6b', '#d65d7a', '#a0c850',
-  '#2a6db5', '#a8512f', '#1d7a8c', '#e63946', '#bcd96e',
-  '#8a5fc4', '#b87fc0', '#0f6e80', '#6b3470', '#d4ed00',
-  '#2e5cb8', '#a86fb5', '#39ff14', '#4dff4d', '#e6f23a',
-  '#a89878', '#8a7d72', '#6b7a2c', '#7a8a3e',
-]
-const colorCanal = (idx) => {
-  const n = Number(idx)
-  const safeIndex = Number.isInteger(n) && n >= 0 && n < PALETA_CANALES.length ? n : 0
-  return PALETA_CANALES[safeIndex]
-}
+const { colorCanalDesdeIndex, hexToRgba } = window.SPCanalColors
+const colorCanal = colorCanalDesdeIndex
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -390,6 +369,7 @@ async function cargar() {
 
   // Mapas de atribución
   const canalPorId  = {}; canales.forEach(c => canalPorId[c.id] = c.nombre)
+  const canalPorNombre = {}; canales.forEach(c => canalPorNombre[c.nombre] = c)
   const canalPorRef = {}; refs.forEach(r => canalPorRef[r.codigo] = canalPorId[r.canal_id] || null)
   const canalDe = l => l.canal_ref
     ? (canalPorRef[l.canal_ref] || canales.find(k => l.canal_ref === k.codigo || l.canal_ref.startsWith(k.codigo + '-'))?.nombre || l.canal_ref)
@@ -652,6 +632,7 @@ async function cargar() {
     ? '<div class="empty-state">Sin consultas todavía.</div>'
     : ult.map(l => {
         const canal = canalDe(l)
+        const canalColor = canal ? colorCanal(canalPorNombre[canal]?.color_index) : null
         const esNueva = (l.estado || 'nueva') === 'nueva'
         const fecha = new Date(l.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
         const origenBadge = l.canal_ref
@@ -671,7 +652,7 @@ async function cargar() {
             <span class="ml-fecha">${fecha}</span>
           </div>
           <div class="ml-meta">
-            ${canal ? `<span class="badge badge-canal">${esc(canal)}</span>` : ''}
+            ${canal ? `<span class="badge badge-canal" style="border-color:${hexToRgba(canalColor,.44)};background:${hexToRgba(canalColor,.13)};color:${canalColor};">${esc(canal)}</span>` : ''}
             ${origenBadge}
             ${proyecto ? `<span>· ${esc(proyecto)}</span>` : ''}
           </div>
