@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    :root { --crm-bg:#090909; --card-bg:#141414; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris:#888; --blanco:#f5f3f0; --crm-surface:linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.02)); }
+    :root { --crm-bg:#090909; --card-bg:#141414; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris:#888; --blanco:#f5f3f0; --via-qr:#50c878; --via-link:#6495ed; --via-directo:#a8a8a0; --lead-msg:#f0cf6a; --crm-surface:linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.02)); }
     html, body { overflow-x: visible !important; }
     body { background:var(--crm-bg); }
     .sp-bg-brand {
@@ -130,7 +130,7 @@
       margin:.3rem 0;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-    .crm-card-msg { font-size:0.68rem; color:rgba(255,255,255,0.43); line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:1.9em; }
+    .crm-card-msg { font-size:0.68rem; color:var(--lead-msg); line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:1.9em; }
     .crm-card-msg.empty { color:rgba(255,255,255,0.24); font-style:italic; }
     .crm-card-footer { display:flex; align-items:flex-end; justify-content:space-between; gap:0.6rem; margin-top:0.05rem; }
     .crm-card-fecha { font-size:0.6rem; color:var(--gris); }
@@ -176,19 +176,20 @@
       flex:0 0 auto;
     }
     .badge-via {
-      display:inline-flex; align-items:center; gap:5px;
-      padding:.18rem .5rem; border-radius:999px;
-      font-size:.55rem; font-weight:500; letter-spacing:.07em; text-transform:uppercase;
-      border:1px solid rgba(255,255,255,.08);
-      color:rgba(245,243,240,.72);
-      background:rgba(255,255,255,.026);
-      opacity:.85;
+      display:inline-flex; align-items:center; gap:4px;
+      padding:0;
+      border:0;
+      background:transparent;
+      border-radius:0;
+      font-size:.55rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+      color:var(--via-directo);
+      opacity:.92;
       line-height:1;
     }
-    .badge-via-icon { width:6px; height:6px; border-radius:2px; background:currentColor; opacity:.85; flex:0 0 auto; }
-    .badge-qr { color:#50c878; border-color:rgba(80,200,120,.22); background:rgba(80,200,120,.045); }
-    .badge-link { color:#6495ed; border-color:rgba(100,149,237,.22); background:rgba(100,149,237,.045); }
-    .badge-directo { color:#a8a8a0; border-color:rgba(168,168,160,.2); background:rgba(168,168,160,.06); }
+    .badge-via-icon { width:8px; height:8px; border-radius:2px; background:currentColor; flex:0 0 auto; }
+    .badge-qr { color:var(--via-qr); }
+    .badge-link { color:var(--via-link); }
+    .badge-directo { color:var(--via-directo); }
     .est-bdg {
       --est:#7b7f88;
       display:inline-flex; align-items:center;
@@ -218,7 +219,7 @@
     .crm-modal-row { display:flex; justify-content:space-between; align-items:flex-start; padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.75rem; }
     .crm-modal-label { color:var(--gris); flex-shrink:0; width:110px; }
     .crm-modal-val { color:var(--blanco); text-align:right; flex:1; word-break:break-word; }
-    .crm-modal-msg { padding:0.8rem; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,.06); border-radius:8px; font-size:0.75rem; color:rgba(255,255,255,0.7); line-height:1.6; margin:0.8rem 0; }
+    .crm-modal-msg { padding:0.8rem; background:rgba(240,207,106,.06); border:1px solid rgba(240,207,106,.18); border-radius:8px; font-size:0.75rem; color:var(--lead-msg); line-height:1.6; margin:0.8rem 0; }
     .crm-persona-card { margin:0.9rem 0; padding:0.9rem; background:var(--crm-surface); border:1px solid var(--card-border); border-top:1px solid rgba(255,255,255,.12); border-radius:10px; box-shadow:0 10px 26px rgba(0,0,0,.22); }
     .crm-persona-card.muted { background:linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.014)); }
     .crm-persona-kicker { font-size:0.58rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,.38); margin-bottom:0.25rem; }
@@ -675,6 +676,20 @@ function destinoLead(l) {
   return 'Destino: Consulta general'
 }
 
+function escapeRegex(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function limpiarPrefijoMensaje(mensaje, destino) {
+  const msg = textoPlano(mensaje)
+  const dest = textoPlano(destino)
+  if (!msg || !dest) return msg
+  const destLimpio = dest.replace(/^(proyecto|propiedad|destino)\s*:\s*/i, '').trim()
+  if (!destLimpio) return msg
+  const re = new RegExp('^\\s*\\(?' + escapeRegex(destLimpio) + '\\)?[\\s\\-–—:]+', 'i')
+  return msg.replace(re, '').trim() || msg
+}
+
 function ordenarValores(valores) {
   return [...new Set(valores.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
 }
@@ -960,7 +975,8 @@ function renderCard(l) {
     : renderCanalChip('Sin canal', COLOR_NEUTRO, 'kanban')
   const viaBadge = renderViaBadge(l.canal_via, l._directo)
   const destino = destinoLead(l)
-  const mensaje = textoPlano(l.mensaje)
+  const mensajeCrudo = textoPlano(l.mensaje)
+  const mensaje = limpiarPrefijoMensaje(mensajeCrudo, destino)
   return `
     <div class="crm-card${esNuevo ? ' crm-card-nueva' : ''}" draggable="true" data-id="${esc(l.id)}">
       <div class="crm-card-nombre">${esc(l.nombre) || 'Sin nombre'}</div>
@@ -1341,7 +1357,8 @@ function abrirModal(id) {
   cargarPersonaHistorial(l)
 
   const msg = document.getElementById('modalMensaje')
-  if (l.mensaje) { msg.style.display = 'block'; msg.textContent = l.mensaje }
+  const mensajeModal = limpiarPrefijoMensaje(l.mensaje, destinoLead(l))
+  if (mensajeModal) { msg.style.display = 'block'; msg.textContent = mensajeModal }
   else msg.style.display = 'none'
 
   const sel = document.getElementById('modalEtapa')
