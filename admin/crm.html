@@ -6,19 +6,64 @@
   <title>CRM — Sur Patagonia Admin</title>
   <link rel="stylesheet" href="../css/estilos.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root { --crm-bg:#090909; --card-bg:#141414; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris:#888; --blanco:#f5f3f0; --crm-surface:linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.02)); }
     html, body { overflow-x: visible !important; }
     body { background:var(--crm-bg); }
-    .admin-layout { background:var(--crm-bg); }
-    .admin-main { font-family:'Inter',system-ui,sans-serif; max-width:none; padding:0; overflow-x:auto; background:var(--crm-bg); color:var(--blanco); }
+    .sp-bg-brand {
+      position:fixed; bottom:6vh; left:0; right:0;
+      height:65vh;
+      background:url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52% / cover no-repeat;
+      filter:grayscale(1) brightness(.75);
+      opacity:.11;
+      pointer-events:none;
+      z-index:9;
+      -webkit-mask-image:linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
+      mask-image:linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
+    }
+    .admin-layout { background:transparent; position:relative; z-index:10; }
+    .admin-main { font-family:'Inter',system-ui,sans-serif; max-width:none; padding:0; overflow-x:auto; background:transparent; color:var(--blanco); }
 
     /* ── Header ── */
     .crm-header { padding:1.5rem 1.5rem 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
+    .admin-page-title {
+      font-family:'Cormorant Garamond', serif;
+      font-size:2.2rem;
+      font-weight:500;
+      letter-spacing:.04em;
+      text-transform:none;
+      color:var(--blanco);
+    }
     .crm-kpis { display:flex; gap:0.6rem; flex-wrap:wrap; }
-    .crm-kpi { background:var(--crm-surface); border:1px solid var(--card-border); border-top:1px solid rgba(255,255,255,.12); border-radius:10px; padding:0.5rem 1rem; font-size:0.7rem; color:var(--gris); box-shadow:0 12px 34px rgba(0,0,0,.22); }
-    .crm-kpi strong { display:block; font-size:1.1rem; font-weight:700; color:var(--blanco); }
+    .crm-kpi {
+      background:linear-gradient(135deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.08);
+      border-top:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+      padding:1.4rem 1.6rem;
+      position:relative; overflow:hidden;
+      color:var(--gris);
+    }
+    .crm-kpi::before {
+      content:''; position:absolute; left:0; top:20%; bottom:20%;
+      width:2px; border-radius:99px;
+      background:linear-gradient(to bottom, transparent, var(--c, var(--accent)), transparent);
+    }
+    .crm-kpi-num {
+      display:block;
+      font-size:2.45rem; font-weight:300;
+      background:linear-gradient(135deg, #fff, rgba(255,255,255,.7));
+      -webkit-background-clip:text; background-clip:text;
+      -webkit-text-fill-color:transparent;
+      line-height:1;
+    }
+    .crm-kpi-lbl {
+      display:block;
+      margin-top:.35rem;
+      font-size:.58rem; font-weight:600; text-transform:uppercase;
+      letter-spacing:.12em; color:rgba(255,255,255,.42);
+    }
 
     /* ── Filtros CRM ── */
     .crm-filtros { margin:1rem 1.5rem 0; padding:0.95rem; background:var(--crm-surface); border:1px solid var(--card-border); border-top:1px solid rgba(255,255,255,.12); border-radius:var(--card-radius); box-shadow:0 16px 42px rgba(0,0,0,.22); }
@@ -43,16 +88,17 @@
     /* ── Columna ── */
     .crm-col {
       flex:0 0 260px; min-width:260px;
-      background:linear-gradient(160deg, rgba(255,255,255,.045), rgba(255,255,255,.014));
-      border:1px solid var(--card-border);
-      border-top:1px solid rgba(255,255,255,.11);
-      border-radius:var(--card-radius);
+      background:transparent;
+      border:1px solid rgba(255,255,255,.05);
+      border-top:1px solid rgba(255,255,255,.09);
+      border-radius:14px;
       display:flex; flex-direction:column;
-      box-shadow:0 16px 42px rgba(0,0,0,.24);
+      box-shadow:none;
+      backdrop-filter:none;
     }
     .crm-col-head {
-      padding:0.9rem 1rem 0.7rem;
-      border-bottom:1px solid var(--card-border);
+      padding:0.8rem 1rem 0.6rem;
+      border-bottom:1px solid rgba(255,255,255,.05);
       display:flex; align-items:center; justify-content:space-between;
     }
     .crm-col-title { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; }
@@ -62,14 +108,16 @@
 
     /* ── Card ── */
     .crm-card {
-      background:var(--crm-surface); border:1px solid var(--card-border);
-      border-top:1px solid rgba(255,255,255,.12);
-      border-radius:10px; padding:0.86rem 0.9rem 0.82rem;
+      background:linear-gradient(160deg, rgba(255,255,255,.042) 0%, rgba(255,255,255,.012) 100%);
+      backdrop-filter:blur(4px);
+      border:1px solid rgba(255,255,255,.06);
+      border-top:1px solid rgba(255,255,255,.10);
+      border-radius:10px; padding:0.9rem 1rem;
       cursor:grab; user-select:none;
       transition:box-shadow .15s, border-color .15s, transform .15s, background .15s;
       position:relative;
-      box-shadow:0 10px 26px rgba(0,0,0,.2);
-      display:flex; flex-direction:column; gap:0.48rem;
+      box-shadow:0 4px 14px rgba(0,0,0,.18);
+      display:flex; flex-direction:column; gap:0.5rem;
     }
     .crm-card:hover { border-color:rgba(255,255,255,0.16); transform:translateY(-1px); box-shadow:0 14px 34px rgba(0,0,0,.26); }
     .crm-card.dragging { opacity:0.4; cursor:grabbing; }
@@ -78,7 +126,8 @@
     .crm-card-destino {
       display:block; max-width:100%;
       padding:0; border:0; background:none;
-      font-size:0.64rem; font-weight:600; letter-spacing:.015em; color:rgba(245,243,240,.58);
+      font-size:.68rem; font-weight:600; letter-spacing:.015em; color:rgba(255,255,255,.45);
+      margin:.3rem 0;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .crm-card-msg { font-size:0.68rem; color:rgba(255,255,255,0.43); line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:1.9em; }
@@ -95,14 +144,13 @@
     .crm-card-chips,
     .crm-inline-chips { display:flex; flex-wrap:wrap; gap:0.34rem; align-items:center; }
     .crm-inline-chips { justify-content:flex-end; margin-bottom:0; }
-    .canal-solid,
     .canal-kanban,
     .canal-badge,
     .canal-dot { --bc:#8a8a82; }
     .canal-kanban {
       display:inline-flex; align-items:center; width:fit-content; max-width:100%;
-      padding:3px 8px; border-radius:7px;
-      font-size:.63rem; font-weight:500; letter-spacing:.015em;
+      padding:4px 9px; border-radius:7px;
+      font-size:.7rem; font-weight:600; letter-spacing:.015em;
       line-height:1.15; color:var(--bc);
       border:1px solid var(--bc-border);
       background:var(--bc-bg);
@@ -129,11 +177,12 @@
     }
     .badge-via {
       display:inline-flex; align-items:center; gap:5px;
-      padding:3px 7px; border-radius:5px;
-      font-size:9.8px; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
+      padding:.18rem .5rem; border-radius:999px;
+      font-size:.55rem; font-weight:500; letter-spacing:.07em; text-transform:uppercase;
       border:1px solid rgba(255,255,255,.08);
       color:rgba(245,243,240,.72);
       background:rgba(255,255,255,.026);
+      opacity:.85;
       line-height:1;
     }
     .badge-via-icon { width:6px; height:6px; border-radius:2px; background:currentColor; opacity:.85; flex:0 0 auto; }
@@ -237,6 +286,7 @@
   </style>
 </head>
 <body>
+<div class="sp-bg-brand"></div>
 <div class="admin-layout">
 
   <!-- SIDEBAR -->
@@ -571,16 +621,6 @@ function infoCanal(canalRef, colorFallback = null) {
   }
 }
 
-function textoSobreColor(color) {
-  const clean = String(color || '').replace('#', '')
-  if (!/^[0-9a-f]{6}$/i.test(clean)) return '#0f0e0c'
-  const r = parseInt(clean.slice(0, 2), 16)
-  const g = parseInt(clean.slice(2, 4), 16)
-  const b = parseInt(clean.slice(4, 6), 16)
-  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
-  return lum > 0.56 ? '#0f0e0c' : '#f5f3f0'
-}
-
 function hexToRgbaLocal(color, alpha) {
   const clean = String(color || '').replace('#', '')
   if (!/^[0-9a-f]{6}$/i.test(clean)) return `rgba(138,138,130,${alpha})`
@@ -596,9 +636,6 @@ function renderCanalChip(label, color, variante = 'badge') {
   const safe = colorCssSeguro(color)
   if (variante === 'kanban') {
     return `<span class="canal-kanban" style="--bc:${safe};--bc-border:${hexToRgbaLocal(safe, 0.44)};--bc-bg:${hexToRgbaLocal(safe, 0.13)}">${esc(txt)}</span>`
-  }
-  if (variante === 'solid') {
-    return `<span class="canal-solid" style="--bc:${safe}">${esc(txt)}</span>`
   }
   if (variante === 'dot') {
     return `<span class="canal-dot" style="--bc:${safe}" title="${esc(txt)}"></span>`
@@ -876,10 +913,10 @@ function renderKpis() {
   const resumen = document.getElementById('crmFiltroResumen')
   if (resumen) resumen.textContent = `Mostrando ${total} de ${_leads.length} consultas`
   document.getElementById('crmKpis').innerHTML = `
-    <div class="crm-kpi"><strong>${total}</strong>Total leads</div>
-    <div class="crm-kpi"><strong style="color:${ESTADO_COLOR.nueva}">${nuevos}</strong>Sin contactar</div>
-    <div class="crm-kpi"><strong style="color:${ESTADO_COLOR.cerrado}">${cerrados}</strong>Cerrados</div>
-    <div class="crm-kpi"><strong>${tasa}%</strong>Tasa cierre</div>
+    <div class="crm-kpi" style="--c:#d76f3f"><strong class="crm-kpi-num">${total}</strong><span class="crm-kpi-lbl">Total leads</span></div>
+    <div class="crm-kpi" style="--c:${ESTADO_COLOR.nueva}"><strong class="crm-kpi-num">${nuevos}</strong><span class="crm-kpi-lbl">Sin contactar</span></div>
+    <div class="crm-kpi" style="--c:${ESTADO_COLOR.cerrado}"><strong class="crm-kpi-num">${cerrados}</strong><span class="crm-kpi-lbl">Cerrados</span></div>
+    <div class="crm-kpi" style="--c:#6495ed"><strong class="crm-kpi-num">${tasa}%</strong><span class="crm-kpi-lbl">Tasa cierre</span></div>
   `
 }
 
