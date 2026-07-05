@@ -454,6 +454,10 @@
             <option value="Directo">Directo</option>
           </select>
         </div>
+        <div class="crm-filtro-grupo">
+          <label for="fEmail">Email</label>
+          <input class="crm-filtro-control" type="search" id="fEmail" placeholder="Buscar por email...">
+        </div>
       </div>
       <div class="crm-filtros-footer">
         <span class="crm-filtro-resumen" id="crmFiltroResumen">Mostrando 0 de 0 consultas</span>
@@ -583,11 +587,16 @@ let _filtros = {
   canal: '',
   tipo: '',
   acceso: '',
-  via: ''
+  via: '',
+  email: ''
 }
 
 function textoPlano(v) {
   return (v == null ? '' : String(v)).trim()
+}
+
+function normalizarEmailFiltro(v) {
+  return String(v || '').trim().toLowerCase()
 }
 
 function claveMapa(v) {
@@ -742,7 +751,8 @@ function leerFiltrosDesdeDom() {
     canal: document.getElementById('fCanal')?.value || '',
     tipo: document.getElementById('fTipo')?.value || '',
     acceso: document.getElementById('fAcceso')?.value || '',
-    via: document.getElementById('fVia')?.value || ''
+    via: document.getElementById('fVia')?.value || '',
+    email: normalizarEmailFiltro(document.getElementById('fEmail')?.value || '')
   }
 }
 
@@ -806,6 +816,7 @@ function getLeadsFiltrados() {
     if (_filtros.tipo && l._tipo !== _filtros.tipo) return false
     if (_filtros.acceso && l._tipoAcceso !== _filtros.acceso) return false
     if (_filtros.via && l._via !== _filtros.via) return false
+    if (_filtros.email && !normalizarEmailFiltro(l.email).includes(_filtros.email)) return false
     return true
   })
 }
@@ -901,7 +912,8 @@ function limpiarFiltros() {
     fCanal: '',
     fTipo: '',
     fAcceso: '',
-    fVia: ''
+    fVia: '',
+    fEmail: ''
   }
   Object.entries(valores).forEach(([id, value]) => {
     const el = document.getElementById(id)
@@ -917,6 +929,7 @@ function inicializarFiltros() {
   ;['fFecha','fProvincia','fCiudad','fProyecto','fCanal','fTipo','fAcceso','fVia'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', aplicarFiltrosDesdeDom)
   })
+  document.getElementById('fEmail')?.addEventListener('input', aplicarFiltrosDesdeDom)
   ;['fDesde','fHasta'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', () => {
       const fecha = document.getElementById('fFecha')
