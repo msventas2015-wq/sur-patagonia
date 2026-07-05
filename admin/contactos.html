@@ -604,9 +604,14 @@
 import { supabase } from '../js/config.js'
 
 // ── Auth ──────────────────────────────────────────────────
-const { data: { session } } = await supabase.auth.getSession()
+let { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (typeof supabase.auth.refreshSession === 'function') {
+  const { data: refreshed } = await supabase.auth.refreshSession().catch(() => ({ data: {} }))
+  if (refreshed?.session) session = refreshed.session
+}
+const rolAdmin = session.user.app_metadata?.rol === 'admin' || session.user.user_metadata?.rol === 'admin'
+if (!rolAdmin) { window.location.href = 'login.html'; throw new Error('not admin') }
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
 })
@@ -618,7 +623,19 @@ const toSlug = str => String(str || '').toLowerCase().normalize('NFD').replace(/
 const dia = d => new Date(d).toISOString().slice(0, 10)
 
 const ESTADOS = { nueva: 'Nuevo lead', contactado: 'Contactado', visita: 'Visita coordinada', visita_realizada: 'Visita realizada', oferta: 'Oferta enviada', cerrado: 'Cerrado', descartado: 'Descartado' }
-const { colorCanalDesdeIndex, colorCssSeguro, hexToRgba } = window.SPCanalColors
+const CANAL_COLORS = window.SPCanalColors || {}
+const colorCssSeguro = CANAL_COLORS.colorCssSeguro || ((color, fallback = '#8a8a82') => (
+  /^#[0-9a-f]{6}$/i.test(String(color || '')) ? String(color) : fallback
+))
+const hexToRgba = CANAL_COLORS.hexToRgba || ((hex, alpha) => {
+  const clean = String(hex || '').replace('#', '')
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return `rgba(255,255,255,${alpha})`
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+})
+const colorCanalDesdeIndex = CANAL_COLORS.colorCanalDesdeIndex || (() => '#8a8a82')
 
 let _leads = []
 let _colorMap = {}               // canal nombre → color asignado por canales.color_index
@@ -640,10 +657,16 @@ async function cargarTodo() {
       .then(r => r.error ? supabase.from('proyectos').select('nombre, slug').then(r2 => r2.error ? supabase.from('proyectos').select('nombre') : r2) : r),
   ])
 
-  if (rLeads.error) {
-    $('listaLeads').innerHTML = `<div class="empty-state">Error al cargar consultas: ${esc(rLeads.error.message)}<br>Verificá tu sesión y permisos (rol admin).</div>`
-    return
-  }
+	  if (rLeads.error) {
+	    $('listaLeads').innerHTML = `<div class="empty-state">Error al cargar consultas: ${esc(rLeads.error.message)}<br>Verificá tu sesión y permisos (rol admin).</div>`
+	    return
+	  }
+	  const errorCatalogo = rCanales.error || rRefs.error || rProy.error
+	  if (errorCatalogo) {
+	    console.warn('[contactos] error cargando catálogo admin', errorCatalogo)
+	    $('listaLeads').innerHTML = `<div class="empty-state">Error al cargar datos de soporte: ${esc(errorCatalogo.message || 'catálogo no disponible')}<br>Verificá tu sesión y permisos (rol admin).</div>`
+	    return
+	  }
 
   const canalPorId = {}
   const metaCanal  = {}   // nombre de canal → { ciudad, provincia, lat, lng }
