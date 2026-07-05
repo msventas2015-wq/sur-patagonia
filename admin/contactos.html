@@ -6,41 +6,66 @@
   <title>Consultas — Sur Patagonia Admin</title>
   <link rel="stylesheet" href="../css/estilos.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --card-bg: #161513;
-      --card-border: rgba(255,255,255,0.07);
-      --card-radius: 14px;
-      --accent: #d76f3f;
-      --c-azul: #6495ed;
-      --c-verde: #50c878;
-      --c-violeta: #b464dc;
-      --c-amarillo: #ffc832;
-      --c-rojo: #e05c5c;
-      --c-cyan: #4ad0c4;
+      --bg:#090909;
+      --card-bg:#141414;
+      --card-border:rgba(255,255,255,0.07);
+      --card-radius:14px;
+      --accent:#d76f3f;
+      --dorado:#c9a84c;
+      --gris:#aaa;
+      --blanco:#f5f3f0;
+      --lead-msg:#e8c96a;
+      --txt-soft:rgba(245,243,240,.5);
+      --via-qr:#50c878;
+      --via-link:#6495ed;
+      --via-directo:#8a8a82;
     }
-    .admin-main { font-family: 'Inter', system-ui, sans-serif; }
+    body { background:var(--bg); }
+    .sp-bg-brand {
+      position:fixed; bottom:6vh; left:0; right:0; height:65vh;
+      background:url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52% / cover no-repeat;
+      filter:grayscale(1) brightness(.75); opacity:.11;
+      pointer-events:none; z-index:9;
+      -webkit-mask-image:linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
+      mask-image:linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
+    }
+    .admin-layout { position:relative; z-index:10; }
+    .admin-main { font-family:'Inter', system-ui, sans-serif; background:transparent; }
 
     /* ── Header ──────────────────────────────────────── */
     .dash-header {
       display: flex; align-items: flex-end; justify-content: space-between;
       gap: 1rem; flex-wrap: wrap; margin-bottom: 1.6rem;
     }
+    .admin-page-title {
+      font-family:'Cormorant Garamond', serif;
+      font-size:2.2rem; font-weight:500; letter-spacing:.04em;
+      color:var(--blanco);
+    }
     .rangos { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
     .rango-btn {
-      background: var(--card-bg); border: 1px solid var(--card-border);
-      color: var(--gris-claro); padding: 0.45rem 0.9rem; border-radius: 999px;
-      font-size: 0.72rem; font-weight: 500; cursor: pointer; transition: all .18s;
+      font-size:.63rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+      padding:.36rem .88rem; border-radius:8px; border:1px solid rgba(255,255,255,.09);
+      background:rgba(255,255,255,.05); color:rgba(255,255,255,.5);
+      cursor:pointer; font-family:inherit; transition:all .2s;
     }
-    .rango-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .rango-btn.activo { background: rgba(215,111,63,.14); border-color: var(--accent); color: var(--accent); }
+    .rango-btn:hover { border-color:rgba(201,168,76,.35); color:var(--dorado); background:rgba(201,168,76,.07); }
+    .rango-btn.activo {
+      background:linear-gradient(135deg,rgba(201,168,76,.22),rgba(201,168,76,.08));
+      border-color:rgba(201,168,76,.42); color:var(--lead-msg);
+      box-shadow:0 0 14px rgba(201,168,76,.12);
+    }
     .btn-export {
-      background: var(--accent); border: none; color: #fff; padding: 0.5rem 1.1rem;
-      border-radius: 999px; font-size: 0.72rem; font-weight: 600; cursor: pointer;
-      transition: opacity .18s;
+      background:transparent; border:1px solid rgba(255,255,255,.08);
+      color:var(--txt-soft); padding:.42rem .95rem;
+      border-radius:8px; font-size:.63rem; font-weight:700;
+      letter-spacing:.06em; text-transform:uppercase; cursor:pointer;
+      transition:all .18s;
     }
-    .btn-export:hover { opacity: 0.85; }
+    .btn-export:hover { border-color:rgba(255,255,255,.18); color:rgba(245,243,240,.75); }
 
     /* ── KPIs ────────────────────────────────────────── */
     .kpi-grid {
@@ -48,18 +73,34 @@
       gap: 0.9rem; margin-bottom: 1.2rem;
     }
     .kpi {
-      background: var(--card-bg); border: 1px solid var(--card-border);
-      border-radius: var(--card-radius); padding: 1.1rem 1.25rem;
-      transition: transform .18s, border-color .18s;
+      background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.08);
+      border-top:1px solid rgba(255,255,255,.14);
+      border-radius:14px; padding:1.4rem 1.6rem;
+      position:relative; overflow:hidden;
+      backdrop-filter:blur(4px);
+      box-shadow:0 4px 14px rgba(0,0,0,.18);
+      transition:transform .18s, border-color .18s, box-shadow .18s;
     }
-    .kpi:hover { transform: translateY(-2px); border-color: rgba(215,111,63,.3); }
-    .kpi-label { font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris-claro); font-weight: 600; margin-bottom: 0.5rem; }
-    .kpi-valor { font-size: 1.9rem; font-weight: 700; line-height: 1; color: var(--blanco); letter-spacing: -0.02em; }
-    .kpi-valor.txt { font-size: 1.05rem; font-weight: 600; line-height: 1.25; padding-top: 0.3rem; }
-    .kpi-sub { font-size: 0.68rem; color: var(--gris-claro); margin-top: 0.5rem; }
+    .kpi::before {
+      content:''; position:absolute; left:0; top:20%; bottom:20%; width:2px;
+      background:linear-gradient(to bottom,transparent,var(--c,var(--accent)),transparent);
+      border-radius:99px;
+    }
+    .kpi:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.16); box-shadow:0 14px 34px rgba(0,0,0,.26); }
+    .kpi-label { font-size:.58rem; text-transform:uppercase; letter-spacing:.12em; color:rgba(255,255,255,.42); font-weight:600; margin-bottom:.55rem; }
+    .kpi-valor {
+      font-size:2.45rem; font-weight:300;
+      background:linear-gradient(135deg,#fff,rgba(255,255,255,.7));
+      -webkit-background-clip:text; background-clip:text;
+      -webkit-text-fill-color:transparent;
+      line-height:1; margin-bottom:.35rem;
+    }
+    .kpi-valor.txt { font-size:1.08rem; font-weight:600; line-height:1.25; padding-top:.24rem; }
+    .kpi-sub { font-size:.65rem; color:var(--gris); line-height:1.45; margin-top:.5rem; }
     .delta { font-size: 0.68rem; font-weight: 600; margin-left: 0.4rem; }
-    .delta.up   { color: var(--c-verde); }
-    .delta.down { color: var(--c-rojo); }
+    .delta.up   { color:#6ee89a; }
+    .delta.down { color:#f0956a; }
 
     /* ── Cards de gráfico ────────────────────────────── */
     .charts-grid {
@@ -70,8 +111,14 @@
     }
     @media (max-width: 1100px) { .charts-grid, .charts-grid2 { grid-template-columns: 1fr; } }
     .chart-card {
-      background: var(--card-bg); border: 1px solid var(--card-border);
-      border-radius: var(--card-radius); padding: 1.1rem 1.25rem 1rem;
+      background:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.07);
+      border-top:1px solid rgba(255,255,255,.12);
+      border-radius:var(--card-radius); padding:1.1rem 1.25rem 1rem;
+      backdrop-filter:blur(4px);
+      box-shadow:0 4px 14px rgba(0,0,0,.18);
+      transition:box-shadow .2s, border-color .2s;
+      position:relative; overflow:hidden;
     }
     .chart-card h4 {
       font-size: 0.64rem; letter-spacing: 0.12em; text-transform: uppercase;
@@ -95,20 +142,30 @@
 
     /* Pill de canal en lead cards */
     .canal-tag {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      border: 1px solid var(--ch, rgba(255,255,255,0.15));
-      padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 600;
-      color: var(--blanco); letter-spacing: 0.04em;
+      display:inline-flex; align-items:center; gap:5px;
+      font-size:.7rem; font-weight:600;
+      color:var(--bc, var(--txt-soft));
+      letter-spacing:.02em;
+      min-width:0;
+    }
+    .canal-tag .od {
+      width:7px; height:7px; border-radius:50%;
+      background:var(--bc, var(--txt-soft));
+      box-shadow:0 0 6px var(--bc, rgba(255,255,255,.2));
+      flex:0 0 auto;
     }
 
     /* ── Filtros ─────────────────────────────────────── */
     .filtros-bar {
-      background: var(--card-bg); border: 1px solid var(--card-border);
-      border-radius: var(--card-radius); padding: 0.9rem 1.1rem;
+      background:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.07);
+      border-top:1px solid rgba(255,255,255,.12);
+      border-radius:var(--card-radius); padding:0.9rem 1.1rem;
       display: grid; grid-template-columns: 1.1fr 1.1fr 0.9fr 0.85fr 0.95fr 0.95fr 1.2fr auto;
       gap: 0.6rem; align-items: end; margin-bottom: 1.2rem;
       position: sticky; top: 0.5rem; z-index: 50;
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(4px);
+      box-shadow:0 4px 14px rgba(0,0,0,.18);
     }
     @media (max-width: 1100px) { .filtros-bar { grid-template-columns: 1fr 1fr 1fr; position: static; } }
     .filtro-label { font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris-claro); display: block; margin-bottom: 0.3rem; font-weight: 600; }
@@ -117,7 +174,7 @@
       background: none; border: 1px solid var(--card-border); color: var(--gris-claro);
       padding: 0.5rem 0.9rem; border-radius: 8px; cursor: pointer; font-size: 0.7rem; transition: all .18s; white-space: nowrap;
     }
-    .btn-limpiar:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-limpiar:hover { border-color:rgba(255,255,255,.18); color:rgba(245,243,240,.75); }
 
     /* FIX ADMIN-CONTACTOS-LAYOUT-01 · overflow horizontal */
     .filtros-bar > * {
@@ -141,7 +198,12 @@
     .lista-titulo span { font-family: 'Inter', sans-serif; font-size: 0.68rem; color: var(--gris-claro); margin-left: 0.6rem; font-weight: 400; }
     .lista-toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
     .seg {
-      display: flex; background: var(--card-bg); border: 1px solid var(--card-border);
+      display: flex;
+      background:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.07);
+      border-top:1px solid rgba(255,255,255,.12);
+      backdrop-filter:blur(4px);
+      box-shadow:0 4px 14px rgba(0,0,0,.18);
       border-radius: 999px; padding: 0.18rem;
     }
     .seg button {
@@ -157,11 +219,15 @@
     }
 
     .lead-card {
-      background: var(--card-bg); border: 1px solid var(--card-border);
+      background:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.07);
+      border-top:1px solid rgba(255,255,255,.12);
       border-radius: 16px; padding: 1.5rem 1.8rem; margin-bottom: 1rem;
-      transition: border-color .2s;
+      backdrop-filter:blur(4px);
+      box-shadow:0 4px 14px rgba(0,0,0,.18);
+      transition: border-color .2s, box-shadow .2s;
     }
-    .lead-card:hover { border-color: rgba(255,255,255,0.16); }
+    .lead-card:hover { border-color: rgba(255,255,255,0.16); box-shadow:0 14px 34px rgba(0,0,0,.26); }
     .lc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
     .lc-id { display: flex; align-items: center; gap: 0.6rem; }
     .lc-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
@@ -174,19 +240,24 @@
       text-transform: uppercase; color: var(--gris-claro); font-weight: 500;
     }
     .lc-meta .od { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 0.4rem; vertical-align: middle; }
+    .lc-meta .canal-tag .od { width:7px; height:7px; margin-right:0; }
     .lc-msg {
-      font-size: 0.9rem; color: #d9d6d0; line-height: 1.75;
+      font-size: 0.9rem; color: var(--lead-msg); line-height: 1.75;
       white-space: pre-wrap; word-break: break-word;
       margin: 1rem 0 1.1rem; max-width: 70ch;
     }
     .lc-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .lc-btn {
       display: inline-flex; align-items: center; gap: 0.4rem;
-      background: none; border: 1px solid var(--card-border); color: var(--gris-claro);
-      padding: 0.42rem 1rem; border-radius: 999px; font-size: 0.72rem; font-weight: 500;
-      text-decoration: none; transition: all .18s;
+      padding:.26rem .5rem; border-radius:6px;
+      font-size:.54rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+      font-family:'Inter',sans-serif; text-decoration:none; line-height:1;
+      border:1px solid rgba(255,255,255,.08);
+      background:transparent;
+      color:var(--txt-soft);
+      transition:all .15s;
     }
-    .lc-btn:hover { border-color: rgba(255,255,255,0.3); color: var(--blanco); }
+    .lc-btn:hover { border-color:rgba(255,255,255,.18); color:rgba(245,243,240,.75); }
     .estado-select {
       background: transparent; border: 1px solid var(--card-border); color: var(--gris-claro);
       font-size: 0.68rem; padding: 0.32rem 0.6rem; border-radius: 999px; cursor: pointer; font-family: inherit;
@@ -199,26 +270,59 @@
       display: inline-flex; align-items: center; gap: 0.3rem;
     }
     .lc-source-link:hover { color: var(--blanco); text-decoration: underline; }
-    /* Mapa: provincias con hover cálido estilo Sur Patagonia */
+    /* Mapa: sonar + backglow blanco neutro */
+    .mapa-card::before {
+      content:''; position:absolute; inset:0;
+      background:
+        radial-gradient(ellipse 55% 40% at 50% 70%, rgba(245,245,250,.10), transparent 72%),
+        radial-gradient(ellipse 50% 38% at 50% 35%, rgba(245,245,250,.07), transparent 72%);
+      pointer-events:none; z-index:0;
+    }
+    .mapa-card > * { position:relative; z-index:1; }
+    .logo-wrap {
+      position:absolute; top:42%; left:50%;
+      transform:translate(-50%,-50%);
+      z-index:0; pointer-events:none;
+      width:70px;
+    }
+	    .logo-img {
+	      width:100%; display:block;
+	      opacity:.21;
+	      filter:none;
+	    }
+    #mapaSvg { position:relative; z-index:1; }
+    .sonar-ring {
+      fill:none; stroke:currentColor; stroke-width:1.1;
+      transform-box:fill-box; transform-origin:center; opacity:0;
+    }
+    .sonar-ring.r1 { animation:sonar 3s ease-out infinite; }
+    .sonar-ring.r2 { animation:sonar 3s ease-out infinite; animation-delay:1.5s; }
+    @keyframes sonar {
+      0%   { transform:scale(.35); opacity:.85; }
+      70%  { opacity:.3; }
+      100% { transform:var(--max, scale(2.6)); opacity:0; }
+    }
+    .inactivo .sonar-ring { animation:none; opacity:0; }
+    .inactivo .nodo-activo { opacity:.35; }
     .prov-path { transition: fill .25s; cursor: default; }
-    .prov-path:hover { fill: #271b10; filter: drop-shadow(0 0 6px rgba(215,111,63,0.45)); }
+    .prov-path:hover { fill: rgba(18,18,18,.95); filter: drop-shadow(0 0 6px rgba(255,255,255,.16)); }
 
     /* ── Multi-touch journey ──────────────────────────────── */
-    .journey-tag {
-      display: inline-flex; align-items: center; gap: 0.3rem;
-      background: rgba(240,180,41,0.12); border: 1px solid rgba(240,180,41,0.3);
-      color: #f0b429; padding: 0.16rem 0.55rem; border-radius: 999px;
-      font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-      flex-shrink: 0;
-    }
-    .journey-section {
-      margin: 0.75rem 0 0.2rem;
-      background: rgba(240,180,41,0.04); border: 1px solid rgba(240,180,41,0.14);
-      border-radius: 10px; padding: 0.75rem 1rem;
-    }
-    .journey-title {
-      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.1em; color: #f0b429; margin-bottom: 0.65rem;
+	    .journey-tag {
+	      display: inline-flex; align-items: center; gap: 0.3rem;
+	      background: rgba(232,201,106,0.10); border: 1px solid rgba(232,201,106,0.24);
+	      color: var(--lead-msg); padding: 0.16rem 0.55rem; border-radius: 999px;
+	      font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+	      flex-shrink: 0;
+	    }
+	    .journey-section {
+	      margin: 0.75rem 0 0.2rem;
+	      background: rgba(232,201,106,0.04); border: 1px solid rgba(232,201,106,0.14);
+	      border-radius: 10px; padding: 0.75rem 1rem;
+	    }
+	    .journey-title {
+	      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+	      letter-spacing: 0.1em; color: var(--lead-msg); margin-bottom: 0.65rem;
     }
     .journey-timeline {
       display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
@@ -230,7 +334,7 @@
       padding: 0.22rem 0.6rem; border-radius: 6px;
       white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis;
     }
-    .journey-step-canal.first { border-color: rgba(74,208,196,0.45); background: rgba(74,208,196,0.08); color: #4ad0c4; }
+    .journey-step-canal.first { border-color: rgba(80,200,120,0.45); background: rgba(80,200,120,0.08); color: var(--via-qr); }
     .journey-step-canal.last  { border-color: rgba(215,111,63,0.45); background: rgba(215,111,63,0.08); color: #d76f3f; }
     .journey-step-date { font-size: 0.57rem; color: #666; }
     .journey-arrow { color: rgba(255,255,255,0.18); font-size: 0.85rem; flex-shrink: 0; margin-bottom: 0.9rem; }
@@ -239,10 +343,11 @@
       border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.4rem;
       display: flex; gap: 1.2rem; flex-wrap: wrap;
     }
-    .journey-attr strong { color: #f0b429; }
+    .journey-attr strong { color: var(--lead-msg); }
   </style>
 </head>
 <body>
+<div class="sp-bg-brand"></div>
 <div class="admin-layout">
 
   <!-- SIDEBAR -->
@@ -336,33 +441,33 @@
         <button class="rango-btn" data-dias="30">30 días</button>
         <button class="rango-btn" data-dias="90">90 días</button>
         <button class="rango-btn activo" data-dias="0">Todo</button>
-        <button class="btn-export" id="btnExport">⬇ Exportar</button>
+        <button class="btn-export" id="btnExport">Exportar</button>
       </div>
     </div>
 
     <!-- KPIs -->
     <div class="kpi-grid">
-      <div class="kpi">
+      <div class="kpi" style="--c:#e8c96a">
         <div class="kpi-label">Consultas</div>
         <div class="kpi-valor" id="kTotal">—<span class="delta" id="kTotalD"></span></div>
         <div class="kpi-sub" id="kTotalSub"></div>
       </div>
-      <div class="kpi">
+      <div class="kpi" style="--c:#50c878">
         <div class="kpi-label">Vía canales</div>
         <div class="kpi-valor" id="kCanales">—</div>
         <div class="kpi-sub" id="kCanalesSub"></div>
       </div>
-      <div class="kpi">
+      <div class="kpi" style="--c:#8a8a82">
         <div class="kpi-label">Directas</div>
         <div class="kpi-valor" id="kDirectas">—</div>
         <div class="kpi-sub" id="kDirectasSub"></div>
       </div>
-      <div class="kpi">
+      <div class="kpi" style="--c:#c9a84c">
         <div class="kpi-label">Canal top</div>
         <div class="kpi-valor txt" id="kTopCanal">—</div>
         <div class="kpi-sub" id="kTopCanalSub"></div>
       </div>
-      <div class="kpi">
+      <div class="kpi" style="--c:#d76f3f">
         <div class="kpi-label">Proyecto top</div>
         <div class="kpi-valor txt" id="kTopProy">—</div>
         <div class="kpi-sub" id="kTopProySub"></div>
@@ -404,7 +509,7 @@
         <label class="filtro-label">Buscar</label>
         <input type="text" id="fBuscar" class="admin-input" placeholder="Nombre, email, mensaje…" />
       </div>
-      <button class="btn-limpiar" id="btnLimpiar">✕ Limpiar</button>
+      <button class="btn-limpiar" id="btnLimpiar">Limpiar</button>
     </div>
 
     <!-- EVOLUCIÓN COMPARADA + ORIGEN -->
@@ -421,22 +526,19 @@
     </div>
 
     <!-- MAPA TERRITORIAL -->
-    <div class="chart-card" style="margin-bottom:0.9rem;">
+    <div class="chart-card mapa-card" style="margin-bottom:0.9rem;">
       <h4>Mapa territorial
-        <span style="font-weight:400; letter-spacing:0; text-transform:none;">● canal (tamaño = consultas) · ◇ proyecto · líneas = flujo origen → destino</span>
+        <span style="font-weight:400; letter-spacing:0; text-transform:none;">Canales con sonar por consultas nuevas · proyectos como destino</span>
       </h4>
       <div style="display:flex; gap:1rem; flex-wrap:wrap; font-size:0.64rem; color:var(--gris-claro); margin-bottom:0.6rem;">
-        <span><span style="color:#6495ed;">●</span> Inmobiliaria</span>
-        <span><span style="color:#d76f3f;">●</span> Vendedor particular</span>
-        <span><span style="color:#50c878;">●</span> Punto de venta</span>
-        <span><span style="color:#b464dc;">●</span> Campaña</span>
-        <span><span style="color:#ffc832;">●</span> Evento</span>
-        <span><span style="color:#f0ede8;">◇</span> Proyecto</span>
-        <span><span style="color:#d76f3f;">─</span> Flujo canal → proyecto</span>
+        <span>Canal: color canónico</span>
+        <span>Proyecto: hueso neutro</span>
+        <span>Sonar: consultas de hoy</span>
       </div>
       <div id="mapaWrap" style="position:relative; display:flex; justify-content:center;">
+        <div class="logo-wrap"><img class="logo-img" src="../assets/logos/picos-blanco.png" alt=""></div>
         <svg id="mapaSvg" viewBox="0 0 500 980" style="height:540px; max-width:100%;"></svg>
-        <div id="mapaTip" style="position:absolute; pointer-events:none; background:#0d0c0b; border:1px solid var(--card-border); border-radius:8px; padding:0.45rem 0.7rem; font-size:0.68rem; color:var(--blanco); opacity:0; transition:opacity .15s; z-index:10; white-space:nowrap;"></div>
+        <div id="mapaTip" style="position:absolute; pointer-events:none; background:#090909; border:1px solid var(--card-border); border-radius:8px; padding:0.45rem 0.7rem; font-size:0.68rem; color:var(--blanco); opacity:0; transition:opacity .15s; z-index:10; white-space:nowrap;"></div>
       </div>
       <div id="mapaNota" style="font-size:0.64rem; color:var(--gris-claro); text-align:center; margin-top:0.5rem;"></div>
     </div>
@@ -497,6 +599,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
 
@@ -515,13 +618,10 @@ const toSlug = str => String(str || '').toLowerCase().normalize('NFD').replace(/
 const dia = d => new Date(d).toISOString().slice(0, 10)
 
 const ESTADOS = { nueva: 'Nuevo lead', contactado: 'Contactado', visita: 'Visita coordinada', visita_realizada: 'Visita realizada', oferta: 'Oferta enviada', cerrado: 'Cerrado', descartado: 'Descartado' }
-const PALETA  = ['#d76f3f','#6495ed','#50c878','#b464dc','#ffc832','#4ad0c4','#e05c5c','#9aa0a6']
-
-// Paleta exclusiva para canales: sin #6495ed (azul=link) ni #50c878 (verde=QR)
-const CANAL_PALETA = ['#d76f3f','#b464dc','#ffc832','#e05c5c','#4ad0c4','#f0a050','#a78bfa','#fb7185','#38d9a9','#ffa94d']
+const { colorCanalDesdeIndex, colorCssSeguro, hexToRgba } = window.SPCanalColors
 
 let _leads = []
-let _colorMap = {}               // canal nombre → color asignado (determinístico)
+let _colorMap = {}               // canal nombre → color asignado por canales.color_index
 let _seriesActivas = new Set()   // nombres de canal activos en el comparador ('__total__', '__directo__', o nombre)
 let _charts = {}
 let _metaCanal = {}              // nombre de canal → { ciudad, provincia, lat, lng, tipo }
@@ -534,7 +634,7 @@ let _lstOrigen = '', _lstCanal = '', _lstRef = '', _lstEstado = '', _lstOrden = 
 async function cargarTodo() {
   const [rLeads, rCanales, rRefs, rProy] = await Promise.all([
     supabase.from('contactos').select('*, propiedades(id, titulo)').order('created_at', { ascending: false }),
-    supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, latitud, longitud'),
+    supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, latitud, longitud, color_index'),
     supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug'),
     supabase.from('proyectos').select('nombre, slug, latitud, longitud')
       .then(r => r.error ? supabase.from('proyectos').select('nombre, slug').then(r2 => r2.error ? supabase.from('proyectos').select('nombre') : r2) : r),
@@ -550,7 +650,8 @@ async function cargarTodo() {
   ;(rCanales.data || []).forEach(c => {
     canalPorId[c.id] = c.nombre
     metaCanal[c.nombre] = { ciudad: c.ciudad || null, provincia: c.provincia || null,
-                            lat: c.latitud ?? null, lng: c.longitud ?? null, tipo: c.tipo || null }
+                            lat: c.latitud ?? null, lng: c.longitud ?? null, tipo: c.tipo || null,
+                            color_index: c.color_index }
   })
   _metaCanal = metaCanal
 
@@ -688,17 +789,18 @@ function initSeries() {
   _seriesActivas = new Set(['__total__', ...topCanales(3)])
 }
 
-// Asigna un color fijo a cada canal (orden alfabético, paleta sin azul/verde)
+// Asigna color canónico por canales.color_index
 function buildColorMap() {
-  const canales = [...new Set(_leads.filter(l => l._canal).map(l => l._canal))].sort()
   _colorMap = {}
-  canales.forEach((c, i) => { _colorMap[c] = CANAL_PALETA[i % CANAL_PALETA.length] })
+  Object.entries(_metaCanal || {}).forEach(([nombre, meta]) => {
+    _colorMap[nombre] = colorCanalDesdeIndex(meta?.color_index)
+  })
 }
 
 function colorSerie(key) {
-  if (key === '__total__')   return '#f0ede8'
-  if (key === '__directo__') return '#9aa0a6'
-  return _colorMap[key] || '#9aa0a6'
+  if (key === '__total__')   return '#c9a84c'
+  if (key === '__directo__') return '#8a8a82'
+  return colorCssSeguro(_colorMap[key], '#8a8a82')
 }
 
 function renderChips() {
@@ -773,11 +875,11 @@ cargarGeoArgentina()
     geojson.features.forEach(f => {
       const nombreProv = f.properties?.name || ''
       gProv.append('path')
-        .attr('d', pathGen(f))
-        .attr('class', 'prov-path')
-        .attr('fill', '#1a1511')
-        .attr('stroke', 'rgba(215,111,63,0.28)')
-        .attr('stroke-width', 0.7)
+	        .attr('d', pathGen(f))
+	        .attr('class', 'prov-path')
+	        .attr('fill', 'rgba(6,6,6,.85)')
+	        .attr('stroke', 'rgba(255,255,255,.05)')
+	        .attr('stroke-width', 0.7)
         .on('mousemove', evt => { if (nombreProv) tipMapa(`<b>${nombreProv}</b>`, evt) })
         .on('mouseleave', () => tipMapa(null))
     })
@@ -804,36 +906,12 @@ function renderMapa(rows) {
   gF.selectAll('*').remove(); gP.selectAll('*').remove(); gC.selectAll('*').remove()
 
   // Consultas por canal y por proyecto (sobre los datos filtrados)
-  const porCanal = {}, porProy = {}, flujos = {}
+  const porCanal = {}, porProy = {}, nuevasHoy = {}
+  const hoy = dia(new Date())
   rows.forEach(l => {
     if (l._canal)    porCanal[l._canal] = (porCanal[l._canal] || 0) + 1
     if (l._proyecto) porProy[l._proyecto] = (porProy[l._proyecto] || 0) + 1
-    if (l._canal && l._proyecto) {
-      const mc = _metaCanal[l._canal], mp = _proyGeo[l._proyecto]
-      if (mc?.lat != null && mp) {
-        const k = l._canal + '→' + l._proyecto
-        flujos[k] = flujos[k] ? { ...flujos[k], n: flujos[k].n + 1 } : { c: l._canal, p: l._proyecto, n: 1 }
-      }
-    }
-  })
-
-  // Flujos canal → proyecto
-  Object.values(flujos).forEach(f => {
-    const mc = _metaCanal[f.c], mp = _proyGeo[f.p]
-    const [x1, y1] = _mapProj([mc.lng, mc.lat])
-    const [x2, y2] = _mapProj([mp.lng, mp.lat])
-    const mx = (x1 + x2) / 2 + (y2 - y1) * 0.18
-    const my = (y1 + y2) / 2 - (x2 - x1) * 0.18
-    gF.append('path')
-      .attr('d', `M${x1},${y1} Q${mx},${my} ${x2},${y2}`)
-      .attr('fill', 'none')
-      .attr('stroke', '#d76f3f')
-      .attr('stroke-opacity', 0.45)
-      .attr('stroke-width', Math.min(1 + f.n * 0.8, 5))
-      .attr('stroke-linecap', 'round')
-      .style('cursor', 'default')
-      .on('mousemove', evt => tipMapa(`<b>${f.c}</b> → ${f.p}<br>${f.n} consulta${f.n === 1 ? '' : 's'}`, evt))
-      .on('mouseleave', () => tipMapa(null))
+    if (l._canal && dia(l.created_at) === hoy) nuevasHoy[l._canal] = (nuevasHoy[l._canal] || 0) + 1
   })
 
   // Proyectos (rombos color hueso)
@@ -847,15 +925,11 @@ function renderMapa(rows) {
       .attr('stroke', '#f0ede8')
       .attr('stroke-width', 1.6)
       .style('cursor', 'default')
-      .on('mousemove', evt => tipMapa(`◇ <b>${nombre}</b><br>${n} consulta${n === 1 ? '' : 's'} recibida${n === 1 ? '' : 's'}`, evt))
+      .on('mousemove', evt => tipMapa(`<b>${nombre}</b><br>${n} consulta${n === 1 ? '' : 's'} recibida${n === 1 ? '' : 's'}`, evt))
       .on('mouseleave', () => tipMapa(null))
   })
 
-  // Canales: círculos coloreados por TIPO de canal, tamaño según consultas
-  const COLOR_TIPO = {
-    inmobiliaria: '#6495ed', particular: '#d76f3f', punto_venta: '#50c878',
-    'campaña': '#b464dc', evento: '#ffc832',
-  }
+  // Canales: nodos coloreados por canales.color_index, sonar según consultas de hoy
   const LABEL_TIPO = {
     inmobiliaria: 'Inmobiliaria', particular: 'Vendedor particular', punto_venta: 'Punto de venta',
     'campaña': 'Campaña', evento: 'Evento',
@@ -866,23 +940,34 @@ function renderMapa(rows) {
     if (m.lat == null || m.lng == null) { sinCoords.push(nombre); return }
     const [x, y] = _mapProj([m.lng, m.lat])
     const r = n > 0 ? Math.min(5 + Math.sqrt(n) * 3.5, 17) : 3.5
-    const col = COLOR_TIPO[m.tipo] || '#9aa0a6'
-    gC.append('circle')
-      .attr('cx', x).attr('cy', y).attr('r', r)
+    const nHoy = nuevasHoy[nombre] || 0
+    const col = colorCssSeguro(colorCanalDesdeIndex(m.color_index), '#8a8a82')
+    const maxScale = Math.min(1.8 + nHoy * 0.45, 4)
+    const nodo = gC.append('g')
+      .attr('class', nHoy > 0 ? 'canal-nodo' : 'canal-nodo inactivo')
+      .attr('transform', `translate(${x},${y})`)
+      .style('color', col)
+      .style('--max', `scale(${maxScale})`)
+    nodo.append('circle').attr('class', 'sonar-ring r1').attr('r', Math.max(r, 7))
+    nodo.append('circle').attr('class', 'sonar-ring r2').attr('r', Math.max(r, 7))
+    nodo.append('circle')
+      .attr('class', 'nodo-activo')
+      .attr('r', r)
       .attr('fill', col)
       .attr('fill-opacity', n > 0 ? 0.85 : 0.4)
       .attr('stroke', 'rgba(255,255,255,0.55)')
       .attr('stroke-width', 1)
       .style('cursor', 'default')
       .on('mousemove', evt => tipMapa(
-        `● <b>${nombre}</b> · ${LABEL_TIPO[m.tipo] || m.tipo || 'Canal'}` +
-        `${m.ciudad ? '<br>📍 ' + m.ciudad + (m.provincia ? ', ' + m.provincia : '') : ''}` +
-        `<br>${n} consulta${n === 1 ? '' : 's'} generada${n === 1 ? '' : 's'}`, evt))
+        `<b>${nombre}</b> · ${LABEL_TIPO[m.tipo] || m.tipo || 'Canal'}` +
+        `${m.ciudad ? '<br>' + m.ciudad + (m.provincia ? ', ' + m.provincia : '') : ''}` +
+        `<br>${n} consulta${n === 1 ? '' : 's'} generada${n === 1 ? '' : 's'}` +
+        `${nHoy ? `<br>${nHoy} nueva${nHoy === 1 ? '' : 's'} hoy` : ''}`, evt))
       .on('mouseleave', () => tipMapa(null))
   })
 
   $('mapaNota').textContent = sinCoords.length
-    ? `Sin coordenadas (no aparecen en el mapa): ${sinCoords.join(', ')} — cargalas en Canales → Editar → Ubicación.`
+    ? `Sin coordenadas (no aparecen en el mapa): ${sinCoords.join(', ')}. Cargalas en Canales, Editar, Ubicación.`
     : ''
 }
 
@@ -935,6 +1020,34 @@ Chart.defaults.color = '#8a8a82'
 Chart.defaults.font.family = "'Inter', system-ui, sans-serif"
 Chart.defaults.font.size = 10
 const GRID = 'rgba(255,255,255,0.05)'
+function gradienteFill(ctx, color, h = 240) {
+  const g = ctx.createLinearGradient(0, 0, 0, h)
+  g.addColorStop(0, hexToRgba(color, .35))
+  g.addColorStop(1, hexToRgba(color, 0))
+  return g
+}
+function chartScales(indexAxis = 'x') {
+  const x = {
+    grid: { color: GRID },
+    ticks: { color: 'rgba(255,255,255,.45)', font: { family: 'Inter', size: 10 }, precision: 0 },
+  }
+  const y = {
+    grid: { color: GRID },
+    ticks: { color: 'rgba(255,255,255,.45)', font: { family: 'Inter', size: 10 }, precision: 0 },
+    beginAtZero: true,
+  }
+  if (indexAxis === 'y') {
+    x.beginAtZero = true
+    delete y.beginAtZero
+    y.grid = { display: false }
+  }
+  return { x, y }
+}
+const LEGEND_LABELS = {
+  color: 'rgba(255,255,255,.6)',
+  font: { family: 'Inter', size: 11 },
+  usePointStyle: true,
+}
 function nuevoChart(id, cfg) {
   if (_charts[id]) _charts[id].destroy()
   _charts[id] = new Chart($(id), cfg)
@@ -970,28 +1083,29 @@ function renderEvolucion() {
       const match = k === '__total__' ? true : k === '__directo__' ? !l._canal : l._canal === k
       if (match) { const d2 = dia(l.created_at); porDia[d2] = (porDia[d2] || 0) + 1 }
     })
-    return {
-      label: k === '__total__' ? 'Total' : k === '__directo__' ? 'Directas' : k,
-      data: dias.map(d2 => porDia[d2] || 0),
-      borderColor: col,
-      backgroundColor: col + '22',
-      fill: k === '__total__',
-      tension: 0.35, pointRadius: 0, pointHitRadius: 8, borderWidth: k === '__total__' ? 2 : 1.5,
-    }
-  })
+	    return {
+	      label: k === '__total__' ? 'Total' : k === '__directo__' ? 'Directas' : k,
+	      data: dias.map(d2 => porDia[d2] || 0),
+	      borderColor: col,
+	      backgroundColor: c => gradienteFill(c.chart.ctx, col),
+	      fill: true,
+	      tension: 0.35, pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 8, borderWidth: k === '__total__' ? 2.5 : 1.8,
+	    }
+	  })
 
   nuevoChart('chEvolucion', {
     type: 'line',
     data: { labels: dias.map(d2 => d2.slice(8,10) + '/' + d2.slice(5,7)), datasets },
-    options: {
-      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-      interaction: { mode: 'index', intersect: false },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
-        y: { grid: { color: GRID }, ticks: { precision: 0 }, beginAtZero: true },
-      },
-      maintainAspectRatio: false,
-    }
+	    options: {
+	      responsive: true,
+	      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+	      interaction: { mode: 'index', intersect: false },
+	      scales: {
+	        x: { ...chartScales().x, grid: { color: GRID }, ticks: { ...chartScales().x.ticks, maxTicksLimit: 12 } },
+	        y: chartScales().y,
+	      },
+	      maintainAspectRatio: false,
+	    }
   })
 }
 
@@ -1002,43 +1116,54 @@ function renderOrigen(rows) {
   const di = rows.filter(l => l._origen === 'directo').length
   nuevoChart('chOrigen', {
     type: 'doughnut',
-    data: {
-      labels: ['QR físico', 'Link directo', 'Directas'],
-      datasets: [{ data: [qr, li, di], backgroundColor: ['#50c878','#6495ed','#5a5a55'], borderWidth: 0 }]
-    },
-    options: {
-      cutout: '68%',
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14 } } },
-      maintainAspectRatio: false,
-    }
+	    data: {
+	      labels: ['QR físico', 'Link directo', 'Directas'],
+	      datasets: [{
+	        data: [qr, li, di],
+	        backgroundColor: ['#50c878','#6495ed','#8a8a82'],
+	        borderColor: '#0d0d0d',
+	        borderWidth: 2,
+	        hoverOffset: 8,
+	      }]
+	    },
+	    options: {
+	      cutout: '62%',
+	      plugins: { legend: { position: 'bottom', labels: { ...LEGEND_LABELS, boxWidth: 10, padding: 14 } } },
+	      maintainAspectRatio: false,
+	    }
   })
 }
 
 // ── Barras: canal / proyecto / referencia ─────────────────
 function renderBarras(rows) {
-  const barOpts = {
-    indexAxis: 'y',
-    plugins: { legend: { display: false } },
-    scales: { x: { grid: { color: GRID }, ticks: { precision: 0 } }, y: { grid: { display: false } } },
-    maintainAspectRatio: false,
-  }
+	  const barOpts = {
+	    indexAxis: 'y',
+	    plugins: { legend: { display: false } },
+	    scales: chartScales('y'),
+	    maintainAspectRatio: false,
+	  }
 
   const cuentaC = {}
   rows.forEach(l => { const k = l._canal || 'Directo'; cuentaC[k] = (cuentaC[k] || 0) + 1 })
   const eC = Object.entries(cuentaC).sort((a,b) => b[1]-a[1]).slice(0, 8)
-  nuevoChart('chCanales', { type:'bar',
-    data: { labels: eC.map(e=>e[0]), datasets: [{ data: eC.map(e=>e[1]),
-      backgroundColor: eC.map(e => e[0]==='Directo' ? 'rgba(150,150,150,.4)' : 'rgba(215,111,63,.7)'),
-      borderRadius: 5, barThickness: 16 }] },
-    options: barOpts })
+	  nuevoChart('chCanales', { type:'bar',
+	    data: { labels: eC.map(e=>e[0]), datasets: [{ data: eC.map(e=>e[1]),
+	      backgroundColor: eC.map(e => e[0]==='Directo' ? hexToRgba('#8a8a82', .48) : hexToRgba(colorSerie(e[0]), .7)),
+	      borderColor: eC.map(e => e[0]==='Directo' ? '#8a8a82' : colorSerie(e[0])),
+	      borderWidth: 1,
+	      borderRadius: 6, borderSkipped: false, barThickness: 16 }] },
+	    options: barOpts })
 
   const cuentaP = {}
   rows.forEach(l => { if (l._proyecto) cuentaP[l._proyecto] = (cuentaP[l._proyecto] || 0) + 1 })
   const eP = Object.entries(cuentaP).sort((a,b) => b[1]-a[1]).slice(0, 8)
-  nuevoChart('chProyectos', { type:'bar',
-    data: { labels: eP.map(e=>e[0]), datasets: [{ data: eP.map(e=>e[1]),
-      backgroundColor: 'rgba(100,149,237,.7)', borderRadius: 5, barThickness: 16 }] },
-    options: barOpts })
+	  nuevoChart('chProyectos', { type:'bar',
+	    data: { labels: eP.map(e=>e[0]), datasets: [{ data: eP.map(e=>e[1]),
+	      backgroundColor: hexToRgba('#c9a84c', .68),
+	      borderColor: '#c9a84c',
+	      borderWidth: 1,
+	      borderRadius: 6, borderSkipped: false, barThickness: 16 }] },
+	    options: barOpts })
 
   // Por referencia (QR vs Link apilado)
   const porRef = {}
@@ -1055,25 +1180,30 @@ function renderBarras(rows) {
     cuentaCiu[k] = (cuentaCiu[k] || 0) + 1
   })
   const eCiu = Object.entries(cuentaCiu).sort((a,b) => b[1]-a[1]).slice(0, 8)
-  nuevoChart('chCiudades', { type:'bar',
-    data: { labels: eCiu.map(e=>e[0]), datasets: [{ data: eCiu.map(e=>e[1]),
-      backgroundColor: eCiu.map(e => e[0]==='Sin ubicación' ? 'rgba(150,150,150,.4)' : 'rgba(180,100,220,.7)'),
-      borderRadius: 5, barThickness: 16 }] },
-    options: barOpts })
+	  nuevoChart('chCiudades', { type:'bar',
+	    data: { labels: eCiu.map(e=>e[0]), datasets: [{ data: eCiu.map(e=>e[1]),
+	      backgroundColor: eCiu.map(e => e[0]==='Sin ubicación' ? hexToRgba('#8a8a82', .42) : hexToRgba('#f5f3f0', .22)),
+	      borderColor: eCiu.map(e => e[0]==='Sin ubicación' ? '#8a8a82' : 'rgba(255,255,255,.36)'),
+	      borderWidth: 1,
+	      borderRadius: 6, borderSkipped: false, barThickness: 16 }] },
+	    options: barOpts })
 
   const eR = Object.entries(porRef).sort((a,b) => (b[1].qr+b[1].link)-(a[1].qr+a[1].link)).slice(0, 8)
   nuevoChart('chRefs', { type:'bar',
     data: {
       labels: eR.map(e => e[0]),
       datasets: [
-        { label: 'QR',   data: eR.map(e => e[1].qr),   backgroundColor: 'rgba(80,200,120,.75)',  borderRadius: 5, barThickness: 14 },
-        { label: 'Link', data: eR.map(e => e[1].link), backgroundColor: 'rgba(100,149,237,.75)', borderRadius: 5, barThickness: 14 },
-      ]
-    },
-    options: { ...barOpts,
-      plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10 } } },
-      scales: { x: { stacked: true, grid: { color: GRID }, ticks: { precision: 0 } }, y: { stacked: true, grid: { display: false }, ticks: { font: { size: 8 } } } } }
-  })
+	        { label: 'QR',   data: eR.map(e => e[1].qr),   backgroundColor: hexToRgba('#50c878', .75), borderColor:'#50c878', borderWidth:1, borderRadius: 6, borderSkipped:false, barThickness: 14 },
+	        { label: 'Link', data: eR.map(e => e[1].link), backgroundColor: hexToRgba('#6495ed', .75), borderColor:'#6495ed', borderWidth:1, borderRadius: 6, borderSkipped:false, barThickness: 14 },
+	      ]
+	    },
+	    options: { ...barOpts,
+	      plugins: { legend: { display: true, position: 'bottom', labels: { ...LEGEND_LABELS, boxWidth: 10 } } },
+	      scales: {
+	        x: { ...chartScales('y').x, stacked: true },
+	        y: { ...chartScales('y').y, stacked: true, ticks: { ...chartScales('y').y.ticks, font: { family:'Inter', size: 8 } } },
+	      } }
+	  })
 }
 
 // ── Lista (con filtros y orden propios) ───────────────────
@@ -1109,22 +1239,20 @@ function renderLista(rows) {
     const canalColor = l._canal ? (_colorMap[l._canal] || '#9aa0a6') : null
     const otrosLeads = getPersonaLeads(l)
     const journeyHtml = otrosLeads.length > 0 ? renderJourney(l, otrosLeads) : ''
-    const journeyTag  = otrosLeads.length > 0 ? `<span class="journey-tag">↻ ${otrosLeads.length + 1} consultas</span>` : ''
-    // Fuente de la consulta: ícono + link diferenciado por tipo
-    const SOURCE_ICON = { propiedad: '🏡', proyecto: '🏢', general: '🌐' }
-    const sourceIcon = SOURCE_ICON[l._sourceType] || '🌐'
+    const journeyTag  = otrosLeads.length > 0 ? `<span class="journey-tag">${otrosLeads.length + 1} consultas</span>` : ''
+    // Fuente de la consulta: link diferenciado por tipo, sin íconos
     const sourceLabel = l._proyecto ? esc(l._proyecto) : (l._sourceType === 'general' ? 'Home' : 'Sin nombre')
     const sourceHref = l._sourceType === 'propiedad' && l._sourceId
       ? `../propiedad?id=${encodeURIComponent(l._sourceId)}`
       : l._sourceType === 'proyecto' && l._sourceId
       ? `../proyecto-mini.html?slug=${encodeURIComponent(l._sourceId)}`
       : '../index.html'
-    const sourcePart = `<a class="lc-source-link" href="${esc(sourceHref)}" target="_blank" rel="noopener">${sourceIcon} ${sourceLabel}</a>`
+    const sourcePart = `<a class="lc-source-link" href="${esc(sourceHref)}" target="_blank" rel="noopener">${sourceLabel}</a>`
     const meta = [
       l._canal
-        ? `<span class="canal-tag" style="--ch:${canalColor}"><span class="od" style="background:${canalColor}; margin-right:0.3rem;"></span>${esc(l._canal)}</span>`
+        ? `<span class="canal-tag" style="--bc:${canalColor}"><span class="od"></span>${esc(l._canal)}</span>`
         : '',
-      l._ciudad   ? `<span>📍 ${esc(l._ciudad)}</span>` : '',
+      l._ciudad   ? `<span>Ubicación: ${esc(l._ciudad)}</span>` : '',
       `<span><span class="od" style="background:${om.dot}"></span>${om.label}</span>`,
       sourcePart,
       (l.canal_ref && l._canal !== l.canal_ref) ? `<span class="ref-mono">${esc(l.canal_ref)}</span>` : '',
@@ -1148,8 +1276,8 @@ function renderLista(rows) {
       ${journeyHtml}
       ${l.mensaje ? `<div class="lc-msg">${esc(l.mensaje)}</div>` : '<div style="height:0.9rem;"></div>'}
       <div class="lc-actions">
-        ${l.email ? `<a class="lc-btn" href="mailto:${esc(l.email)}">✉ ${esc(l.email)}</a>` : ''}
-        ${l.telefono ? `<a class="lc-btn" href="https://wa.me/${esc(telDigits)}" target="_blank" rel="noopener">WhatsApp · ${esc(l.telefono)}</a>` : ''}
+        ${l.email ? `<a class="lc-btn" href="mailto:${esc(l.email)}">Email</a>` : ''}
+        ${l.telefono ? `<a class="lc-btn" href="https://wa.me/${esc(telDigits)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
       </div>
     </div>`
   }).join('')
@@ -1255,8 +1383,8 @@ function renderJourney(lead, otros) {
     ? `<span><strong>Canal único:</strong> ${esc(primerCanal)}</span>`
     : `<span><strong>Primer canal:</strong> ${esc(primerCanal)}</span><span><strong>Último canal:</strong> ${esc(ultimoCanal)}</span>`
 
-  return `<div class="journey-section">
-    <div class="journey-title">↻ Esta persona consultó ${todos.length} veces · Recorrido de canales</div>
+	  return `<div class="journey-section">
+	    <div class="journey-title">Esta persona consultó ${todos.length} veces · Recorrido de canales</div>
     <div class="journey-timeline">${steps}</div>
     <div class="journey-attr">${atribMsg}</div>
   </div>`
