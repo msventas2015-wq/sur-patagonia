@@ -220,7 +220,8 @@
     .crm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); z-index:1000; align-items:center; justify-content:center; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
     .crm-overlay.open { display:flex; }
     .crm-modal { background:linear-gradient(160deg, rgba(20,20,20,.98), rgba(12,12,12,.98)); border:1px solid var(--card-border); border-top:1px solid rgba(255,255,255,.12); border-radius:var(--card-radius); padding:2.2rem 2.4rem; width:100%; max-width:800px; max-height:90vh; overflow-y:auto; box-shadow:0 28px 80px rgba(0,0,0,.48); }
-    .crm-modal h3 { font-size:1rem; font-weight:600; color:var(--blanco); margin-bottom:1.2rem; }
+    .crm-modal h3,
+    .crm-modal .modal-nombre { font-family:'Inter',sans-serif; font-size:1.45rem; font-weight:700; letter-spacing:-0.01em; color:var(--blanco); margin:0 0 0.25rem; padding-right:5rem; line-height:1.2; }
     .crm-modal-body { display:flex; flex-direction:column; gap:2.6rem; margin-top:2rem; }
     .crm-modal-datos { display:grid; grid-template-columns:1fr 1fr; gap:0.7rem 2rem; }
     .crm-modal-row { display:flex; justify-content:space-between; align-items:flex-start; padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.75rem; }
@@ -237,18 +238,66 @@
     .crm-persona-label { display:block; font-size:0.56rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,.36); margin-bottom:0.16rem; }
     .crm-persona-val { display:block; font-size:0.72rem; color:rgba(245,243,240,.84); word-break:break-word; }
     .crm-persona-loading { font-size:0.72rem; color:rgba(255,255,255,.42); }
-    .crm-oportunidades-list { display:flex; flex-direction:column; gap:1rem; }
-    .crm-oportunidad-item { padding:0.85rem 1rem 0.85rem 1.05rem; border:0; border-radius:0 6px 6px 0; border-left:2px solid rgba(255,255,255,.1); background:rgba(255,255,255,.015); }
-    .crm-oportunidad-item.actual { border-left-color:var(--accent); background:rgba(215,111,63,.04); }
-    .crm-oportunidad-head { display:flex; align-items:flex-start; justify-content:space-between; gap:0.55rem; margin-bottom:0.35rem; }
-    .crm-oportunidad-titulo { font-size:0.74rem; font-weight:700; color:rgba(245,243,240,.88); line-height:1.35; }
+    .crm-oportunidades-list,
+    .crm-eventos-list { display:flex; flex-direction:column; gap:0.2rem; }
+    .crm-op-headcols,
+    .crm-ev-headcols {
+      display:grid;
+      grid-template-columns:130px minmax(0,1fr) 110px 80px 60px;
+      gap:0.75rem;
+      padding:0 1rem;
+      font-size:0.54rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+      color:rgba(255,255,255,.32);
+      margin-bottom:0.4rem;
+    }
+    .crm-op-headcols span:last-child,
+    .crm-ev-headcols span:last-child { text-align:right; }
+    .crm-oportunidad-item,
+    .crm-evento-item {
+      display:grid;
+      grid-template-columns:130px minmax(0,1fr) 110px 80px 60px;
+      gap:0.75rem;
+      align-items:center;
+      padding:0.65rem 1rem;
+      border:0;
+      border-left:2px solid rgba(255,255,255,.1);
+      border-radius:0 6px 6px 0;
+      background:rgba(255,255,255,.015);
+    }
+    .crm-oportunidad-item.actual,
+    .crm-evento-item.actual { border-left-color:var(--accent); background:rgba(215,111,63,.04); }
+    .crm-op-canal,
+    .crm-ev-canal {
+      display:inline-flex; align-items:center; gap:5px;
+      font-size:0.7rem; font-weight:600;
+      color:var(--bc, rgba(245,243,240,.58));
+      white-space:nowrap; overflow:hidden;
+    }
+    .crm-op-canal i,
+    .crm-ev-canal i { width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 6px currentColor; flex:0 0 auto; }
+    .crm-op-canal span,
+    .crm-ev-canal span { overflow:hidden; text-overflow:ellipsis; }
+    .crm-oportunidad-titulo,
+    .crm-evento-tipo { font-size:0.76rem; font-weight:600; color:rgba(245,243,240,.9); margin:0; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .crm-op-mensaje { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:0.22rem; font-size:0.66rem; font-weight:400; line-height:1.42; color:rgba(255,255,255,.5); white-space:normal; }
+    .crm-op-mensaje.empty { color:rgba(255,255,255,.28); font-style:italic; }
+    .crm-evento-origen { display:block; margin-top:0.18rem; font-size:0.54rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:rgba(255,255,255,.34); overflow:hidden; text-overflow:ellipsis; }
+    .crm-op-current { display:block; margin-top:0.18rem; font-size:0.52rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); }
+    .crm-op-estado,
+    .crm-ev-estado { font-size:0.6rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--est, rgba(245,243,240,.64)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .crm-op-fecha,
+    .crm-ev-fecha { font-size:0.68rem; color:var(--gris); white-space:nowrap; }
+    .crm-op-via,
+    .crm-ev-via {
+      display:inline-flex; align-items:center; gap:4px; justify-content:flex-end;
+      font-size:0.55rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase;
+      line-height:1; white-space:nowrap;
+    }
+    .crm-op-via i,
+    .crm-ev-via i { width:7px; height:7px; border-radius:2px; background:currentColor; flex:0 0 auto; }
     .crm-oportunidad-badge { flex-shrink:0; font-size:0.52rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--est, rgba(245,243,240,.74)); border:0; background:transparent; padding:0; border-radius:0; }
     .crm-oportunidad-meta { display:flex; flex-wrap:wrap; gap:0.28rem 0.45rem; font-size:0.62rem; color:rgba(255,255,255,.45); }
-    .crm-eventos-list { display:flex; flex-direction:column; gap:1rem; }
-    .crm-evento-item { padding:0.85rem 1rem 0.85rem 1.05rem; border:0; border-radius:0 6px 6px 0; border-left:2px solid rgba(255,255,255,.1); background:rgba(255,255,255,.015); }
-    .crm-evento-item.actual { border-left-color:var(--accent); background:rgba(215,111,63,.04); }
     .crm-evento-head { display:flex; align-items:flex-start; justify-content:space-between; gap:0.55rem; margin-bottom:0.35rem; }
-    .crm-evento-tipo { font-size:0.74rem; font-weight:700; color:rgba(245,243,240,.88); line-height:1.35; text-transform:none; }
     .crm-evento-badge { flex-shrink:0; font-size:0.52rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--est, rgba(245,243,240,.74)); border:0; background:transparent; padding:0; border-radius:0; }
     .crm-evento-meta { display:flex; flex-wrap:wrap; gap:0.28rem 0.45rem; font-size:0.62rem; color:rgba(255,255,255,.45); }
     .crm-modal-actions { display:flex; gap:0.7rem; flex-wrap:wrap; margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--sep); }
@@ -283,6 +332,19 @@
       .crm-modal { padding:1.5rem; max-width:100%; }
       .crm-modal-datos { grid-template-columns:1fr; }
       .crm-modal-body { gap:1.8rem; }
+    }
+
+    @media (max-width:680px) {
+      .crm-oportunidad-item,
+      .crm-evento-item,
+      .crm-op-headcols,
+      .crm-ev-headcols { grid-template-columns:110px minmax(0,1fr) 90px; }
+      .crm-op-fecha, .crm-op-via,
+      .crm-ev-fecha, .crm-ev-via,
+      .crm-op-headcols span:nth-child(4),
+      .crm-op-headcols span:nth-child(5),
+      .crm-ev-headcols span:nth-child(4),
+      .crm-ev-headcols span:nth-child(5) { display:none; }
     }
 
     @media (max-width:560px) {
@@ -665,10 +727,23 @@ function renderViaBadge(canalVia, directo = false) {
   return `<span class="badge-via ${viaClase(via.label)}">${icono}<span>${esc(via.label.toUpperCase())}</span></span>`
 }
 
-function renderEstadoBadge(estado) {
+function estadoInfo(estado) {
   const id = claveMapa(estado || 'nueva')
-  const label = ETAPAS.find(e => e.id === id)?.label || eventoLabel(id)
-  return `<span class="est-bdg" style="--est:${ESTADO_COLOR[id] || ESTADO_COLOR.descartado}">${esc(label)}</span>`
+  return {
+    id,
+    label: ETAPAS.find(e => e.id === id)?.label || eventoLabel(id),
+    color: ESTADO_COLOR[id] || ESTADO_COLOR.descartado
+  }
+}
+
+function renderEstadoBadge(estado) {
+  const info = estadoInfo(estado)
+  return `<span class="est-bdg" style="--est:${info.color}">${esc(info.label)}</span>`
+}
+
+function renderEstadoPlano(estado, clase = 'crm-op-estado') {
+  const info = estadoInfo(estado)
+  return `<span class="${clase}" style="--est:${info.color}">${esc(info.label)}</span>`
 }
 
 function renderCanalViaChips(canalRef, canalVia, canalColor = null, opciones = {}) {
@@ -1141,8 +1216,37 @@ function oportunidadTitulo(o) {
   return 'Oportunidad sin propiedad asociada'
 }
 
-function oportunidadCanal(o) {
-  return `<span class="crm-inline-chips">${renderCanalViaChips(o.canal_ref, o.canal_via)}</span>`
+function canalInfoFila(canalRef) {
+  const ref = textoPlano(canalRef)
+  if (!ref) return { label: 'Directo', color: COLOR_NEUTRO }
+  const canal = resolverCanal(ref)
+  return {
+    label: canal?.nombre || ref,
+    color: colorCanalDeRegistro(canal, COLOR_NEUTRO)
+  }
+}
+
+function renderCanalFila(canalRef, clase = 'crm-op-canal') {
+  const info = canalInfoFila(canalRef)
+  const safe = colorCssSeguro(info.color)
+  return `<span class="${clase}" style="--bc:${safe}"><i></i><span>${esc(info.label)}</span></span>`
+}
+
+function renderViaFila(canalVia, directo = false, clase = 'crm-op-via') {
+  const via = infoVia(canalVia, directo)
+  const icono = via.label === 'QR' ? '<i aria-hidden="true"></i>' : ''
+  return `<span class="${clase} ${viaClase(via.label)}">${icono}<span>${esc(via.label.toUpperCase())}</span></span>`
+}
+
+function renderEventoEstadoPlano(e) {
+  if (e.estado_anterior && e.estado_nuevo) {
+    const anterior = estadoInfo(e.estado_anterior)
+    const nuevo = estadoInfo(e.estado_nuevo)
+    return `<span class="crm-ev-estado" style="--est:${nuevo.color}">${esc(anterior.label)} → ${esc(nuevo.label)}</span>`
+  }
+  if (e.estado_nuevo) return renderEstadoPlano(e.estado_nuevo, 'crm-ev-estado')
+  if (e.estado_anterior) return renderEstadoPlano(e.estado_anterior, 'crm-ev-estado')
+  return '<span class="crm-ev-estado">—</span>'
 }
 
 function renderOportunidadesSinPersona() {
@@ -1178,22 +1282,29 @@ function renderOportunidadesPersona(oportunidades, actualId) {
     <div class="crm-persona-card">
       <div class="crm-persona-kicker">Oportunidades</div>
       <div class="crm-persona-title">Oportunidades de esta persona</div>
+      <div class="crm-op-headcols" aria-hidden="true">
+        <span>Canal</span>
+        <span>Destino</span>
+        <span>Estado</span>
+        <span>Fecha</span>
+        <span>Vía</span>
+      </div>
       <div class="crm-oportunidades-list">
         ${oportunidades.map(o => {
           const actual = String(o.id) === String(actualId)
+          const destino = oportunidadTitulo(o)
+          const mensaje = limpiarPrefijoMensaje(o.mensaje, destino)
           return `
             <div class="crm-oportunidad-item${actual ? ' actual' : ''}">
-              <div class="crm-oportunidad-head">
-                <div class="crm-oportunidad-titulo">${oportunidadTitulo(o)}</div>
-                ${actual ? '<span class="crm-oportunidad-badge">Esta oportunidad</span>' : ''}
+              ${renderCanalFila(o.canal_ref, 'crm-op-canal')}
+              <div class="crm-oportunidad-titulo">
+                ${destino}
+                <span class="crm-op-mensaje${mensaje ? '' : ' empty'}">${mensaje ? esc(mensaje) : 'Sin mensaje'}</span>
+                ${actual ? '<span class="crm-op-current">Esta oportunidad</span>' : ''}
               </div>
-              <div class="crm-oportunidad-meta">
-                <span>${esc(fmtPersonaFecha(o.created_at || o.fecha))}</span>
-                <span>·</span>
-                <span>${renderEstadoBadge(o.estado || 'nueva')}</span>
-                <span>·</span>
-                <span>${oportunidadCanal(o)}</span>
-              </div>
+              ${renderEstadoPlano(o.estado || 'nueva', 'crm-op-estado')}
+              <span class="crm-op-fecha">${esc(fmtPersonaFecha(o.created_at || o.fecha))}</span>
+              ${renderViaFila(o.canal_via, !textoPlano(o.canal_ref), 'crm-op-via')}
             </div>`
         }).join('')}
       </div>
@@ -1249,22 +1360,27 @@ function renderHistorialPersona(eventos, actualId) {
     <div class="crm-persona-card">
       <div class="crm-persona-kicker">Historial</div>
       <div class="crm-persona-title">Historial CRM</div>
+      <div class="crm-ev-headcols" aria-hidden="true">
+        <span>Canal</span>
+        <span>Evento</span>
+        <span>Estado</span>
+        <span>Fecha</span>
+        <span>Vía</span>
+      </div>
       <div class="crm-eventos-list">
         ${lista.map(e => {
           const actual = String(e.contacto_id) === String(actualId)
-          const meta = [
-            `<span>${esc(fmtEventoFecha(e.fecha_evento || e.created_at))}</span>`,
-            eventoEstados(e),
-            eventoCanal(e),
-            e.origen ? `<span>${esc(e.origen)}</span>` : ''
-          ].filter(Boolean)
           return `
             <div class="crm-evento-item${actual ? ' actual' : ''}">
-              <div class="crm-evento-head">
-                <div class="crm-evento-tipo">${esc(eventoLabel(e.tipo_evento))}</div>
-                ${actual ? '<span class="crm-evento-badge">Esta oportunidad</span>' : ''}
+              ${renderCanalFila(e.canal_ref, 'crm-ev-canal')}
+              <div class="crm-evento-tipo">
+                ${esc(eventoLabel(e.tipo_evento))}
+                ${actual ? '<span class="crm-op-current">Esta oportunidad</span>' : ''}
+                ${e.origen ? `<span class="crm-evento-origen">${esc(e.origen)}</span>` : ''}
               </div>
-              <div class="crm-evento-meta">${meta.join('<span>·</span>')}</div>
+              ${renderEventoEstadoPlano(e)}
+              <span class="crm-ev-fecha">${esc(fmtEventoFecha(e.fecha_evento || e.created_at))}</span>
+              ${renderViaFila(e.canal_via, !textoPlano(e.canal_ref), 'crm-ev-via')}
             </div>`
         }).join('')}
       </div>
