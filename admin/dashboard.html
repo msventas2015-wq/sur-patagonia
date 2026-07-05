@@ -136,7 +136,7 @@
     .btn-mini.danger:hover { border-color: #e05c5c; color: #e05c5c; }
     .empty-state { text-align: center; padding: 2.5rem; color: var(--gris-claro); font-size: 0.8rem; }
   </style>
-  <link rel="stylesheet" href="../css/admin-theme.css?v=admin-header-dashboard-01b" />
+  <link rel="stylesheet" href="../css/admin-theme.css?v=visual-system-modern-01" />
 </head>
 <body>
 <div class="adm-bg-brand"></div>
@@ -331,7 +331,16 @@ import { supabase } from '../js/config.js'
 const $ = id => document.getElementById(id)
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 const dia = d => new Date(d).toISOString().slice(0, 10)
-const { colorCanalDesdeIndex, hexToRgba } = window.SPCanalColors
+const CANAL_COLORS = window.SPCanalColors || {}
+const colorCanalDesdeIndex = CANAL_COLORS.colorCanalDesdeIndex || (() => '#8a8a82')
+const hexToRgba = CANAL_COLORS.hexToRgba || ((hex, alpha) => {
+  const clean = String(hex || '').replace('#', '')
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return `rgba(255,255,255,${alpha})`
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+})
 const colorCanal = colorCanalDesdeIndex
 
 // ── Auth ──────────────────────────────────────────────────
@@ -567,7 +576,7 @@ async function cargar() {
   const origenItems = [
     { label: 'QR físico', value: qr, color: '#50c878' },
     { label: 'Link directo', value: li, color: '#6495ed' },
-    { label: 'Directas', value: di, color: '#9aa7b2' },
+    { label: 'Directas', value: di, color: '#8a8a82' },
   ]
   $('chOrigenModulo').innerHTML = totalOrigen === 0
     ? '<div class="empty-state adm-origen-empty">Sin datos de tráfico en el período.</div>'
@@ -637,9 +646,9 @@ async function cargar() {
         const fecha = new Date(l.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
         const origenBadge = l.canal_ref
           ? (l.canal_via === 'qr'
-              ? '<span class="badge badge-qr">▣ QR</span>'
-              : '<span class="badge badge-link">🔗 Link</span>')
-          : '<span class="badge badge-directo">Directo</span>'
+              ? '<span class="badge-via badge-qr"><span class="badge-via-icon"></span>QR</span>'
+              : '<span class="badge-via badge-link">Link</span>')
+          : '<span class="badge-via badge-directo">Directo</span>'
         const proyecto = l.propiedades?.titulo || l.proyecto_slug || ''
         return `
         <a href="contactos.html" class="mini-lead">
@@ -652,7 +661,7 @@ async function cargar() {
             <span class="ml-fecha">${fecha}</span>
           </div>
           <div class="ml-meta">
-            ${canal ? `<span class="badge badge-canal" style="border-color:${hexToRgba(canalColor,.44)};background:${hexToRgba(canalColor,.13)};color:${canalColor};">${esc(canal)}</span>` : ''}
+            ${canal ? `<span class="canal-inline" style="--bc:${canalColor};"><i></i>${esc(canal)}</span>` : ''}
             ${origenBadge}
             ${proyecto ? `<span>· ${esc(proyecto)}</span>` : ''}
           </div>
