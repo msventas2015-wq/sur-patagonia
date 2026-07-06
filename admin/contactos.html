@@ -387,6 +387,7 @@
     .mapa-tip .tip-sub { font-size:.62rem; color:rgba(255,255,255,.5); letter-spacing:.02em; }
     .mapa-tip .tip-activas { font-size:.62rem; color:var(--accent); font-weight:600; margin-top:.25rem; }
     .mapa-tip .tip-proy { font-size:.62rem; color:rgba(201,168,76,.7); margin-top:.2rem; }
+    .mapa-tip .tip-alerta { font-size:.62rem; color:#f0956a; font-weight:600; margin-top:.25rem; }
     .mapa-tip .tip-precio { font-size:.66rem; color:var(--blanco); font-weight:600; margin-top:.2rem; }
     .mapa-tip .tip-tipo-prop { font-size:.58rem; color:var(--dorado); font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
     .mapa-tip .tip-tipo-prop.venta { color:var(--azul,#7aaeff); }
@@ -401,10 +402,18 @@
         transparent 100%);
       box-shadow:0 0 6px color-mix(in srgb, var(--col) 50%, transparent);
     }
-    .canal-nodo.dormido .nodo-core {
+    .canal-nodo.standby .nodo-core {
+      animation:titilar 1.8s ease-in-out infinite;
+    }
+    @keyframes titilar {
+      0%, 100% { opacity:1; }
+      50% { opacity:.4; }
+    }
+    .canal-nodo.apagado .nodo-core {
       background:transparent;
-      border:1px solid color-mix(in srgb, var(--col) 45%, transparent);
+      border:1px solid color-mix(in srgb, var(--col) 40%, transparent);
       box-shadow:none;
+      animation:none;
     }
     .canal-nodo .sonar-ring { position:absolute; inset:-50%; border-radius:50%; border:1.1px solid currentColor; opacity:0; pointer-events:none; display:block; transform-origin:center; transform-box:fill-box; }
     .sonar-ring.r1 { animation:sonar 3s ease-out infinite; }
@@ -414,7 +423,10 @@
       70%  { opacity:.3; }
       100% { transform:var(--max, scale(2.6)); opacity:0; }
     }
-    .canal-nodo.inactivo .sonar-ring { animation:none; opacity:0; }
+    .canal-nodo.sin-sonar .sonar-ring { animation:none; opacity:0; }
+    @media (prefers-reduced-motion: reduce) {
+      .canal-nodo.standby .nodo-core { animation:none; opacity:.7; }
+    }
     /* Desarrollos + propiedades */
     .proy-rombo { display:block; width:12px; height:12px; background:rgba(245,243,240,.15); border:1.6px solid #f5f3f0; transform:rotate(45deg); }
     .prop-pin {
@@ -433,6 +445,38 @@
       width:60px; opacity:.14; mix-blend-mode:screen;
     }
     .logo-watermark img { width:100%; display:block; }
+    #saludRed {
+      flex:0 0 280px;
+      background:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.07);
+      border-top:1px solid rgba(255,255,255,.12);
+      border-radius:10px; padding:1rem;
+      backdrop-filter:blur(4px);
+      font-size:.7rem;
+    }
+    #saludRed h5 {
+      font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.12em;
+      color:rgba(255,255,255,.5); margin:0 0 .7rem;
+    }
+    .salud-bloque { margin-bottom:1rem; }
+    .salud-bloque:last-child { margin-bottom:0; }
+    .salud-linea {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:.4rem 0; border-bottom:1px solid rgba(255,255,255,.05);
+      font-size:.66rem; color:rgba(245,243,240,.8);
+    }
+    .salud-linea:last-child { border-bottom:0; }
+    .salud-linea .nombre { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .salud-linea .dias { color:rgba(255,255,255,.45); font-size:.6rem; margin-left:.5rem; }
+    .salud-bloque.standby .salud-linea .dias { color:#f0956a; }
+    .salud-bloque.apagado .salud-linea .dias { color:#e05c5c; font-weight:600; }
+    .salud-contador {
+      font-size:1.6rem; font-weight:300; color:var(--blanco);
+      background:linear-gradient(135deg,#fff,rgba(255,255,255,.7));
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+      line-height:1; margin-bottom:.2rem;
+    }
+    .salud-vacio { font-size:.64rem; color:rgba(255,255,255,.35); font-style:italic; padding:.4rem 0; }
 
     /* ── Multi-touch journey ──────────────────────────────── */
 	    .journey-tag {
@@ -688,9 +732,12 @@
           </div>
         </div>
       </div>
-      <div id="mapaWrap" style="position:relative;">
-        <div id="mapaLeaflet"></div>
-        <div class="logo-watermark"><img src="../assets/logos/picos-blanco.png" alt="" /></div>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <div id="mapaWrap" style="position:relative; flex:1 1 60%; min-width:300px;">
+          <div id="mapaLeaflet"></div>
+          <div class="logo-watermark"><img src="../assets/logos/picos-blanco.png" alt="" /></div>
+        </div>
+        <div id="saludRed"></div>
       </div>
       <div id="mapaNota" style="font-size:0.64rem; color:var(--gris); text-align:center; margin-top:0.5rem;"></div>
     </div>
@@ -801,25 +848,27 @@ let _capaDesarrollos = null      // layerGroup de desarrollos
 let _capaPropiedades = null      // layerGroup de propiedades
 let _rango = 'hoy'               // 'hoy' | 'd7' | 'd30d'
 let _layers = { canales:true, desarrollos:true, propiedades:true }
+let _ultActividad = {}           // nombre de canal → timestamp ms última visita/consulta
 // Filtros y orden propios de la LISTA (encima de los filtros globales)
 let _lstOrigen = '', _lstCanal = '', _lstRef = '', _lstEstado = '', _lstOrden = 'recientes'
 
 // ── Carga de datos ────────────────────────────────────────
 async function cargarTodo() {
-  const [rLeads, rCanales, rRefs, rProy, rProp] = await Promise.all([
+  const [rLeads, rCanales, rRefs, rProy, rProp, rVisitas] = await Promise.all([
     supabase.from('contactos').select('*, propiedades(id, titulo)').order('created_at', { ascending: false }),
     supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, latitud, longitud, color_index, activo').eq('activo', true).order('nombre'),
     supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug'),
     supabase.from('proyectos').select('nombre, slug, latitud, longitud')
       .then(r => r.error ? supabase.from('proyectos').select('nombre, slug').then(r2 => r2.error ? supabase.from('proyectos').select('nombre') : r2) : r),
     supabase.from('propiedades').select('id, titulo, tipo, operacion, latitud, longitud, precio, moneda').order('titulo'),
+    supabase.from('visitas').select('canal_ref, created_at').not('canal_ref', 'is', null).order('created_at', { ascending: false }).limit(5000),
   ])
 
 	  if (rLeads.error) {
 	    $('listaLeads').innerHTML = `<div class="empty-state">Error al cargar consultas: ${esc(rLeads.error.message)}<br>Verificá tu sesión y permisos (rol admin).</div>`
 	    return
 	  }
-	  const errorCatalogo = rCanales.error || rRefs.error || rProy.error || rProp.error
+	  const errorCatalogo = rCanales.error || rRefs.error || rProy.error || rProp.error || rVisitas.error
 	  if (errorCatalogo) {
 	    console.warn('[contactos] error cargando catálogo admin', errorCatalogo)
 	    $('listaLeads').innerHTML = `<div class="empty-state">Error al cargar datos de soporte: ${esc(errorCatalogo.message || 'catálogo no disponible')}<br>Verificá tu sesión y permisos (rol admin).</div>`
@@ -828,6 +877,7 @@ async function cargarTodo() {
 
   const canalPorId = {}
   const metaCanal  = {}   // nombre de canal → { ciudad, provincia, lat, lng }
+  const canales = rCanales.data || []
   ;(rCanales.data || []).forEach(c => {
     canalPorId[c.id] = c.nombre
     metaCanal[c.nombre] = { ciudad: c.ciudad || null, provincia: c.provincia || null,
@@ -861,7 +911,24 @@ async function cargarTodo() {
     canalPorRef[r.codigo] = canalPorId[r.canal_id] || null
     refNombre[r.codigo]   = r.nombre
   })
-  const canales = rCanales.data || []
+  const nombreDesdeRef = ref => canalPorRef[ref]
+    || (canales.find(k => ref === k.codigo || String(ref || '').startsWith(k.codigo + '-'))?.nombre)
+    || ref
+
+  _ultActividad = {}
+  ;((rVisitas && rVisitas.data) || []).forEach(v => {
+    if (!v.canal_ref) return
+    const nombre = nombreDesdeRef(v.canal_ref)
+    const t = new Date(v.created_at).getTime()
+    if (Number.isFinite(t) && (!_ultActividad[nombre] || t > _ultActividad[nombre])) _ultActividad[nombre] = t
+  })
+  ;(rLeads.data || []).forEach(c => {
+    if (!c.canal_ref) return
+    const nombre = nombreDesdeRef(c.canal_ref)
+    const t = new Date(c.created_at).getTime()
+    if (Number.isFinite(t) && (!_ultActividad[nombre] || t > _ultActividad[nombre])) _ultActividad[nombre] = t
+  })
+
   const proyPorSlug = {}
   ;(rProy.data || []).forEach(p => { proyPorSlug[p.slug || toSlug(p.nombre)] = p.nombre })
 
@@ -1043,6 +1110,15 @@ function coordValida(lat, lng) {
   return true
 }
 
+function estadoCanal(nombre) {
+  const ult = _ultActividad[nombre]
+  if (!ult) return 'apagado'
+  const dias = (Date.now() - ult) / 86400000
+  if (dias < 5) return 'activo'
+  if (dias < 15) return 'standby'
+  return 'apagado'
+}
+
 function initMapa() {
   if (_mapaLeaflet || !window.L) return
   _mapaLeaflet = L.map('mapaLeaflet', {
@@ -1093,7 +1169,7 @@ function renderCanales(rows) {
     if (!l._canal) return
     const f = new Date(l.created_at)
     let ok = false
-    if (_rango === 'hoy') ok = dia(f) === dia(ahora)
+    if (_rango === 'hoy') ok = (ahora - f) <= 24 * 3600 * 1000
     else if (_rango === 'd7') ok = (ahora - f) <= 7 * 86400000
     else if (_rango === 'd30d') ok = (ahora - f) <= 30 * 86400000
     if (ok) act[l._canal] = (act[l._canal] || 0) + 1
@@ -1131,15 +1207,20 @@ function renderCanales(rows) {
       lngRender += Math.cos(ang) * off
     }
 
-    const nHoy = act[nombre] || 0
-    const dormido = nHoy === 0
+    const estado = estadoCanal(nombre)
+    const nEnRango = act[nombre] || 0
+    const tieneSonar = estado === 'activo' && nEnRango > 0
     const col = colorCssSeguro(colorCanalDesdeIndex(m.color_index), '#8a8a82')
-    const maxScale = Math.min(1.8 + nHoy * 0.45, 4)
-    const anillos = nHoy > 0 ? '<i class="sonar-ring r1"></i><i class="sonar-ring r2"></i>' : ''
-    const size = 6
+    const maxScale = Math.min(1.8 + nEnRango * 0.45, 4)
+    const anillos = tieneSonar ? '<i class="sonar-ring r1"></i><i class="sonar-ring r2"></i>' : ''
+    const size = 10
+    const clsEstado = estado === 'apagado' ? ' apagado' : (estado === 'standby' ? ' standby' : '')
+    const clsSonar = tieneSonar ? '' : ' sin-sonar'
+    const ult = _ultActividad[nombre]
+    const diasSin = ult ? Math.floor((Date.now() - ult) / 86400000) : null
     const icon = L.divIcon({
       className: '',
-      html: `<div class="canal-nodo${nHoy > 0 ? '' : ' inactivo'}${dormido ? ' dormido' : ''}" style="color:${col};--col:${col};--max:scale(${maxScale})">` +
+      html: `<div class="canal-nodo${clsEstado}${clsSonar}" style="color:${col};--col:${col};--max:scale(${maxScale})">` +
         anillos +
         `<span class="nodo-core"></span></div>`,
       iconSize: [size, size],
@@ -1149,7 +1230,8 @@ function renderCanales(rows) {
       .bindTooltip(
         `<div class="tip-nombre">${esc(nombre)}</div>` +
         `<div class="tip-sub">${esc(LABEL_TIPO[m.tipo] || m.tipo || 'Canal')}${m.ciudad ? ' · ' + esc(m.ciudad) + (m.provincia ? ', ' + esc(m.provincia) : '') : ''}</div>` +
-        (nHoy ? `<div class="tip-activas">${nHoy} consulta${nHoy === 1 ? '' : 's'} ${_rango === 'hoy' ? 'hoy' : _rango === 'd7' ? 'esta semana' : 'este mes'}</div>` : ''),
+        (nEnRango ? `<div class="tip-activas">${nEnRango} consulta${nEnRango === 1 ? '' : 's'} ${_rango === 'hoy' ? 'hoy' : _rango === 'd7' ? 'esta semana' : 'este mes'}</div>` : '') +
+        (diasSin !== null && diasSin >= 5 ? `<div class="tip-alerta">${diasSin} día${diasSin === 1 ? '' : 's'} sin interacción</div>` : ''),
         { sticky: true, direction: 'right', opacity: 1, className: 'mapa-tip', offset: [8, 0] })
       .addTo(_capaCanales)
   })
@@ -1223,6 +1305,47 @@ function actualizarMapaNota() {
   $('mapaNota').textContent = notas.join(' · ')
 }
 
+function renderSaludRed() {
+  const panel = $('saludRed')
+  if (!panel) return
+
+  let activos = 0
+  const standbys = []
+  const apagados = []
+
+  Object.entries(_metaCanal).forEach(([nombre]) => {
+    const estado = estadoCanal(nombre)
+    const ult = _ultActividad[nombre]
+    const dias = ult ? Math.floor((Date.now() - ult) / 86400000) : null
+    if (estado === 'activo') activos++
+    else if (estado === 'standby') standbys.push({ nombre, dias })
+    else apagados.push({ nombre, dias: dias !== null ? dias : '∞' })
+  })
+
+  const valorDias = v => typeof v === 'number' ? v : 999999
+  standbys.sort((a, b) => valorDias(b.dias) - valorDias(a.dias))
+  apagados.sort((a, b) => valorDias(b.dias) - valorDias(a.dias))
+
+  panel.innerHTML =
+    `<h5>Salud de red</h5>` +
+    `<div class="salud-bloque">` +
+      `<div class="salud-contador">${activos}</div>` +
+      `<div style="font-size:.6rem; color:rgba(255,255,255,.45); text-transform:uppercase; letter-spacing:.08em;">canales activos</div>` +
+    `</div>` +
+    `<div class="salud-bloque standby">` +
+      `<div style="font-size:.58rem; font-weight:700; color:#f0956a; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem;">En standby (5-14 días)</div>` +
+      (standbys.length
+        ? standbys.map(s => `<div class="salud-linea"><span class="nombre">${esc(s.nombre)}</span><span class="dias">${s.dias}d</span></div>`).join('')
+        : `<div class="salud-vacio">Ninguno</div>`) +
+    `</div>` +
+    `<div class="salud-bloque apagado">` +
+      `<div style="font-size:.58rem; font-weight:700; color:#e05c5c; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem;">🚫 Sin actividad 15+ días (¿QR/link roto?)</div>` +
+      (apagados.length
+        ? apagados.map(a => `<div class="salud-linea"><span class="nombre">${esc(a.nombre)}</span><span class="dias">${a.dias}${typeof a.dias === 'number' ? 'd' : ''}</span></div>`).join('')
+        : `<div class="salud-vacio">Ninguno</div>`) +
+    `</div>`
+}
+
 function renderMapa(rows) {
   if (!window.L) { $('mapaNota').textContent = 'No se pudo cargar el mapa (sin conexión al servicio de mapas).'; return }
   if (!_mapaLeaflet) initMapa()
@@ -1230,6 +1353,7 @@ function renderMapa(rows) {
   renderDesarrollos(rows)
   renderPropiedades()
   actualizarMapaNota()
+  renderSaludRed()
 }
 
 function actualizarContadoresMapa() {
