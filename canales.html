@@ -17,8 +17,6 @@
     .admin-main { font-family: 'Inter', system-ui, sans-serif; }
 
     .dash-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
-    .dash-header h2 { font-weight: 300; font-size: 1.7rem; margin-bottom: 0.15rem; font-family: 'Cormorant Garamond', serif; }
-    .dash-header p  { font-size: 0.76rem; color: var(--gris-claro); }
     .btn-nuevo {
       background: var(--accent); color: #fff; border: none; text-decoration: none;
       padding: 0.55rem 1.2rem; border-radius: 999px; font-size: 0.74rem; font-weight: 600;
@@ -32,6 +30,74 @@
     .kpi-label { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris-claro); font-weight: 600; margin-bottom: 0.45rem; }
     .kpi-valor { font-size: 1.8rem; font-weight: 700; line-height: 1; color: var(--blanco); }
     .kpi-sub { font-size: 0.66rem; color: var(--gris-claro); margin-top: 0.45rem; }
+
+    /* Filtros estilo CRM */
+    .crm-filtros {
+      margin: 0 0 1.2rem;
+      padding: 0.95rem;
+      background: var(--crm-surface, var(--card-bg));
+      border: 1px solid var(--card-border);
+      border-top: 1px solid rgba(255,255,255,.12);
+      border-radius: var(--card-radius);
+      box-shadow: 0 16px 42px rgba(0,0,0,.22);
+    }
+    .crm-filtros-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.7rem;
+      align-items: end;
+    }
+    .crm-filtro-grupo { min-width: 0; }
+    .crm-filtro-grupo label {
+      display: block;
+      margin-bottom: 0.28rem;
+      font-size: 0.56rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.38);
+    }
+    .crm-filtro-control {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.5rem 0.65rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--blanco);
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.72rem;
+      outline: none;
+    }
+    .crm-filtro-control:focus { border-color: rgba(255,255,255,.22); }
+    .crm-filtro-control option { background: #141414; color: var(--blanco); }
+    .crm-filtros-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      margin-top: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .crm-filtro-resumen { font-size: 0.68rem; color: rgba(255,255,255,.5); }
+    .crm-filtro-limpiar {
+      padding: 0.48rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.035);
+      color: rgba(245,243,240,.74);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .crm-filtro-limpiar:hover {
+      border-color: rgba(255,255,255,.18);
+      color: var(--blanco);
+      background: rgba(255,255,255,.055);
+    }
 
     /* Grid de canales */
     .canales-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 0.9rem; }
@@ -98,6 +164,13 @@
     .modal-actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 0.9rem; }
     .modal-close { position: absolute; top: 0.8rem; right: 0.9rem; background: none; border: none; color: var(--gris-claro); cursor: pointer; font-size: 1.1rem; }
     .empty-state { text-align: center; padding: 4rem; color: var(--gris-claro); font-size: 0.85rem; }
+
+    @media (max-width: 1100px) {
+      .crm-filtros-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .crm-filtros-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -105,7 +178,9 @@
 
   <!-- SIDEBAR -->
   <aside class="admin-sidebar">
-    <div class="admin-sidebar-logo">SUR <span>PATAGONIA</span></div>
+    <div class="admin-sidebar-logo">
+      <img src="../assets/logos/logo-vertical-blanco.png" alt="Sur Patagonia">
+    </div>
     <nav class="admin-nav">
       <a href="dashboard.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -155,9 +230,17 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
         Apariencia
       </a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Generar PDF
+      </a>
             <a href="colaboradores.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
         Colaboradores
+      </a>
+      <a href="paneles.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
+        Visual paneles
       </a>
 
       <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
@@ -175,8 +258,8 @@
   <main class="admin-main">
     <div class="dash-header">
       <div>
-        <h2>Canales de Venta</h2>
-        <p>Inmobiliarias, vendedores y puntos de venta · cuánto produce cada uno</p>
+        <h2 class="admin-page-title">Canales de Venta</h2>
+        <p class="admin-page-subtitle">Inmobiliarias, vendedores y puntos de venta · cuánto produce cada uno</p>
       </div>
       <a href="nuevo-canal.html" class="btn-nuevo">+ Nuevo canal</a>
     </div>
@@ -194,6 +277,11 @@
         <div class="kpi-sub">referencias generadas</div>
       </div>
       <div class="kpi">
+        <div class="kpi-label">Clicks vía canales</div>
+        <div class="kpi-valor" id="kClicks">—</div>
+        <div class="kpi-sub" id="kClicksSub"></div>
+      </div>
+      <div class="kpi">
         <div class="kpi-label">Consultas vía canales</div>
         <div class="kpi-valor" id="kLeads">—</div>
         <div class="kpi-sub" id="kLeadsSub"></div>
@@ -204,6 +292,52 @@
         <div class="kpi-sub" id="kTopSub"></div>
       </div>
     </div>
+
+    <!-- FILTROS -->
+    <section class="crm-filtros" aria-label="Filtros de canales">
+      <div class="crm-filtros-grid">
+        <div class="crm-filtro-grupo">
+          <label for="fProvincia">Provincia</label>
+          <select id="fProvincia" class="crm-filtro-control">
+            <option value="">Todas las provincias</option>
+          </select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fCiudad">Ciudad / locación</label>
+          <select id="fCiudad" class="crm-filtro-control">
+            <option value="">Todas las ciudades</option>
+          </select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fTipo">Tipo</label>
+          <select id="fTipo" class="crm-filtro-control">
+            <option value="">Todos los tipos</option>
+          </select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fAcceso">Acceso</label>
+          <select id="fAcceso" class="crm-filtro-control">
+            <option value="">Todos los accesos</option>
+          </select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fEstado">Estado</label>
+          <select id="fEstado" class="crm-filtro-control">
+            <option value="">Todos los estados</option>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        </div>
+        <div class="crm-filtro-grupo">
+          <label for="fBuscar">Buscar</label>
+          <input id="fBuscar" class="crm-filtro-control" type="search" placeholder="Nombre, código, email..." autocomplete="off">
+        </div>
+      </div>
+      <div class="crm-filtros-footer">
+        <div class="crm-filtro-resumen" id="canalesFiltroResumen">Cargando canales…</div>
+        <button type="button" class="crm-filtro-limpiar" id="btnLimpiarFiltros">Limpiar filtros</button>
+      </div>
+    </section>
 
     <!-- GRID DE CANALES -->
     <div class="canales-grid" id="gridCanales">
@@ -245,6 +379,21 @@ const TIPO_LABEL = {
   punto_venta: 'Punto de venta', 'campaña': 'Campaña', evento: 'Evento'
 }
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+function construirLinkDirecto(destino, codigo) {
+  return `${BASE_URL}/r/${codigo}?via=link`
+}
+
+let _canales = []
+let _statsCanales = {}
+let _colabsCanales = []
+const _filtrosCanales = {
+  provincia: '',
+  ciudad: '',
+  tipo: '',
+  acceso: '',
+  estado: '',
+  buscar: ''
+}
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -256,41 +405,61 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
 
 // ── Cargar canales + métricas ─────────────────────────────
 async function cargarCanales() {
-  const [rCanales, rRefs, rLeads, rColabs] = await Promise.all([
+  const [rCanales, rRefs, rLeads, rVisitas, rColabs] = await Promise.all([
     supabase.from('canales').select('*').order('created_at', { ascending: false }),
     supabase.from('referencias').select('codigo, canal_id, activo'),
     supabase.from('contactos').select('canal_ref, created_at').not('canal_ref', 'is', null).limit(5000),
+    supabase.from('visitas').select('canal_ref, canal_via, created_at').not('canal_ref', 'is', null).limit(50000),
     supabase.rpc('admin_listar_usuarios'),
   ])
 
   const grid = document.getElementById('gridCanales')
   if (rCanales.error) {
     grid.innerHTML = `<div class="empty-state">Error al cargar canales: ${esc(rCanales.error.message)}<br>Verificá tu sesión y permisos (rol admin).</div>`
+    document.getElementById('canalesFiltroResumen').textContent = 'No se pudieron cargar los canales'
     return
   }
   const canales = rCanales.data || []
   if (!canales.length) {
     grid.innerHTML = `<div class="empty-state">No hay canales creados aún.<br><a href="nuevo-canal.html" style="color:var(--accent)">Crear el primero →</a></div>`
+    document.getElementById('canalesFiltroResumen').textContent = '0 canales'
     return
   }
 
   const refs    = rRefs.data   || []
   const leads   = rLeads.data  || []
+  const visitas = rVisitas.data || []
   const colabs  = (rColabs.data || []).filter(u => u.rol === 'colaborador')
 
   // Métricas por canal
   const canalDeRef = {}
   refs.forEach(r => { canalDeRef[r.codigo] = r.canal_id })
   const stats = {}
-  canales.forEach(c => { stats[c.id] = { leads: 0, refs: 0, ultimo: null } })
+  canales.forEach(c => { stats[c.id] = { clicks: 0, clicksQr: 0, clicksLink: 0, leads: 0, refs: 0, ultimo: null } })
   refs.forEach(r => { if (stats[r.canal_id] && r.activo) stats[r.canal_id].refs++ })
-  leads.forEach(l => {
-    let cid = canalDeRef[l.canal_ref]
+
+  function canalIdPorRef(canalRef) {
+    if (!canalRef) return null
+    let cid = canalDeRef[canalRef]
     if (!cid) {
-      // fallback por prefijo de código
-      const c = canales.find(k => l.canal_ref === k.codigo || l.canal_ref.startsWith(k.codigo + '-'))
+      const c = canales.find(k => canalRef === k.codigo || canalRef.startsWith(k.codigo + '-'))
       cid = c?.id
     }
+    return cid
+  }
+
+  visitas.forEach(v => {
+    const cid = canalIdPorRef(v.canal_ref)
+    if (cid && stats[cid]) {
+      stats[cid].clicks++
+      if (v.canal_via === 'qr') stats[cid].clicksQr++
+      else stats[cid].clicksLink++
+      if (!stats[cid].ultimo || v.created_at > stats[cid].ultimo) stats[cid].ultimo = v.created_at
+    }
+  })
+
+  leads.forEach(l => {
+    const cid = canalIdPorRef(l.canal_ref)
     if (cid && stats[cid]) {
       stats[cid].leads++
       if (!stats[cid].ultimo || l.created_at > stats[cid].ultimo) stats[cid].ultimo = l.created_at
@@ -302,26 +471,94 @@ async function cargarCanales() {
   document.getElementById('kCanales').textContent    = canales.length
   document.getElementById('kCanalesSub').textContent = `${activos} activo${activos === 1 ? '' : 's'}`
   document.getElementById('kRefs').textContent       = refs.filter(r => r.activo).length
+  document.getElementById('kClicks').textContent     = visitas.length
+  const clicksQr = visitas.filter(v => v.canal_via === 'qr').length
+  document.getElementById('kClicksSub').textContent  = `${clicksQr} por QR · ${visitas.length - clicksQr} por link`
   document.getElementById('kLeads').textContent      = leads.length
   const mes = new Date(); mes.setDate(mes.getDate() - 30)
   const leadsMes = leads.filter(l => new Date(l.created_at) >= mes).length
   document.getElementById('kLeadsSub').textContent   = `${leadsMes} en los últimos 30 días`
-  const top = canales.map(c => ({ c, n: stats[c.id].leads })).sort((a,b) => b.n - a.n)[0]
+  const top = canales.map(c => ({ c, n: stats[c.id].clicks, leads: stats[c.id].leads })).sort((a,b) => b.n - a.n)[0]
   document.getElementById('kTop').textContent    = top && top.n > 0 ? top.c.nombre : '—'
-  document.getElementById('kTopSub').textContent = top && top.n > 0 ? `${top.n} consulta${top.n === 1 ? '' : 's'}` : 'sin consultas aún'
+  document.getElementById('kTopSub').textContent = top && top.n > 0 ? `${top.n} click${top.n === 1 ? '' : 's'} · ${top.leads} consulta${top.leads === 1 ? '' : 's'}` : 'sin clicks aún'
 
-  const esActivo = t => t === 'inmobiliaria' || t === 'particular'
+  _canales = canales
+  _statsCanales = stats
+  _colabsCanales = colabs
+  renderFiltroOpcionesCanales()
+  renderCanalesGrid()
+}
 
-  grid.innerHTML = canales.map(c => {
-    const st    = stats[c.id]
-    const colab = colabs.find(x => x.id === c.user_id)
-    const ultimo = st.ultimo
-      ? new Date(st.ultimo).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
-      : '—'
-    const qrBtn = esActivo(c.tipo)
-      ? `<a href="nuevo-canal.html?id=${c.id}" class="btn-cc">Ver QRs</a>`
-      : `<button class="btn-cc" data-codigo="${esc(c.codigo)}" data-nombre="${encodeURIComponent(c.nombre)}" data-tipo="${esc(c.tipo)}" data-destino="${encodeURIComponent(c.destino || '/')}" onclick="verQRBtn(this)">QR / Link</button>`
-    return `
+const esActivo = t => t === 'inmobiliaria' || t === 'particular'
+const normalizarFiltro = v => String(v ?? '').trim().toLowerCase()
+const campoFiltro = v => normalizarFiltro(v)
+const labelAcceso = v => String(v || 'sin acceso').replace(/_/g, ' ')
+
+function valoresUnicosCanales(campo, base = _canales) {
+  return [...new Set(base.map(c => String(c[campo] ?? '').trim()).filter(Boolean))]
+    .sort((a,b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+}
+
+function setOpcionesCanales(id, valores, placeholder, valorActual = '') {
+  const el = document.getElementById(id)
+  if (!el) return
+  const actual = valorActual || el.value
+  el.innerHTML = `<option value="">${placeholder}</option>` + valores.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('')
+  if ([...el.options].some(o => o.value === actual)) el.value = actual
+}
+
+function renderFiltroOpcionesCanales() {
+  const provincia = _filtrosCanales.provincia
+  const baseCiudad = provincia ? _canales.filter(c => String(c.provincia || '') === provincia) : _canales
+  const ciudades = valoresUnicosCanales('ciudad', baseCiudad)
+  if (_filtrosCanales.ciudad && !ciudades.includes(_filtrosCanales.ciudad)) _filtrosCanales.ciudad = ''
+
+  setOpcionesCanales('fProvincia', valoresUnicosCanales('provincia'), 'Todas las provincias', _filtrosCanales.provincia)
+  setOpcionesCanales('fCiudad', ciudades, 'Todas las ciudades', _filtrosCanales.ciudad)
+  setOpcionesCanales('fTipo', valoresUnicosCanales('tipo'), 'Todos los tipos', _filtrosCanales.tipo)
+  setOpcionesCanales('fAcceso', valoresUnicosCanales('tipo_acceso').map(labelAcceso), 'Todos los accesos', _filtrosCanales.acceso)
+}
+
+function actualizarFiltrosCanalesDesdeUI() {
+  _filtrosCanales.provincia = document.getElementById('fProvincia')?.value || ''
+  _filtrosCanales.ciudad = document.getElementById('fCiudad')?.value || ''
+  _filtrosCanales.tipo = document.getElementById('fTipo')?.value || ''
+  _filtrosCanales.acceso = document.getElementById('fAcceso')?.value || ''
+  _filtrosCanales.estado = document.getElementById('fEstado')?.value || ''
+  _filtrosCanales.buscar = normalizarFiltro(document.getElementById('fBuscar')?.value || '')
+}
+
+function canalesFiltrados() {
+  return _canales.filter(c => {
+    if (_filtrosCanales.provincia && String(c.provincia || '') !== _filtrosCanales.provincia) return false
+    if (_filtrosCanales.ciudad && String(c.ciudad || '') !== _filtrosCanales.ciudad) return false
+    if (_filtrosCanales.tipo && String(c.tipo || '') !== _filtrosCanales.tipo) return false
+    if (_filtrosCanales.acceso && labelAcceso(c.tipo_acceso) !== _filtrosCanales.acceso) return false
+    if (_filtrosCanales.estado) {
+      const estado = c.activo ? 'activo' : 'inactivo'
+      if (estado !== _filtrosCanales.estado) return false
+    }
+    if (_filtrosCanales.buscar) {
+      const texto = [
+        c.nombre, c.codigo, c.email, c.ciudad, c.provincia, c.tipo, TIPO_LABEL[c.tipo],
+        c.tipo_acceso, c.destino, c.direccion, c.localidad, c.ubicacion
+      ].map(campoFiltro).join(' ')
+      if (!texto.includes(_filtrosCanales.buscar)) return false
+    }
+    return true
+  })
+}
+
+function renderCanalCard(c) {
+  const st    = _statsCanales[c.id] || { clicks: 0, clicksQr: 0, clicksLink: 0, leads: 0, refs: 0, ultimo: null }
+  const colab = _colabsCanales.find(x => x.id === c.user_id)
+  const ultimo = st.ultimo
+    ? new Date(st.ultimo).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
+    : '—'
+  const qrBtn = esActivo(c.tipo)
+    ? `<a href="nuevo-canal.html?id=${c.id}" class="btn-cc">Ver QRs</a>`
+    : `<button class="btn-cc" data-codigo="${esc(c.codigo)}" data-nombre="${encodeURIComponent(c.nombre)}" data-tipo="${esc(c.tipo)}" data-destino="${encodeURIComponent(c.destino || '/')}" onclick="verQRBtn(this)">QR / Link</button>`
+  return `
     <div class="canal-card ${c.activo ? '' : 'off'}">
       <div class="cc-top">
         <div>
@@ -332,9 +569,13 @@ async function cargarCanales() {
         <span class="tipo-badge tipo-${esc(c.tipo)}">${TIPO_LABEL[c.tipo] || esc(c.tipo)}</span>
       </div>
       <div class="cc-stats">
+        <div class="cc-stat"><b>${st.clicks}</b><span>Clicks</span></div>
         <div class="cc-stat"><b>${st.leads}</b><span>Consultas</span></div>
         <div class="cc-stat"><b>${st.refs}</b><span>QRs activos</span></div>
-        <div class="cc-stat"><b style="font-size:0.85rem; padding-top:0.25rem;">${ultimo}</b><span>Última</span></div>
+      </div>
+      <div style="font-size:.66rem;color:var(--gris-claro);display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap;">
+        <span>Clicks: ${st.clicksQr} QR · ${st.clicksLink} links</span>
+        <span>Última act.: ${ultimo}</span>
       </div>
       <div class="cc-meta">
         <span><span class="estado-dot ${c.activo ? 'activo' : 'inactivo'}"></span>${c.activo ? 'Activo' : 'Inactivo'}</span>
@@ -358,7 +599,44 @@ async function cargarCanales() {
         <a href="nuevo-canal.html?id=${c.id}" class="btn-cc" style="white-space:nowrap;font-size:.65rem;">${colab ? 'Ver acceso' : '+ Asignar'}</a>
       </div>
     </div>`
-  }).join('')
+}
+
+function renderCanalesGrid() {
+  const grid = document.getElementById('gridCanales')
+  const filtrados = canalesFiltrados()
+  const resumen = document.getElementById('canalesFiltroResumen')
+  if (resumen) {
+    resumen.textContent = filtrados.length === _canales.length
+      ? `${_canales.length} canal${_canales.length === 1 ? '' : 'es'}`
+      : `Mostrando ${filtrados.length} de ${_canales.length} canales`
+  }
+  if (!filtrados.length) {
+    grid.innerHTML = `<div class="empty-state">No hay canales que coincidan con esos filtros.</div>`
+    return
+  }
+  grid.innerHTML = filtrados.map(renderCanalCard).join('')
+}
+
+function aplicarFiltrosCanales() {
+  actualizarFiltrosCanalesDesdeUI()
+  renderFiltroOpcionesCanales()
+  renderCanalesGrid()
+}
+
+function initFiltrosCanales() {
+  ;['fProvincia','fCiudad','fTipo','fAcceso','fEstado'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', aplicarFiltrosCanales)
+  })
+  document.getElementById('fBuscar')?.addEventListener('input', aplicarFiltrosCanales)
+  document.getElementById('btnLimpiarFiltros')?.addEventListener('click', () => {
+    Object.keys(_filtrosCanales).forEach(k => { _filtrosCanales[k] = '' })
+    ;['fProvincia','fCiudad','fTipo','fAcceso','fEstado','fBuscar'].forEach(id => {
+      const el = document.getElementById(id)
+      if (el) el.value = ''
+    })
+    renderFiltroOpcionesCanales()
+    renderCanalesGrid()
+  })
 }
 
 // ── Eliminar canal ────────────────────────────────────────
@@ -384,8 +662,7 @@ window.verQRBtn = (btn) => {
 
 window.verQR = (codigo, nombre, tipo, destino) => {
   const linkQR      = `${BASE_URL}/r/${codigo}`
-  const sep         = destino.includes('?') ? '&' : '?'
-  const linkDirecto = `${BASE_URL}${destino}${sep}ref=${codigo}`
+  const linkDirecto = construirLinkDirecto(destino, codigo)
   document.getElementById('modalNombre').textContent      = nombre
   document.getElementById('modalTipo').textContent        = TIPO_LABEL[tipo] || tipo
   document.getElementById('modalLinkQR').textContent      = linkQR
@@ -415,6 +692,7 @@ window.copiarLink = (id) => {
     .then(() => { el.style.color = '#50c878'; setTimeout(() => { el.style.color = '' }, 1500) })
 }
 
+initFiltrosCanales()
 cargarCanales()
 </script>
 </body>
