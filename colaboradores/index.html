@@ -560,6 +560,46 @@
     .pv-traza-legacy-hint { color:rgba(255,255,255,.2); font-size:.64rem; font-style:italic; }
     .pv-traza-legacy-hint-global { color:rgba(255,255,255,.23); font-size:.65rem; margin-bottom:.5rem; line-height:1.4; }
 
+    /* RECORRIDO-LEADS-ACTIVO-02 · panel activo */
+    .pv-activo-recorrido-sec .pv-sec-head { align-items:flex-start; }
+    .pv-activo-hoy-ancla {
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:.3rem .7rem; border:1px solid rgba(232,201,106,.3);
+      border-radius:99px; background:rgba(232,201,106,.08);
+      color:#e8c96a; font-size:.66rem; font-weight:700; white-space:nowrap;
+    }
+    .pv-activo-recorrido-svg { width:100%; height:auto; display:block; }
+    .pv-activo-registro { display:flex; flex-direction:column; gap:0; }
+    .pv-activo-lead {
+      display:grid; grid-template-columns:170px minmax(0,1fr) 130px;
+      gap:1.2rem; align-items:center; padding:1.05rem .35rem;
+      border-bottom:1px solid rgba(255,255,255,.05);
+    }
+    .pv-activo-lead:last-child { border-bottom:0; }
+    .pv-activo-chip-mes {
+      display:inline-block; font-size:.56rem; font-weight:700; letter-spacing:.08em;
+      text-transform:uppercase; padding:.18rem .5rem; border-radius:5px;
+      margin-bottom:.35rem; border:1px solid currentColor;
+      background:color-mix(in srgb, currentColor 16%, transparent);
+    }
+    .pv-activo-lead-nombre { font-size:.86rem; font-weight:600; color:#f5f3f0; }
+    .pv-activo-lead-prop { font-size:.68rem; color:rgba(255,255,255,.4); margin-top:.15rem; line-height:1.35; }
+    .pv-activo-timeline { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; min-width:0; }
+    .pv-activo-tl-nodo { display:flex; flex-direction:column; gap:.2rem; text-align:center; min-width:0; }
+    .pv-activo-tl-estado { font-size:.68rem; font-weight:700; white-space:nowrap; }
+    .pv-activo-tl-fecha { font-size:.6rem; color:rgba(255,255,255,.38); white-space:nowrap; }
+    .pv-activo-tl-linea { flex:1; height:1px; min-width:18px; background:rgba(255,255,255,.12); align-self:center; }
+    .pv-activo-tl-nodo.retro .pv-activo-tl-estado { color:rgba(255,255,255,.45)!important; }
+    .pv-activo-tl-nodo.retro .pv-activo-tl-estado::before { content:'↩ '; color:#f0956a; }
+    .pv-activo-tl-nodo.ultimo .pv-activo-tl-estado { text-shadow:0 0 12px currentColor; }
+    .pv-activo-mov-reciente { font-size:.64rem; font-weight:700; color:#e8c96a; text-align:right; line-height:1.35; }
+    .pv-activo-empty { padding:1.1rem 0; color:rgba(255,255,255,.32); font-size:.73rem; line-height:1.5; }
+    @media(max-width:760px){
+      .pv-activo-lead { grid-template-columns:1fr; gap:.55rem; }
+      .pv-activo-mov-reciente { text-align:left; }
+      .pv-activo-timeline { overflow-x:auto; padding-bottom:.25rem; }
+    }
+
     /* ── Flip clock contador ── */
     @keyframes pvFlipIn { 0%{transform:translateY(-30%) rotateX(55deg);opacity:0} 100%{transform:translateY(0) rotateX(0);opacity:1} }
     /* ── Contador flip en header — SPORT ── */
@@ -1465,17 +1505,34 @@
     const COLOR_QR_FISICO        = '#50c878'
     const COLOR_LINK_COMPARTIDO  = '#6495ed'
     const COLORES_RESERVADOS = [COLOR_TOTAL_GENERAL, COLOR_TOTAL_GRAFICO, COLOR_QR_FISICO, COLOR_LINK_COMPARTIDO]
-    const SLOT_PALETTE = [
-      '#ff4088',  // 0: rosa fucsia vibrante
-      '#d030c0',  // 1: magenta vivida
-      '#8820c0',  // 2: violeta profunda
-      '#c890f0',  // 3: lavanda luminosa
-      '#8e1f63',  // 4: frambuesa/ciruela premium
-      '#ff4a5a',  // 5: rojo coral vivido
-      '#ff6830',  // 6: naranja coral vivido
-      '#b840e0',  // 7: orquídea (último recurso)
+    // PALETA_PROPIEDADES — fuente: registro-colores-sistema.md §10b (firmada 6/7). NO editar acá: se edita en el registro primero.
+    const PALETA_PROPIEDADES = [
+      '#ff4088',
+      '#ccff00',
+      '#8820c0',
+      '#ff9500',
+      '#8e1f63',
+      '#7dff36',
+      '#ff6830',
+      '#00c8ff',
+      '#d030c0',
+      '#ffd428',
+      '#c890f0',
+      '#00ffd5',
+      '#ff4a5a',
+      '#9d4eff',
+      '#eaff5c',
+      '#b840e0',
+      '#00e676',
+      '#ff6bd6',
+      '#ff3d3d',
+      '#14e6e6',
+      '#0097a7',
+      '#155e5e',
+      '#ff6d00',
+      '#d4a017',
+      '#e574a0',
     ]
-    const SLOT_PALETTE_SOFT = SLOT_PALETTE
     const slotColorMap = {} // slot.codigo → hex
     const DIST_MIN = 80
     function colorDist(a, b) {
@@ -1490,10 +1547,12 @@
       let h = 0x811c9dc5
       for (let i = 0; i < codigo.length; i++) { h ^= codigo.charCodeAt(i); h = (h * 0x01000193) >>> 0 }
       const usados = Object.values(slotColorMap)
+      const libres = PALETA_PROPIEDADES.filter(c => !COLORES_RESERVADOS.includes(c) && !usados.includes(c))
+      const distanciaMinima = (c, base) => base.length ? Math.min(...base.map(b => colorDist(c, b))) : 999
       let color = null
       // Paso 1: no reservado, no usado, dist >= DIST_MIN con todos los ya asignados Y con reservados
-      for (let i = 0; i < SLOT_PALETTE.length; i++) {
-        const c = SLOT_PALETTE[(h + i) % SLOT_PALETTE.length]
+      for (let i = 0; i < PALETA_PROPIEDADES.length; i++) {
+        const c = PALETA_PROPIEDADES[(h + i) % PALETA_PROPIEDADES.length]
         if (!COLORES_RESERVADOS.includes(c)
           && !usados.includes(c)
           && usados.every(u => colorDist(c, u) >= DIST_MIN)
@@ -1501,15 +1560,23 @@
           color = c; break
         }
       }
-      // Paso 2: fallback — relajar distancia si paleta agotada
-      if (!color) {
-        for (let i = 0; i < SLOT_PALETTE.length; i++) {
-          const c = SLOT_PALETTE[(h + i) % SLOT_PALETTE.length]
-          if (!COLORES_RESERVADOS.includes(c) && !usados.includes(c)) { color = c; break }
+      // Paso 2: fallback — si DIST_MIN deja sin candidatos, usar el color libre más lejano disponible antes de repetir
+      if (!color && libres.length) {
+        const base = [...usados, ...COLORES_RESERVADOS]
+        let mejorScore = -1
+        for (let i = 0; i < PALETA_PROPIEDADES.length; i++) {
+          const c = PALETA_PROPIEDADES[(h + i) % PALETA_PROPIEDADES.length]
+          if (!libres.includes(c)) continue
+          const score = distanciaMinima(c, base)
+          if (score > mejorScore) {
+            color = c
+            mejorScore = score
+          }
         }
-        if (color) console.warn('[colorDeSlot] Paleta insuficiente: usando fallback de color', { codigo, color })
+        if (color) console.warn('[colorDeSlot] DIST_MIN sin candidato: usando color libre más lejano', { codigo, color })
       }
-      if (!color) color = SLOT_PALETTE.find(c => !COLORES_RESERVADOS.includes(c)) || '#ff4088'
+      // Paso 3: solo si se agotaron los 25 colores, repetir de forma estable
+      if (!color) color = PALETA_PROPIEDADES.find(c => !COLORES_RESERVADOS.includes(c)) || '#ff4088'
       slotColorMap[codigo] = color
       return color
     }
@@ -2657,6 +2724,295 @@
       </div>`
     }
 
+    function renderRecorridoLeadsActivo(filasTraza = []) {
+      if (!filasTraza || filasTraza.length === 0) return ''
+
+      const COHORT_PALETTE_A = ['#3a4eb8','#c0603e','#2a9d7a','#c040a0','#c08a2e','#1e5fa0','#7a1f2e','#3eb489','#7b3fb0','#b87333']
+      const NOMBRES_MES_A    = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
+      const NOMBRES_MES_CORTO = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+      const EST_COLOR_A = {
+        nueva: 'rgba(255,255,255,.5)',
+        contactado: '#35c6b4',
+        visita: '#f29a5a',
+        visita_realizada: '#7fd1c6',
+        oferta: '#d9a7ff',
+        cerrado: '#a9dc7a',
+        descartado: '#7b7f88'
+      }
+      const EST_ORDEN_A = { nueva:1, contactado:2, visita:3, visita_realizada:3.5, oferta:4, cerrado:5, descartado:0 }
+      const EST_LABEL_A = {
+        nueva:'Sin avance',
+        contactado:'Contactado',
+        visita:'Visita',
+        visita_realizada:'Visita realizada',
+        oferta:'Oferta',
+        cerrado:'Cerrado',
+        descartado:'Descartado'
+      }
+
+      const hoy = new Date()
+      const year = hoy.getFullYear()
+      const currentMesKey = `${year}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
+      const bloques = filasTraza.filter(f => f.fila_tipo === 'bloque_estado_actual')
+      const movimientos = filasTraza.filter(f =>
+        f.fila_tipo === 'movimiento_registro_activo' || f.fila_tipo === 'movimiento_registro_anonimo'
+      )
+
+      const keysConDatos = [...new Set(filasTraza.map(f => f.mes_ingreso_key).filter(Boolean))].sort()
+      const cohortColorMap = {}
+      keysConDatos.forEach((k, idx) => { cohortColorMap[k] = COHORT_PALETTE_A[idx % COHORT_PALETTE_A.length] })
+      const colorMes = k => cohortColorMap[k] || COHORT_PALETTE_A[Math.max(0, keysConDatos.length) % COHORT_PALETTE_A.length]
+
+      const fmtMesKey = k => {
+        if (!k) return '—'
+        const [y, m] = String(k).split('-')
+        const mi = parseInt(m, 10) - 1
+        return `${NOMBRES_MES_CORTO[mi] || m} ${String(y || '').slice(2)}`
+      }
+      const fechaObj = v => {
+        if (!v) return null
+        const d = new Date(v)
+        return isNaN(d.getTime()) ? null : d
+      }
+      const fmtDia = v => {
+        const d = fechaObj(v)
+        if (!d) return '—'
+        return `${String(d.getDate()).padStart(2, '0')} ${NOMBRES_MES_CORTO[d.getMonth()] || ''}`
+      }
+      const diasDesde = v => {
+        const d = fechaObj(v)
+        if (!d) return 'sin fecha'
+        const base = new Date(hoy); base.setHours(0,0,0,0)
+        const target = new Date(d); target.setHours(0,0,0,0)
+        const diff = Math.max(0, Math.round((base - target) / 86400000))
+        if (diff === 0) return 'hoy'
+        if (diff === 1) return 'ayer'
+        return `hace ${diff} días`
+      }
+
+      const ingresoPorMes = {}
+      bloques.forEach(b => {
+        if (!b.mes_ingreso_key) return
+        ingresoPorMes[b.mes_ingreso_key] = (ingresoPorMes[b.mes_ingreso_key] || 0) + (b.cantidad || 0)
+      })
+      const totalLeads = Object.values(ingresoPorMes).reduce((s, n) => s + n, 0)
+      const sumaEstado = estados => bloques
+        .filter(b => estados.includes(b.estado_publico))
+        .reduce((s, b) => s + (b.cantidad || 0), 0)
+      const porMesEstado = estados => {
+        const out = {}
+        bloques.forEach(b => {
+          if (!estados.includes(b.estado_publico) || !b.mes_ingreso_key) return
+          out[b.mes_ingreso_key] = (out[b.mes_ingreso_key] || 0) + (b.cantidad || 0)
+        })
+        return Object.entries(out).sort(([a], [b]) => a.localeCompare(b))
+      }
+
+      const renderStationCards = (entries, maxWidth = 150) => {
+        if (!entries.length) return ''
+        const gap = entries.length <= 1 ? 0 : Math.min(44, Math.max(26, Math.floor((maxWidth - 34) / Math.max(1, entries.length - 1))))
+        const start = -((entries.length - 1) * gap) / 2
+        return entries.map(([key, n], idx) => {
+          const x = Math.round(start + idx * gap)
+          const color = colorMes(key)
+          return `<g transform="translate(${x},-42)" color="${color}">
+            <use href="#cardChica"/>
+            <text x="0" y="-10" text-anchor="middle" fill="#f5f3f0" font-size="13" font-weight="700" font-family="Inter">${n}</text>
+          </g>`
+        }).join('')
+      }
+
+      const mesCells = Array.from({ length: 12 }, (_, i) => {
+        const m = i + 1
+        const key = `${year}-${String(m).padStart(2, '0')}`
+        const row = Math.floor(i / 4)
+        const col = i % 4
+        const x = [-69, -23, 23, 69][col]
+        const y = [-160, -98, -36][row]
+        const n = ingresoPorMes[key] || 0
+        const isCurrent = key === currentMesKey
+        const color = n > 0 ? colorMes(key) : colorMes(currentMesKey)
+        const label = NOMBRES_MES_A[i]
+        if (n > 0 || isCurrent) {
+          const dash = isCurrent ? ' stroke-dasharray="4 3"' : ''
+          return `<g transform="translate(${x},${y})" color="${color}">
+            <rect x="-18" y="-20" width="36" height="40" rx="4" fill="color-mix(in srgb, currentColor ${n > 0 ? 24 : 8}%, transparent)" stroke="currentColor" stroke-width="1.5"${dash}/>
+            <rect x="-18" y="-20" width="36" height="40" rx="4" fill="url(#gradTarjeta)"/>
+            ${n > 0 ? `<text x="0" y="5" text-anchor="middle" fill="#f5f3f0" font-size="14" font-weight="700" font-family="Inter">${n}</text>` : ''}
+            <text x="0" y="30" text-anchor="middle" fill="currentColor" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
+          </g>`
+        }
+        return `<g transform="translate(${x},${y})">
+          <use href="#mesVacio"/>
+          <text x="0" y="30" text-anchor="middle" fill="rgba(255,255,255,.22)" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
+        </g>`
+      }).join('')
+
+      const seguimientoN = sumaEstado(['nueva', 'contactado'])
+      const visitaN = sumaEstado(['visita', 'visita_realizada'])
+      const ofertaN = sumaEstado(['oferta'])
+      const cerradoN = sumaEstado(['cerrado'])
+      const agenciaNombre = (() => {
+        if (typeof canales !== 'undefined' && canales?.length) {
+          const primero = canales[0]?.nombre || 'Tus canales'
+          return canales.length > 1 ? `${primero} +${canales.length - 1}` : primero
+        }
+        return 'TUS CANALES'
+      })()
+      const vendidoStroke = cerradoN > 0 ? 'rgba(232,201,106,.75)' : 'rgba(255,255,255,.2)'
+      const vendidoFilter = cerradoN > 0 ? 'filter:drop-shadow(0 0 9px rgba(232,201,106,.45))' : ''
+      const vendidoText = cerradoN > 0 ? 'rgba(232,201,106,.8)' : 'rgba(255,255,255,.55)'
+
+      const svg = `<svg class="pv-activo-recorrido-svg" viewBox="0 0 1000 340" role="img" aria-label="Recorrido de leads desde la agencia hasta el cierre">
+        <defs>
+          <linearGradient id="gradEstacionActivo" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="rgba(255,255,255,.05)"/><stop offset="100%" stop-color="rgba(255,255,255,.012)"/>
+          </linearGradient>
+          <linearGradient id="gradTarjeta" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="rgba(255,255,255,.22)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </linearGradient>
+          <g id="cardChica">
+            <rect x="-16" y="-36" width="32" height="42" rx="4" fill="color-mix(in srgb, currentColor 30%, transparent)" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="-16" y="-36" width="32" height="42" rx="4" fill="url(#gradTarjeta)"/>
+          </g>
+          <g id="mesVacio">
+            <rect x="-18" y="-20" width="36" height="40" rx="4" fill="rgba(255,255,255,.015)" stroke="rgba(255,255,255,.09)" stroke-width="1" stroke-dasharray="3 3"/>
+          </g>
+        </defs>
+        <rect x="0" y="0" width="1000" height="340" fill="#070709"/>
+        <line x1="30" y1="272" x2="970" y2="272" stroke="#2a2a2a" stroke-width="3"/>
+        <line x1="42" y1="272" x2="958" y2="272" stroke="#3a3a36" stroke-width="1" stroke-dasharray="9 11"/>
+        <g stroke="rgba(255,255,255,.14)" stroke-width="1.6" fill="none">
+          <path d="M 268 266 l 6 6 l -6 6"/><path d="M 645 266 l 6 6 l -6 6"/><path d="M 838 266 l 6 6 l -6 6"/>
+        </g>
+        <g transform="translate(140,272)">
+          <rect x="-105" y="-228" width="210" height="228" rx="10" fill="url(#gradEstacionActivo)" stroke="rgba(255,255,255,.16)" stroke-width="1.4"/>
+          <text x="0" y="-206" text-anchor="middle" fill="rgba(255,255,255,.75)" font-size="12" font-weight="700" letter-spacing="2.4" font-family="Inter">${esc(agenciaNombre).toUpperCase()}</text>
+          <line x1="-80" y1="-195" x2="80" y2="-195" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+          ${mesCells}
+          <text x="0" y="20" text-anchor="middle" fill="#8a8f99" font-size="9.5" letter-spacing="1.8" font-family="Inter">TUS LEADS · ${totalLeads.toLocaleString('es-AR')} Y SUMANDO</text>
+        </g>
+        <g transform="translate(325,272)">
+          <text x="0" y="-64" text-anchor="middle" fill="#8a8f99" font-size="8.5" letter-spacing="2.6" font-family="Inter" opacity=".8">SUR PATAGONIA</text>
+          <line x1="0" y1="0" x2="0" y2="-28" stroke="#35c6b4" stroke-opacity=".5" stroke-width="1.5"/>
+          <circle cx="0" cy="-35" r="5.5" fill="none" stroke="#35c6b4" stroke-opacity=".7" stroke-width="1.5"/>
+          <circle cx="0" cy="-35" r="2" fill="#35c6b4" opacity=".7"/>
+          <text x="0" y="20" text-anchor="middle" fill="#35c6b4" font-size="9" letter-spacing="1.6" font-family="Inter" opacity=".85">PROCESO DE CONTACTO</text>
+          <text x="0" y="34" text-anchor="middle" fill="#8a8f99" font-size="8" font-family="Inter" opacity=".7">${seguimientoN.toLocaleString('es-AR')} en seguimiento</text>
+        </g>
+        <g transform="translate(510,272)">
+          <path d="M -100 0 L -100 -124 L 0 -204 L 100 -124 L 100 0 Z" fill="url(#gradEstacionActivo)" stroke="rgba(255,255,255,.22)" stroke-width="1.6"/>
+          <text x="0" y="-140" text-anchor="middle" fill="rgba(255,255,255,.55)" font-size="9" letter-spacing="1.8" font-family="Inter">PROPIEDAD EN VENTA</text>
+          <line x1="-72" y1="-128" x2="72" y2="-128" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+          ${renderStationCards(porMesEstado(['visita', 'visita_realizada']), 160)}
+          <text x="0" y="20" text-anchor="middle" fill="#f29a5a" font-size="9.5" letter-spacing="1.8" font-weight="700" font-family="Inter">VISITA · ${visitaN.toLocaleString('es-AR')}</text>
+        </g>
+        <g transform="translate(735,272)">
+          <rect x="-72" y="-152" width="144" height="152" rx="10" fill="url(#gradEstacionActivo)" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+          <text x="0" y="-130" text-anchor="middle" fill="rgba(255,255,255,.55)" font-size="9" letter-spacing="1.8" font-family="Inter">OFERTA ENVIADA</text>
+          <line x1="-52" y1="-120" x2="52" y2="-120" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+          <g transform="translate(0,-94)">
+            <circle r="13" fill="rgba(59,191,136,.1)" stroke="#3bbf88" stroke-opacity=".6" stroke-width="1.4"/>
+            <text x="0" y="4.5" text-anchor="middle" fill="#3bbf88" font-size="13" font-weight="700" font-family="Inter">$</text>
+          </g>
+          ${renderStationCards(porMesEstado(['oferta']), 110)}
+          <text x="0" y="20" text-anchor="middle" fill="#d9a7ff" font-size="9.5" letter-spacing="1.8" font-weight="700" font-family="Inter">OFERTA · ${ofertaN.toLocaleString('es-AR')}</text>
+        </g>
+        <g transform="translate(918,272)">
+          <path d="M -55 0 L -55 -104 L 0 -164 L 55 -104 L 55 0 Z" fill="url(#gradEstacionActivo)" stroke="${vendidoStroke}" stroke-width="1.8" style="${vendidoFilter}"/>
+          <text x="0" y="-174" text-anchor="middle" fill="${vendidoText}" font-size="9" letter-spacing="1.8" font-family="Inter">PROPIEDAD VENDIDA</text>
+          ${renderStationCards(porMesEstado(['cerrado']), 80)}
+          <text x="0" y="20" text-anchor="middle" fill="#a9dc7a" font-size="9.5" letter-spacing="1.8" font-weight="700" font-family="Inter">CERRADO · ${cerradoN.toLocaleString('es-AR')}</text>
+        </g>
+      </svg>`
+
+      const movimientosPorLead = {}
+      movimientos.forEach(mv => {
+        const key = mv.contacto_id || `${mv.mes_ingreso_key || ''}|${mv.registro_anon_n || 0}`
+        if (!movimientosPorLead[key]) movimientosPorLead[key] = {
+          mes_ingreso_key: mv.mes_ingreso_key,
+          registro_anon_n: mv.registro_anon_n,
+          contacto_id: mv.contacto_id,
+          lead_nombre: mv.lead_nombre,
+          lead_propiedad: mv.lead_propiedad,
+          eventos: []
+        }
+        movimientosPorLead[key].eventos.push(mv)
+      })
+      const leadRows = Object.values(movimientosPorLead)
+        .map(card => {
+          const eventos = card.eventos.slice().sort((a, b) => {
+            const da = fechaObj(a.fecha_evento || a.fecha_evento_publica)?.getTime() || 0
+            const db = fechaObj(b.fecha_evento || b.fecha_evento_publica)?.getTime() || 0
+            if (da !== db) return da - db
+            return (a.orden_evento || 0) - (b.orden_evento || 0)
+          })
+          const ultimo = eventos[eventos.length - 1]
+          const fechaUltima = ultimo?.fecha_evento || ultimo?.fecha_evento_publica
+          return { ...card, eventos, fechaUltima }
+        })
+        .sort((a, b) => (fechaObj(b.fechaUltima)?.getTime() || 0) - (fechaObj(a.fechaUltima)?.getTime() || 0))
+        .slice(0, 30)
+
+      const registroHtml = leadRows.length ? leadRows.map(card => {
+        const color = colorMes(card.mes_ingreso_key)
+        const nombre = card.lead_nombre || 'Lead sin nombre'
+        const propiedad = card.lead_propiedad || 'Sin propiedad asociada'
+        let estadoPrevioOrden = 1
+        const nodos = [
+          `<div class="pv-activo-tl-nodo">
+            <span class="pv-activo-tl-estado" style="color:rgba(255,255,255,.5)">Ingresó</span>
+            <span class="pv-activo-tl-fecha">${esc(fmtMesKey(card.mes_ingreso_key))}</span>
+          </div>`
+        ]
+        card.eventos.forEach((ev, idx) => {
+          const estado = ev.estado_publico || ev.estado_nuevo || 'nueva'
+          const orden = EST_ORDEN_A[estado] ?? estadoPrevioOrden
+          const retro = orden < estadoPrevioOrden
+          estadoPrevioOrden = orden
+          const isLast = idx === card.eventos.length - 1
+          const label = retro && (estado === 'nueva' || estado === 'contactado')
+            ? 'Volvió a seguimiento'
+            : (ev.estado_label || EST_LABEL_A[estado] || estado)
+          const colorEstado = retro ? 'rgba(255,255,255,.45)' : (EST_COLOR_A[estado] || '#888')
+          nodos.push(`<div class="pv-activo-tl-nodo${retro ? ' retro' : ''}${isLast ? ' ultimo' : ''}">
+            <span class="pv-activo-tl-estado" style="color:${colorEstado}">${esc(label)}</span>
+            <span class="pv-activo-tl-fecha">${esc(fmtDia(ev.fecha_evento || ev.fecha_evento_publica))}</span>
+          </div>`)
+        })
+        const timeline = nodos.map((n, i) => i === 0 ? n : `<span class="pv-activo-tl-linea"></span>${n}`).join('')
+        return `<div class="pv-activo-lead">
+          <div>
+            <span class="pv-activo-chip-mes" style="color:${color}">Lead de ${esc(fmtMesKey(card.mes_ingreso_key))}</span>
+            <div class="pv-activo-lead-nombre">${esc(nombre)}</div>
+            <div class="pv-activo-lead-prop">${esc(propiedad)}</div>
+          </div>
+          <div class="pv-activo-timeline">${timeline}</div>
+          <div class="pv-activo-mov-reciente">se movió ${esc(diasDesde(card.fechaUltima))}</div>
+        </div>`
+      }).join('') : `<div class="pv-activo-empty">Sin movimientos en el período.</div>`
+
+      return `<div class="pv-sec pv-activo-recorrido-sec">
+        <div class="pv-sec-head">
+          <div>
+            <div class="pv-sec-titulo">El recorrido de tus leads</div>
+            <div class="pv-sec-sub">Cada color es un mes de ingreso. El número dice cuántos leads de ese mes están en esa etapa.</div>
+          </div>
+          <span class="pv-activo-hoy-ancla">HOY · ${fmtDia(hoy.toISOString())}</span>
+        </div>
+        ${svg}
+      </div>
+      <div class="pv-sec pv-activo-registro-sec">
+        <div class="pv-sec-head">
+          <div>
+            <div class="pv-sec-titulo">Registro de movimientos</div>
+            <div class="pv-sec-sub">El detalle de cada tarjeta del gráfico — quién es, qué propiedad, y su camino con fechas.</div>
+          </div>
+        </div>
+        <div class="pv-activo-registro">${registroHtml}</div>
+      </div>`
+    }
+
     function renderPasivo(contactos, filasTraza = [], canal = null) {
       const m = metricasPasivo(contactos)
 
@@ -3776,7 +4132,7 @@
           </div>
         </div>
 
-        ${renderTrazabilidad(filasTraza, { anonimo: false })}`
+        ${renderRecorridoLeadsActivo(filasTraza)}`
     }
 
     // ── 4 paneles inferiores nuevos: Actividad 30d / Conversión / Origen / Rendimiento ──
