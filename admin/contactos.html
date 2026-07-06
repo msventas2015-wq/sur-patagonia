@@ -468,6 +468,9 @@
     .salud-linea:last-child { border-bottom:0; }
     .salud-linea .nombre { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .salud-linea .dias { color:rgba(255,255,255,.45); font-size:.6rem; margin-left:.5rem; }
+    .salud-linea[data-canal] { cursor:pointer; transition:background .15s, color .15s; }
+    .salud-linea[data-canal]:hover,
+    .salud-linea[data-canal]:focus { background:rgba(255,255,255,.045); color:var(--blanco); outline:none; }
     .salud-bloque.standby .salud-linea .dias { color:#f0956a; }
     .salud-bloque.apagado .salud-linea .dias { color:#e05c5c; font-weight:600; }
     .salud-contador {
@@ -846,6 +849,7 @@ let _mapaLeaflet = null          // instancia Leaflet (se crea en el primer rend
 let _capaCanales = null          // layerGroup de canales
 let _capaDesarrollos = null      // layerGroup de desarrollos
 let _capaPropiedades = null      // layerGroup de propiedades
+let _canalMarkers = {}           // nombre de canal → marker renderizado
 let _rango = 'hoy'               // 'hoy' | 'd7' | 'd30d'
 let _layers = { canales:true, desarrollos:true, propiedades:true }
 let _ultActividad = {}           // nombre de canal → timestamp ms última visita/consulta
@@ -860,7 +864,7 @@ async function cargarTodo() {
     supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug'),
     supabase.from('proyectos').select('nombre, slug, latitud, longitud')
       .then(r => r.error ? supabase.from('proyectos').select('nombre, slug').then(r2 => r2.error ? supabase.from('proyectos').select('nombre') : r2) : r),
-    supabase.from('propiedades').select('id, titulo, tipo, operacion, latitud, longitud, precio, moneda').order('titulo'),
+    supabase.from('propiedades').select('id, titulo, tipo, operacion, latitud, longitud, precio, moneda, activa').eq('activa', true).order('titulo'),
     supabase.from('visitas').select('canal_ref, created_at').not('canal_ref', 'is', null).order('created_at', { ascending: false }).limit(5000),
   ])
 
@@ -893,7 +897,6 @@ async function cargarTodo() {
   })
   _propsGeo = []
   ;(rProp.data || []).forEach(p => {
-    if (p.latitud == null || p.longitud == null) return
     const precio = p.precio
       ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
       : ''
@@ -901,8 +904,8 @@ async function cargarTodo() {
       nombre: p.titulo,
       tipo: p.operacion || p.tipo || '',
       precio,
-      lat: Number(p.latitud),
-      lng: Number(p.longitud),
+      lat: p.latitud == null ? null : Number(p.latitud),
+      lng: p.longitud == null ? null : Number(p.longitud),
     })
   })
   const canalPorRef = {}
@@ -1160,6 +1163,7 @@ function initMapa() {
 function renderCanales(rows) {
   if (!_capaCanales) return
   _capaCanales.clearLayers()
+  _canalMarkers = {}
   if (!_layers.canales) return
 
   // actividad por canal en el rango actual
@@ -1213,7 +1217,7 @@ function renderCanales(rows) {
     const col = colorCssSeguro(colorCanalDesdeIndex(m.color_index), '#8a8a82')
     const maxScale = Math.min(1.8 + nEnRango * 0.45, 4)
     const anillos = tieneSonar ? '<i class="sonar-ring r1"></i><i class="sonar-ring r2"></i>' : ''
-    const size = 10
+    const size = 9
     const clsEstado = estado === 'apagado' ? ' apagado' : (estado === 'standby' ? ' standby' : '')
     const clsSonar = tieneSonar ? '' : ' sin-sonar'
     const ult = _ultActividad[nombre]
@@ -1226,7 +1230,7 @@ function renderCanales(rows) {
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
     })
-    L.marker([latRender, lngRender], { icon })
+    const marker = L.marker([latRender, lngRender], { icon })
       .bindTooltip(
         `<div class="tip-nombre">${esc(nombre)}</div>` +
         `<div class="tip-sub">${esc(LABEL_TIPO[m.tipo] || m.tipo || 'Canal')}${m.ciudad ? ' · ' + esc(m.ciudad) + (m.provincia ? ', ' + esc(m.provincia) : '') : ''}</div>` +
@@ -1234,6 +1238,7 @@ function renderCanales(rows) {
         (diasSin !== null && diasSin >= 5 ? `<div class="tip-alerta">${diasSin} día${diasSin === 1 ? '' : 's'} sin interacción</div>` : ''),
         { sticky: true, direction: 'right', opacity: 1, className: 'mapa-tip', offset: [8, 0] })
       .addTo(_capaCanales)
+    _canalMarkers[nombre] = marker
   })
 }
 
@@ -1335,15 +1340,40 @@ function renderSaludRed() {
     `<div class="salud-bloque standby">` +
       `<div style="font-size:.58rem; font-weight:700; color:#f0956a; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem;">En standby (5-14 días)</div>` +
       (standbys.length
-        ? standbys.map(s => `<div class="salud-linea"><span class="nombre">${esc(s.nombre)}</span><span class="dias">${s.dias}d</span></div>`).join('')
+        ? standbys.map(s => `<div class="salud-linea" data-canal="${esc(s.nombre)}" role="button" tabindex="0"><span class="nombre">${esc(s.nombre)}</span><span class="dias">${s.dias}d</span></div>`).join('')
         : `<div class="salud-vacio">Ninguno</div>`) +
     `</div>` +
     `<div class="salud-bloque apagado">` +
       `<div style="font-size:.58rem; font-weight:700; color:#e05c5c; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem;">🚫 Sin actividad 15+ días (¿QR/link roto?)</div>` +
       (apagados.length
-        ? apagados.map(a => `<div class="salud-linea"><span class="nombre">${esc(a.nombre)}</span><span class="dias">${a.dias}${typeof a.dias === 'number' ? 'd' : ''}</span></div>`).join('')
+        ? apagados.map(a => `<div class="salud-linea" data-canal="${esc(a.nombre)}" role="button" tabindex="0"><span class="nombre">${esc(a.nombre)}</span><span class="dias">${a.dias}${typeof a.dias === 'number' ? 'd' : ''}</span></div>`).join('')
         : `<div class="salud-vacio">Ninguno</div>`) +
     `</div>`
+}
+
+function enfocarCanalMapa(nombre) {
+  if (!nombre || !window.L) return
+  const meta = _metaCanal[nombre]
+  if (!meta || !coordValida(meta.lat, meta.lng)) return
+
+  if (!_mapaLeaflet) initMapa()
+  if (!_layers.canales) {
+    _layers.canales = true
+    const btn = document.querySelector('.layer-btn[data-layer="canales"]')
+    if (btn) {
+      btn.classList.add('on')
+      btn.classList.remove('off')
+    }
+    renderMapa(filtrar())
+  }
+
+  const marker = _canalMarkers[nombre]
+  const destino = marker?.getLatLng ? marker.getLatLng() : [Number(meta.lat), Number(meta.lng)]
+  _mapaLeaflet.setView(destino, 9)
+  setTimeout(() => {
+    const mk = _canalMarkers[nombre] || marker
+    if (mk?.openTooltip) mk.openTooltip()
+  }, 120)
 }
 
 function renderMapa(rows) {
@@ -1359,7 +1389,11 @@ function renderMapa(rows) {
 function actualizarContadoresMapa() {
   if ($('cCanales')) $('cCanales').textContent = Object.keys(_metaCanal).length
   if ($('cDesarrollos')) $('cDesarrollos').textContent = Object.keys(_proyGeo).length
-  if ($('cPropiedades')) $('cPropiedades').textContent = _propsGeo.length
+  if ($('cPropiedades')) {
+    const visibles = _propsGeo.filter(p => coordValida(p.lat, p.lng)).length
+    const total = _propsGeo.length
+    $('cPropiedades').textContent = visibles === total ? total : `${visibles}/${total}`
+  }
 }
 
 // ── KPIs (con delta vs período anterior) ──────────────────
@@ -1771,6 +1805,20 @@ if (buscadorMapa) {
     }, 100)
   })
 }
+
+document.addEventListener('click', e => {
+  const item = e.target.closest('.salud-linea[data-canal]')
+  if (!item) return
+  enfocarCanalMapa(item.dataset.canal)
+})
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return
+  const item = e.target.closest('.salud-linea[data-canal]')
+  if (!item) return
+  e.preventDefault()
+  enfocarCanalMapa(item.dataset.canal)
+})
 
 // ── Export CSV ────────────────────────────────────────────
 $('btnExport').addEventListener('click', () => {
