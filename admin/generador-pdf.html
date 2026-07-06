@@ -364,6 +364,7 @@
               <div style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--blanco);margin-bottom:0.3rem;" id="pi-nombre"></div>
               <div style="font-size:0.75rem;color:var(--gris-claro);margin-bottom:0.8rem;" id="pi-loc"></div>
               <div style="font-size:0.75rem;color:var(--gris-claro);line-height:1.6;" id="pi-stats"></div>
+              <div class="gpdf-empty" id="proyecto-advertencias" style="margin-top:0.8rem;text-align:left;"></div>
             </div>
           </div>
 
@@ -493,6 +494,7 @@
               <div class="gpdf-prop-nombre" id="prop-nombre"></div>
               <div class="gpdf-prop-meta" id="prop-meta"></div>
               <div class="gpdf-prop-precio" id="prop-precio"></div>
+              <div class="gpdf-empty" id="propiedad-advertencias" style="margin-top:0.8rem;text-align:left;"></div>
             </div>
           </div>
 
@@ -519,9 +521,14 @@
 import { supabase } from '../js/config.js'
 
 // ── Auth ──────────────────────────────────────────────────────────────────
-const { data: { session } } = await supabase.auth.getSession()
+let { data: { session } } = await supabase.auth.getSession()
 if (!session) { location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (typeof supabase.auth.refreshSession === 'function') {
+  const { data: refreshed } = await supabase.auth.refreshSession().catch(() => ({ data: {} }))
+  if (refreshed?.session) session = refreshed.session
+}
+const rolAdmin = session.user.app_metadata?.rol === 'admin' || session.user.user_metadata?.rol === 'admin'
+if (!rolAdmin) { window.location.href = 'login.html'; throw new Error('not admin') }
 
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault()
@@ -534,7 +541,7 @@ let proyectoActual = null
 let lotesActuales  = []
 let propiedadActual = null
 
-const SITE = 'https://sur-patagonia.msventas2015.workers.dev'
+const SITE = 'https://surpatagonia.com.ar'
 
 const SERVICIOS_LABELS = {
   agua:'Agua potable', luz:'Electricidad', gas:'Gas natural', cloacas:'Cloacas',
@@ -543,6 +550,100 @@ const SERVICIOS_LABELS = {
   piscina:'Piscina común', quincho:'Quincho / SUM', cancha:'Cancha deportiva',
   senderos:'Senderos / Bike paths', bosque:'Reserva de bosque',
   muelle:'Muelle / Costa de río', vista_lago:'Vista al lago'
+}
+
+function fotosProyecto(p) {
+  return (p?.fotos || []).filter(Boolean)
+}
+
+function serviciosProyecto(p) {
+  const svcsArr = Array.isArray(p?.servicios) ? p.servicios : []
+  return svcsArr.map(k => SERVICIOS_LABELS[k]).filter(Boolean)
+}
+
+function datosTecnicosProyecto(p) {
+  const prov = (p?.provincia || '').replace(/_/g, ' ')
+  const locStr = [p?.ciudad, prov].filter(Boolean).join(', ')
+  const items = []
+  if (p?.hectareas_total) items.push(['Superficie total', p.hectareas_total + ' ha'])
+  if (p?.cantidad_lotes) items.push(['Lotes totales', String(p.cantidad_lotes)])
+  if (p?.sup_min_m2 && p?.sup_max_m2) items.push(['Superficies lotes', `${p.sup_min_m2} – ${p.sup_max_m2} m²`])
+  if (locStr) items.push(['Provincia / Ciudad', locStr])
+  if (p?.distancia_km) items.push(['Distancia al centro', p.distancia_km + ' km'])
+  if (p?.tipo_acceso) items.push(['Tipo de acceso', p.tipo_acceso])
+  if (p?.acceso_desc) items.push(['Descripción acceso', p.acceso_desc])
+  if (p?.zonificacion) items.push(['Zonificación', p.zonificacion])
+  if (p?.altura_max) items.push(['Altura máx. edificable', String(p.altura_max)])
+  return items
+}
+
+function datosTecnicosPropiedad(p) {
+  const items = []
+  if (p?.tipo) items.push(['Tipo', p.tipo])
+  if (p?.operacion) items.push(['Operación', p.operacion])
+  if (p?.dormitorios) items.push(['Dormitorios', p.dormitorios])
+  if (p?.banos) items.push(['Baños', p.banos])
+  if (p?.superficie_cubierta) items.push(['Sup. cubierta', p.superficie_cubierta + ' m²'])
+  if (p?.superficie_total) items.push(['Sup. total', p.superficie_total + ' m²'])
+  return items
+}
+
+function advertenciasProyecto(p, sec = null, extras = {}) {
+  const warnings = []
+  const fotos = fotosProyecto(p)
+  const svcsLabels = serviciosProyecto(p)
+  const finTexto = extras.financiacion || p?.financiacion
+  if ((!sec || sec.portada) && !(p?.foto_atmosfera || p?.foto_portada)) warnings.push('Sin foto de portada — la portada saldrá oscura')
+  if (fotos.length < 2) warnings.push('Sin galería')
+  if ((!sec || sec.descripcion) && !p?.descripcion) warnings.push('Sin descripción')
+  if ((!sec || sec.servicios) && !svcsLabels.length) warnings.push('Sin servicios')
+  if ((!sec || sec.financiacion) && !finTexto) warnings.push('Sin financiación')
+  if ((!sec || sec.datos) && !datosTecnicosProyecto(p).length) warnings.push('Sin datos técnicos')
+  return warnings
+}
+
+function advertenciasPropiedad(p, sec = null) {
+  const warnings = []
+  const imagenes = (p?.imagenes || []).filter(Boolean)
+  if ((!sec || sec.foto) && !imagenes.length) warnings.push('Sin foto principal')
+  if ((!sec || sec.descripcion) && !p?.descripcion) warnings.push('Sin descripción')
+  if ((!sec || sec.datos) && !datosTecnicosPropiedad(p).length) warnings.push('Sin datos técnicos')
+  if ((!sec || sec.precio) && !p?.precio) warnings.push('Sin precio')
+  if ((!sec || sec.ubicacion) && ![p?.ubicacion, p?.ciudad, p?.provincia].filter(Boolean).length) warnings.push('Sin ubicación')
+  return warnings
+}
+
+function renderAdvertencias(id, warnings) {
+  const el = document.getElementById(id)
+  if (!el) return
+  el.textContent = warnings.length ? 'Advertencias: ' + warnings.join(' · ') : ''
+  el.style.display = warnings.length ? 'block' : 'none'
+}
+
+function actualizarAdvertenciasProyecto() {
+  if (!proyectoActual) return
+  const sec = {
+    portada: document.getElementById('sec-portada').checked,
+    descripcion: document.getElementById('sec-descripcion').checked,
+    datos: document.getElementById('sec-datos').checked,
+    servicios: document.getElementById('sec-servicios').checked,
+    financiacion: document.getElementById('sec-financiacion').checked,
+  }
+  renderAdvertencias('proyecto-advertencias', advertenciasProyecto(proyectoActual, sec, {
+    financiacion: document.getElementById('cot-financiacion').value.trim()
+  }))
+}
+
+function actualizarAdvertenciasPropiedad() {
+  if (!propiedadActual) return
+  const sec = {
+    foto: document.getElementById('psec-foto').checked,
+    descripcion: document.getElementById('psec-descripcion').checked,
+    datos: document.getElementById('psec-datos').checked,
+    precio: document.getElementById('psec-precio').checked,
+    ubicacion: document.getElementById('psec-ubicacion').checked,
+  }
+  renderAdvertencias('propiedad-advertencias', advertenciasPropiedad(propiedadActual, sec))
 }
 
 // ── Cargar listas ─────────────────────────────────────────────────────────
@@ -623,6 +724,7 @@ window.cargarProyecto = async function() {
 
   document.getElementById('contenido-proyecto').style.display = 'block'
   document.getElementById('btn-gen-proyecto').disabled = false
+  actualizarAdvertenciasProyecto()
 }
 
 function renderTablaLotes(lotes) {
@@ -684,18 +786,33 @@ window.cargarPropiedad = async function() {
   document.getElementById('propiedad-info-datos').style.display = 'block'
   document.getElementById('contenido-propiedad').style.display = 'block'
   document.getElementById('btn-gen-propiedad').disabled = false
+  actualizarAdvertenciasPropiedad()
 }
 
+;['sec-portada','sec-descripcion','sec-datos','sec-servicios','sec-financiacion'].forEach(id => {
+  document.getElementById(id)?.addEventListener('change', actualizarAdvertenciasProyecto)
+})
+document.getElementById('cot-financiacion')?.addEventListener('input', actualizarAdvertenciasProyecto)
+;['psec-foto','psec-descripcion','psec-datos','psec-precio','psec-ubicacion'].forEach(id => {
+  document.getElementById(id)?.addEventListener('change', actualizarAdvertenciasPropiedad)
+})
+
 // ── Helper imagen ─────────────────────────────────────────────────────────
-async function fetchImageAsBase64(url) {
-  const res = await fetch(url)
-  const blob = await res.blob()
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
+async function fetchImageAsBase64(url, label = '', warnings = null) {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error('imagen no disponible')
+    const blob = await res.blob()
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  } catch (error) {
+    if (warnings && label) warnings.push(`No se pudo cargar: ${label}`)
+    throw error
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -703,19 +820,29 @@ async function fetchImageAsBase64(url) {
 // ══════════════════════════════════════════════════════════════════════════
 
 // QR como base64
-async function qrBase64(texto, size = 120) {
+async function qrBase64(texto, size = 120, warnings = null, label = 'QR') {
   return new Promise((resolve) => {
     const div = document.createElement('div')
     document.body.appendChild(div)
+    let done = false
+    const finish = data => {
+      if (done) return
+      done = true
+      try { document.body.removeChild(div) } catch(_) {}
+      if (!data && warnings) warnings.push(label === 'QR' ? 'No se pudo generar el QR' : `No se pudo generar el QR: ${label}`)
+      resolve(data)
+    }
     try {
       new QRCode(div, { text: texto, width: size, height: size, correctLevel: QRCode.CorrectLevel.M })
-      setTimeout(() => {
+      const inicio = Date.now()
+      const poll = () => {
         const canvas = div.querySelector('canvas')
-        const data = canvas ? canvas.toDataURL('image/png') : null
-        document.body.removeChild(div)
-        resolve(data)
-      }, 300)
-    } catch(e) { try { document.body.removeChild(div) } catch(_){} ; resolve(null) }
+        if (canvas) return finish(canvas.toDataURL('image/png'))
+        if (Date.now() - inicio >= 2000) return finish(null)
+        setTimeout(poll, 80)
+      }
+      poll()
+    } catch(e) { finish(null) }
   })
 }
 
@@ -767,6 +894,7 @@ window.generarPDFProyecto = async function() {
     const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' })
     const W = 210, H = 297
     const p = proyectoActual
+    const warnings = []
 
     // Lotes seleccionados
     const idsSeleccionados = new Set(
@@ -794,6 +922,9 @@ window.generarPDFProyecto = async function() {
     const cotPrecio       = document.getElementById('cot-precio').value.trim()
     const cotFinanciacion = document.getElementById('cot-financiacion').value.trim()
     const cotNota         = document.getElementById('cot-nota').value.trim()
+    advertenciasProyecto(p, sec, { financiacion: cotFinanciacion }).forEach(w => {
+      if (!warnings.includes(w)) warnings.push(w)
+    })
 
     // Fecha
     let fechaStr = ''
@@ -804,8 +935,7 @@ window.generarPDFProyecto = async function() {
     }
 
     // Servicios — guardados como array text[] en p.servicios
-    const svcsArr = Array.isArray(p.servicios) ? p.servicios : []
-    const svcsLabels = svcsArr.map(k => SERVICIOS_LABELS[k]).filter(Boolean)
+    const svcsLabels = serviciosProyecto(p)
 
     // Paleta
     const BG      = [245, 240, 232]
@@ -833,7 +963,7 @@ window.generarPDFProyecto = async function() {
     let fotoRaw = null
     const fotoUrl = p.foto_atmosfera || p.foto_portada
     if (fotoUrl) {
-      try { fotoRaw = await fetchImageAsBase64(fotoUrl) } catch(e) {}
+      try { fotoRaw = await fetchImageAsBase64(fotoUrl, 'foto de portada', warnings) } catch(e) {}
     }
 
     if (fotoRaw) {
@@ -860,9 +990,9 @@ window.generarPDFProyecto = async function() {
     gbCtx.fillStyle = gbGrad; gbCtx.fillRect(0,0,8,180)
     doc.addImage(gbCanvas.toDataURL(),'PNG',0,heroH-45,W,45)
 
-    // ── LOGO VERTICAL: logovertical.png (logo real del sitio) ───────────────
+    // ── LOGO VERTICAL: asset local negro (logo real del sitio) ──────────────
     try {
-      const logoVB64 = await fetchImageAsBase64(SITE + '/logovertical.png')
+      const logoVB64 = await fetchImageAsBase64('../assets/logos/logo-vertical-negro.png', 'logo vertical', warnings)
       const logoDims = await new Promise(resolve => {
         const img = new Image()
         img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
@@ -944,14 +1074,14 @@ window.generarPDFProyecto = async function() {
     }
 
     // ── GALERÍA PEQUEÑA ───────────────────────────────────────────────────
-    const fotos = (p.fotos || []).filter(Boolean)
+    const fotos = fotosProyecto(p)
     if (fotos.length >= 2) {
       const galH = 32, gap = 2
       const nFotos = Math.min(fotos.length, 4)
       const fW = (W - 28 - gap * (nFotos-1)) / nFotos
       for (let i = 0; i < nFotos; i++) {
         try {
-          const raw = await fetchImageAsBase64(fotos[i])
+          const raw = await fetchImageAsBase64(fotos[i], `foto ${i + 1} de galería`, warnings)
           const fit = await coverImg(raw, Math.round(fW * 4), Math.round(galH * 4))
           doc.addImage(fit || raw, 'JPEG', 14 + i*(fW+gap), y, fW, galH, '', 'FAST')
         } catch(e) { f(SURFACE); doc.rect(14+i*(fW+gap), y, fW, galH,'F') }
@@ -964,29 +1094,20 @@ window.generarPDFProyecto = async function() {
       y = checkPage(y)
       y = secHeader(doc, 'EL DESARROLLO', y, GOLD, sp)
 
-      const items = []
-      if (p.hectareas_total)     items.push(['Superficie total',    p.hectareas_total + ' ha'])
-      if (p.cantidad_lotes)      items.push(['Lotes totales',       String(p.cantidad_lotes)])
-      if (p.sup_min_m2 && p.sup_max_m2) items.push(['Superficies lotes', `${p.sup_min_m2} – ${p.sup_max_m2} m²`])
-      const locStr = [p.ciudad, prov].filter(Boolean).join(', ')
-      if (locStr)                items.push(['Provincia / Ciudad',  locStr])
-      if (p.distancia_km)        items.push(['Distancia al centro', p.distancia_km + ' km'])
-      if (p.tipo_acceso)         items.push(['Tipo de acceso',      p.tipo_acceso])
-      if (p.acceso_desc)         items.push(['Descripción acceso',  p.acceso_desc])
-      if (p.zonificacion)        items.push(['Zonificación',        p.zonificacion])
-      if (p.altura_max)          items.push(['Altura máx. edificable', String(p.altura_max)])
+      const items = datosTecnicosProyecto(p)
 
       const cW2 = (W-28)/2
+      let rowY = y
       items.forEach((item, i) => {
-        const col = i%2, row = Math.floor(i/2)
-        const ix = 14 + col*(cW2+4), iy = y + row*11
-        if (row === 0 && col === 0) y = checkPage(y)
+        const col = i%2
+        if (col === 0) rowY = i === 0 ? checkPage(rowY) : checkPage(rowY + 11)
+        const ix = 14 + col*(cW2+4), iy = rowY
         t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
         doc.text(item[0].toUpperCase(), ix, iy); sp(0)
         t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
         doc.text(doc.splitTextToSize(String(item[1]), cW2-4)[0], ix, iy+5.5)
       })
-      y += Math.ceil(items.length/2)*11 + 2
+      y = rowY + 11 + 2
       y = linea(y)
     }
 
@@ -995,12 +1116,14 @@ window.generarPDFProyecto = async function() {
       y = checkPage(y)
       y = secHeader(doc, 'SERVICIOS E INFRAESTRUCTURA', y, GOLD, sp)
       const cW3 = (W-28)/2
+      let rowY = y
       svcsLabels.forEach((label, i) => {
-        const col = i%2, row = Math.floor(i/2)
+        const col = i%2
+        if (col === 0) rowY = i === 0 ? checkPage(rowY) : checkPage(rowY + 6.5)
         t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(7.5)
-        doc.text('· ' + label, 14 + col*(cW3+4), y + row*6.5)
+        doc.text('· ' + label, 14 + col*(cW3+4), rowY)
       })
-      y += Math.ceil(svcsLabels.length/2)*6.5 + 4
+      y = rowY + 6.5 + 4
       y = linea(y)
     }
 
@@ -1141,7 +1264,7 @@ window.generarPDFProyecto = async function() {
       const lat = p.latitud, lng = p.longitud
       const mapW2 = W-28, mapH2 = 55
       let mapImg = null
-      try { mapImg = await fetchImageAsBase64(`https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=14&size=600x330&markers=${lat},${lng},red-pushpin`) } catch(e){}
+      try { mapImg = await fetchImageAsBase64(`https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=14&size=600x330&markers=${lat},${lng},red-pushpin`, 'mapa de ubicación', warnings) } catch(e){}
       if (mapImg) {
         doc.addImage(mapImg,'PNG',14,y,mapW2,mapH2,'','FAST')
         d(GOLD); doc.setLineWidth(0.4); doc.rect(14,y,mapW2,mapH2)
@@ -1156,7 +1279,7 @@ window.generarPDFProyecto = async function() {
         doc.text(`${lat}, ${lng}`,18,y+9)
         t(GOLD); doc.setFontSize(5)
         doc.textWithLink('Abrir en Google Maps →',18,y+15,{url:`https://maps.google.com/?q=${lat},${lng}`})
-        const mqr = await qrBase64(`https://maps.google.com/?q=${lat},${lng}`,120)
+        const mqr = await qrBase64(`https://maps.google.com/?q=${lat},${lng}`,120, warnings, 'mapa')
         if (mqr) { doc.addImage(mqr,'PNG',W-14-22,y,22,22); t(MUTED); doc.setFontSize(4.5); doc.text('VER MAPA',W-14-11,y+24,{align:'center'}) }
         y+=30
       }
@@ -1181,7 +1304,7 @@ window.generarPDFProyecto = async function() {
 
       if (sec.qr) {
         const qrSz = 28; let qrX = W-14-qrSz
-        const qrMini = await qrBase64(`${SITE}/${p.slug||''}`,150)
+        const qrMini = await qrBase64(`${SITE}/${p.slug||''}`,150, warnings, 'proyecto')
         if (qrMini) {
           doc.addImage(qrMini,'PNG',qrX,y,qrSz,qrSz)
           t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.5); sp(1)
@@ -1189,7 +1312,7 @@ window.generarPDFProyecto = async function() {
           qrX -= qrSz+6
         }
         if (p.contacto_whatsapp) {
-          const qrWa = await qrBase64(`https://wa.me/${p.contacto_whatsapp.replace(/\D/g,'')}`,150)
+          const qrWa = await qrBase64(`https://wa.me/${p.contacto_whatsapp.replace(/\D/g,'')}`,150, warnings, 'WhatsApp')
           if (qrWa) {
             doc.addImage(qrWa,'PNG',qrX,y,qrSz,qrSz)
             t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.5); sp(1)
@@ -1214,7 +1337,9 @@ window.generarPDFProyecto = async function() {
 
     const slug = (p.nombre||'proyecto').toLowerCase().replace(/\s+/g,'-')
     doc.save(`ficha-${slug}.pdf`)
-    info.textContent = '✓ PDF generado'
+    info.textContent = warnings.length
+      ? `✓ PDF generado — ${warnings.length} advertencias: ${warnings.join(', ')}`
+      : '✓ PDF generado'
   } catch(err) {
     console.error(err)
     info.textContent = 'Error: ' + err.message
@@ -1237,6 +1362,7 @@ window.generarPDFPropiedad = async function() {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const W = 210, H = 297
     const p = propiedadActual
+    const warnings = []
 
     const sec = {
       foto:        document.getElementById('psec-foto').checked,
@@ -1246,6 +1372,9 @@ window.generarPDFPropiedad = async function() {
       ubicacion:   document.getElementById('psec-ubicacion').checked,
       contacto:    document.getElementById('psec-contacto').checked,
     }
+    advertenciasPropiedad(p, sec).forEach(w => {
+      if (!warnings.includes(w)) warnings.push(w)
+    })
 
     const BG      = [245, 240, 232]
     const SURFACE = [235, 229, 218]
@@ -1259,6 +1388,7 @@ window.generarPDFPropiedad = async function() {
     const t  = c => doc.setTextColor(c[0], c[1], c[2])
     const sp = n => doc.setCharSpace(n)
     const gs = o => { try { doc.setGState(new doc.GState({ opacity: o })) } catch(e){} }
+    const checkPage = y => y > H-40 ? nuevaPagina(doc, BG) : y
 
     f(BG); doc.rect(0, 0, W, H, 'F')
 
@@ -1266,7 +1396,7 @@ window.generarPDFPropiedad = async function() {
     const hH = 26
     f(SURFACE); doc.rect(0, 0, W, hH, 'F')
     try {
-      const logo = await fetchImageAsBase64(SITE + '/picos.png')
+      const logo = await fetchImageAsBase64('../assets/logos/picos-negro.png', 'picos de marca', warnings)
       gs(0.68); doc.addImage(logo, 'PNG', 11, 3, 18, 18); gs(1)
     } catch(e) {}
     t(GOLD); doc.setFont('helvetica','bold'); doc.setFontSize(11); sp(3.5)
@@ -1283,7 +1413,7 @@ window.generarPDFPropiedad = async function() {
     if (sec.foto && p.imagenes?.[0]) {
       const heroH = 72
       try {
-        const img = await fetchImageAsBase64(p.imagenes[0])
+        const img = await fetchImageAsBase64(p.imagenes[0], 'foto principal', warnings)
         doc.addImage(img, 'JPEG', 0, y, W, heroH)
       } catch(e) { f([35,30,22]); doc.rect(0, y, W, heroH, 'F') }
       const ov = document.createElement('canvas'); ov.width=1; ov.height=1
@@ -1329,29 +1459,24 @@ window.generarPDFPropiedad = async function() {
 
     // Datos técnicos
     if (sec.datos) {
-      const items = []
-      if (p.tipo)               items.push(['Tipo', p.tipo])
-      if (p.operacion)          items.push(['Operación', p.operacion])
-      if (p.dormitorios)        items.push(['Dormitorios', p.dormitorios])
-      if (p.banos)              items.push(['Baños', p.banos])
-      if (p.superficie_cubierta) items.push(['Sup. cubierta', p.superficie_cubierta + ' m²'])
-      if (p.superficie_total)   items.push(['Sup. total', p.superficie_total + ' m²'])
+      const items = datosTecnicosPropiedad(p)
 
       if (items.length) {
         t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
         doc.text('DATOS TÉCNICOS', 14, y); sp(0); y += 7
         const colW = (W - 28) / 2
+        let rowY = y
         items.forEach((item, i) => {
           const col = i % 2
-          const row = Math.floor(i / 2)
+          if (col === 0) rowY = i === 0 ? checkPage(rowY) : checkPage(rowY + 10)
           const ix = 14 + col * (colW + 4)
-          const iy = y + row * 10
+          const iy = rowY
           t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
           doc.text(item[0].toUpperCase(), ix, iy); sp(0)
           t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
           doc.text(String(item[1]), ix, iy + 5)
         })
-        y += Math.ceil(items.length / 2) * 10 + 6
+        y = rowY + 10 + 6
         d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
       }
     }
@@ -1384,11 +1509,13 @@ window.generarPDFPropiedad = async function() {
     t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2)
     doc.text('SUR PATAGONIA · DESARROLLO INMOBILIARIO', 14, H-6); sp(0)
     t(MUTED); doc.setFontSize(5)
-    doc.text('sur-patagonia.msventas2015.workers.dev', W-14, H-6, { align: 'right' })
+    doc.text(SITE, W-14, H-6, { align: 'right' })
 
     const nombre = (p.titulo || 'propiedad').toLowerCase().replace(/\s+/g,'-')
     doc.save(`ficha-${nombre}.pdf`)
-    info.textContent = '✓ PDF generado'
+    info.textContent = warnings.length
+      ? `✓ PDF generado — ${warnings.length} advertencias: ${warnings.join(', ')}`
+      : '✓ PDF generado'
   } catch(err) {
     console.error(err)
     info.textContent = 'Error al generar PDF'
