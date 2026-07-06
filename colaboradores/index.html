@@ -1555,14 +1555,18 @@
     // Log temporal — verificar en producción con F12 los slots filtrados como canales generales:
     console.warn('[esPropiedadReal] Slots filtrados como canales generales:', misSlots.filter(s => !esPropiedadReal(s)).map(s => s.codigo))
 
-    // ── Trazabilidad CRM — PASIVO-07B ─────────────────────────────────────────
+    // ── Trazabilidad CRM ─────────────────────────────────────────────────────
     // Lee crm_eventos SOLO via RPC con SECURITY DEFINER — nunca directo.
-    // filasTraza solo existe para panel pasivo; usuarios activos obtienen [].
+    // Pasivo: anónimo. Activo: nombres reales de sus propios leads.
     let filasTraza = []
     if (esPasivo) {
       const { data: rpcTraza, error: errTraza } = await supabase.rpc('rpc_pasivo_trazabilidad_comercial')
       if (!errTraza) filasTraza = rpcTraza || []
       else console.warn('[trazabilidad] RPC error:', errTraza.message)
+    } else {
+      const { data: rpcTraza, error: errTraza } = await supabase.rpc('rpc_activo_trazabilidad_comercial')
+      if (!errTraza) filasTraza = rpcTraza || []
+      else console.warn('[trazabilidad activo] RPC error:', errTraza.message)
     }
 
     let _pvChart4 = null, _pvChart4b = null, _pvChart4c = null
@@ -2450,11 +2454,10 @@
       </div>`
     }
 
-    // ── PASIVO-07B: Trazabilidad CRM ────────────────────────────────────────────
-    // Recibe filasTraza desde rpc_pasivo_trazabilidad_comercial (SECURITY DEFINER).
-    // NO lee crm_eventos directo. NO expone nombre, email, teléfono, notas, actor,
-    // contacto_id ni ningún dato personal. Solo usa campos públicos de la RPC.
-    function renderTrazabilidad(filasTraza) {
+    // ── Trazabilidad CRM ────────────────────────────────────────────────────────
+    // Recibe filasTraza desde RPCs SECURITY DEFINER. NO lee crm_eventos directo.
+    // Pasivo mantiene anonimato; activo muestra nombre/propiedad de sus propios leads.
+    function renderTrazabilidad(filasTraza, { anonimo = true } = {}) {
       if (!filasTraza || filasTraza.length === 0) return ''
 
       const COHORT_PALETTE_T = ['#3a4eb8','#c0603e','#2a9d7a','#c040a0','#c08a2e','#1e5fa0','#7a1f2e','#3eb489','#7b3fb0','#b87333']
@@ -2488,12 +2491,13 @@
       // color visual = cohorte — posición = estado actual
       const EST_CLR = {
         contactado: '#35c6b4', visita: '#f29a5a', oferta: '#7aaeff',
-        cerrado: '#50c878', descartado: '#7b7f88', nueva: '#b39ddb'
+        visita_realizada: '#f29a5a', cerrado: '#50c878', descartado: '#7b7f88', nueva: '#b39ddb'
       }
       const ETAPAS_ORDEN = [
         { key: 'nueva',      col: 1  },
         { key: 'contactado', col: 2  },
         { key: 'visita',     col: 3  },
+        { key: 'visita_realizada', col: 3  },
         { key: 'oferta',     col: 4  },
         { key: 'cerrado',    col: 5  },
         { key: 'descartado', col: 90 }
@@ -2550,10 +2554,15 @@
       // Agrupar por (mes_ingreso_key + registro_anon_n) → una card por lead
       const timelineMap = {}
       movimientos.forEach(mv => {
-        const cardKey = (mv.mes_ingreso_key || '') + '|' + (mv.registro_anon_n || 0)
+        const cardKey = anonimo
+          ? (mv.mes_ingreso_key || '') + '|' + (mv.registro_anon_n || 0)
+          : (mv.contacto_id || ((mv.mes_ingreso_key || '') + '|' + (mv.registro_anon_n || 0)))
         if (!timelineMap[cardKey]) timelineMap[cardKey] = {
           mes_ingreso_key: mv.mes_ingreso_key,
           registro_anon_n: mv.registro_anon_n,
+          contacto_id: mv.contacto_id,
+          lead_nombre: mv.lead_nombre,
+          lead_propiedad: mv.lead_propiedad,
           eventos: []
         }
         timelineMap[cardKey].eventos.push(mv)
@@ -2572,6 +2581,12 @@
         const cardEls = cards.map(card => {
           const color = cohortColorMap[card.mes_ingreso_key] || '#888'
           const numLabel = countPorMes[card.mes_ingreso_key] > 1 ? ` (${card.registro_anon_n})` : ''
+          const leadTitulo = anonimo
+            ? `Lead de ${labelDeMesKey(card.mes_ingreso_key)}${numLabel}`
+            : (card.lead_nombre || 'Lead sin nombre')
+          const leadSub = anonimo
+            ? ''
+            : `<div style="font-size:.62rem;color:rgba(255,255,255,.34);margin-top:.18rem;line-height:1.35">${esc(card.lead_propiedad || 'Sin propiedad asociada')} · Ingresó en ${esc(labelDeMesKey(card.mes_ingreso_key))}</div>`
           const eventoEls = card.eventos
             .slice()
             .sort((a, b) => (a.orden_evento || 0) - (b.orden_evento || 0))
@@ -2588,7 +2603,10 @@
           return `<div class="pv-traza-card" style="border-left-color:${color}">
             <div class="pv-traza-card-head">
               <span class="pv-traza-cohorte-dot" style="background:${color}"></span>
-              <span class="pv-traza-card-titulo">Lead de ${labelDeMesKey(card.mes_ingreso_key)}${numLabel}</span>
+              <span>
+                <span class="pv-traza-card-titulo">${esc(leadTitulo)}</span>
+                ${leadSub}
+              </span>
             </div>
             ${eventoEls}
           </div>`
@@ -2629,8 +2647,8 @@
       return `<div class="pv-sec pv-traza-sec">
         <div class="pv-sec-head">
           <div>
-            <div class="pv-sec-titulo">Trayectoria comercial de tu canal</div>
-            <div class="pv-sec-sub">Seguimiento anónimo del recorrido CRM de los registros generados desde tu QR.</div>
+            <div class="pv-sec-titulo">${anonimo ? 'Trayectoria comercial de tu canal' : 'Movimientos de tus leads'}</div>
+            <div class="pv-sec-sub">${anonimo ? 'Seguimiento anónimo del recorrido CRM de los registros generados desde tu QR.' : 'Trazabilidad en el tiempo de las oportunidades de tus canales — un lead viejo puede avanzar meses después.'}</div>
           </div>
         </div>
         ${bloqueHTML}
@@ -2712,7 +2730,7 @@
 
         ${renderCarteraAcumulada(contactos)}
 
-        ${renderTrazabilidad(filasTraza)}
+        ${renderTrazabilidad(filasTraza, { anonimo: true })}
 
         <div class="pv-sec">
           <div class="pv-sec-head"><div><div class="pv-sec-titulo">Estado de las oportunidades generadas</div><div class="pv-sec-sub">Seguimiento comercial de las consultas atribuidas a tu canal.</div></div></div>
@@ -3756,7 +3774,9 @@
             <div class="pv-sec-head"><div><div class="pv-sec-titulo">Actividad reciente</div><div class="pv-sec-sub">Últimos movimientos registrados.</div></div></div>
             ${renderActividadReciente(contactos)}
           </div>
-        </div>`
+        </div>
+
+        ${renderTrazabilidad(filasTraza, { anonimo: false })}`
     }
 
     // ── 4 paneles inferiores nuevos: Actividad 30d / Conversión / Origen / Rendimiento ──
