@@ -2103,9 +2103,11 @@
             </div>
           </div>
           <div class="pv-hero-right-cluster">
-            <div class="pv-hero-qr-block">
-              <canvas id="pvHeroQrCanvas" width="160" height="160"></canvas>
-            </div>
+            ${canal.latitud && canal.longitud ? `
+            <div class="pv-mini-mapa-wrap">
+              <div class="pv-mini-mapa" id="pvMiniMapa"></div>
+              <div class="pv-mini-mapa-label">${esc(geo)}</div>
+            </div>` : ''}
           </div>
         </div>
 
@@ -2461,72 +2463,17 @@
         </div>`
       }).join('')
 
-      // Estado actual por mes — gobernanza visual: color de estado ≠ color de cohorte
-      const EST_LABEL = { nueva: 'Sin avance', contactado: 'Contactado', visita: 'En visita', oferta: 'Oferta', cerrado: 'Cerrado', descartado: 'Descartado' }
-      const EST_COLOR = { nueva: '#b39ddb', contactado: '#35c6b4', visita: '#f29a5a', oferta: '#6ee89a', cerrado: '#e8c96a', descartado: '#7b7f88' }
-
-      const filasMesEstado = mesesOrdenados.map((k, idx) => {
-        const cohortColor = COHORT_PALETTE[idx % COHORT_PALETTE.length]
-        const [y, m] = k.split('-')
-        const mesLabel = nombresMes[parseInt(m) - 1] + ' ' + y
-        const datos = porMesEstado[k]
-        const pills = ['nueva','contactado','visita','oferta','cerrado','descartado']
-          .filter(est => datos[est] > 0)
-          .map(est =>
-            `<span class="pv-carta-est-pill" style="background:${EST_COLOR[est]}18;color:${EST_COLOR[est]};border-color:${EST_COLOR[est]}45">${datos[est]} ${EST_LABEL[est]}</span>`
-          ).join('')
-        if (!pills) return ''
-        return `<div class="pv-carta-mes-row">
-          <div class="pv-carta-mes-row-label" style="border-left:2px solid ${cohortColor};padding-left:.5rem">${mesLabel}</div>
-          <div class="pv-carta-mes-row-arrow">→ hoy:</div>
-          <div class="pv-carta-mes-row-pills">${pills}</div>
-        </div>`
-      }).filter(Boolean).join('')
-
-      // Canal de ingreso — solo canal_via (propiedad/proyecto NO visible al aliado)
-      const porQR   = contactos.filter(c => c.canal_via === 'qr').length
-      const porLink = total - porQR
-
-      const origenItem = (color, texto, n) =>
-        `<div class="pv-carta-origen-item"><span class="pv-carta-origen-dot" style="background:${color}"></span>${texto}<strong>${n}</strong></div>`
-
       return `<div class="pv-sec pv-cartera-sec">
         <div class="pv-sec-head">
           <div>
-            <div class="pv-sec-titulo">Historial de tu canal</div>
-            <div class="pv-sec-sub">Estado actual de los registros generados desde el inicio.</div>
+            <div class="pv-sec-titulo">Leads acumulados por mes de ingreso</div>
+            <div class="pv-sec-sub">Cuántos registros ingresaron cada mes desde el inicio.</div>
           </div>
         </div>
 
-        <div class="pv-carta-stat-mini-grid" style="margin-bottom:1.25rem">
-          <div class="pv-carta-stat-mini" style="--sc:#b39ddb"><span>${totalNueva.toLocaleString('es-AR')}</span><small>Sin avance</small></div>
-          <div class="pv-carta-stat-mini" style="--sc:#35c6b4"><span>${totalContact.toLocaleString('es-AR')}</span><small>Contactado</small></div>
-          <div class="pv-carta-stat-mini" style="--sc:#f29a5a"><span>${totalVisita.toLocaleString('es-AR')}</span><small>En visita</small></div>
-          <div class="pv-carta-stat-mini" style="--sc:#6ee89a"><span>${totalOferta.toLocaleString('es-AR')}</span><small>Oferta</small></div>
-          <div class="pv-carta-stat-mini" style="--sc:#e8c96a"><span>${totalCerrado.toLocaleString('es-AR')}</span><small>Cerrado</small></div>
-          <div class="pv-carta-stat-mini" style="--sc:#7b7f88"><span>${totalDescar.toLocaleString('es-AR')}</span><small>Descartado</small></div>
-        </div>
-
-        ${mesesOrdenados.length > 0 ? `
-        <div class="pv-carta-seccion-titulo">Registros por mes de ingreso</div>
-        <div class="pv-carta-evol">${barrasMes}</div>
-        ` : ''}
-
-        ${filasMesEstado ? `
-        <div class="pv-carta-seccion-titulo">Estado actual por mes de ingreso</div>
-        <div class="pv-carta-sub-hint">Mes en que ingresó el registro → estado comercial hoy.</div>
-        <div class="pv-carta-mes-estado">${filasMesEstado}</div>
-        ` : ''}
-
-        ${total > 0 ? `
-        <div class="pv-carta-origen-block" style="margin-bottom:.85rem">
-          <div class="pv-carta-origen-title">Canal de ingreso</div>
-          ${porQR   > 0 ? origenItem('#50c878', 'QR físico', porQR) : ''}
-          ${porLink > 0 ? origenItem('#6495ed', 'Enlace digital', porLink) : ''}
-        </div>
-        ` : ''}
-
-        <div class="pv-carta-nota">El estado refleja el avance comercial actual. Un registro puede avanzar meses después de ingresar.</div>
+        ${mesesOrdenados.length > 0
+          ? `<div class="pv-carta-evol">${barrasMes}</div>`
+          : '<div class="pv-empty">Todavía no hay registros por mes.</div>'}
       </div>`
     }
 
@@ -3027,17 +2974,15 @@
 
     function renderEstadosConsultasPasivo(contactos) {
       const cuenta = estado => contactos.filter(c => (c.estado || 'nueva') === estado).length
-      const totalDesc = cuenta('descartado')
+      const total = contactos.filter(c => (c.estado || 'nueva') !== 'descartado').length
       const items = [
-        { n: cuenta('nueva'), label: 'Sin avance', color: '#b39ddb' },
-        { n: cuenta('contactado'), label: 'Contactadas', color: '#35c6b4' },
+        { n: total, label: 'Total', color: '#cdd2da' },
         { n: cuenta('visita'), label: 'En visita', color: '#f29a5a' },
         { n: cuenta('oferta'), label: 'Oferta', color: '#6ee89a' },
-        { n: cuenta('cerrado'), label: 'Cerradas', color: '#e8c96a' },
+        { n: cuenta('cerrado'), label: 'Cerrado', color: '#e8c96a' },
       ]
       return `<div class="pv-estado-simple-grid">
         ${items.map(i => `<div class="pv-estado-simple" style="--sc:${i.color}"><span>${i.n.toLocaleString('es-AR')}</span><small>${esc(i.label)}</small></div>`).join('')}
-        <div class="pv-estado-simple secundario" style="--sc:#7b7f88"><span>${totalDesc.toLocaleString('es-AR')}</span><small>Descartadas</small></div>
       </div>`
     }
 
@@ -3067,11 +3012,10 @@
     function renderDetallePasivo(contactos, filasTraza) {
       return `
         <details class="pv-detalle">
-          <summary class="pv-detalle-summary">Ver detalle <span>Historial, trazabilidad y tabla completa</span></summary>
+          <summary class="pv-detalle-summary">Ver detalle de trazabilidad <span>Leads acumulados por mes y su recorrido</span></summary>
           <div class="pv-detalle-body">
-            ${renderTrazabilidad(filasTraza, { anonimo: true })}
             ${renderCarteraAcumulada(contactos)}
-            ${renderTablaEstadoPasivo(contactos)}
+            ${renderTrazabilidad(filasTraza, { anonimo: true })}
           </div>
         </details>`
     }
@@ -3129,12 +3073,12 @@
           ${renderEstadosConsultasPasivo(contactos)}
         </div>
 
+        ${renderDetallePasivo(contactos, filasTraza)}
+
         <div class="pv-sec">
           <div class="pv-sec-head"><div><div class="pv-sec-titulo">Actividad reciente</div><div class="pv-sec-sub">Últimos movimientos registrados.</div></div></div>
           ${renderActividadReciente(contactos, 5)}
-        </div>
-
-        ${renderDetallePasivo(contactos, filasTraza)}`
+        </div>`
     }
 
     function datosEvolucionPasivo(contactos, desde, hasta) {
