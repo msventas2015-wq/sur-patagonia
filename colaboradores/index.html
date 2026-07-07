@@ -1328,47 +1328,6 @@
     const ofertaColor = oferta[0]?.color || REC_COHORT_PALETTE[1];
     const cerradoColor = cerrado[0]?.color || REC_COHORT_PALETTE[2];
     const badge = (x, y, n, color) => n > 0 ? `<g transform="translate(${x},${y})"><rect x="-14" y="-9" width="28" height="18" rx="9" fill="rgba(0,0,0,.48)" stroke="${color}" stroke-opacity=".5"/><text x="0" y="3" text-anchor="middle" fill="${color}" font-size="8" font-weight="800" font-family="Inter">${n}</text></g>` : '';
-    const offsetsEstacion = count => Array.from({ length: count }, (_, i) => {
-      const porFila = 6;
-      const fila = Math.floor(i / porFila);
-      const enFila = Math.min(porFila, count - fila * porFila);
-      const col = i % porFila;
-      return {
-        x: (col - (enFila - 1) / 2) * 9,
-        y: -fila * 9 + (col % 2 ? 1.5 : 0)
-      };
-    });
-    const renderTipitosEstacion = (listaEstado, baseX, baseY, modo = 'walk') =>
-      offsetsEstacion(listaEstado.length).map((pos, i) => {
-        const p = listaEstado[i];
-        const x = +(baseX + pos.x).toFixed(1);
-        const y = +(baseY + pos.y).toFixed(1);
-        if (modo === 'oferta') {
-          return `<g transform="translate(${x},${y})" color="${p.color}">
-            <ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)" opacity=".68"/>
-            <use href="#tipoWalk"/>
-          </g>`;
-        }
-        if (modo === 'fiesta') {
-          return `<g class="fiesta" transform="translate(${x},${y})" color="${p.color}">
-            <ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)" opacity=".68"/>
-            <g stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round">
-              <circle cx="0" cy="-12" r="2.9" fill="currentColor" stroke="none"/>
-              <line x1="0" y1="-8.6" x2="0" y2="-1"/>
-              <line class="fA" x1="0" y1="-5.8" x2="3.8" y2="-2.4"/>
-              <line class="fB" x1="0" y1="-5.8" x2="-3.8" y2="-2.4"/>
-              <line x1="0" y1="-1" x2="-3.4" y2="5.4"/>
-              <line x1="0" y1="-1" x2="3.4" y2="5.4"/>
-            </g>
-          </g>`;
-        }
-        return `<g transform="translate(${x},${y})" color="${p.color}">
-          <ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)" opacity=".68"/>
-          <use href="#tipoWalk"/>
-        </g>`;
-      }).join('');
-    const countEstacion = (x, n, color) =>
-      `<text x="${x}" y="314" text-anchor="middle" fill="${color}" font-size="11" font-weight="800" font-family="Inter">${Number(n || 0).toLocaleString('es-AR')}</text>`;
 
     return `<section class="pv-recorrido-card">
       <div class="pv-recorrido-head">
@@ -1425,11 +1384,6 @@
           <circle cx="5" cy="4" r="2.4" fill="#c8cdd9" opacity=".5"/>
           <circle cx="-2" cy="6" r="1.8" fill="#c8cdd9" opacity=".4"/>
         </g>
-        <g transform="translate(690,38)" opacity=".92">
-          <rect x="-16" y="-16" width="256" height="32" rx="16" fill="rgba(0,0,0,.42)" stroke="rgba(255,255,255,.12)"/>
-          <g transform="translate(7,9) scale(.88)" color="#f5f3f0"><use href="#tipoWalk"/></g>
-          <text x="28" y="5" fill="rgba(255,255,255,.78)" font-size="10" font-weight="700" letter-spacing="1.4" font-family="Inter">FIGURA BLANCA = SUR PATAGONIA</text>
-        </g>
         <path d="M 0 150 L 90 95 L 180 140 L 290 70 L 410 130 L 530 62 L 660 120 L 790 78 L 900 130 L 1000 104 L 1000 272 L 0 272 Z" fill="#0d1018" opacity=".85"/>
         <path d="M 0 200 L 120 150 L 260 195 L 400 135 L 540 185 L 690 140 L 830 185 L 1000 158 L 1000 272 L 0 272 Z" fill="#0a0c12" opacity=".9"/>
         <path d="M 0 238 L 140 205 L 300 235 L 460 198 L 620 232 L 780 210 L 1000 238 L 1000 272 L 0 272 Z" fill="#070809"/>
@@ -1450,12 +1404,22 @@
           <ellipse cx="0" cy="-2" rx="64" ry="3" fill="url(#sombraGrad)" opacity=".5"/>
           ${localTipitos}
           ${localExtra > 0 ? `<text x="76" y="-38" text-anchor="middle" fill="#8a8f99" font-size="9" font-family="Inter">+${localExtra}</text>` : ''}
-          <text x="0" y="24" text-anchor="middle" fill="#8a8f99" font-size="9.5" letter-spacing="1.8" font-family="Inter">TUS CONTACTOS · ${total.toLocaleString('es-AR')} Y SUMANDO</text>
+          <text x="0" y="26" text-anchor="middle" fill="#8a8f99" font-size="9.5" letter-spacing="1.8" font-family="Inter">TUS CONTACTOS · ${total.toLocaleString('es-AR')} Y SUMANDO</text>
         </g>
-        ${countEstacion(130, total, '#8a8f99')}
 
-        ${visita.length > 0 ? `<g class="anx">${renderTipitosEstacion(visita, 530, 258)}</g>
-        <g transform="translate(556,258)" color="#f5f3f0" opacity=".92"><ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)" opacity=".68"/><use href="#tipoWalk"/></g>` : ''}
+        <g transform="translate(340,272)">
+          <text x="0" y="-64" text-anchor="middle" fill="#8a8f99" font-size="8.5" letter-spacing="2.6" font-family="Inter" opacity=".8">SUR PATAGONIA</text>
+          <line x1="0" y1="0" x2="0" y2="-28" stroke="#35c6b4" stroke-opacity=".5" stroke-width="1.5"/>
+          <circle cx="0" cy="-35" r="5.5" fill="none" stroke="#35c6b4" stroke-opacity=".7" stroke-width="1.5"/>
+          <circle cx="0" cy="-35" r="2" fill="#35c6b4" opacity=".7"/>
+          <text x="0" y="24" text-anchor="middle" fill="#35c6b4" font-size="9" letter-spacing="1.6" font-family="Inter" opacity=".85">PROCESO DE CONTACTO</text>
+        </g>
+
+        ${visita.length > 0 ? `<g class="pareja">
+          <g transform="translate(368,265)" color="${visitaColor}"><ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)"/><use href="#tipoWalk"/></g>
+          <g transform="translate(385,265)" color="#f5f3f0" opacity=".92"><ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)"/><use href="#tipoWalk"/></g>
+        </g>` : ''}
+        ${badge(430, 214, visita.length, '#f29a5a')}
 
         <g transform="translate(590,272)">
           <path d="M -32 0 L -32 -36 L 0 -56 L 32 -36 L 32 0 Z" fill="rgba(242,154,90,.07)" stroke="#f29a5a" stroke-width="1.6"/>
@@ -1465,29 +1429,36 @@
           <text x="55.5" y="-20.5" text-anchor="middle" fill="#f29a5a" font-size="6.5" font-family="Inter">VENTA</text>
           <text x="0" y="24" text-anchor="middle" fill="#f29a5a" font-size="9" letter-spacing="1.6" font-family="Inter">VISITA PROGRAMADA</text>
         </g>
-        ${countEstacion(590, visita.length, '#f29a5a')}
 
-        ${oferta.length > 0 ? `<g class="anx">${renderTipitosEstacion(oferta, 700, 258, 'oferta')}</g>
-        <g transform="translate(724,258)" color="#f5f3f0" opacity=".92"><ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)" opacity=".68"/><use href="#tipoWalk"/></g>` : ''}
-        <g transform="translate(735,272)">
-          <line x1="0" y1="0" x2="0" y2="-28" stroke="#3bbf88" stroke-opacity=".48" stroke-width="1.5"/>
-          <circle cx="0" cy="-35" r="5.5" fill="none" stroke="#3bbf88" stroke-opacity=".68" stroke-width="1.5"/>
-          <circle cx="0" cy="-35" r="2" fill="#3bbf88" opacity=".72"/>
-          <text x="0" y="24" text-anchor="middle" fill="#3bbf88" font-size="9" letter-spacing="1.6" font-family="Inter" opacity=".85">OFERTA ENVIADA</text>
-        </g>
-        ${countEstacion(735, oferta.length, '#3bbf88')}
+        ${oferta.length > 0 ? `<g class="solo">
+          <g transform="translate(660,265)" color="${ofertaColor}">
+            <ellipse cx="0" cy="7" rx="6" ry="1.6" fill="url(#sombraGrad)"/>
+            <use href="#tipoWalk"/>
+            <g class="bill"><rect x="4.5" y="-15" width="11" height="6.5" rx="1" fill="#3bbf88"/><text x="10" y="-9.8" text-anchor="middle" fill="#06251a" font-size="5.5" font-weight="700" font-family="Inter">$</text></g>
+          </g>
+        </g>` : ''}
+        ${badge(700, 214, oferta.length, '#3bbf88')}
+        <text x="672" y="222" text-anchor="middle" fill="#3bbf88" font-size="8" letter-spacing="1.4" font-family="Inter" opacity=".85">OFERTA ENVIADA</text>
 
         <g transform="translate(880,272)">
           <path d="M -30 0 L -30 -34 L 0 -54 L 30 -34 L 30 0 Z" fill="rgba(201,168,76,.12)" stroke="#c9a84c" stroke-width="2"/>
           <rect x="14" y="-49" width="7" height="13" fill="rgba(201,168,76,.45)"/>
           ${cerrado.length > 0 ? `<circle class="humo1" cx="17.5" cy="-54" r="2.6" fill="#8a8f99"/><circle class="humo2" cx="17.5" cy="-54" r="2.1" fill="#8a8f99"/>` : ''}
           <rect x="-10" y="-25" width="20" height="25" rx="1" fill="rgba(201,168,76,.16)" stroke="#c9a84c" stroke-width="1"/>
-          ${cerrado.length > 0 ? renderTipitosEstacion(cerrado, 0, -7, 'fiesta') : ''}
+          ${cerrado.length > 0 ? `<g class="fiesta"><g transform="translate(0,-7)" color="${cerradoColor}">
+            <g stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round">
+              <circle cx="0" cy="-12" r="2.9" fill="currentColor" stroke="none"/>
+              <line x1="0" y1="-8.6" x2="0" y2="-1"/>
+              <line class="fA" x1="0" y1="-5.8" x2="3.8" y2="-2.4"/>
+              <line class="fB" x1="0" y1="-5.8" x2="-3.8" y2="-2.4"/>
+              <line x1="0" y1="-1" x2="-3.4" y2="5.4"/><line x1="0" y1="-1" x2="3.4" y2="5.4"/>
+            </g>
+          </g></g>` : ''}
           <text x="0" y="24" text-anchor="middle" fill="#c9a84c" font-size="9" letter-spacing="1.6" font-family="Inter">SU CASA</text>
         </g>
-        ${countEstacion(880, cerrado.length, '#c9a84c')}
+        ${badge(932, 214, cerrado.length, '#c9a84c')}
       </svg>
-      <div class="pv-recorrido-note">Lectura agregada y anónima. No muestra nombre, teléfono, email ni mensajes. <span style="display:inline-flex;align-items:center;gap:.35rem;margin-left:.6rem;color:rgba(255,255,255,.55);"><span style="width:7px;height:7px;border-radius:50%;background:#f5f3f0;box-shadow:0 0 7px rgba(245,243,240,.55);"></span>Blanco = Sur Patagonia</span></div>
+      <div class="pv-recorrido-note">Lectura agregada y anónima. No muestra nombre, teléfono, email ni mensajes.</div>
     </section>`;
   }
 
