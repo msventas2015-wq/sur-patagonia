@@ -696,6 +696,13 @@
     .pv-alianza-channel-front { opacity:1; }
     .pv-alianza-kicker { color:#7a7f88; font-size:12px; font-weight:600; letter-spacing:4px; line-height:1.35; text-transform:uppercase; opacity:0; animation:alianzaCopyIn .62s ease forwards .66s; }
     .pv-alianza-lema { margin-top:.32rem; color:#eceef2; font-size:clamp(1.55rem,2vw,1.88rem); font-weight:600; letter-spacing:.5px; line-height:1.18; opacity:0; animation:alianzaCopyIn .62s ease forwards .82s; }
+    @media (prefers-reduced-motion: reduce) {
+      .pv-alianza-ring,
+      .pv-alianza-glow,
+      .pv-alianza-kicker,
+      .pv-alianza-lema { animation:none !important; opacity:1 !important; }
+      .pv-alianza-channel-back { opacity:.3 !important; }
+    }
     .pv-actividad-head { align-items:center; }
     .pv-periodo-bar-chart { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; flex:0 0 auto; }
     .pv-actividad-copy { margin-left:auto; text-align:right; }
@@ -2133,6 +2140,7 @@
       const pvQrCodigo = codigoQrCanonicoPasivo(canal)
       const pvQrUrl = linkQrCanonico(pvQrCodigo)
       const alianzaGold = '#e8c96a'
+      const alianzaReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
       const alianzaHexRgb = hex => {
         const clean = String(hex || '').replace('#', '')
         if (!/^[0-9a-f]{6}$/i.test(clean)) return null
@@ -2150,11 +2158,12 @@
       const alianzaPaletaCanal = Array.isArray(window.SPCanalColors?.PALETA_CANALES)
         ? window.SPCanalColors.PALETA_CANALES
             .filter(c => /^#[0-9a-f]{6}$/i.test(String(c || '')))
-            .filter(c => alianzaDist(c, alianzaGold) >= 70)
+            .filter(c => alianzaDist(c, alianzaGold) >= 90)
         : []
       const alianzaCanalLoop = alianzaPaletaCanal.length ? [...alianzaPaletaCanal, alianzaPaletaCanal[0]] : ['#9d4eff']
       const alianzaCanalValues = alianzaCanalLoop.join(';')
-      const alianzaCanalDur = `${Math.max(18, alianzaPaletaCanal.length * .5).toFixed(1)}s`
+      const alianzaCanalDur = '40s'
+      const alianzaCanalAnimate = alianzaReducedMotion ? '' : `<animate attributeName="stroke" values="${alianzaCanalValues}" dur="${alianzaCanalDur}" repeatCount="indefinite"></animate>`
 
       main.innerHTML = `
         <div class="pv-hero-header">
@@ -2181,14 +2190,14 @@
               </defs>
               <circle class="pv-alianza-glow gold" cx="31" cy="26" r="21"></circle>
               <circle class="pv-alianza-glow channel" cx="61" cy="26" r="21" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
-                <animate attributeName="stroke" values="${alianzaCanalValues}" dur="${alianzaCanalDur}" repeatCount="indefinite"></animate>
+                ${alianzaCanalAnimate}
               </circle>
               <circle class="pv-alianza-ring channel pv-alianza-channel-back" cx="61" cy="26" r="21" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
-                <animate attributeName="stroke" values="${alianzaCanalValues}" dur="${alianzaCanalDur}" repeatCount="indefinite"></animate>
+                ${alianzaCanalAnimate}
               </circle>
               <circle class="pv-alianza-ring gold" cx="31" cy="26" r="21"></circle>
               <path class="pv-alianza-ring channel pv-alianza-channel-front" d="M 40 26 C 40 38 49 47 61 47 C 73 47 82 38 82 26" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
-                <animate attributeName="stroke" values="${alianzaCanalValues}" dur="${alianzaCanalDur}" repeatCount="indefinite"></animate>
+                ${alianzaCanalAnimate}
               </path>
             </svg>
             <div class="pv-alianza-kicker">GRACIAS POR SER PARTE DE NUESTRA RED</div>
