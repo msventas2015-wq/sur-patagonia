@@ -2891,14 +2891,17 @@
       }
 
       const hoy = new Date()
-      const year = hoy.getFullYear()
-      const currentMesKey = `${year}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
+      const yearActual = hoy.getFullYear()
+      const currentMesKey = `${yearActual}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
       const bloques = filasTraza.filter(f => f.fila_tipo === 'bloque_estado_actual')
       const movimientos = filasTraza.filter(f =>
         f.fila_tipo === 'movimiento_registro_activo' || f.fila_tipo === 'movimiento_registro_anonimo'
       )
 
       const keysConDatos = [...new Set(filasTraza.map(f => f.mes_ingreso_key).filter(Boolean))].sort()
+      const anioVisible = keysConDatos.length
+        ? Number(keysConDatos[keysConDatos.length - 1].split('-')[0])
+        : yearActual
       const cohortColorMap = {}
       keysConDatos.forEach((k, idx) => { cohortColorMap[k] = COHORT_PALETTE_A[idx % COHORT_PALETTE_A.length] })
       const colorMes = k => cohortColorMap[k] || COHORT_PALETTE_A[Math.max(0, keysConDatos.length) % COHORT_PALETTE_A.length]
@@ -2964,27 +2967,22 @@
 
       const mesCells = Array.from({ length: 12 }, (_, i) => {
         const m = i + 1
-        const key = `${year}-${String(m).padStart(2, '0')}`
+        const key = `${anioVisible}-${String(m).padStart(2, '0')}`
         const row = Math.floor(i / 4)
         const col = i % 4
         const x = [-69, -23, 23, 69][col]
         const y = [-160, -98, -36][row]
         const n = ingresoPorMes[key] || 0
+        const activo = n > 0
         const isCurrent = key === currentMesKey
-        const color = n > 0 ? colorMes(key) : colorMes(currentMesKey)
+        const color = activo ? colorMes(key) : 'rgba(255,255,255,.18)'
         const label = NOMBRES_MES_A[i]
-        if (n > 0 || isCurrent) {
-          const dash = isCurrent ? ' stroke-dasharray="4 3"' : ''
-          return `<g transform="translate(${x},${y})" color="${color}">
-            <rect x="-18" y="-20" width="36" height="40" rx="4" fill="color-mix(in srgb, currentColor ${n > 0 ? 24 : 8}%, transparent)" stroke="currentColor" stroke-width="1.5"${dash}/>
-            <rect x="-18" y="-20" width="36" height="40" rx="4" fill="url(#gradTarjeta)"/>
-            ${n > 0 ? `<text x="0" y="5" text-anchor="middle" fill="#f5f3f0" font-size="14" font-weight="700" font-family="Inter">${n}</text>` : ''}
-            <text x="0" y="30" text-anchor="middle" fill="currentColor" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
-          </g>`
-        }
-        return `<g transform="translate(${x},${y})">
-          <use href="#mesVacio"/>
-          <text x="0" y="30" text-anchor="middle" fill="rgba(255,255,255,.22)" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
+        const dash = isCurrent && !activo ? ' stroke-dasharray="4 3"' : ''
+        return `<g transform="translate(${x},${y})" color="${color}">
+          <rect x="-18" y="-20" width="36" height="40" rx="4" fill="color-mix(in srgb, currentColor ${activo ? 24 : 8}%, transparent)" stroke="currentColor" stroke-width="${activo ? '1.5' : '1'}"${dash}/>
+          <rect x="-18" y="-20" width="36" height="40" rx="4" fill="url(#gradTarjeta)" opacity="${activo ? '1' : '.35'}"/>
+          <text x="0" y="5" text-anchor="middle" fill="${activo ? '#f5f3f0' : 'rgba(255,255,255,.22)'}" font-size="14" font-weight="700" font-family="Inter">${n}</text>
+          <text x="0" y="30" text-anchor="middle" fill="${activo ? 'currentColor' : 'rgba(255,255,255,.22)'}" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
         </g>`
       }).join('')
 
