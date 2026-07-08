@@ -670,6 +670,9 @@
     .pv-carta-mes-n { font-size:.66rem; font-weight:700; color:rgba(255,255,255,.56); line-height:1; }
     .pv-carta-mes-bar { width:min(46px,72%); background:linear-gradient(to top,rgba(232,201,106,.7),rgba(232,201,106,.22)); border-radius:4px 4px 0 0; min-height:3px; }
     .pv-carta-mes-label { font-size:.56rem; font-weight:700; letter-spacing:.055em; text-transform:uppercase; color:rgba(255,255,255,.34); white-space:nowrap; }
+    .pv-carta-mes-col.is-locked .pv-carta-mes-n { color:rgba(255,255,255,.16); }
+    .pv-carta-mes-col.is-locked .pv-carta-mes-bar { background:linear-gradient(to top,rgba(255,255,255,.11),rgba(255,255,255,.025)); border:1px solid rgba(255,255,255,.045); box-sizing:border-box; }
+    .pv-carta-mes-col.is-locked .pv-carta-mes-label { color:rgba(255,255,255,.18); }
     .pv-carta-mes-estado { display:flex; flex-direction:column; gap:.5rem; margin-bottom:1.15rem; }
     .pv-carta-mes-row { display:flex; align-items:flex-start; gap:.75rem; padding:.6rem .7rem; border:1px solid rgba(255,255,255,.06); border-radius:9px; background:rgba(255,255,255,.018); }
     .pv-carta-mes-row-label { font-size:.62rem; font-weight:600; color:rgba(255,255,255,.55); white-space:nowrap; min-width:62px; padding-top:.1rem; }
@@ -2620,19 +2623,28 @@
       })
 
       const mesesOrdenados = Object.keys(porMes).sort()
+      const anioVisible = mesesOrdenados.length
+        ? Number(mesesOrdenados[mesesOrdenados.length - 1].split('-')[0])
+        : new Date().getFullYear()
+      const mesesAnio = Array.from({ length: 12 }, (_, i) =>
+        `${anioVisible}-${String(i + 1).padStart(2, '0')}`
+      )
       const MAX_BAR_H = 82
       const maxMes = mesesOrdenados.length ? Math.max(...mesesOrdenados.map(k => porMes[k])) : 1
-      const mesesGridCount = Math.max(1, Math.min(12, mesesOrdenados.length || 1))
+      const mesesGridCount = 12
+      const colorPorMesActivo = {}
+      mesesOrdenados.forEach((k, idx) => { colorPorMesActivo[k] = COHORT_PALETTE[idx % COHORT_PALETTE.length] })
 
       // Barras: Registros por mes — color de cohorte por mes (no color semántico de estado)
-      const barrasMes = mesesOrdenados.map((k, idx) => {
-        const color = COHORT_PALETTE[idx % COHORT_PALETTE.length]
-        const h = Math.max(2, Math.round(porMes[k] / maxMes * MAX_BAR_H))
+      const barrasMes = mesesAnio.map(k => {
+        const activo = (porMes[k] || 0) > 0
+        const color = activo ? colorPorMesActivo[k] : 'rgba(255,255,255,.16)'
+        const h = activo ? Math.max(2, Math.round(porMes[k] / maxMes * MAX_BAR_H)) : 14
         const [y, m] = k.split('-')
         const label = nombresMes[parseInt(m) - 1] + ' ' + y.slice(2)
-        return `<div class="pv-carta-mes-col">
-          <div class="pv-carta-mes-n" style="color:${color}">${porMes[k]}</div>
-          <div class="pv-carta-mes-bar" style="height:${h}px;background:linear-gradient(to top,${color}cc,${color}44)"></div>
+        return `<div class="pv-carta-mes-col${activo ? '' : ' is-locked'}">
+          <div class="pv-carta-mes-n"${activo ? ` style="color:${color}"` : ''}>${porMes[k] || 0}</div>
+          <div class="pv-carta-mes-bar"${activo ? ` style="height:${h}px;background:linear-gradient(to top,${color}cc,${color}44)"` : ` style="height:${h}px"`}></div>
           <div class="pv-carta-mes-label">${label}</div>
         </div>`
       }).join('')
@@ -2645,9 +2657,7 @@
           </div>
         </div>
 
-        ${mesesOrdenados.length > 0
-          ? `<div class="pv-carta-evol" style="--mes-count:${mesesGridCount}">${barrasMes}</div>`
-          : '<div class="pv-empty">Todavía no hay registros por mes.</div>'}
+        <div class="pv-carta-evol" style="--mes-count:${mesesGridCount}">${barrasMes}</div>
       </div>`
     }
 
