@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../js/paleta-canales.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -687,7 +688,12 @@
     .pv-alianza-rings { width:98px; height:52px; margin-bottom:.72rem; overflow:visible; }
     .pv-alianza-ring { fill:none; stroke-width:2.6; stroke-linecap:round; opacity:0; transform-box:fill-box; transform-origin:center; animation:alianzaRingIn .74s cubic-bezier(.22,.61,.36,1) forwards; }
     .pv-alianza-ring.gold { stroke:#e8c96a; filter:drop-shadow(0 0 8px rgba(232,201,106,.26)); animation-delay:.08s; }
-    .pv-alianza-ring.violet { stroke:#9d4eff; filter:drop-shadow(0 0 8px rgba(157,78,255,.28)); animation-delay:.34s; }
+    .pv-alianza-ring.channel { animation-delay:.34s; }
+    .pv-alianza-glow { fill:none; stroke-width:8; stroke-linecap:round; opacity:0; filter:url(#alianzaBlur); animation:alianzaRingIn .74s cubic-bezier(.22,.61,.36,1) forwards; }
+    .pv-alianza-glow.gold { stroke:#e8c96a; stroke-opacity:.15; animation-delay:.08s; }
+    .pv-alianza-glow.channel { stroke-opacity:.15; animation-delay:.34s; }
+    .pv-alianza-channel-back { opacity:.3; }
+    .pv-alianza-channel-front { opacity:1; }
     .pv-alianza-kicker { color:#7a7f88; font-size:12px; font-weight:600; letter-spacing:4px; line-height:1.35; text-transform:uppercase; opacity:0; animation:alianzaCopyIn .62s ease forwards .66s; }
     .pv-alianza-lema { margin-top:.32rem; color:#eceef2; font-size:clamp(1.55rem,2vw,1.88rem); font-weight:600; letter-spacing:.5px; line-height:1.18; opacity:0; animation:alianzaCopyIn .62s ease forwards .82s; }
     .pv-actividad-head { align-items:center; }
@@ -2126,6 +2132,29 @@
 
       const pvQrCodigo = codigoQrCanonicoPasivo(canal)
       const pvQrUrl = linkQrCanonico(pvQrCodigo)
+      const alianzaGold = '#e8c96a'
+      const alianzaHexRgb = hex => {
+        const clean = String(hex || '').replace('#', '')
+        if (!/^[0-9a-f]{6}$/i.test(clean)) return null
+        return [
+          parseInt(clean.slice(0, 2), 16),
+          parseInt(clean.slice(2, 4), 16),
+          parseInt(clean.slice(4, 6), 16)
+        ]
+      }
+      const alianzaDist = (a, b) => {
+        const ar = alianzaHexRgb(a), br = alianzaHexRgb(b)
+        if (!ar || !br) return 999
+        return Math.sqrt((ar[0] - br[0]) ** 2 + (ar[1] - br[1]) ** 2 + (ar[2] - br[2]) ** 2)
+      }
+      const alianzaPaletaCanal = Array.isArray(window.SPCanalColors?.PALETA_CANALES)
+        ? window.SPCanalColors.PALETA_CANALES
+            .filter(c => /^#[0-9a-f]{6}$/i.test(String(c || '')))
+            .filter(c => alianzaDist(c, alianzaGold) >= 70)
+        : []
+      const alianzaCanalLoop = alianzaPaletaCanal.length ? [...alianzaPaletaCanal, alianzaPaletaCanal[0]] : ['#9d4eff']
+      const alianzaCanalValues = alianzaCanalLoop.join(';')
+      const alianzaCanalDur = `${Math.max(18, alianzaPaletaCanal.length * .5).toFixed(1)}s`
 
       main.innerHTML = `
         <div class="pv-hero-header">
@@ -2145,12 +2174,22 @@
           </div>
           <div class="pv-alianza-hero" aria-label="Alianza Sur Patagonia y red de aliados">
             <svg class="pv-alianza-rings" viewBox="0 0 92 52" aria-hidden="true">
-              <g class="pv-alianza-ring gold">
-                <circle cx="31" cy="26" r="21"></circle>
-              </g>
-              <g class="pv-alianza-ring violet">
-                <circle cx="61" cy="26" r="21"></circle>
-              </g>
+              <defs>
+                <filter id="alianzaBlur" x="-45%" y="-45%" width="190%" height="190%">
+                  <feGaussianBlur stdDeviation="4"></feGaussianBlur>
+                </filter>
+              </defs>
+              <circle class="pv-alianza-glow gold" cx="31" cy="26" r="21"></circle>
+              <circle class="pv-alianza-glow channel" cx="61" cy="26" r="21" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
+                <animate attributeName="stroke" values="${alianzaCanalValues}" dur="${alianzaCanalDur}" repeatCount="indefinite"></animate>
+              </circle>
+              <circle class="pv-alianza-ring channel pv-alianza-channel-back" cx="61" cy="26" r="21" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
+                <animate attributeName="stroke" values="${alianzaCanalValues}" dur="${alianzaCanalDur}" repeatCount="indefinite"></animate>
+              </circle>
+              <circle class="pv-alianza-ring gold" cx="31" cy="26" r="21"></circle>
+              <path class="pv-alianza-ring channel pv-alianza-channel-front" d="M 40 26 C 40 38 49 47 61 47 C 73 47 82 38 82 26" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
+                <animate attributeName="stroke" values="${alianzaCanalValues}" dur="${alianzaCanalDur}" repeatCount="indefinite"></animate>
+              </path>
             </svg>
             <div class="pv-alianza-kicker">GRACIAS POR SER PARTE DE NUESTRA RED</div>
             <div class="pv-alianza-lema">Si nosotros ganamos, vos también.</div>
