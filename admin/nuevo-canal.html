@@ -137,6 +137,9 @@
     }
     .slot-eyebrow { font-family: monospace; font-size: .62rem; color: #c9a84c; letter-spacing: .06em; margin-bottom: .28rem; }
     .slot-nombre  { font-size: 1rem; font-weight: 600; color: #f0ede8; line-height: 1.2; }
+    .slot-meta-line { display:flex; align-items:center; flex-wrap:wrap; gap:.35rem; margin-top:.38rem; }
+    .slot-meta-pill { display:inline-flex; align-items:center; border:1px solid rgba(255,255,255,.1); border-radius:999px; padding:.15rem .5rem; color:rgba(255,255,255,.48); font-size:.58rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+    .slot-meta-desc { color:rgba(255,255,255,.36); font-size:.64rem; line-height:1.35; }
     .slot-destino { font-size: .67rem; color: rgba(255,255,255,.4); margin-top: .22rem; }
     .slot-scans   { flex-shrink: 0; text-align: right; font-size: .62rem; color: rgba(255,255,255,.35); line-height: 1.4; }
     .slot-scans strong { display: block; font-size: 1.15rem; font-weight: 300; color: rgba(255,255,255,.7); }
@@ -170,12 +173,12 @@
       background: rgba(255,255,255,.03); border: 1px solid rgba(201,168,76,.2);
       border-radius: 10px; gap: .65rem;
     }
-    .slot-edit-form.open { display: grid; grid-template-columns: 1fr auto; }
+    .slot-edit-form.open { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)) auto; }
     @media(max-width:560px){ .slot-edit-form.open{ grid-template-columns:1fr; } }
 
     .nc-ref-add {
       display: grid;
-      grid-template-columns: 1fr 1fr auto;
+      grid-template-columns: repeat(2, minmax(0,1fr));
       gap: 0.8rem;
       align-items: flex-end;
       padding: 1.1rem 1.2rem;
@@ -184,6 +187,8 @@
       margin-top: 1rem;
       background: rgba(201,168,76,.025);
     }
+    .nc-ref-add .btn-primary { justify-self:start; white-space:nowrap; }
+    .punto-field.is-hidden { display:none; }
     @media(max-width:600px){ .nc-ref-add{ grid-template-columns:1fr; } }
 
     .nc-empty {
@@ -398,16 +403,16 @@
         </div>
       </section>
 
-      <!-- ── 2. DESTINO (solo canales pasivos) ────────── -->
+      <!-- ── 2. DESTINO QR PRINCIPAL (solo canales pasivos) ────────── -->
       <section class="nc-section" id="seccionDestino">
         <div class="nc-section-head">
-          <h3 class="nc-section-title">Destino del QR</h3>
+          <h3 class="nc-section-title">Destino del QR principal</h3>
           <span class="tipo-tag tag-pasivo">Canal pasivo</span>
         </div>
-        <p class="nc-section-copy">Destino actual del QR. Puede actualizarse sin cambiar el código impreso.</p>
+        <p class="nc-section-copy">Este destino sincroniza solo el QR principal/histórico del canal. Los puntos secundarios mantienen su propio destino.</p>
         <div class="nc-grid">
           <div class="nc-field">
-            <label class="admin-label">Tipo de destino</label>
+            <label class="admin-label">Tipo de destino principal</label>
             <select id="tipoDestino" class="admin-input" onchange="actualizarDestinoPreview()">
               <option value="home">Home del sitio</option>
               <option value="proyecto">Proyecto o propiedad específica</option>
@@ -415,7 +420,7 @@
             </select>
           </div>
           <div class="nc-field" id="destinoProyectoWrap">
-            <label class="admin-label">Proyecto</label>
+            <label class="admin-label">Proyecto / propiedad del QR principal</label>
             <select id="destinoProyecto" class="admin-input" onchange="actualizarDestinoPreview()">
               <option value="">Cargando proyectos…</option>
             </select>
@@ -424,7 +429,7 @@
             <label class="admin-label">URL personalizada</label>
             <input type="text" id="destinoCustom" class="admin-input" placeholder="Ej: /propiedades" oninput="actualizarDestinoPreview()" />
           </div>
-          <div class="nc-field nc-field-full nc-hint" id="destinoPreview">El QR llevará a: <strong>surpatagonia.com.ar/</strong></div>
+          <div class="nc-field nc-field-full nc-hint" id="destinoPreview">El QR principal llevará a: <strong>surpatagonia.com.ar/</strong></div>
         </div>
       </section>
 
@@ -487,26 +492,46 @@
         <input type="hidden" id="userId" value="" />
       </section>
 
-      <!-- ── 6. REFERENCIAS (activos, post-guardado) ─── -->
+      <!-- ── 6. REFERENCIAS / PUNTOS QR (post-guardado) ─── -->
       <section class="nc-section" id="seccionReferencias" style="display:none;">
         <div class="nc-section-head">
-          <h3 class="nc-section-title">Links y QRs por proyecto</h3>
-          <span class="tipo-tag tag-activo">Canal activo</span>
+          <h3 class="nc-section-title" id="refsTitulo">Links y QRs por proyecto</h3>
+          <span class="tipo-tag tag-activo" id="refsTag">Canal activo</span>
         </div>
-        <p class="nc-section-copy">Referencias independientes para los destinos asignados al canal.</p>
+        <p class="nc-section-copy" id="refsCopy">Referencias independientes para los destinos asignados al canal.</p>
         <div id="listaReferencias">
           <div class="nc-empty">Guardá el canal para empezar a agregar referencias.</div>
         </div>
         <div class="nc-ref-add" id="refAddForm" style="display:none;">
+          <div class="nc-field punto-field" id="refPuntoTipoWrap">
+            <label class="admin-label">Tipo de punto</label>
+            <select id="refPuntoTipo" class="admin-input">
+              <option value="mostrador">Mostrador</option>
+              <option value="entrada">Entrada</option>
+              <option value="vidriera">Vidriera</option>
+              <option value="recepción">Recepción</option>
+              <option value="caja">Caja</option>
+              <option value="flyer">Flyer</option>
+              <option value="banner">Banner</option>
+              <option value="vestidor">Vestidor</option>
+              <option value="pared">Pared interna</option>
+              <option value="externo">Externo</option>
+              <option value="personalizado">Personalizado</option>
+            </select>
+          </div>
+          <div class="nc-field punto-field" id="refPuntoUbicacionWrap">
+            <label class="admin-label">Ubicación / descripción</label>
+            <input type="text" id="refPuntoUbicacion" class="admin-input" placeholder="Ej: caja principal, vidriera sur…" />
+          </div>
           <div class="nc-field">
-            <label class="admin-label">Proyecto</label>
+            <label class="admin-label" id="refProyectoLabel">Proyecto</label>
             <select id="refProyecto" class="admin-input">
               <option value="">Seleccionar proyecto…</option>
             </select>
           </div>
           <div class="nc-field">
-            <label class="admin-label">Nombre de referencia</label>
-            <input type="text" id="refNombre" class="admin-input" placeholder="Ej: Radatil → Huemules" />
+            <label class="admin-label">Nombre del punto / referencia</label>
+            <input type="text" id="refNombre" class="admin-input" placeholder="Ej: Mostrador principal" />
           </div>
           <button class="btn-primary" onclick="agregarReferencia()" style="white-space:nowrap;">+ Agregar</button>
         </div>
@@ -596,6 +621,65 @@ function esActivo(tipo) {
 // Escape HTML para prevenir XSS al renderizar datos
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 
+const PUNTO_TIPOS = [
+  ['principal', 'Principal'],
+  ['mostrador', 'Mostrador'],
+  ['entrada', 'Entrada'],
+  ['vidriera', 'Vidriera'],
+  ['recepción', 'Recepción'],
+  ['caja', 'Caja'],
+  ['flyer', 'Flyer'],
+  ['banner', 'Banner'],
+  ['vestidor', 'Vestidor'],
+  ['pared', 'Pared interna'],
+  ['externo', 'Externo'],
+  ['personalizado', 'Personalizado'],
+]
+
+function puntoTipoLabel(tipo) {
+  return (PUNTO_TIPOS.find(([v]) => v === tipo)?.[1]) || 'Punto QR'
+}
+
+function escapeRegExp(str) {
+  return String(str ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function proximoCodigoPunto(codigoCanal, puntoTipo, ubicacion, nombre, codigosOcupados = []) {
+  const base = String(codigoCanal || '').trim()
+  const slugBase = toSlug(ubicacion || nombre || puntoTipo || 'punto') || 'punto'
+  const candidatoBase = `${base}-${slugBase}`
+  const usados = codigosOcupados instanceof Set
+    ? codigosOcupados
+    : new Set((codigosOcupados || []).map(c => String(c || '').trim()).filter(Boolean))
+  if (!usados.has(candidatoBase)) return candidatoBase
+  let i = 2
+  while (usados.has(`${candidatoBase}-${i}`)) i++
+  return `${candidatoBase}-${i}`
+}
+
+function actualizarSeccionReferencias() {
+  const tipo = document.getElementById('tipo').value
+  const activo = esActivo(tipo)
+  const seccion = document.getElementById('seccionReferencias')
+  const form = document.getElementById('refAddForm')
+  if (!_canalId) {
+    seccion.style.display = 'none'
+    if (form) form.style.display = 'none'
+    return
+  }
+
+  seccion.style.display = ''
+  if (form) form.style.display = ''
+  document.getElementById('refsTitulo').textContent = activo ? 'Links y QRs por proyecto' : 'Puntos QR del canal'
+  document.getElementById('refsTag').textContent = activo ? 'Canal activo' : 'Canal pasivo'
+  document.getElementById('refsTag').className = `tipo-tag ${activo ? 'tag-activo' : 'tag-pasivo'}`
+  document.getElementById('refsCopy').textContent = activo
+    ? 'Referencias independientes para los destinos asignados al canal.'
+    : 'Un mismo comercio puede tener varios QRs físicos medibles: mostrador, entrada, vidriera, flyer u otra ubicación.'
+  document.querySelectorAll('.punto-field').forEach(el => el.classList.toggle('is-hidden', activo))
+  document.getElementById('refProyectoLabel').textContent = activo ? 'Proyecto' : 'Destino'
+}
+
 // ── Tipo change ───────────────────────────────────────────
 window.onTipoChange = function() {
   const tipo   = document.getElementById('tipo').value
@@ -613,9 +697,8 @@ window.onTipoChange = function() {
   }
   document.getElementById('tipoHint').textContent = hints[tipo] || ''
 
-  if (_canalId) {
-    document.getElementById('seccionReferencias').style.display = activo ? '' : 'none'
-  }
+  actualizarSeccionReferencias()
+  if (_canalId) cargarReferencias()
 }
 
 // ── Slug automático ───────────────────────────────────────
@@ -639,7 +722,7 @@ window.actualizarDestinoPreview = function() {
   document.getElementById('destinoCustomWrap').style.display   = tipo === 'custom'   ? '' : 'none'
   const dest = getDestinoUrl()
   document.getElementById('destinoPreview').innerHTML =
-    `El QR llevará a: <strong>surpatagonia.com.ar${dest}</strong>`
+    `El QR principal llevará a: <strong>surpatagonia.com.ar${dest}</strong>`
 }
 
 function getDestinoUrl() {
@@ -780,7 +863,7 @@ async function cargarReferencias() {
 
   const lista = document.getElementById('listaReferencias')
   if (!data?.length) {
-    lista.innerHTML = '<div class="nc-empty">Sin slots aún. Agregá un destino abajo.</div>'
+    lista.innerHTML = '<div class="nc-empty">Sin puntos todavía. Agregá un QR abajo.</div>'
     return
   }
 
@@ -799,12 +882,19 @@ async function cargarReferencias() {
   lista.innerHTML = `<div class="slot-list">${data.map(r => {
     const scans = scansPorCodigo[r.codigo] || 0
     const activo = r.activo !== false
+    const puntoTipo = r.punto_tipo || (r.codigo === document.getElementById('codigo').value ? 'principal' : null)
+    const puntoUbicacion = r.punto_ubicacion || ''
+    const linkQr = `${BASE_URL}/r/${r.codigo}`
     return `
     <div class="slot-card${activo ? '' : ' inactivo'}" id="slot-${r.id}">
       <div class="slot-card-head">
         <div>
           <div class="slot-eyebrow">${esc(r.codigo)}</div>
           <div class="slot-nombre">${esc(r.nombre)}</div>
+          <div class="slot-meta-line">
+            ${puntoTipo ? `<span class="slot-meta-pill">${esc(puntoTipoLabel(puntoTipo))}</span>` : ''}
+            ${puntoUbicacion ? `<span class="slot-meta-desc">${esc(puntoUbicacion)}</span>` : ''}
+          </div>
           <div class="slot-destino">${esc(r.destino || '/')}</div>
         </div>
         <div class="slot-scans">
@@ -818,10 +908,15 @@ async function cargarReferencias() {
           ${activo ? 'Activo' : 'Inactivo'}
         </button>
         <button class="slot-btn" onclick="verQR('${r.codigo}','${encodeURIComponent(r.nombre)}','${encodeURIComponent(r.destino || '/')}')">QR / Link</button>
+        <button class="slot-btn" onclick="copiarTextoDirecto('${linkQr}', this)">Copiar link</button>
         <button class="slot-btn" onclick="abrirEditarDestino('${r.id}')">Editar destino</button>
-        <button class="slot-btn danger" onclick="eliminarReferencia('${r.id}','${esc(r.codigo)}')">Eliminar</button>
       </div>
       <div class="slot-edit-form" id="edit-form-${r.id}">
+        <input class="admin-input" id="edit-nombre-${r.id}" value="${esc(r.nombre)}" placeholder="Nombre del punto / referencia" />
+        <select class="admin-input edit-punto-tipo" id="edit-punto-tipo-${r.id}">
+          ${PUNTO_TIPOS.map(([value, label]) => `<option value="${esc(value)}" ${value === puntoTipo ? 'selected' : ''}>${esc(label)}</option>`).join('')}
+        </select>
+        <input class="admin-input edit-punto-ubicacion" id="edit-punto-ubicacion-${r.id}" value="${esc(puntoUbicacion)}" placeholder="Ubicación / descripción" />
         <select class="admin-input" id="edit-sel-${r.id}">
           <option value="">Seleccioná nuevo destino…</option>
         </select>
@@ -854,11 +949,19 @@ window.abrirEditarDestino = (id) => {
 
 window.guardarDestinoRef = async (id) => {
   const sel = document.getElementById(`edit-sel-${id}`)
+  const nombre = document.getElementById(`edit-nombre-${id}`)?.value.trim()
+  const punto_tipo = document.getElementById(`edit-punto-tipo-${id}`)?.value || null
+  const punto_ubicacion = document.getElementById(`edit-punto-ubicacion-${id}`)?.value.trim() || null
+  if (!nombre) { alert('Poné un nombre para el punto.'); return }
   if (!sel?.value) { alert('Seleccioná un destino.'); return }
-  const { tipo, slug, destino, nombre } = JSON.parse(sel.value)
+  const { tipo, slug, destino } = JSON.parse(sel.value)
   const proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
   const { error } = await supabase.from('referencias').update({
-    destino, nombre, proyecto_slug,
+    destino,
+    nombre,
+    proyecto_slug,
+    punto_tipo,
+    punto_ubicacion,
   }).eq('id', id)
   if (error) { alert('Error al guardar: ' + error.message); return }
   cargarReferencias()
@@ -871,20 +974,38 @@ window.agregarReferencia = async function() {
 
   const { tipo, slug, destino } = JSON.parse(selVal)
   const codigoCanal = document.getElementById('codigo').value
+  const canalActivo = esActivo(document.getElementById('tipo').value)
+  const punto_tipo = canalActivo ? null : (document.getElementById('refPuntoTipo').value || 'personalizado')
+  const punto_ubicacion = canalActivo ? null : (document.getElementById('refPuntoUbicacion').value.trim() || null)
 
-  // Código de slot permanente basado en número de posición (anti-colisión)
-  const { data: refsExist } = await supabase
-    .from('referencias').select('codigo').eq('canal_id', _canalId)
-  const prefix = codigoCanal + '-'
-  const nums = (refsExist || [])
-    .map(r => r.codigo)
-    .filter(c => new RegExp(`^${prefix.replace(/[-]/g,'\\$&')}\\d{2}$`).test(c))
-    .map(c => parseInt(c.slice(-2), 10))
-    .filter(n => !isNaN(n))
-  const slotNum = nums.length ? Math.max(...nums) + 1 : 1
-  const codigo  = `${codigoCanal}-${String(slotNum).padStart(2, '0')}`
+  // Código de slot permanente con anti-colisión global.
+  const [{ data: refsCanal, error: refsCanalError }, { data: refsTodas, error: refsTodasError }, { data: canalesCodigos, error: canalesCodigosError }] = await Promise.all([
+    supabase.from('referencias').select('codigo, punto_orden').eq('canal_id', _canalId),
+    supabase.from('referencias').select('codigo'),
+    supabase.from('canales').select('codigo'),
+  ])
+  if (refsCanalError || refsTodasError || canalesCodigosError) {
+    alert('No se pudo verificar si el código del punto QR ya existe. Probá de nuevo antes de generar el QR.')
+    return
+  }
+  const codigosOcupados = new Set([
+    ...(refsTodas || []).map(r => String(r.codigo || '').trim()).filter(Boolean),
+    ...(canalesCodigos || []).map(c => String(c.codigo || '').trim()).filter(Boolean),
+  ])
+  let codigo
+  if (canalActivo) {
+    const prefix = codigoCanal + '-'
+    let slotNum = 1
+    do {
+      codigo = `${prefix}${String(slotNum).padStart(2, '0')}`
+      slotNum++
+    } while (codigosOcupados.has(codigo))
+  } else {
+    codigo = proximoCodigoPunto(codigoCanal, punto_tipo, punto_ubicacion, nombre, codigosOcupados)
+  }
 
   const proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
+  const punto_orden = canalActivo ? null : Math.max(0, ...(refsCanal || []).map(r => Number(r.punto_orden) || 0)) + 1
 
   const { error } = await supabase.from('referencias').insert({
     canal_id: _canalId,
@@ -893,25 +1014,29 @@ window.agregarReferencia = async function() {
     proyecto_slug,
     destino,
     activo: true,
+    punto_tipo,
+    punto_ubicacion,
+    punto_orden,
   })
 
   if (error) {
-    if (error.code === '23505') alert('Código de slot duplicado. Intentá de nuevo.')
+    if (error.code === '23505') alert('Ese código de QR ya existe. Cambiá el nombre o la ubicación del punto para generar una variante única.')
     else alert('Error: ' + error.message)
     return
   }
 
   document.getElementById('refProyecto').value = ''
   document.getElementById('refNombre').value   = ''
+  document.getElementById('refPuntoUbicacion').value = ''
   cargarReferencias()
 }
 
 window.eliminarReferencia = async (id, codigo) => {
   const ok = confirm(
-    `⚠️ ATENCIÓN\n\nSi eliminás el slot "${codigo}", el QR físico impreso deja de funcionar permanentemente.\n\nSi solo querés cambiar la propiedad, usá "Editar destino" en su lugar.\n\n¿Confirmar eliminación definitiva?`
+    `⚠️ ATENCIÓN\n\nEl QR físico "${codigo}" no se va a borrar: se va a desactivar para que no se recicle un código impreso.\n\n¿Confirmás desactivarlo?`
   )
   if (!ok) return
-  await supabase.from('referencias').delete().eq('id', id)
+  await supabase.from('referencias').update({ activo: false }).eq('id', id)
   cargarReferencias()
 }
 
@@ -957,6 +1082,13 @@ window.copiarLink = (id) => {
   const orig = el.style.color
   el.style.color = '#50c878'
   setTimeout(() => el.style.color = orig, 1500)
+}
+
+window.copiarTextoDirecto = (texto, btn) => {
+  navigator.clipboard.writeText(texto)
+  const original = btn?.textContent || 'Copiar link'
+  if (btn) btn.textContent = 'Copiado'
+  setTimeout(() => { if (btn) btn.textContent = original }, 1200)
 }
 
 // ── Cargar canal para edición ─────────────────────────────
@@ -1017,6 +1149,8 @@ if (editId) {
         document.getElementById('destinoCustom').value = dest
       }
       actualizarDestinoPreview()
+      actualizarSeccionReferencias()
+      await cargarReferencias()
     } else {
       document.getElementById('seccionReferencias').style.display = ''
       document.getElementById('refAddForm').style.display = ''
@@ -1156,47 +1290,69 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   document.getElementById('accesoNuevo').style.display = 'none'
   document.getElementById('accesoEmail').textContent = emailAcceso
 
-  // Para canales pasivos: crear/actualizar la referencia única automáticamente
+  // Para canales pasivos: asegurar QR principal/histórico sin pisar puntos existentes.
   if (!activo_v) {
-    const { data: refExistente, error: refConsultaError } = await supabase
+    const { data: refsExistentes, error: refConsultaError } = await supabase
       .from('referencias')
-      .select('id')
+      .select('id, codigo, nombre, destino, punto_tipo')
       .eq('canal_id', _canalId)
-      .maybeSingle()
+      .order('created_at', { ascending: true })
 
     if (refConsultaError) {
-      alert('Canal guardado, pero no se pudo consultar su referencia: ' + refConsultaError.message)
+      alert('Canal guardado, pero no se pudieron consultar sus puntos QR: ' + refConsultaError.message)
       return
     }
 
     let refError = null
-    if (!refExistente) {
+    let refPrincipal =
+      refsExistentes?.find(r => r.codigo === codigo) ||
+      refsExistentes?.find(r => r.punto_tipo === 'principal') ||
+      (refsExistentes?.length === 1 ? refsExistentes[0] : null)
+    if (!refPrincipal) {
       ;({ error: refError } = await supabase.from('referencias').insert({
         canal_id: _canalId, nombre, codigo,
         proyecto_slug: proyectoSlugDestino,
         destino, activo: true,
+        punto_tipo: 'principal',
+        punto_ubicacion: null,
+        punto_orden: 0,
       }))
+      if (!refError) {
+        const { data: refsNuevas } = await supabase
+          .from('referencias')
+          .select('id, codigo, nombre, destino, punto_tipo')
+          .eq('canal_id', _canalId)
+          .order('created_at', { ascending: true })
+        refPrincipal =
+          refsNuevas?.find(r => r.codigo === codigo) ||
+          refsNuevas?.find(r => r.punto_tipo === 'principal') ||
+          refsNuevas?.[0] ||
+          null
+      }
     } else {
-      // Solo actualizar destino y metadatos — codigo es permanente y no se toca jamás
+      // Sincronizar solo el QR principal/histórico por referencia.id.
+      // Nunca actualizar todas las referencias por canal_id.
       ;({ error: refError } = await supabase.from('referencias').update({
-        destino, nombre,
+        nombre,
+        destino,
         proyecto_slug: proyectoSlugDestino,
-      }).eq('canal_id', _canalId))
+        punto_tipo: 'principal',
+      }).eq('id', refPrincipal.id))
+      if (!refError) refPrincipal = { ...refPrincipal, nombre, destino, punto_tipo: 'principal' }
     }
 
     if (refError) {
-      alert('Canal guardado, pero no se pudo actualizar su referencia: ' + refError.message)
+      alert('Canal guardado, pero no se pudo crear su QR principal: ' + refError.message)
       return
     }
-    // Mostrar QR del canal pasivo — leer codigo desde DB para garantizar que es el permanente
-    const { data: refGuardada } = await supabase
-      .from('referencias').select('codigo').eq('canal_id', _canalId).maybeSingle()
-    const codigoQR = refGuardada?.codigo || codigo
-    verQR(codigoQR, encodeURIComponent(nombre), encodeURIComponent(destino))
+
+    actualizarSeccionReferencias()
+    await cargarReferencias()
+    const codigoQR = refPrincipal?.codigo || codigo
+    verQR(codigoQR, encodeURIComponent(refPrincipal?.nombre || nombre), encodeURIComponent(refPrincipal?.destino || destino))
   } else {
     // Canal activo: mostrar sección de referencias
-    document.getElementById('seccionReferencias').style.display = ''
-    document.getElementById('refAddForm').style.display = ''
+    actualizarSeccionReferencias()
     cargarReferencias()
     document.getElementById('seccionReferencias').scrollIntoView({ behavior: 'smooth' })
   }

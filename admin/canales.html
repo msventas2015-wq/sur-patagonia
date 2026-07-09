@@ -440,12 +440,10 @@ async function cargarCanales() {
 
   function canalIdPorRef(canalRef) {
     if (!canalRef) return null
-    let cid = canalDeRef[canalRef]
-    if (!cid) {
-      const c = canales.find(k => canalRef === k.codigo || canalRef.startsWith(k.codigo + '-'))
-      cid = c?.id
-    }
-    return cid
+    const cid = canalDeRef[canalRef]
+    if (cid) return cid
+    const c = canales.find(k => canalRef === k.codigo)
+    return c?.id || null
   }
 
   visitas.forEach(v => {
@@ -555,9 +553,7 @@ function renderCanalCard(c) {
   const ultimo = st.ultimo
     ? new Date(st.ultimo).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
     : '—'
-  const qrBtn = esActivo(c.tipo)
-    ? `<a href="nuevo-canal.html?id=${c.id}" class="btn-cc">Ver QRs</a>`
-    : `<button class="btn-cc" data-codigo="${esc(c.codigo)}" data-nombre="${encodeURIComponent(c.nombre)}" data-tipo="${esc(c.tipo)}" data-destino="${encodeURIComponent(c.destino || '/')}" onclick="verQRBtn(this)">QR / Link</button>`
+  const qrBtn = `<a href="nuevo-canal.html?id=${c.id}" class="btn-cc">${esActivo(c.tipo) ? 'Ver QRs' : 'Puntos QR'}</a>`
   return `
     <div class="canal-card ${c.activo ? '' : 'off'}">
       <div class="cc-top">
