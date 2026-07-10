@@ -636,6 +636,7 @@ const PUNTO_TIPOS = [
   ['externo', 'Externo'],
   ['personalizado', 'Personalizado'],
 ]
+const MAX_REF_CODE_LENGTH = 72
 
 function puntoTipoLabel(tipo) {
   return (PUNTO_TIPOS.find(([v]) => v === tipo)?.[1]) || 'Punto QR'
@@ -645,17 +646,51 @@ function escapeRegExp(str) {
   return String(str ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+function recortarSlugRef(slug, max) {
+  const limpio = toSlug(slug || '')
+  if (!limpio || max <= 0) return ''
+  if (limpio.length <= max) return limpio
+  return limpio.slice(0, max).replace(/-+$/g, '') || limpio.slice(0, max)
+}
+
+function armarCodigoPuntoBase(codigoCanal, nombre, puntoTipo) {
+  const canal = toSlug(codigoCanal || '')
+  const slugPunto = toSlug(nombre || puntoTipo || 'punto') || 'punto'
+  if (!canal) return ''
+  const directo = `${canal}-${slugPunto}`
+  if (directo.length <= MAX_REF_CODE_LENGTH) return directo
+
+  const maxPunto = MAX_REF_CODE_LENGTH - canal.length - 1
+  if (maxPunto >= 4) return `${canal}-${recortarSlugRef(slugPunto, maxPunto)}`
+
+  const puntoCorto = recortarSlugRef(slugPunto, Math.min(slugPunto.length, 16))
+  const maxCanal = MAX_REF_CODE_LENGTH - puntoCorto.length - 1
+  if (maxCanal < 8) return ''
+  return `${recortarSlugRef(canal, maxCanal)}-${puntoCorto}`
+}
+
+function codigoConSufijoSeguro(codigoBase, sufijo = '') {
+  const suf = sufijo ? `-${sufijo}` : ''
+  const maxBase = MAX_REF_CODE_LENGTH - suf.length
+  const base = recortarSlugRef(codigoBase, maxBase)
+  if (!base) return ''
+  return `${base}${suf}`
+}
+
 function proximoCodigoPunto(codigoCanal, puntoTipo, ubicacion, nombre, codigosOcupados = []) {
-  const base = String(codigoCanal || '').trim()
-  const slugBase = toSlug(ubicacion || nombre || puntoTipo || 'punto') || 'punto'
-  const candidatoBase = `${base}-${slugBase}`
+  // punto_ubicacion es descripción/metadata: no se usa para generar códigos QR físicos.
+  const candidatoBase = armarCodigoPuntoBase(codigoCanal, nombre, puntoTipo)
+  if (!candidatoBase) return ''
   const usados = codigosOcupados instanceof Set
     ? codigosOcupados
     : new Set((codigosOcupados || []).map(c => String(c || '').trim()).filter(Boolean))
-  if (!usados.has(candidatoBase)) return candidatoBase
-  let i = 2
-  while (usados.has(`${candidatoBase}-${i}`)) i++
-  return `${candidatoBase}-${i}`
+  const candidatoInicial = codigoConSufijoSeguro(candidatoBase)
+  if (!usados.has(candidatoInicial)) return candidatoInicial
+  for (let i = 2; i < 1000; i++) {
+    const candidato = codigoConSufijoSeguro(candidatoBase, i)
+    if (candidato && !usados.has(candidato)) return candidato
+  }
+  return ''
 }
 
 function actualizarSeccionReferencias() {
@@ -1012,6 +1047,10 @@ window.agregarReferencia = async function() {
     } while (codigosOcupados.has(codigo))
   } else {
     codigo = proximoCodigoPunto(codigoCanal, punto_tipo, punto_ubicacion, nombre, codigosOcupados)
+    if (!codigo || codigo.length > MAX_REF_CODE_LENGTH) {
+      alert(`No se pudo generar un código QR seguro. Usá un nombre de punto más corto. Máximo interno: ${MAX_REF_CODE_LENGTH} caracteres.`)
+      return
+    }
   }
 
   const proyecto_slug = canalActivo && (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
