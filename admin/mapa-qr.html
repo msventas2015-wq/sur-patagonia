@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa QR — Sur Patagonia Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#090909;
+      --card-bg:#141414;
+      --card-border:rgba(255,255,255,.07);
+      --card-radius:14px;
+      --blanco:#f5f3f0;
+      --gris:#888;
+      --txt-soft:rgba(245,243,240,.5);
+      --sep:rgba(255,255,255,.07);
+      --accent:#d76f3f;
+      --dorado:#c9a84c;
+      --verde:#50c878;
+      --azul:#7aaeff;
+      --glass-t1:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);
+      --glass-t2:linear-gradient(160deg,rgba(255,255,255,.042) 0%,rgba(255,255,255,.012) 100%);
+    }
+
+    * { box-sizing:border-box; }
+    body { background:var(--bg); color:var(--blanco); font-family:'Inter',system-ui,sans-serif; }
+    .admin-main {
+      min-height:100vh;
+      padding:3rem clamp(1.2rem,3vw,3rem);
+      position:relative;
+      overflow:hidden;
+    }
+    .admin-main::before {
+      content:'';
+      position:fixed;
+      inset:auto 0 0 0;
+      height:68vh;
+      background:url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52%/cover no-repeat;
+      filter:grayscale(1) brightness(.72);
+      opacity:.08;
+      pointer-events:none;
+      z-index:0;
+      -webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 14%,black 82%,transparent 100%);
+      mask-image:linear-gradient(to bottom,transparent 0%,black 14%,black 82%,transparent 100%);
+    }
+    .qr-page { position:relative; z-index:1; max-width:1480px; margin:0 auto; }
+
+    .qr-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:1.2rem;
+      margin-bottom:1.5rem;
+    }
+    .qr-kicker {
+      color:var(--dorado);
+      font-size:.68rem;
+      text-transform:uppercase;
+      letter-spacing:.16em;
+      font-weight:700;
+      margin-bottom:.45rem;
+    }
+    h1 {
+      margin:0;
+      font-family:'Cormorant Garamond',serif;
+      font-weight:600;
+      font-size:clamp(2.4rem,5vw,4.8rem);
+      line-height:.9;
+      letter-spacing:.01em;
+      color:var(--blanco);
+    }
+    .qr-subtitle {
+      margin:.65rem 0 0;
+      color:var(--txt-soft);
+      max-width:720px;
+      line-height:1.55;
+      font-size:.86rem;
+    }
+    .qr-actions {
+      display:flex;
+      align-items:center;
+      gap:.65rem;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .qr-btn {
+      appearance:none;
+      border:1px solid rgba(255,255,255,.11);
+      background:rgba(255,255,255,.035);
+      color:rgba(245,243,240,.72);
+      border-radius:999px;
+      padding:.62rem 1rem;
+      font:700 .68rem/1 'Inter',sans-serif;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      text-decoration:none;
+      cursor:pointer;
+      transition:border-color .15s, color .15s, background .15s, transform .15s;
+    }
+    .qr-btn:hover { border-color:rgba(255,255,255,.2); color:var(--blanco); background:rgba(255,255,255,.055); transform:translateY(-1px); }
+    .qr-btn.primary { background:linear-gradient(135deg,#c9a84c,#e8c96a); color:#090909; border-color:transparent; }
+    .qr-btn.danger { color:#f0956a; border-color:rgba(240,149,106,.24); }
+    .qr-btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+
+    .qr-panel {
+      background:var(--glass-t1);
+      border:1px solid var(--card-border);
+      border-top:1px solid rgba(255,255,255,.12);
+      border-radius:var(--card-radius);
+      box-shadow:0 4px 14px rgba(0,0,0,.18);
+      backdrop-filter:blur(4px);
+    }
+    .qr-toolbar {
+      padding:1rem;
+      display:grid;
+      grid-template-columns:minmax(280px,1.2fr) repeat(3,minmax(120px,.55fr)) auto;
+      gap:.75rem;
+      align-items:end;
+      margin-bottom:1rem;
+    }
+    .qr-field label {
+      display:block;
+      margin-bottom:.35rem;
+      color:rgba(255,255,255,.42);
+      font-size:.58rem;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      font-weight:700;
+    }
+    .qr-control {
+      width:100%;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.045);
+      color:var(--blanco);
+      border-radius:10px;
+      padding:.72rem .8rem;
+      font:500 .82rem/1.2 'Inter',sans-serif;
+      outline:none;
+    }
+    .qr-control:focus { border-color:rgba(255,255,255,.24); }
+    .qr-control option { background:#141414; color:var(--blanco); }
+
+    .qr-alert {
+      display:none;
+      margin:0 0 1rem;
+      padding:.85rem 1rem;
+      border:1px solid rgba(201,168,76,.22);
+      border-radius:12px;
+      background:rgba(201,168,76,.065);
+      color:rgba(245,243,240,.72);
+      font-size:.78rem;
+      line-height:1.55;
+    }
+    .qr-alert.show { display:block; }
+
+    .kpi-grid {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:.85rem;
+      margin-bottom:1rem;
+    }
+    .kpi {
+      position:relative;
+      overflow:hidden;
+      padding:1.2rem 1.25rem;
+      background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-top:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+    }
+    .kpi::before {
+      content:'';
+      position:absolute;
+      left:0;
+      top:20%;
+      bottom:20%;
+      width:2px;
+      background:var(--c,var(--dorado));
+      opacity:.75;
+      border-radius:99px;
+    }
+    .kpi-label {
+      color:rgba(255,255,255,.42);
+      font-size:.58rem;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      font-weight:700;
+      margin-bottom:.7rem;
+    }
+    .kpi-value {
+      font-size:2.3rem;
+      font-weight:300;
+      line-height:1;
+      background:linear-gradient(135deg,#fff,rgba(255,255,255,.68));
+      -webkit-background-clip:text;
+      background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
+    .kpi-sub { margin-top:.55rem; color:var(--txt-soft); font-size:.72rem; }
+
+    .qr-grid {
+      display:grid;
+      grid-template-columns:minmax(0,1.45fr) minmax(360px,.75fr);
+      gap:1rem;
+      align-items:start;
+    }
+    .map-card { padding:1rem; }
+    .section-head {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:1rem;
+      margin-bottom:.85rem;
+    }
+    .section-title {
+      margin:0;
+      color:rgba(255,255,255,.75);
+      font-size:.72rem;
+      text-transform:uppercase;
+      letter-spacing:.15em;
+      font-weight:700;
+    }
+    .section-copy {
+      margin:.35rem 0 0;
+      color:var(--txt-soft);
+      font-size:.72rem;
+      line-height:1.45;
+    }
+    .metric-toggle {
+      display:flex;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.18);
+      border-radius:999px;
+      padding:.18rem;
+      gap:.15rem;
+    }
+    .metric-toggle button {
+      border:0;
+      background:transparent;
+      color:rgba(245,243,240,.48);
+      border-radius:999px;
+      padding:.45rem .75rem;
+      font:700 .58rem/1 'Inter',sans-serif;
+      letter-spacing:.09em;
+      text-transform:uppercase;
+      cursor:pointer;
+    }
+    .metric-toggle button.active {
+      color:#090909;
+      background:linear-gradient(135deg,#c9a84c,#e8c96a);
+    }
+
+    .map-stage {
+      position:relative;
+      min-height:560px;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.08);
+      overflow:hidden;
+      background:
+        linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px) 0 0/12.5% 100%,
+        linear-gradient(0deg,rgba(255,255,255,.035) 1px,transparent 1px) 0 0/100% 12.5%,
+        radial-gradient(circle at 24% 32%,rgba(255,255,255,.06),transparent 18%),
+        radial-gradient(circle at 75% 68%,rgba(201,168,76,.06),transparent 22%),
+        linear-gradient(160deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+      user-select:none;
+      touch-action:none;
+    }
+    .map-stage.is-drawing { cursor:crosshair; }
+    .map-stage::before {
+      content:'';
+      position:absolute;
+      inset:8%;
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:22px;
+      box-shadow:inset 0 0 60px rgba(0,0,0,.42);
+      pointer-events:none;
+    }
+    .map-label {
+      position:absolute;
+      left:1rem;
+      top:1rem;
+      color:rgba(255,255,255,.22);
+      font-size:.62rem;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      font-weight:800;
+      pointer-events:none;
+    }
+    .sector {
+      position:absolute;
+      border:2px solid var(--bc);
+      background:var(--fill);
+      opacity:var(--op,.85);
+      border-radius:12px;
+      box-shadow:0 0 var(--halo,0) var(--halo-color,transparent);
+      cursor:grab;
+      transition:box-shadow .15s, opacity .15s, border-width .15s;
+      overflow:hidden;
+    }
+    .sector:hover { opacity:1; }
+    .sector.selected {
+      outline:1px solid rgba(255,255,255,.34);
+      outline-offset:3px;
+    }
+    .sector.inactive {
+      border-color:rgba(255,255,255,.12);
+      background:rgba(255,255,255,.035);
+      opacity:.48;
+      filter:grayscale(1);
+    }
+    .sector.no-data {
+      border-style:dashed;
+      border-color:rgba(201,168,76,.32);
+    }
+    .sector-body {
+      position:absolute;
+      inset:.55rem;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      gap:.35rem;
+      min-width:0;
+      pointer-events:none;
+    }
+    .sector-name {
+      color:var(--blanco);
+      font-size:.72rem;
+      font-weight:800;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+      line-height:1.15;
+      text-shadow:0 1px 8px rgba(0,0,0,.58);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .sector-meta {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:.5rem;
+      color:rgba(245,243,240,.65);
+      font-size:.62rem;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+    .sector-star {
+      position:absolute;
+      top:.4rem;
+      right:.48rem;
+      color:#e8c96a;
+      font-size:1.05rem;
+      text-shadow:0 0 12px rgba(232,201,106,.45);
+      pointer-events:none;
+    }
+    .draw-ghost {
+      position:absolute;
+      border:1px dashed rgba(232,201,106,.7);
+      background:rgba(232,201,106,.08);
+      pointer-events:none;
+      border-radius:10px;
+    }
+
+    .mobile-band {
+      display:none;
+      margin-top:.8rem;
+      padding:.85rem;
+      border:1px dashed rgba(255,255,255,.12);
+      border-radius:14px;
+      background:rgba(255,255,255,.025);
+    }
+    .mobile-band.show { display:block; }
+    .mobile-title {
+      color:rgba(255,255,255,.42);
+      font-size:.58rem;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      font-weight:800;
+      margin-bottom:.55rem;
+    }
+    .mobile-list { display:flex; flex-wrap:wrap; gap:.45rem; }
+
+    .side-card { padding:1rem; }
+    .wizard {
+      display:none;
+      margin-bottom:1rem;
+      padding:.9rem;
+      border:1px solid rgba(201,168,76,.2);
+      background:rgba(201,168,76,.055);
+      border-radius:14px;
+    }
+    .wizard.show { display:block; }
+    .side-grid { display:grid; grid-template-columns:1fr 1fr; gap:.65rem; }
+    .side-grid .full { grid-column:1 / -1; }
+
+    .point-list {
+      display:flex;
+      flex-direction:column;
+      gap:.55rem;
+      max-height:420px;
+      overflow:auto;
+      padding-right:.2rem;
+    }
+    .point-row {
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr) auto;
+      gap:.65rem;
+      align-items:center;
+      padding:.75rem;
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:12px;
+      background:rgba(255,255,255,.025);
+      cursor:pointer;
+    }
+    .point-row.selected { border-color:rgba(255,255,255,.2); background:rgba(255,255,255,.045); }
+    .point-row.inactive { opacity:.52; }
+    .point-dot {
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      background:var(--bc);
+      box-shadow:0 0 10px var(--bc);
+    }
+    .point-name {
+      color:rgba(245,243,240,.86);
+      font-size:.78rem;
+      font-weight:700;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .point-sub {
+      margin-top:.18rem;
+      color:rgba(255,255,255,.36);
+      font-size:.62rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .point-metric {
+      color:rgba(245,243,240,.72);
+      font-size:.78rem;
+      font-weight:800;
+      text-align:right;
+    }
+    .editor-box {
+      margin-top:1rem;
+      padding:.9rem;
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;
+      background:rgba(0,0,0,.18);
+    }
+    .editor-title {
+      color:rgba(245,243,240,.8);
+      font-size:.74rem;
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      margin-bottom:.65rem;
+    }
+    .editor-actions {
+      display:flex;
+      gap:.5rem;
+      flex-wrap:wrap;
+      margin-top:.75rem;
+    }
+    .empty-state {
+      padding:1rem;
+      color:var(--txt-soft);
+      border:1px dashed rgba(255,255,255,.12);
+      border-radius:12px;
+      font-size:.82rem;
+      line-height:1.55;
+    }
+    .sql-box {
+      margin-top:1rem;
+      padding:1rem;
+      color:rgba(245,243,240,.64);
+      font:500 .72rem/1.65 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      background:rgba(0,0,0,.28);
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:14px;
+      white-space:pre-wrap;
+    }
+
+    @media(max-width:1180px) {
+      .qr-toolbar { grid-template-columns:1fr 1fr; }
+      .qr-grid { grid-template-columns:1fr; }
+    }
+    @media(max-width:760px) {
+      .admin-main { padding:1.25rem; }
+      .qr-header { flex-direction:column; align-items:flex-start; }
+      .qr-actions { justify-content:flex-start; }
+      .qr-toolbar,
+      .kpi-grid,
+      .side-grid { grid-template-columns:1fr; }
+      .map-stage { min-height:430px; }
+    }
+  </style>
+</head>
+<body>
+<main class="admin-main">
+  <div class="qr-page">
+    <header class="qr-header">
+      <div>
+        <div class="qr-kicker">F1 · mapa de rendimiento QR</div>
+        <h1>Mapa QR</h1>
+        <p class="qr-subtitle">Vista aislada para probar puntos QR internos de canales pasivos. El color identifica al punto; el rendimiento se lee por intensidad, borde, halo y anotación.</p>
+      </div>
+      <div class="qr-actions">
+        <a class="qr-btn" href="canales.html">Volver a canales</a>
+        <button class="qr-btn danger" id="btnLogout">Salir</button>
+      </div>
+    </header>
+
+    <section class="qr-panel qr-toolbar">
+      <div class="qr-field">
+        <label>Canal pasivo</label>
+        <select class="qr-control" id="canalSelect"></select>
+      </div>
+      <div class="qr-field">
+        <label>Métrica</label>
+        <select class="qr-control" id="metricSelect">
+          <option value="clics">Clics</option>
+          <option value="consultas">Consultas</option>
+          <option value="conversion">Conversión</option>
+        </select>
+      </div>
+      <div class="qr-field">
+        <label>Período</label>
+        <input class="qr-control" value="Últimos 30 días" readonly />
+      </div>
+      <div class="qr-field">
+        <label>Canal testigo</label>
+        <input class="qr-control" value="prueba-qr-varios" readonly />
+      </div>
+      <button class="qr-btn primary" id="btnRecargar">Actualizar</button>
+    </section>
+
+    <div class="qr-alert" id="migrationAlert"></div>
+
+    <section class="kpi-grid" id="kpiGrid">
+      <div class="kpi" style="--c:#7aaeff"><div class="kpi-label">Clics totales</div><div class="kpi-value">—</div><div class="kpi-sub">Últimos 30 días</div></div>
+      <div class="kpi" style="--c:#c9a84c"><div class="kpi-label">Consultas</div><div class="kpi-value">—</div><div class="kpi-sub">Leads por QR</div></div>
+      <div class="kpi" style="--c:#50c878"><div class="kpi-label">Conversión</div><div class="kpi-value">—</div><div class="kpi-sub">Consultas sobre clics</div></div>
+      <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Puntos activos</div><div class="kpi-value">—</div><div class="kpi-sub">QRs del canal</div></div>
+    </section>
+
+    <section class="qr-grid">
+      <div class="qr-panel map-card">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Mapa visual del local</h2>
+            <p class="section-copy" id="mapCopy">Seleccioná un canal pasivo para cargar sus puntos QR.</p>
+          </div>
+          <div class="metric-toggle" aria-label="Métrica activa">
+            <button type="button" data-metric="clics" class="active">Clics</button>
+            <button type="button" data-metric="consultas">Consultas</button>
+            <button type="button" data-metric="conversion">Conversión</button>
+          </div>
+        </div>
+        <div class="map-stage" id="mapStage">
+          <div class="map-label" id="mapLabel">Local / plano base</div>
+        </div>
+        <div class="mobile-band" id="mobileBand">
+          <div class="mobile-title">En circulación</div>
+          <div class="mobile-list" id="mobileList"></div>
+        </div>
+      </div>
+
+      <aside class="qr-panel side-card">
+        <div class="wizard" id="wizard">
+          <div class="section-title">Configuración inicial</div>
+          <p class="section-copy">Este canal todavía no tiene mapa base guardado. Podés cargar un plano textual para ordenar la prueba F1.</p>
+          <div class="side-grid" style="margin-top:.8rem">
+            <div class="qr-field full">
+              <label>Nombre del mapa</label>
+              <input class="qr-control" id="mapBaseNombre" placeholder="Ej: Local principal · planta baja" />
+            </div>
+            <div class="qr-field">
+              <label>Preset</label>
+              <select class="qr-control" id="mapBasePreset">
+                <option value="local">Local rectangular</option>
+                <option value="isla">Isla / stand</option>
+                <option value="mostrador">Mostrador + vidriera</option>
+              </select>
+            </div>
+            <div class="qr-field">
+              <label>Escala</label>
+              <select class="qr-control" id="mapBaseEscala">
+                <option value="simple">Simple</option>
+                <option value="detallado">Detallado</option>
+              </select>
+            </div>
+          </div>
+          <div class="editor-actions">
+            <button class="qr-btn primary" id="btnGuardarBase">Guardar mapa base</button>
+          </div>
+        </div>
+
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Puntos QR</h2>
+            <p class="section-copy">La ubicación visual se guarda en <code>referencias.mapa_config</code>. No se duplica el label.</p>
+          </div>
+        </div>
+        <div class="point-list" id="pointList">
+          <div class="empty-state">Sin canal seleccionado.</div>
+        </div>
+
+        <div class="editor-box" id="editorBox">
+          <div class="editor-title">Editor visual</div>
+          <div id="editorContent" class="empty-state">Seleccioná un punto QR para editar su sector.</div>
+        </div>
+
+        <div class="sql-box">SQL propuesto — NO ejecutado:
+ALTER TABLE public.canales
+  ADD COLUMN IF NOT EXISTS mapa_base jsonb NULL;
+
+ALTER TABLE public.referencias
+  ADD COLUMN IF NOT EXISTS mapa_config jsonb NULL;</div>
+      </aside>
+    </section>
+  </div>
+</main>
+
+<script type="module">
+import { supabase } from '../js/config.js'
+
+const PALETA_PUNTOS_QR = [
+  '#ff4088','#ccff00','#8820c0','#ff9500','#8e1f63',
+  '#7dff36','#ff6830','#00c8ff','#d030c0','#ffd428',
+  '#c890f0','#00ffd5','#ff4a5a','#9d4eff','#eaff5c',
+  '#b840e0','#00e676','#ff6bd6','#ff3d3d','#14e6e6',
+  '#0097a7','#155e5e','#ff6d00','#d4a017','#e574a0'
+]
+
+const TESTIGO_CODIGO = 'prueba-qr-varios'
+const MIN_SIZE = 0.06
+const DEFAULT_CONFIG = { x:.12, y:.14, w:.22, h:.16 }
+const state = {
+  canales: [],
+  canal: null,
+  refs: [],
+  configs: new Map(),
+  stats: new Map(),
+  metric: 'clics',
+  selectedId: null,
+  migrationMissing: false,
+  drawingId: null,
+  drag: null,
+}
+
+const $ = sel => document.querySelector(sel)
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+const clamp = (v, min = 0, max = 1) => Math.max(min, Math.min(max, Number(v) || 0))
+const pct = v => `${(clamp(v) * 100).toFixed(4)}%`
+const hace30 = () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+const isMobilePoint = ref => String(ref.punto_tipo || '').toLowerCase() === 'movil'
+
+function hexToRgba(hex, alpha = 1) {
+  const h = String(hex || '').replace('#','')
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h
+  const n = Number.parseInt(full, 16)
+  if (!Number.isFinite(n)) return `rgba(138,138,130,${alpha})`
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
+}
+
+function missingColumn(error) {
+  const msg = String(error?.message || '').toLowerCase()
+  return msg.includes('mapa_base') || msg.includes('mapa_config') || msg.includes('column')
+}
+
+function safeJson(value) {
+  if (!value) return null
+  if (typeof value === 'object') return value
+  try { return JSON.parse(value) } catch { return null }
+}
+
+function clampConfig(cfg) {
+  const c = safeJson(cfg) || DEFAULT_CONFIG
+  let w = clamp(c.w ?? DEFAULT_CONFIG.w, MIN_SIZE, 1)
+  let h = clamp(c.h ?? DEFAULT_CONFIG.h, MIN_SIZE, 1)
+  let x = clamp(c.x ?? DEFAULT_CONFIG.x, 0, 1 - w)
+  let y = clamp(c.y ?? DEFAULT_CONFIG.y, 0, 1 - h)
+  if (x + w > 1) x = 1 - w
+  if (y + h > 1) y = 1 - h
+  return { x, y, w, h }
+}
+
+function ordenarRefs(refs) {
+  return [...refs].sort((a,b) => {
+    const ap = a.punto_tipo === 'principal' || a.codigo === state.canal?.codigo ? 0 : 1
+    const bp = b.punto_tipo === 'principal' || b.codigo === state.canal?.codigo ? 0 : 1
+    if (ap !== bp) return ap - bp
+    const ao = Number.isFinite(Number(a.punto_orden)) ? Number(a.punto_orden) : 9999
+    const bo = Number.isFinite(Number(b.punto_orden)) ? Number(b.punto_orden) : 9999
+    if (ao !== bo) return ao - bo
+    return String(a.codigo || '').localeCompare(String(b.codigo || ''))
+  })
+}
+
+function colorPunto(ref, index) {
+  const orden = Number(ref.punto_orden)
+  const idx = Number.isFinite(orden) && orden > 0 ? orden - 1 : index
+  return PALETA_PUNTOS_QR[((idx % PALETA_PUNTOS_QR.length) + PALETA_PUNTOS_QR.length) % PALETA_PUNTOS_QR.length]
+}
+
+function metricValue(ref) {
+  const s = state.stats.get(ref.codigo) || { clics:0, consultas:0 }
+  if (state.metric === 'consultas') return s.consultas
+  if (state.metric === 'conversion') return s.clics > 0 ? (s.consultas / s.clics) * 100 : 0
+  return s.clics
+}
+
+function metricLabel(value) {
+  if (state.metric === 'conversion') return `${value.toFixed(1)}%`
+  return String(Math.round(value))
+}
+
+function bestRefId() {
+  const activos = state.refs.filter(r => r.activo !== false && !isMobilePoint(r))
+  let best = null
+  let bestValue = 0
+  activos.forEach(r => {
+    const v = metricValue(r)
+    if (v > bestValue) { best = r; bestValue = v }
+  })
+  return bestValue > 0 ? best?.id : null
+}
+
+function presetConfig(index, total) {
+  const cols = Math.min(4, Math.max(1, Math.ceil(Math.sqrt(total || 1))))
+  const rows = Math.max(1, Math.ceil((total || 1) / cols))
+  const col = index % cols
+  const row = Math.floor(index / cols)
+  const gap = .035
+  const w = Math.max(.13, (1 - gap * (cols + 1)) / cols)
+  const h = Math.max(.11, (1 - gap * (rows + 1)) / rows)
+  return clampConfig({
+    x: gap + col * (w + gap),
+    y: gap + row * (h + gap),
+    w: Math.min(w, .24),
+    h: Math.min(h, .18)
+  })
+}
+
+async function auth() {
+  const { data: { session } } = await supabase.auth.getSession()
+  const rol = session?.user?.app_metadata?.rol || session?.user?.user_metadata?.rol
+  if (!session || rol !== 'admin') {
+    window.location.href = 'login.html'
+    throw new Error('no admin session')
+  }
+  $('#btnLogout').addEventListener('click', async e => {
+    e.preventDefault()
+    await supabase.auth.signOut()
+    window.location.href = 'login.html'
+  })
+}
+
+async function cargarCanales() {
+  let res = await supabase
+    .from('canales')
+    .select('id,codigo,nombre,tipo,ciudad,provincia,activo,mapa_base')
+    .eq('tipo', 'punto_venta')
+    .order('nombre')
+
+  if (res.error && missingColumn(res.error)) {
+    state.migrationMissing = true
+    res = await supabase
+      .from('canales')
+      .select('id,codigo,nombre,tipo,ciudad,provincia,activo')
+      .eq('tipo', 'punto_venta')
+      .order('nombre')
+  }
+  if (res.error) throw res.error
+
+  state.canales = res.data || []
+  const select = $('#canalSelect')
+  const testigo = state.canales.find(c => c.codigo === TESTIGO_CODIGO)
+  select.innerHTML = state.canales.map(c => `<option value="${esc(c.id)}">${esc(c.codigo === TESTIGO_CODIGO ? '★ ' : '')}${esc(c.nombre || c.codigo)} · ${esc(c.codigo)}</option>`).join('')
+  if (testigo) select.value = testigo.id
+  if (!state.canales.length) select.innerHTML = '<option value="">Sin canales pasivos</option>'
+}
+
+async function cargarCanalSeleccionado() {
+  const id = $('#canalSelect').value
+  state.canal = state.canales.find(c => String(c.id) === String(id)) || null
+  state.refs = []
+  state.stats = new Map()
+  state.configs = new Map()
+  state.selectedId = null
+  if (!state.canal) { renderAll(); return }
+
+  let refsRes = await supabase
+    .from('referencias')
+    .select('id,codigo,nombre,activo,punto_tipo,punto_ubicacion,punto_orden,mapa_config')
+    .eq('canal_id', state.canal.id)
+    .order('punto_orden', { ascending:true, nullsFirst:false })
+
+  if (refsRes.error && missingColumn(refsRes.error)) {
+    state.migrationMissing = true
+    refsRes = await supabase
+      .from('referencias')
+      .select('id,codigo,nombre,activo,punto_tipo,punto_ubicacion,punto_orden')
+      .eq('canal_id', state.canal.id)
+      .order('punto_orden', { ascending:true, nullsFirst:false })
+  }
+  if (refsRes.error) throw refsRes.error
+
+  state.refs = ordenarRefs(refsRes.data || [])
+  state.refs.forEach((ref, index) => {
+    state.configs.set(ref.id, clampConfig(ref.mapa_config || presetConfig(index, state.refs.length)))
+  })
+
+  await cargarMetricas()
+  state.selectedId = state.refs.find(r => !isMobilePoint(r))?.id || state.refs[0]?.id || null
+  renderAll()
+}
+
+async function cargarMetricas() {
+  const codigos = state.refs.map(r => r.codigo).filter(Boolean)
+  if (!codigos.length) return
+  const desde = hace30()
+  const [visitasRes, contactosRes] = await Promise.all([
+    supabase.from('visitas').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).limit(50000),
+    supabase.from('contactos').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).limit(10000),
+  ])
+  if (visitasRes.error) throw visitasRes.error
+  if (contactosRes.error) throw contactosRes.error
+
+  codigos.forEach(codigo => state.stats.set(codigo, { clics:0, consultas:0 }))
+  ;(visitasRes.data || []).forEach(v => {
+    const row = state.stats.get(v.canal_ref) || { clics:0, consultas:0 }
+    row.clics++
+    state.stats.set(v.canal_ref, row)
+  })
+  ;(contactosRes.data || []).forEach(c => {
+    const row = state.stats.get(c.canal_ref) || { clics:0, consultas:0 }
+    row.consultas++
+    state.stats.set(c.canal_ref, row)
+  })
+}
+
+function renderKpis() {
+  const clics = [...state.stats.values()].reduce((acc,s) => acc + s.clics, 0)
+  const consultas = [...state.stats.values()].reduce((acc,s) => acc + s.consultas, 0)
+  const conversion = clics ? (consultas / clics) * 100 : 0
+  const activos = state.refs.filter(r => r.activo !== false).length
+  $('#kpiGrid').innerHTML = `
+    <div class="kpi" style="--c:#7aaeff"><div class="kpi-label">Clics totales</div><div class="kpi-value">${clics}</div><div class="kpi-sub">Últimos 30 días</div></div>
+    <div class="kpi" style="--c:#c9a84c"><div class="kpi-label">Consultas</div><div class="kpi-value">${consultas}</div><div class="kpi-sub">Leads por QR</div></div>
+    <div class="kpi" style="--c:#50c878"><div class="kpi-label">Conversión</div><div class="kpi-value">${conversion.toFixed(1)}%</div><div class="kpi-sub">Consultas sobre clics</div></div>
+    <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Puntos activos</div><div class="kpi-value">${activos}</div><div class="kpi-sub">${state.refs.length} puntos totales</div></div>
+  `
+}
+
+function renderMap() {
+  const stage = $('#mapStage')
+  stage.querySelectorAll('.sector,.draw-ghost').forEach(el => el.remove())
+  const mapBase = safeJson(state.canal?.mapa_base)
+  $('#wizard').classList.toggle('show', !mapBase)
+  $('#mapLabel').textContent = mapBase?.nombre || `${state.canal?.nombre || 'Local'} · plano base`
+  $('#mapCopy').textContent = state.canal
+    ? `${state.refs.length} puntos QR del canal · color estable por punto · rendimiento por intensidad.`
+    : 'Seleccioná un canal pasivo para cargar sus puntos QR.'
+
+  const best = bestRefId()
+  const visibles = state.refs.filter(r => !isMobilePoint(r))
+  const max = Math.max(1, ...visibles.map(metricValue))
+  visibles.forEach((ref, index) => {
+    const cfg = state.configs.get(ref.id) || presetConfig(index, visibles.length)
+    const color = colorPunto(ref, index)
+    const value = metricValue(ref)
+    const ratio = value <= 0 ? 0 : clamp(value / max)
+    const inactive = ref.activo === false
+    const el = document.createElement('button')
+    el.type = 'button'
+    el.className = `sector${state.selectedId === ref.id ? ' selected' : ''}${inactive ? ' inactive' : ''}${value <= 0 && !inactive ? ' no-data' : ''}`
+    el.dataset.id = ref.id
+    el.style.left = pct(cfg.x)
+    el.style.top = pct(cfg.y)
+    el.style.width = pct(cfg.w)
+    el.style.height = pct(cfg.h)
+    el.style.setProperty('--bc', color)
+    el.style.setProperty('--fill', hexToRgba(color, inactive ? .035 : .12 + ratio * .32))
+    el.style.setProperty('--op', inactive ? .5 : .74 + ratio * .26)
+    el.style.setProperty('--halo', value > 0 ? `${Math.round(12 + ratio * 26)}px` : '0')
+    el.style.setProperty('--halo-color', hexToRgba(color, .10 + ratio * .18))
+    el.style.borderWidth = ref.id === best ? '3px' : '2px'
+    el.innerHTML = `
+      ${ref.id === best ? '<span class="sector-star">★</span>' : ''}
+      <span class="sector-body">
+        <span class="sector-name">${esc(ref.nombre || ref.codigo)}</span>
+        <span class="sector-meta"><span>${esc(ref.punto_tipo || 'punto')}</span><strong>${metricLabel(value)}</strong></span>
+      </span>
+    `
+    el.addEventListener('pointerdown', onSectorPointerDown)
+    el.addEventListener('click', () => selectPoint(ref.id))
+    stage.appendChild(el)
+  })
+
+  const moviles = state.refs.filter(isMobilePoint)
+  $('#mobileBand').classList.toggle('show', moviles.length > 0)
+  $('#mobileList').innerHTML = moviles.map((r, i) => {
+    const color = colorPunto(r, visibles.length + i)
+    return `<span class="point-row" style="display:inline-flex;--bc:${color}"><span class="point-dot"></span><span class="point-name">${esc(r.nombre || r.codigo)}</span><span class="point-metric">${metricLabel(metricValue(r))}</span></span>`
+  }).join('')
+}
+
+function renderPointList() {
+  if (!state.refs.length) {
+    $('#pointList').innerHTML = '<div class="empty-state">Este canal todavía no tiene puntos QR.</div>'
+    return
+  }
+  const best = bestRefId()
+  $('#pointList').innerHTML = state.refs.map((ref, index) => {
+    const color = colorPunto(ref, index)
+    const value = metricValue(ref)
+    return `
+      <button class="point-row${state.selectedId === ref.id ? ' selected' : ''}${ref.activo === false ? ' inactive' : ''}" data-id="${esc(ref.id)}" type="button" style="--bc:${color}">
+        <span class="point-dot"></span>
+        <span>
+          <span class="point-name">${ref.id === best ? '★ ' : ''}${esc(ref.nombre || ref.codigo)}</span>
+          <span class="point-sub">${esc(ref.codigo)} · ${esc(ref.punto_tipo || 'punto')}${isMobilePoint(ref) ? ' · en circulación' : ''}</span>
+        </span>
+        <span class="point-metric">${metricLabel(value)}</span>
+      </button>
+    `
+  }).join('')
+  document.querySelectorAll('.point-row[data-id]').forEach(btn => {
+    btn.addEventListener('click', () => selectPoint(btn.dataset.id))
+  })
+}
+
+function renderEditor() {
+  const ref = state.refs.find(r => String(r.id) === String(state.selectedId))
+  if (!ref) {
+    $('#editorContent').innerHTML = '<div class="empty-state">Seleccioná un punto QR para editar su sector.</div>'
+    return
+  }
+  if (isMobilePoint(ref)) {
+    $('#editorContent').innerHTML = '<div class="empty-state">Este punto es móvil. No se dibuja dentro del local; se muestra en la banda “EN CIRCULACIÓN”.</div>'
+    return
+  }
+  const cfg = state.configs.get(ref.id) || DEFAULT_CONFIG
+  $('#editorContent').innerHTML = `
+    <div class="side-grid">
+      <div class="qr-field full">
+        <label>Punto seleccionado</label>
+        <input class="qr-control" value="${esc(ref.nombre || ref.codigo)}" readonly />
+      </div>
+      <div class="qr-field"><label>X</label><input class="qr-control cfg-input" data-k="x" type="number" min="0" max="1" step="0.01" value="${cfg.x.toFixed(2)}" /></div>
+      <div class="qr-field"><label>Y</label><input class="qr-control cfg-input" data-k="y" type="number" min="0" max="1" step="0.01" value="${cfg.y.toFixed(2)}" /></div>
+      <div class="qr-field"><label>Ancho</label><input class="qr-control cfg-input" data-k="w" type="number" min="${MIN_SIZE}" max="1" step="0.01" value="${cfg.w.toFixed(2)}" /></div>
+      <div class="qr-field"><label>Alto</label><input class="qr-control cfg-input" data-k="h" type="number" min="${MIN_SIZE}" max="1" step="0.01" value="${cfg.h.toFixed(2)}" /></div>
+    </div>
+    <div class="editor-actions">
+      <button class="qr-btn" id="btnDraw">Dibujar/redibujar</button>
+      <button class="qr-btn" id="btnPreset">Preset</button>
+      <button class="qr-btn danger" id="btnClear">Borrar dibujo</button>
+      <button class="qr-btn primary" id="btnSavePoint">Guardar punto</button>
+    </div>
+  `
+  document.querySelectorAll('.cfg-input').forEach(input => input.addEventListener('input', onCfgInput))
+  $('#btnDraw').addEventListener('click', () => startDrawing(ref.id))
+  $('#btnPreset').addEventListener('click', () => {
+    const index = state.refs.filter(r => !isMobilePoint(r)).findIndex(r => r.id === ref.id)
+    state.configs.set(ref.id, presetConfig(Math.max(0,index), state.refs.filter(r => !isMobilePoint(r)).length))
+    renderAll()
+  })
+  $('#btnClear').addEventListener('click', () => {
+    state.configs.set(ref.id, presetConfig(0, 1))
+    renderAll()
+  })
+  $('#btnSavePoint').addEventListener('click', () => guardarPunto(ref.id))
+}
+
+function renderMigrationAlert() {
+  const alert = $('#migrationAlert')
+  alert.classList.toggle('show', state.migrationMissing)
+  alert.innerHTML = state.migrationMissing
+    ? 'Migración pendiente detectada: la página puede leerse con fallback, pero para guardar mapa base y sectores necesitás agregar <code>canales.mapa_base</code> y <code>referencias.mapa_config</code>. No ejecuté SQL.'
+    : ''
+}
+
+function renderAll() {
+  renderMigrationAlert()
+  renderKpis()
+  renderMap()
+  renderPointList()
+  renderEditor()
+}
+
+function selectPoint(id) {
+  state.selectedId = id
+  state.drawingId = null
+  $('#mapStage').classList.remove('is-drawing')
+  renderAll()
+}
+
+function onCfgInput(e) {
+  const ref = state.refs.find(r => String(r.id) === String(state.selectedId))
+  if (!ref) return
+  const cfg = { ...(state.configs.get(ref.id) || DEFAULT_CONFIG), [e.target.dataset.k]: Number(e.target.value) }
+  state.configs.set(ref.id, clampConfig(cfg))
+  renderMap()
+}
+
+function stageRect() {
+  return $('#mapStage').getBoundingClientRect()
+}
+
+function eventToNorm(e) {
+  const rect = stageRect()
+  return {
+    x: clamp((e.clientX - rect.left) / rect.width),
+    y: clamp((e.clientY - rect.top) / rect.height)
+  }
+}
+
+function onSectorPointerDown(e) {
+  if (state.drawingId) return
+  const id = e.currentTarget.dataset.id
+  const cfg = state.configs.get(id)
+  if (!cfg) return
+  e.currentTarget.setPointerCapture(e.pointerId)
+  const start = eventToNorm(e)
+  state.drag = { id, start, cfg:{ ...cfg } }
+}
+
+window.addEventListener('pointermove', e => {
+  if (!state.drag) return
+  const now = eventToNorm(e)
+  const dx = now.x - state.drag.start.x
+  const dy = now.y - state.drag.start.y
+  state.configs.set(state.drag.id, clampConfig({
+    ...state.drag.cfg,
+    x: state.drag.cfg.x + dx,
+    y: state.drag.cfg.y + dy
+  }))
+  renderMap()
+})
+window.addEventListener('pointerup', () => { state.drag = null })
+
+function startDrawing(id) {
+  state.drawingId = id
+  $('#mapStage').classList.add('is-drawing')
+}
+
+let drawStart = null
+$('#mapStage').addEventListener('pointerdown', e => {
+  if (!state.drawingId) return
+  drawStart = eventToNorm(e)
+  $('#mapStage').setPointerCapture(e.pointerId)
+  $('#mapStage').querySelectorAll('.draw-ghost').forEach(el => el.remove())
+})
+$('#mapStage').addEventListener('pointermove', e => {
+  if (!state.drawingId || !drawStart) return
+  const now = eventToNorm(e)
+  const x = Math.min(drawStart.x, now.x)
+  const y = Math.min(drawStart.y, now.y)
+  const w = Math.abs(now.x - drawStart.x)
+  const h = Math.abs(now.y - drawStart.y)
+  let ghost = $('#mapStage').querySelector('.draw-ghost')
+  if (!ghost) {
+    ghost = document.createElement('div')
+    ghost.className = 'draw-ghost'
+    $('#mapStage').appendChild(ghost)
+  }
+  ghost.style.left = pct(x)
+  ghost.style.top = pct(y)
+  ghost.style.width = pct(w)
+  ghost.style.height = pct(h)
+})
+$('#mapStage').addEventListener('pointerup', e => {
+  if (!state.drawingId || !drawStart) return
+  const now = eventToNorm(e)
+  const cfg = clampConfig({
+    x: Math.min(drawStart.x, now.x),
+    y: Math.min(drawStart.y, now.y),
+    w: Math.max(MIN_SIZE, Math.abs(now.x - drawStart.x)),
+    h: Math.max(MIN_SIZE, Math.abs(now.y - drawStart.y))
+  })
+  state.configs.set(state.drawingId, cfg)
+  state.selectedId = state.drawingId
+  state.drawingId = null
+  drawStart = null
+  $('#mapStage').classList.remove('is-drawing')
+  renderAll()
+})
+
+async function guardarPunto(id) {
+  if (state.migrationMissing) {
+    alert('Falta aplicar la migración de mapa_config antes de guardar.')
+    return
+  }
+  const cfg = state.configs.get(id)
+  if (!cfg) return
+  const { error } = await supabase.from('referencias').update({ mapa_config: clampConfig(cfg) }).eq('id', id)
+  if (error) { alert('No se pudo guardar el punto: ' + error.message); return }
+  await cargarCanalSeleccionado()
+}
+
+async function guardarMapaBase() {
+  if (!state.canal) return
+  if (state.migrationMissing) {
+    alert('Falta aplicar la migración de mapa_base antes de guardar.')
+    return
+  }
+  const mapa_base = {
+    nombre: $('#mapBaseNombre').value.trim() || `Mapa ${state.canal.nombre || state.canal.codigo}`,
+    preset: $('#mapBasePreset').value,
+    escala: $('#mapBaseEscala').value,
+    version: 1
+  }
+  const { error } = await supabase.from('canales').update({ mapa_base }).eq('id', state.canal.id)
+  if (error) { alert('No se pudo guardar el mapa base: ' + error.message); return }
+  state.canal.mapa_base = mapa_base
+  renderAll()
+}
+
+async function boot() {
+  try {
+    await auth()
+    await cargarCanales()
+    await cargarCanalSeleccionado()
+  } catch (error) {
+    console.warn('[mapa qr] error inicializando', error)
+    $('#migrationAlert').classList.add('show')
+    $('#migrationAlert').textContent = 'No se pudo cargar el mapa QR: ' + (error.message || error)
+  }
+}
+
+$('#canalSelect').addEventListener('change', cargarCanalSeleccionado)
+$('#btnRecargar').addEventListener('click', cargarCanalSeleccionado)
+$('#metricSelect').addEventListener('change', e => {
+  state.metric = e.target.value
+  document.querySelectorAll('.metric-toggle button').forEach(btn => btn.classList.toggle('active', btn.dataset.metric === state.metric))
+  renderAll()
+})
+document.querySelectorAll('.metric-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.metric = btn.dataset.metric
+    $('#metricSelect').value = state.metric
+    document.querySelectorAll('.metric-toggle button').forEach(b => b.classList.toggle('active', b === btn))
+    renderAll()
+  })
+})
+$('#btnGuardarBase').addEventListener('click', guardarMapaBase)
+
+boot()
+</script>
+</body>
+</html>
