@@ -188,6 +188,7 @@
       background: rgba(201,168,76,.025);
     }
     .nc-ref-add .btn-primary { justify-self:start; white-space:nowrap; }
+    .is-hidden { display:none !important; }
     .punto-field.is-hidden { display:none; }
     @media(max-width:600px){ .nc-ref-add{ grid-template-columns:1fr; } }
 
@@ -403,16 +404,16 @@
         </div>
       </section>
 
-      <!-- ── 2. DESTINO QR PRINCIPAL (solo canales pasivos) ────────── -->
+      <!-- ── 2. DESTINO COMÚN (solo canales pasivos) ────────── -->
       <section class="nc-section" id="seccionDestino">
         <div class="nc-section-head">
-          <h3 class="nc-section-title">Destino del QR principal</h3>
+          <h3 class="nc-section-title">Destino común del canal</h3>
           <span class="tipo-tag tag-pasivo">Canal pasivo</span>
         </div>
-        <p class="nc-section-copy">Este destino sincroniza solo el QR principal/histórico del canal. Los puntos secundarios mantienen su propio destino.</p>
+        <p class="nc-section-copy">Todos los QRs de este canal llevarán a este destino. Cada punto solo mide una ubicación distinta.</p>
         <div class="nc-grid">
           <div class="nc-field">
-            <label class="admin-label">Tipo de destino principal</label>
+            <label class="admin-label">Tipo de destino común</label>
             <select id="tipoDestino" class="admin-input" onchange="actualizarDestinoPreview()">
               <option value="home">Home del sitio</option>
               <option value="proyecto">Proyecto o propiedad específica</option>
@@ -420,7 +421,7 @@
             </select>
           </div>
           <div class="nc-field" id="destinoProyectoWrap">
-            <label class="admin-label">Proyecto / propiedad del QR principal</label>
+            <label class="admin-label">Proyecto / propiedad del destino común</label>
             <select id="destinoProyecto" class="admin-input" onchange="actualizarDestinoPreview()">
               <option value="">Cargando proyectos…</option>
             </select>
@@ -429,7 +430,7 @@
             <label class="admin-label">URL personalizada</label>
             <input type="text" id="destinoCustom" class="admin-input" placeholder="Ej: /propiedades" oninput="actualizarDestinoPreview()" />
           </div>
-          <div class="nc-field nc-field-full nc-hint" id="destinoPreview">El QR principal llevará a: <strong>surpatagonia.com.ar/</strong></div>
+          <div class="nc-field nc-field-full nc-hint" id="destinoPreview">Todos los QRs llevarán a: <strong>surpatagonia.com.ar/</strong></div>
         </div>
       </section>
 
@@ -523,7 +524,7 @@
             <label class="admin-label">Ubicación / descripción</label>
             <input type="text" id="refPuntoUbicacion" class="admin-input" placeholder="Ej: caja principal, vidriera sur…" />
           </div>
-          <div class="nc-field">
+          <div class="nc-field ref-destino-field">
             <label class="admin-label" id="refProyectoLabel">Proyecto</label>
             <select id="refProyecto" class="admin-input">
               <option value="">Seleccionar proyecto…</option>
@@ -675,8 +676,9 @@ function actualizarSeccionReferencias() {
   document.getElementById('refsTag').className = `tipo-tag ${activo ? 'tag-activo' : 'tag-pasivo'}`
   document.getElementById('refsCopy').textContent = activo
     ? 'Referencias independientes para los destinos asignados al canal.'
-    : 'Un mismo comercio puede tener varios QRs físicos medibles: mostrador, entrada, vidriera, flyer u otra ubicación.'
+    : 'Un mismo comercio puede tener varios QRs físicos medibles. Todos comparten el destino común definido arriba.'
   document.querySelectorAll('.punto-field').forEach(el => el.classList.toggle('is-hidden', activo))
+  document.querySelectorAll('.ref-destino-field').forEach(el => el.classList.toggle('is-hidden', !activo))
   document.getElementById('refProyectoLabel').textContent = activo ? 'Proyecto' : 'Destino'
 }
 
@@ -878,6 +880,7 @@ async function cargarReferencias() {
   ;(visitas30 || []).forEach(v => {
     scansPorCodigo[v.canal_ref] = (scansPorCodigo[v.canal_ref] || 0) + 1
   })
+  const canalActivo = esActivo(document.getElementById('tipo').value)
 
   lista.innerHTML = `<div class="slot-list">${data.map(r => {
     const scans = scansPorCodigo[r.codigo] || 0
@@ -895,7 +898,7 @@ async function cargarReferencias() {
             ${puntoTipo ? `<span class="slot-meta-pill">${esc(puntoTipoLabel(puntoTipo))}</span>` : ''}
             ${puntoUbicacion ? `<span class="slot-meta-desc">${esc(puntoUbicacion)}</span>` : ''}
           </div>
-          <div class="slot-destino">${esc(r.destino || '/')}</div>
+          ${canalActivo ? `<div class="slot-destino">${esc(r.destino || '/')}</div>` : ''}
         </div>
         <div class="slot-scans">
           <strong>${scans}</strong>
@@ -909,7 +912,7 @@ async function cargarReferencias() {
         </button>
         <button class="slot-btn" onclick="verQR('${r.codigo}','${encodeURIComponent(r.nombre)}','${encodeURIComponent(r.destino || '/')}')">QR / Link</button>
         <button class="slot-btn" onclick="copiarTextoDirecto('${linkQr}', this)">Copiar link</button>
-        <button class="slot-btn" onclick="abrirEditarDestino('${r.id}')">Editar destino</button>
+        <button class="slot-btn" onclick="abrirEditarDestino('${r.id}')">${canalActivo ? 'Editar destino' : 'Editar punto'}</button>
       </div>
       <div class="slot-edit-form" id="edit-form-${r.id}">
         <input class="admin-input" id="edit-nombre-${r.id}" value="${esc(r.nombre)}" placeholder="Nombre del punto / referencia" />
@@ -917,7 +920,7 @@ async function cargarReferencias() {
           ${PUNTO_TIPOS.map(([value, label]) => `<option value="${esc(value)}" ${value === puntoTipo ? 'selected' : ''}>${esc(label)}</option>`).join('')}
         </select>
         <input class="admin-input edit-punto-ubicacion" id="edit-punto-ubicacion-${r.id}" value="${esc(puntoUbicacion)}" placeholder="Ubicación / descripción" />
-        <select class="admin-input" id="edit-sel-${r.id}">
+        <select class="admin-input ${canalActivo ? '' : 'is-hidden'}" id="edit-sel-${r.id}">
           <option value="">Seleccioná nuevo destino…</option>
         </select>
         <button class="btn-primary" onclick="guardarDestinoRef('${r.id}')">Guardar</button>
@@ -952,17 +955,20 @@ window.guardarDestinoRef = async (id) => {
   const nombre = document.getElementById(`edit-nombre-${id}`)?.value.trim()
   const punto_tipo = document.getElementById(`edit-punto-tipo-${id}`)?.value || null
   const punto_ubicacion = document.getElementById(`edit-punto-ubicacion-${id}`)?.value.trim() || null
+  const canalActivo = esActivo(document.getElementById('tipo').value)
   if (!nombre) { alert('Poné un nombre para el punto.'); return }
-  if (!sel?.value) { alert('Seleccioná un destino.'); return }
-  const { tipo, slug, destino } = JSON.parse(sel.value)
-  const proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
-  const { error } = await supabase.from('referencias').update({
-    destino,
+  let payload = {
     nombre,
-    proyecto_slug,
     punto_tipo,
     punto_ubicacion,
-  }).eq('id', id)
+  }
+  if (canalActivo) {
+    if (!sel?.value) { alert('Seleccioná un destino.'); return }
+    const { tipo, slug, destino } = JSON.parse(sel.value)
+    payload.destino = destino
+    payload.proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
+  }
+  const { error } = await supabase.from('referencias').update(payload).eq('id', id)
   if (error) { alert('Error al guardar: ' + error.message); return }
   cargarReferencias()
 }
@@ -970,11 +976,15 @@ window.guardarDestinoRef = async (id) => {
 window.agregarReferencia = async function() {
   const selVal = document.getElementById('refProyecto').value
   const nombre = document.getElementById('refNombre').value.trim()
-  if (!selVal || !nombre) { alert('Seleccioná un destino y poné un nombre.'); return }
-
-  const { tipo, slug, destino } = JSON.parse(selVal)
   const codigoCanal = document.getElementById('codigo').value
   const canalActivo = esActivo(document.getElementById('tipo').value)
+  if (!nombre) { alert('Poné un nombre para el punto.'); return }
+  if (canalActivo && !selVal) { alert('Seleccioná un destino y poné un nombre.'); return }
+
+  const destinoData = canalActivo
+    ? JSON.parse(selVal)
+    : { tipo: 'general', slug: null, destino: getDestinoUrl() }
+  const { tipo, slug, destino } = destinoData
   const punto_tipo = canalActivo ? null : (document.getElementById('refPuntoTipo').value || 'personalizado')
   const punto_ubicacion = canalActivo ? null : (document.getElementById('refPuntoUbicacion').value.trim() || null)
 
@@ -1004,7 +1014,7 @@ window.agregarReferencia = async function() {
     codigo = proximoCodigoPunto(codigoCanal, punto_tipo, punto_ubicacion, nombre, codigosOcupados)
   }
 
-  const proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
+  const proyecto_slug = canalActivo && (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
   const punto_orden = canalActivo ? null : Math.max(0, ...(refsCanal || []).map(r => Number(r.punto_orden) || 0)) + 1
 
   const { error } = await supabase.from('referencias').insert({
@@ -1290,7 +1300,7 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   document.getElementById('accesoNuevo').style.display = 'none'
   document.getElementById('accesoEmail').textContent = emailAcceso
 
-  // Para canales pasivos: asegurar QR principal/histórico sin pisar puntos existentes.
+  // Para canales pasivos: asegurar QR principal/histórico y sincronizar destino común.
   if (!activo_v) {
     const { data: refsExistentes, error: refConsultaError } = await supabase
       .from('referencias')
@@ -1304,6 +1314,7 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     }
 
     let refError = null
+    let destinoError = null
     let refPrincipal =
       refsExistentes?.find(r => r.codigo === codigo) ||
       refsExistentes?.find(r => r.punto_tipo === 'principal') ||
@@ -1329,20 +1340,23 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
           refsNuevas?.[0] ||
           null
       }
+      if (!refError && (refsExistentes || []).length) {
+        ;({ error: destinoError } = await supabase.from('referencias').update({
+          destino,
+        }).eq('canal_id', _canalId))
+        if (!destinoError && refPrincipal) refPrincipal = { ...refPrincipal, destino }
+      }
     } else {
-      // Sincronizar solo el QR principal/histórico por referencia.id.
-      // Nunca actualizar todas las referencias por canal_id.
-      ;({ error: refError } = await supabase.from('referencias').update({
-        nombre,
+      // El destino es común a todos los puntos QR del canal pasivo.
+      // Actualizar solo el campo destino; no tocar nombre, código, tipo, ubicación ni activo.
+      ;({ error: destinoError } = await supabase.from('referencias').update({
         destino,
-        proyecto_slug: proyectoSlugDestino,
-        punto_tipo: 'principal',
-      }).eq('id', refPrincipal.id))
-      if (!refError) refPrincipal = { ...refPrincipal, nombre, destino, punto_tipo: 'principal' }
+      }).eq('canal_id', _canalId))
+      if (!destinoError) refPrincipal = { ...refPrincipal, destino }
     }
 
-    if (refError) {
-      alert('Canal guardado, pero no se pudo crear su QR principal: ' + refError.message)
+    if (refError || destinoError) {
+      alert('Canal guardado, pero no se pudieron sincronizar sus puntos QR: ' + (refError || destinoError).message)
       return
     }
 
