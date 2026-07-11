@@ -56,7 +56,7 @@
     .qr-page {
       position:relative;
       z-index:1;
-      max-width:1520px;
+      max-width:min(1760px,calc(100vw - 2rem));
       margin:0 auto;
     }
 
@@ -274,6 +274,30 @@
       flex-direction:column;
       gap:1rem;
     }
+    .floor-tabs {
+      display:flex;
+      flex-wrap:wrap;
+      gap:.45rem;
+      margin-bottom:.85rem;
+    }
+    .floor-tab {
+      appearance:none;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.035);
+      color:rgba(245,243,240,.55);
+      border-radius:999px;
+      padding:.48rem .85rem;
+      font:900 .58rem/1 'Inter',sans-serif;
+      letter-spacing:.1em;
+      text-transform:uppercase;
+      cursor:pointer;
+      transition:border-color .15s,color .15s,background .15s;
+    }
+    .floor-tab.active {
+      border-color:rgba(201,168,76,.42);
+      color:#e8c96a;
+      background:rgba(201,168,76,.08);
+    }
     .sheet {
       position:relative;
       min-height:580px;
@@ -308,28 +332,36 @@
     }
     .sheet-titlebar strong { color:rgba(245,243,240,.72); }
     .sheet-grid {
-      display:grid;
-      grid-template-columns:minmax(132px,.28fr) minmax(420px,1fr) minmax(132px,.28fr);
-      gap:.8rem;
-      align-items:stretch;
-      min-height:500px;
+      position:relative;
+      display:block;
+      min-height:clamp(520px,48vw,720px);
     }
     .callout-col {
-      position:relative;
+      position:absolute;
+      top:.65rem;
+      bottom:.65rem;
+      width:clamp(128px,11vw,180px);
       display:flex;
       flex-direction:column;
       justify-content:center;
       gap:.7rem;
       min-width:0;
+      z-index:25;
+      pointer-events:none;
     }
+    .callout-col.left { left:.65rem; align-items:flex-end; }
+    .callout-col.right { right:.65rem; align-items:flex-start; }
     .callout {
       position:relative;
+      width:100%;
+      max-width:180px;
       min-height:54px;
       padding:.55rem .65rem;
       border:1px solid rgba(255,255,255,.07);
       border-radius:10px;
       background:rgba(0,0,0,.22);
       overflow:hidden;
+      pointer-events:auto;
     }
     .callout.left { text-align:right; }
     .callout.right { text-align:left; }
@@ -337,13 +369,13 @@
       content:'';
       position:absolute;
       top:50%;
-      width:52px;
+      width:clamp(30px,3vw,52px);
       height:1px;
       background:linear-gradient(90deg,transparent,var(--bc));
       opacity:.65;
     }
-    .callout.left::after { right:-52px; }
-    .callout.right::after { left:-52px; transform:scaleX(-1); }
+    .callout.left::after { right:calc(clamp(30px,3vw,52px) * -1); }
+    .callout.right::after { left:calc(clamp(30px,3vw,52px) * -1); transform:scaleX(-1); }
     .callout-title {
       display:block;
       color:var(--bc);
@@ -369,7 +401,8 @@
     }
 
     .floor-board {
-      position:relative;
+      position:absolute;
+      inset:0 clamp(150px,12vw,210px);
       display:flex;
       flex-direction:column;
       gap:.75rem;
@@ -378,7 +411,7 @@
     .floor {
       position:relative;
       flex:1;
-      min-height:245px;
+      min-height:100%;
       border:2px solid rgba(245,243,240,.62);
       border-radius:10px;
       background:
@@ -696,8 +729,9 @@
     @media(max-width:1180px) {
       .qr-toolbar { grid-template-columns:1fr 1fr; }
       .qr-grid { grid-template-columns:1fr; }
-      .sheet-grid { grid-template-columns:1fr; }
-      .callout-col { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .floor-board { inset:0 clamp(116px,12vw,150px); }
+      .callout-col { width:clamp(98px,12vw,128px); }
+      .callout { padding:.5rem .55rem; }
       .callout::after { display:none; }
     }
     @media(max-width:760px) {
@@ -707,9 +741,22 @@
       .qr-toolbar,
       .kpi-grid,
       .generator-grid { grid-template-columns:1fr; }
-      .sheet { min-height:520px; padding:.8rem; }
-      .floor { min-height:300px; }
-      .callout-col { grid-template-columns:1fr; }
+      .sheet { min-height:0; padding:.8rem; }
+      .sheet-grid { min-height:0; display:flex; flex-direction:column; gap:.75rem; }
+      .floor-board { position:relative; inset:auto; min-height:360px; order:1; }
+      .floor { min-height:360px; }
+      .callout-col {
+        position:relative;
+        inset:auto;
+        width:100%;
+        display:grid;
+        grid-template-columns:1fr;
+        order:2;
+        pointer-events:auto;
+      }
+      .callout-col.left,
+      .callout-col.right { align-items:stretch; }
+      .callout { max-width:none; text-align:left; }
     }
   </style>
 </head>
@@ -889,6 +936,7 @@ const state = {
   stats: new Map(),
   metric: 'clics',
   selectedId: null,
+  activePlanta: 1,
   drawingId: null,
   drawingPlanta: 1,
   drag: null,
@@ -1077,6 +1125,7 @@ async function cargarCanalSeleccionado() {
   state.stats = new Map()
   state.configs = new Map()
   state.selectedId = null
+  state.activePlanta = 1
   state.drawingId = null
   if (!state.canal) { renderAll(); return }
 
@@ -1228,7 +1277,7 @@ function renderFloor(planta, base) {
         <span>${base.frente} m frente · ${base.fondo} m fondo · escala visual</span>
       </div>
       <div class="sheet-grid">
-        <div class="callout-col">${renderCallouts(left, 'left')}</div>
+        <div class="callout-col left">${renderCallouts(left, 'left')}</div>
         <div class="floor-board">
           <div class="floor" data-planta="${planta}">
             <div class="floor-label">${planta === 1 ? 'PB · Lámina arquitecto' : 'PA · Sin fachada'}</div>
@@ -1237,8 +1286,20 @@ function renderFloor(planta, base) {
             ${refs.map(ref => renderSector(ref, state.refs.findIndex(r => r.id === ref.id))).join('')}
           </div>
         </div>
-        <div class="callout-col">${renderCallouts(right, 'right')}</div>
+        <div class="callout-col right">${renderCallouts(right, 'right')}</div>
       </div>
+    </div>
+  `
+}
+
+function renderFloorTabs(base) {
+  if (base.plantas <= 1) return ''
+  return `
+    <div class="floor-tabs" role="tablist" aria-label="Plantas del local">
+      ${Array.from({ length:base.plantas }, (_, i) => {
+        const planta = i + 1
+        return `<button type="button" class="floor-tab${state.activePlanta === planta ? ' active' : ''}" data-planta="${planta}">Planta ${planta}</button>`
+      }).join('')}
     </div>
   `
 }
@@ -1246,11 +1307,12 @@ function renderFloor(planta, base) {
 function renderMap() {
   const base = mapaBaseActual()
   const hasV2 = Boolean(normalizarMapaBase(state.canal?.mapa_base))
+  state.activePlanta = Math.max(1, Math.min(base.plantas, Number(state.activePlanta) || 1))
   $('#generator').classList.toggle('show', true)
   $('#mapCopy').textContent = state.canal
     ? `${state.refs.length} puntos QR · color estable por punto · rendimiento por intensidad, callout y estrella.`
     : 'Seleccioná un canal pasivo para cargar sus puntos QR.'
-  $('#mapWrap').innerHTML = Array.from({ length:base.plantas }, (_, i) => renderFloor(i + 1, base)).join('')
+  $('#mapWrap').innerHTML = `${renderFloorTabs(base)}${renderFloor(state.activePlanta, base)}`
   if (!hasV2 && state.canal) {
     $('#migrationAlert').classList.add('show')
     $('#migrationAlert').innerHTML = 'Este canal todavía no tiene <code>mapa_base</code> v2. Guardá el generador paramétrico para fijar la lámina.'
@@ -1259,6 +1321,11 @@ function renderMap() {
     $('#migrationAlert').innerHTML = ''
   }
   bindMapEvents()
+  $$('.floor-tab').forEach(btn => btn.addEventListener('click', () => {
+    state.activePlanta = Number(btn.dataset.planta) || 1
+    state.drawingId = null
+    renderAll()
+  }))
   renderMobileBand()
 }
 
@@ -1330,7 +1397,9 @@ function renderEditor() {
     <p class="generator-note">Sin inputs X/Y/W/H: mové el sector arrastrándolo o redibujá el cuadrado sobre la lámina.</p>
   `
   $('#editorPlanta').addEventListener('change', e => {
-    state.configs.set(ref.id, clampConfig({ ...cfg, planta:Number(e.target.value) }))
+    const planta = Number(e.target.value) || 1
+    state.configs.set(ref.id, clampConfig({ ...cfg, planta }))
+    state.activePlanta = planta
     renderAll()
   })
   $('#btnDraw').addEventListener('click', () => startDrawing(ref.id))
@@ -1369,7 +1438,8 @@ function renderAll() {
 function selectPoint(id) {
   state.selectedId = id
   state.drawingId = null
-  state.drawingPlanta = state.configs.get(id)?.planta || 1
+  state.activePlanta = state.configs.get(id)?.planta || 1
+  state.drawingPlanta = state.activePlanta
   $$('.floor').forEach(el => el.classList.remove('is-drawing'))
   renderAll()
 }
@@ -1429,6 +1499,10 @@ function startDrawing(id) {
   const cfg = state.configs.get(id) || DEFAULT_CONFIG
   state.drawingId = id
   state.drawingPlanta = cfg.planta || 1
+  if (state.activePlanta !== state.drawingPlanta) {
+    state.activePlanta = state.drawingPlanta
+    renderMap()
+  }
   $$('.floor').forEach(el => el.classList.toggle('is-drawing', Number(el.dataset.planta) === state.drawingPlanta))
 }
 
