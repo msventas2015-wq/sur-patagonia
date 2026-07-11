@@ -216,14 +216,54 @@
     }
     .kpi-sub { margin-top:.55rem; color:var(--txt-soft); font-size:.72rem; }
 
-    .qr-grid {
+    .qr-grid,
+    .controls-grid {
       display:grid;
-      grid-template-columns:minmax(0,1.55fr) minmax(360px,.75fr);
       gap:1rem;
       align-items:start;
     }
+    .qr-grid { grid-template-columns:1fr; }
+    .controls-grid {
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      margin-bottom:1rem;
+    }
     .map-card,
-    .side-card { padding:1rem; }
+    .side-card,
+    .control-card { padding:1rem; }
+    .control-card {
+      min-height:100%;
+    }
+    .control-summary {
+      list-style:none;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:1rem;
+      cursor:pointer;
+    }
+    .control-summary::-webkit-details-marker { display:none; }
+    .control-summary::after {
+      content:'+';
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:24px;
+      height:24px;
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:50%;
+      color:rgba(245,243,240,.58);
+      font-size:.9rem;
+      line-height:1;
+      flex:0 0 auto;
+    }
+    .control-card[open] .control-summary::after { content:'−'; }
+    .control-summary .section-title,
+    .control-summary .section-copy { display:block; }
+    .control-body {
+      margin-top:1rem;
+      padding-top:1rem;
+      border-top:1px solid rgba(255,255,255,.07);
+    }
     .section-head {
       display:flex;
       justify-content:space-between;
@@ -728,7 +768,8 @@
 
     @media(max-width:1180px) {
       .qr-toolbar { grid-template-columns:1fr 1fr; }
-      .qr-grid { grid-template-columns:1fr; }
+      .qr-grid,
+      .controls-grid { grid-template-columns:1fr; }
       .floor-board { inset:0 clamp(116px,12vw,150px); }
       .callout-col { width:clamp(98px,12vw,128px); }
       .callout { padding:.5rem .55rem; }
@@ -808,6 +849,100 @@
       <div class="kpi" style="--c:#8a8a82"><div class="kpi-label">Puntos QR</div><div class="kpi-value">—</div><div class="kpi-sub">Activos / total</div></div>
     </section>
 
+    <section class="controls-grid" aria-label="Controles del mapa QR">
+      <details class="qr-panel control-card" id="generatorPanel">
+        <summary class="control-summary">
+          <span>
+            <span class="section-title">Generador paramétrico</span>
+            <span class="section-copy">Definí el local una vez y guardalo como <code>canales.mapa_base</code>.</span>
+          </span>
+        </summary>
+        <div class="control-body">
+          <div class="generator" id="generator">
+            <p class="section-copy">Definí el tipo de local, ambientes y metros. Se guarda como <code>canales.mapa_base</code> con shape v2.</p>
+            <div class="generator-grid">
+              <div class="qr-field full">
+                <label>Tipo de local</label>
+                <select class="qr-control" id="genTipoLocal">
+                  <option value="local">Local comercial</option>
+                  <option value="showroom">Showroom</option>
+                  <option value="stand">Stand / isla</option>
+                  <option value="oficina">Oficina comercial</option>
+                </select>
+              </div>
+              <div class="qr-field">
+                <label>Frente (m)</label>
+                <input class="qr-control" id="genFrente" type="number" min="2" max="80" step="0.5" value="8" />
+              </div>
+              <div class="qr-field">
+                <label>Fondo (m)</label>
+                <input class="qr-control" id="genFondo" type="number" min="2" max="120" step="0.5" value="14" />
+              </div>
+              <div class="qr-field">
+                <label>Baño</label>
+                <select class="qr-control" id="genBano">
+                  <option value="true">Sí</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+              <div class="qr-field">
+                <label>Mostrador</label>
+                <select class="qr-control" id="genMostrador">
+                  <option value="true">Sí</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+              <div class="qr-field">
+                <label>Oficinas</label>
+                <select class="qr-control" id="genOficinas">
+                  <option value="0">0</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+              </div>
+              <div class="qr-field">
+                <label>Plantas</label>
+                <select class="qr-control" id="genPlantas">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+              </div>
+            </div>
+            <p class="generator-note">El tipo de local ayuda a completar defaults, pero el shape guardado queda limitado a frente, fondo, baño, mostrador, oficinas, plantas y version:2.</p>
+            <div class="editor-actions">
+              <button class="qr-btn primary" id="btnGuardarBase">Guardar mapa base</button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="qr-panel control-card" id="pointEditorPanel">
+        <summary class="control-summary">
+          <span>
+            <span class="section-title">Puntos QR y editor visual</span>
+            <span class="section-copy">Lista de puntos, selección y herramientas de dibujo.</span>
+          </span>
+        </summary>
+        <div class="control-body">
+          <div class="point-list" id="pointList">
+            <div class="empty-state">Sin canal seleccionado.</div>
+          </div>
+
+          <div class="editor-box" id="editorBox">
+            <div class="editor-title">Editor visual</div>
+            <div id="editorContent" class="empty-state">Seleccioná un punto QR para ubicarlo.</div>
+          </div>
+
+          <div class="sql-box">Migración aplicada/autorizada:
+ALTER TABLE public.canales
+  ADD COLUMN IF NOT EXISTS mapa_base jsonb NULL;
+
+ALTER TABLE public.referencias
+  ADD COLUMN IF NOT EXISTS mapa_config jsonb NULL;</div>
+        </div>
+      </details>
+    </section>
+
     <section class="qr-grid">
       <div class="qr-panel map-card">
         <div class="section-head">
@@ -827,87 +962,6 @@
           <div class="mobile-list" id="mobileList"></div>
         </div>
       </div>
-
-      <aside class="qr-panel side-card">
-        <div class="generator" id="generator">
-          <div class="section-title">Generador paramétrico</div>
-          <p class="section-copy">Definí el tipo de local, ambientes y metros. Se guarda como <code>canales.mapa_base</code> con shape v2.</p>
-          <div class="generator-grid">
-            <div class="qr-field full">
-              <label>Tipo de local</label>
-              <select class="qr-control" id="genTipoLocal">
-                <option value="local">Local comercial</option>
-                <option value="showroom">Showroom</option>
-                <option value="stand">Stand / isla</option>
-                <option value="oficina">Oficina comercial</option>
-              </select>
-            </div>
-            <div class="qr-field">
-              <label>Frente (m)</label>
-              <input class="qr-control" id="genFrente" type="number" min="2" max="80" step="0.5" value="8" />
-            </div>
-            <div class="qr-field">
-              <label>Fondo (m)</label>
-              <input class="qr-control" id="genFondo" type="number" min="2" max="120" step="0.5" value="14" />
-            </div>
-            <div class="qr-field">
-              <label>Baño</label>
-              <select class="qr-control" id="genBano">
-                <option value="true">Sí</option>
-                <option value="false">No</option>
-              </select>
-            </div>
-            <div class="qr-field">
-              <label>Mostrador</label>
-              <select class="qr-control" id="genMostrador">
-                <option value="true">Sí</option>
-                <option value="false">No</option>
-              </select>
-            </div>
-            <div class="qr-field">
-              <label>Oficinas</label>
-              <select class="qr-control" id="genOficinas">
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-              </select>
-            </div>
-            <div class="qr-field">
-              <label>Plantas</label>
-              <select class="qr-control" id="genPlantas">
-                <option value="1">1</option>
-                <option value="2">2</option>
-              </select>
-            </div>
-          </div>
-          <p class="generator-note">El tipo de local ayuda a completar defaults, pero el shape guardado queda limitado a frente, fondo, baño, mostrador, oficinas, plantas y version:2.</p>
-          <div class="editor-actions">
-            <button class="qr-btn primary" id="btnGuardarBase">Guardar mapa base</button>
-          </div>
-        </div>
-
-        <div class="section-head">
-          <div>
-            <h2 class="section-title">Puntos QR</h2>
-            <p class="section-copy">El label sale de <code>referencias.nombre</code>. El mapa solo guarda planta y coordenadas.</p>
-          </div>
-        </div>
-        <div class="point-list" id="pointList">
-          <div class="empty-state">Sin canal seleccionado.</div>
-        </div>
-
-        <div class="editor-box" id="editorBox">
-          <div class="editor-title">Editor visual</div>
-          <div id="editorContent" class="empty-state">Seleccioná un punto QR para ubicarlo.</div>
-        </div>
-
-        <div class="sql-box">Migración aplicada/autorizada:
-ALTER TABLE public.canales
-  ADD COLUMN IF NOT EXISTS mapa_base jsonb NULL;
-
-ALTER TABLE public.referencias
-  ADD COLUMN IF NOT EXISTS mapa_config jsonb NULL;</div>
-      </aside>
     </section>
   </div>
 </main>
@@ -1435,7 +1489,13 @@ function renderAll() {
   renderEditor()
 }
 
+function openPointEditorPanel() {
+  const panel = $('#pointEditorPanel')
+  if (panel) panel.open = true
+}
+
 function selectPoint(id) {
+  openPointEditorPanel()
   state.selectedId = id
   state.drawingId = null
   state.activePlanta = state.configs.get(id)?.planta || 1
@@ -1496,6 +1556,7 @@ window.addEventListener('pointermove', e => {
 window.addEventListener('pointerup', () => { state.drag = null })
 
 function startDrawing(id) {
+  openPointEditorPanel()
   const cfg = state.configs.get(id) || DEFAULT_CONFIG
   state.drawingId = id
   state.drawingPlanta = cfg.planta || 1
