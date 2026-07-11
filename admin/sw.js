@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sur-patagonia-admin-v2';
+const CACHE_NAME = 'sur-patagonia-admin-v3';
 
 const STATIC_ASSETS = [
   '/assets/admin-icon-192.png',
