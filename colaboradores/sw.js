@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sur-patagonia-aliados-v3';
+const CACHE_NAME = 'sur-patagonia-aliados-v5';
 const CACHE_PREFIX = 'sur-patagonia-aliados-';
 
 const STATIC_ASSETS = [
@@ -44,7 +44,11 @@ self.addEventListener('fetch', event => {
   if (req.headers.has('authorization')) return;
 
   // Dejar pasar CDNs externos (Chart.js, Leaflet, Google Fonts, etc.)
-  if (!url.origin.includes('surpatagonia.com.ar') && url.origin !== self.location.origin) return;
+  const isTransitionHost = url.hostname === 'surpatagonian.com' ||
+    url.hostname === 'www.surpatagonian.com' ||
+    url.hostname === 'surpatagonia.com.ar' ||
+    url.hostname === 'www.surpatagonia.com.ar';
+  if (!isTransitionHost && url.origin !== self.location.origin) return;
 
   // HTML interno de colaboradores → siempre red primero
   const isInternalHtml =

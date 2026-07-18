@@ -23,7 +23,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="../js/paleta-canales.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -57,11 +56,11 @@
       gap: 1rem;
       position: sticky;
       top: 0;
-      z-index: 1000;
+      z-index: 10;
     }
-    .header-brand { display:flex; flex-direction:row; align-items:center; gap:0; }
-    .header-brand img { width:240px; height:auto; margin-right:1.35rem; filter:brightness(0) invert(1); opacity:.96; }
-    .header-brand span { color:#9d4eff; font-size:.64rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; padding-left:1.35rem; border-left:1px solid rgba(157,78,255,.26); text-shadow:0 0 8px rgba(157,78,255,.72),0 0 20px rgba(157,78,255,.34); }
+    .header-brand { display:flex; flex-direction:row; align-items:center; gap:.9rem; }
+    .header-brand img { width:240px; height:auto; filter:brightness(0) invert(1); opacity:.96; }
+    .header-brand span { color:rgba(255,255,255,.45); font-size:.52rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; padding-left:.9rem; border-left:1px solid rgba(255,255,255,.12); }
     .sp-bg-brand {
       position: fixed;
       bottom: 6vh; left: 0; right: 0;
@@ -74,33 +73,21 @@
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
       mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
     }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
     .header-canal { font-size: .75rem; color: var(--gris); }
     .header-canal strong { color: var(--blanco); display: block; font-size: .82rem; }
-    .pv-logout-bottom { display:flex; justify-content:center; margin:1.15rem 0 0; }
-    .pv-logout-card {
-      width:100%;
-      max-width:320px;
-      min-height:46px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      border:1px solid rgba(255,255,255,.09);
-      border-radius:14px;
-      background:linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
-      color:rgba(255,255,255,.68);
-      font-family:inherit;
-      font-size:.78rem;
-      font-weight:700;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-      cursor:pointer;
-      transition:border-color .18s,color .18s,background .18s;
+    .btn-salir {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--gris);
+      padding: .35rem .8rem;
+      border-radius: 8px;
+      font-size: .72rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .18s;
     }
-    .pv-logout-card:hover {
-      border-color:rgba(224,92,92,.42);
-      color:#e05c5c;
-      background:rgba(224,92,92,.055);
-    }
+    .btn-salir:hover { border-color: var(--rojo); color: var(--rojo); }
 
     /* Main */
     .main { max-width: 900px; margin: 0 auto; padding: 2rem 1.4rem; }
@@ -334,8 +321,8 @@
     .pv-monogram { width:82px; height:82px; display:grid; place-items:center; border:1px solid rgba(201,168,76,.32); border-radius:50%; background:rgba(201,168,76,.07); color:#e8c96a; font-family:'Cormorant Garamond',serif; font-size:1.75rem; letter-spacing:.08em; box-shadow:0 0 32px rgba(201,168,76,.08); }
     .pv-monogram-mobile { display:none; }
     .pv-mini-mapa-wrap { display:flex; flex-direction:column; align-items:center; gap:.45rem; }
-    .pv-mini-mapa { width:190px; height:190px; overflow:hidden; border:1px solid rgba(201,168,76,.25); border-radius:10px; background:#111; pointer-events:none; }
-    .pv-mini-mapa-label { max-width:190px; color:rgba(255,255,255,.3); font-size:.56rem; letter-spacing:.14em; text-align:center; text-transform:uppercase; }
+    .pv-mini-mapa { width:220px; height:220px; overflow:hidden; border:1px solid rgba(201,168,76,.25); border-radius:10px; background:#111; pointer-events:none; }
+    .pv-mini-mapa-label { max-width:220px; color:rgba(255,255,255,.3); font-size:.56rem; letter-spacing:.14em; text-align:center; text-transform:uppercase; }
     #pvMiniMapa .leaflet-control-zoom, #pvMiniMapa .leaflet-control-attribution { display:none !important; }
     .pv-img-hero .pv-mini-mapa-wrap {
       position:absolute; right:clamp(1rem,3vw,2.5rem); top:50%; bottom:auto; transform:translateY(-50%); z-index:3;
@@ -345,13 +332,13 @@
     .pv-resumen { margin-bottom:1.25rem; padding:.75rem 1rem; text-align:center; color:rgba(255,255,255,.42); font-size:.72rem; }
     .pv-resumen strong { color:#e8c96a; font-weight:600; }
     .pv-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; margin-bottom:1rem; }
-    .pv-kpi { position:relative; overflow:hidden; min-height:132px; padding:.65rem 1.3rem .75rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:12px; background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.018)); }
-    .pv-kpi::before { content:''; position:absolute; left:0; top:10%; bottom:20%; width:2px; background:var(--pv-c,#c9a84c); opacity:.75; }
-    .pv-kpi-label { margin-bottom:.25rem; color:rgba(255,255,255,.42); font-size:.58rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; }
+    .pv-kpi { position:relative; overflow:hidden; min-height:148px; padding:1.25rem 1.3rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:12px; background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.018)); }
+    .pv-kpi::before { content:''; position:absolute; left:0; top:22%; bottom:22%; width:2px; background:var(--pv-c,#c9a84c); opacity:.75; }
+    .pv-kpi-label { margin-bottom:.55rem; color:rgba(255,255,255,.42); font-size:.58rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; }
     .pv-kpi-n { font-size:2.45rem; font-weight:300; line-height:1; background:linear-gradient(135deg,#fff,rgba(255,255,255,.7)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
     .pv-kpi-n.pv-dorado { background:linear-gradient(135deg,#c9a84c,#e8c96a); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-    .pv-kpi-sub { margin-top:.25rem; color:rgba(255,255,255,.3); font-size:.63rem; line-height:1.45; }
-    .pv-kpi-delta { display:inline-flex; align-items:center; gap:.25rem; margin-top:.2rem; font-size:.61rem; font-weight:600; }
+    .pv-kpi-sub { margin-top:.55rem; color:rgba(255,255,255,.3); font-size:.63rem; line-height:1.45; }
+    .pv-kpi-delta { display:inline-flex; align-items:center; gap:.25rem; margin-top:.45rem; font-size:.61rem; font-weight:600; }
     .pv-delta-pos { color:#47d48a; }
     .pv-delta-neg { color:#d9825b; }
     .pv-delta-neu { color:rgba(255,255,255,.3); }
@@ -546,7 +533,7 @@
       .pv-recorrido-card .ya-estoy { animation:none !important; }
     }
     @media(max-width:720px){ .pv-recorrido-head{display:block}.pv-recorrido-canal{display:block;margin-top:.85rem;white-space:normal}.pv-recorrido-svg{min-height:235px} }
-    @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-kpi{min-height:130px;padding:.8rem 1rem}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
+    @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
 
     /* ── Trazabilidad CRM — PASIVO-07B ── */
     .pv-traza-sec {}
@@ -619,7 +606,7 @@
     /* Para cambiar acento SPORT: editar --sport-counter-accent en .pv-hero-counts */
     /* --sport-counter-accent: #D4ED00; */ /* Amarillo Volt — alternativa */
     .pv-hero-right-cluster {
-      position:relative; z-index:1; display:flex; align-items:flex-start; gap:1rem; flex-shrink:0; margin-top:.35rem;
+      display:flex; align-items:flex-start; gap:1rem; flex-shrink:0;
     }
     .pv-hero-qr-block {
       display:flex; flex-direction:column; align-items:center; gap:.6rem;
@@ -636,7 +623,7 @@
     .pv-hero-qr-badge.activo { color:#6ee89a; }
     .pv-hero-qr-badge.campana { color:#e8c96a; }
     .pv-hero-qr-badge.inactivo { color:rgba(255,255,255,.35); }
-    .pv-hero-header { display:flex; align-items:flex-start; justify-content:space-between; gap:2rem; margin-bottom:1.75rem; }
+    .pv-hero-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1.2rem; margin-bottom:1.4rem; }
     .pv-hero-counts {
       --sport-counter-accent: #6EE89A; /* Verde menta premium — activo */
       flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:.55rem;
@@ -650,7 +637,7 @@
     .pv-flip-digit { display:inline-flex; align-items:center; justify-content:center; width:1.55rem; height:2rem; background:linear-gradient(180deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.03) 50%,rgba(0,0,0,.08) 51%,rgba(255,255,255,.04) 100%); border:1px solid rgba(255,255,255,.1); border-bottom:1px solid rgba(0,0,0,.25); border-radius:4px; font-size:1.3rem; font-weight:300; line-height:1; color:var(--fc,var(--sport-counter-accent)); font-variant-numeric:tabular-nums; box-shadow:0 2px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08); animation:pvFlipIn .42s cubic-bezier(.22,.61,.36,1) both; }
     .pv-flip-digit::after { content:''; position:absolute; inset:50% 0 auto; height:1px; background:rgba(0,0,0,.22); pointer-events:none; }
     .pv-flip-digit { position:relative; }
-    @media(max-width:700px){ .header{padding:.85rem 1rem;gap:0;justify-content:flex-start}.header-brand{gap:0;min-width:0;width:100%;justify-content:flex-start;padding:0;box-sizing:border-box}.header-brand img{width:clamp(150px,41vw,166px);margin-right:clamp(.95rem,3.2vw,1.2rem)}.header-brand span{white-space:nowrap;font-size:clamp(.6rem,2.55vw,.68rem);letter-spacing:clamp(.18em,.75vw,.24em);padding-left:clamp(.95rem,3.2vw,1.2rem);flex:0 1 auto}.pv-logout-bottom{margin:1rem 0 1.25rem}.pv-logout-card{max-width:none;min-height:50px;border-radius:16px}.pv-hero-title{transform:translateY(.55rem)}.pv-hero-header{flex-direction:column;gap:2rem;margin-bottom:-7.25rem}.pv-alianza-hero{order:2;align-items:center;text-align:center;min-width:0;max-width:none;width:100%;padding:.1rem 0 .5rem}.pv-alianza-rings{width:88px;height:48px;margin-bottom:1.2rem;transform:translateY(-.72rem)}.pv-alianza-kicker{font-size:10.56px;letter-spacing:1.45px;max-width:18.5rem}.pv-alianza-lema{margin-top:.8rem;font-size:1.3rem;max-width:21rem}.pv-hero-right-cluster{display:none}.pv-hero-qr-block{flex-direction:row;padding:0} .pv-hero-counts{align-items:flex-start;flex-direction:row;width:100%;justify-content:space-around;border-top-width:1px;box-sizing:border-box} .pv-hero-count-item{align-items:center} .pv-hero-count-sep{display:none} }
+    @media(max-width:700px){ .pv-hero-header{flex-direction:column} .pv-hero-right-cluster{flex-direction:column;align-items:flex-end;width:100%} .pv-hero-qr-block{flex-direction:row;padding:0} .pv-hero-counts{align-items:flex-start;flex-direction:row;width:100%;justify-content:space-around;border-top-width:1px;box-sizing:border-box} .pv-hero-count-item{align-items:center} .pv-hero-count-sep{display:none} }
     @media(max-width:560px){ .pv-flip-digit{width:1.35rem;height:1.75rem;font-size:1.1rem} }
 
     /* ── Módulo Registros acumulados ── */
@@ -665,14 +652,11 @@
     .pv-carta-stat-mini small { font-size:.46rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:rgba(255,255,255,.32); }
     .pv-carta-seccion-titulo { font-size:.52rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.3); margin-bottom:.45rem; padding-bottom:.45rem; border-bottom:1px solid rgba(255,255,255,.06); margin-top:.2rem; }
     .pv-carta-sub-hint { font-size:.62rem; color:rgba(255,255,255,.32); line-height:1.5; margin-bottom:.75rem; }
-    .pv-carta-evol { display:grid; grid-template-columns:repeat(var(--mes-count,12),minmax(42px,1fr)); align-items:end; gap:.62rem; overflow-x:auto; padding:.25rem .15rem .55rem; margin-bottom:1.15rem; min-height:112px; }
-    .pv-carta-mes-col { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:.32rem; min-width:0; }
-    .pv-carta-mes-n { font-size:.66rem; font-weight:700; color:rgba(255,255,255,.56); line-height:1; }
-    .pv-carta-mes-bar { width:min(46px,72%); background:linear-gradient(to top,rgba(232,201,106,.7),rgba(232,201,106,.22)); border-radius:4px 4px 0 0; min-height:3px; }
-    .pv-carta-mes-label { font-size:.56rem; font-weight:700; letter-spacing:.055em; text-transform:uppercase; color:rgba(255,255,255,.34); white-space:nowrap; }
-    .pv-carta-mes-col.is-locked .pv-carta-mes-n { color:rgba(255,255,255,.16); }
-    .pv-carta-mes-col.is-locked .pv-carta-mes-bar { background:linear-gradient(to top,rgba(255,255,255,.11),rgba(255,255,255,.025)); border:1px solid rgba(255,255,255,.045); box-sizing:border-box; }
-    .pv-carta-mes-col.is-locked .pv-carta-mes-label { color:rgba(255,255,255,.18); }
+    .pv-carta-evol { display:flex; align-items:flex-end; gap:.45rem; overflow-x:auto; padding:.2rem .1rem .4rem; margin-bottom:1.15rem; min-height:90px; }
+    .pv-carta-mes-col { display:flex; flex-direction:column; align-items:center; gap:.25rem; flex-shrink:0; min-width:34px; }
+    .pv-carta-mes-n { font-size:.56rem; font-weight:600; color:rgba(255,255,255,.5); line-height:1; }
+    .pv-carta-mes-bar { width:26px; background:linear-gradient(to top,rgba(232,201,106,.7),rgba(232,201,106,.22)); border-radius:3px 3px 0 0; min-height:2px; }
+    .pv-carta-mes-label { font-size:.44rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,.25); white-space:nowrap; }
     .pv-carta-mes-estado { display:flex; flex-direction:column; gap:.5rem; margin-bottom:1.15rem; }
     .pv-carta-mes-row { display:flex; align-items:flex-start; gap:.75rem; padding:.6rem .7rem; border:1px solid rgba(255,255,255,.06); border-radius:9px; background:rgba(255,255,255,.018); }
     .pv-carta-mes-row-label { font-size:.62rem; font-weight:600; color:rgba(255,255,255,.55); white-space:nowrap; min-width:62px; padding-top:.1rem; }
@@ -690,56 +674,19 @@
     @media(max-width:560px){ .pv-carta-origen-row{grid-template-columns:1fr} .pv-carta-resumen{gap:.55rem} .pv-carta-stat-main{min-width:100px;padding:.8rem 1rem} .pv-carta-stat-main-n{font-size:2.1rem} }
 
     /* ── Dev-style hero pasivo ── */
-    .badge-aliado { font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; background:rgba(255,255,255,.045); color:rgba(255,255,255,.64); border:1px solid rgba(255,255,255,.12); padding:.22rem .68rem; border-radius:999px; white-space:nowrap; flex-shrink:0; }
-    .pv-hero-title { min-height:190px; display:flex; flex-direction:column; justify-content:space-between; margin-bottom:0; }
+    .badge-aliado { font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; background:rgba(201,168,76,.1); color:#e8c96a; border:1px solid rgba(201,168,76,.25); padding:.22rem .68rem; border-radius:999px; white-space:nowrap; flex-shrink:0; }
+    .pv-hero-title { margin-bottom:0; }
     .pv-hero-title h1 { font-family:'Inter',sans-serif; font-size:clamp(2rem,5vw,3rem); font-weight:800; letter-spacing:-.03em; text-transform:uppercase; line-height:1.05; background:linear-gradient(120deg,#ffffff 0%,rgba(255,255,255,.55) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:.4rem; }
-    .pv-hero-meta-actions { display:flex; flex-direction:column; align-items:flex-start; gap:.85rem; }
-    .pv-hero-sub-bar { font-size:.62rem; color:rgba(255,255,255,.52); letter-spacing:.12em; text-transform:uppercase; margin-bottom:0; display:flex; align-items:center; gap:.5rem; }
+    .pv-hero-sub-bar { font-size:.62rem; color:rgba(255,255,255,.52); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; display:flex; align-items:center; gap:.5rem; }
     .pv-periodo-bar-hero { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem; }
-    .pv-hero-actions-row { display:flex; gap:.45rem; flex-wrap:wrap; align-items:center; margin-top:0; }
-    @keyframes alianzaRingIn { 0%{opacity:0;transform:translateY(6px) scale(.86)} 100%{opacity:1;transform:translateY(0) scale(1)} }
-    @keyframes alianzaCopyIn { 0%{opacity:0;transform:translateY(7px)} 100%{opacity:1;transform:translateY(0)} }
-    .pv-alianza-hero { flex:1 1 420px; align-self:center; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:260px; max-width:680px; padding:.05rem 1.25rem .2rem; text-align:center; pointer-events:none; }
-    .pv-alianza-rings { width:92px; height:49px; margin-bottom:1.05rem; overflow:visible; transform:translateY(-1.45rem); }
-    .pv-alianza-ring { fill:none; stroke-width:2.6; stroke-linecap:round; opacity:0; transform-box:fill-box; transform-origin:center; animation:alianzaRingIn .74s cubic-bezier(.22,.61,.36,1) forwards; }
-    .pv-alianza-ring.gold { stroke:#e8c96a; filter:drop-shadow(0 0 8px rgba(232,201,106,.26)); animation-delay:.08s; }
-    .pv-alianza-ring.channel { animation-delay:.34s; }
-    .pv-alianza-glow { fill:none; stroke-width:8; stroke-linecap:round; opacity:0; filter:url(#alianzaBlur); animation:alianzaRingIn .74s cubic-bezier(.22,.61,.36,1) forwards; }
-    .pv-alianza-glow.gold { stroke:#e8c96a; stroke-opacity:.15; animation-delay:.08s; }
-    .pv-alianza-glow.channel { stroke-opacity:.15; animation-delay:.34s; }
-    .pv-alianza-channel-back { opacity:.3; }
-    .pv-alianza-channel-front { opacity:1; }
-    .pv-alianza-kicker { color:#7a7f88; font-size:11.4px; font-weight:600; letter-spacing:1.6px; line-height:1.35; text-transform:uppercase; max-width:none; white-space:nowrap; opacity:0; animation:alianzaCopyIn .62s ease forwards .66s; }
-    .pv-alianza-lema { margin-top:.82rem; color:rgba(236,238,242,.86); font-size:clamp(1.42rem,1.7vw,1.68rem); font-weight:600; letter-spacing:.42px; line-height:1.16; max-width:none; white-space:nowrap; opacity:0; animation:alianzaCopyIn .62s ease forwards .82s; }
-    @media (prefers-reduced-motion: reduce) {
-      .pv-alianza-ring,
-      .pv-alianza-glow,
-      .pv-alianza-kicker,
-      .pv-alianza-lema { animation:none !important; opacity:1 !important; }
-      .pv-alianza-channel-back { opacity:.3 !important; }
-    }
-    @media(max-width:700px){
-      .pv-alianza-hero{min-height:0;padding:.15rem 0 0;justify-content:flex-start;transform:translateY(6.3rem)}
-      .pv-alianza-rings{width:88px;height:48px;margin-bottom:1.5rem;transform:translateY(-.72rem)}
-      .pv-alianza-kicker{font-size:10.56px;letter-spacing:1.45px;max-width:20rem;white-space:normal}
-      .pv-alianza-lema{margin-top:.85rem;font-size:1.28rem;max-width:22rem;white-space:normal}
-    }
-    @media(max-width:560px){
-      .pv-alianza-rings{width:82px;height:44px;margin-bottom:1.25rem}
-      .pv-alianza-kicker{font-size:10.08px;letter-spacing:1.35px}
-      .pv-alianza-lema{font-size:1.22rem}
-    }
-    .pv-actividad-head { align-items:center; }
-    .pv-periodo-bar-chart { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; flex:0 0 auto; }
-    .pv-actividad-copy { margin-left:auto; text-align:right; }
     .pv-titular-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; }
-    .pv-titular-card { position:relative; overflow:hidden; min-height:170px; padding:1.5rem 1.6rem; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:14px; background:linear-gradient(155deg,rgba(255,255,255,.052),rgba(255,255,255,.016)); }
-    .pv-titular-card::before { content:''; position:absolute; left:0; top:1.5rem; bottom:1.5rem; width:2px; background:var(--pv-c,#6495ed); opacity:.78; }
-    .pv-titular-label { color:rgba(255,255,255,.42); font-size:.58rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase; margin-bottom:0; }
+    .pv-titular-card { position:relative; overflow:hidden; min-height:154px; padding:1.35rem 1.45rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:14px; background:linear-gradient(155deg,rgba(255,255,255,.052),rgba(255,255,255,.016)); }
+    .pv-titular-card::before { content:''; position:absolute; left:0; top:22%; bottom:22%; width:2px; background:var(--pv-c,#6495ed); opacity:.78; }
+    .pv-titular-label { color:rgba(255,255,255,.42); font-size:.58rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase; margin-bottom:.72rem; }
     .pv-titular-n { font-size:3rem; font-weight:300; line-height:1; color:#f8f6f2; }
     .pv-titular-n.pv-flip-num { justify-content:flex-start; }
-    .pv-titular-n .pv-flip-digit { width:2.7rem; height:3.42rem; font-size:2.26rem; }
-    .pv-titular-sub { margin-top:0; color:rgba(255,255,255,.36); font-size:.72rem; line-height:1.45; transform:translateY(.18rem); }
+    .pv-titular-n .pv-flip-digit { width:2.15rem; height:2.75rem; font-size:1.8rem; }
+    .pv-titular-sub { margin-top:.7rem; color:rgba(255,255,255,.36); font-size:.72rem; line-height:1.45; }
     .pv-titular-sub strong { color:#e8c96a; font-weight:700; }
     .pv-chart-origin-chips { display:flex; flex-wrap:wrap; gap:.45rem; margin:.85rem 0 .1rem; }
     .pv-origin-chip { display:inline-flex; align-items:center; gap:.42rem; padding:.28rem .62rem; border:1px solid rgba(255,255,255,.09); border-radius:999px; color:rgba(255,255,255,.62); font-size:.61rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; background:rgba(255,255,255,.025); }
@@ -749,48 +696,16 @@
     .pv-estado-simple span { display:block; color:var(--sc,#f5f3f0); font-size:1.35rem; font-weight:500; line-height:1; margin-bottom:.25rem; }
     .pv-estado-simple small { display:block; color:rgba(255,255,255,.42); font-size:.58rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
     .pv-estado-simple.secundario { opacity:.68; }
-    .pv-detalle {
-      margin-bottom:1rem;
-      border:0;
-      background:transparent;
-      box-shadow:none;
-      overflow:visible;
-    }
-    .pv-detalle-summary {
-      position:relative;
-      overflow:hidden;
-      cursor:pointer;
-      list-style:none;
-      padding:1.1rem 1.35rem;
-      display:grid;
-      grid-template-columns:minmax(0,auto) minmax(0,1fr) auto;
-      align-items:center;
-      gap:1rem;
-      color:#f5f3f0;
-      font-size:.62rem;
-      font-weight:700;
-      letter-spacing:.18em;
-      text-transform:uppercase;
-      border:1px solid rgba(232,201,106,.2);
-      border-top-color:rgba(232,201,106,.42);
-      border-radius:12px;
-      background:
-        linear-gradient(135deg,rgba(232,201,106,.105),rgba(232,201,106,.035) 46%,rgba(255,255,255,.018) 100%);
-      box-shadow:0 18px 48px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.055), 0 0 22px rgba(232,201,106,.055);
-      transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease;
-    }
-    .pv-detalle-summary:hover { background:rgba(232,201,106,.055); color:#e8c96a; }
-    .pv-detalle-summary::after { content:'Ver más ▸'; color:#e8c96a; font-size:.58rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; transition:color .18s ease; }
-    .pv-detalle[open] .pv-detalle-summary::after { content:'Ver más ▾'; color:#e8c96a; }
+    .pv-detalle { margin-bottom:1rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:12px; background:linear-gradient(155deg,rgba(255,255,255,.038),rgba(255,255,255,.012)); overflow:hidden; }
+    .pv-detalle-summary { cursor:pointer; list-style:none; padding:1.1rem 1.35rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; color:#f5f3f0; font-size:.62rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; }
     .pv-detalle-summary::-webkit-details-marker { display:none; }
     .pv-detalle-summary span { color:rgba(255,255,255,.34); font-size:.58rem; letter-spacing:.1em; }
-    .pv-detalle[open] .pv-detalle-summary { border-bottom-color:rgba(232,201,106,.2); }
+    .pv-detalle[open] .pv-detalle-summary { border-bottom:1px solid rgba(255,255,255,.06); }
     .pv-detalle-body { padding:1rem; }
-    @media(max-width:720px){ .pv-actividad-head{align-items:flex-start}.pv-actividad-copy{margin-left:0;text-align:left}.pv-periodo-bar-chart{order:2}.pv-detalle-summary{grid-template-columns:minmax(0,1fr) auto}.pv-detalle-summary span{grid-column:1 / -1} }
-    @media(max-width:640px){ .pv-hero-title{min-height:auto;gap:1.15rem}.pv-titular-grid{grid-template-columns:1fr}.pv-titular-card{min-height:140px}.pv-titular-n{font-size:2.45rem}.pv-titular-n .pv-flip-digit{width:2.22rem;height:2.88rem;font-size:1.88rem}.pv-titular-grid .pv-titular-card:nth-child(2) .pv-titular-sub{transform:translateY(.18rem)} }
+    @media(max-width:640px){ .pv-titular-grid{grid-template-columns:1fr}.pv-titular-card{min-height:132px}.pv-titular-n{font-size:2.45rem} }
     .pv-btn-refresh { min-height:30px; padding:.32rem .72rem; border:1px solid rgba(100,149,237,.28); border-radius:7px; background:linear-gradient(135deg,rgba(100,149,237,.15),rgba(100,149,237,.05)); color:#8fb2ff; font:600 .6rem 'Inter',sans-serif; cursor:pointer; transition:all .2s; letter-spacing:.06em; text-transform:uppercase; }
     .pv-btn-refresh:hover { border-color:rgba(100,149,237,.45); color:#fff; box-shadow:0 0 12px rgba(100,149,237,.2); }
-    .pv-hero-acciones { display:flex; gap:.45rem; margin-left:0; }
+    .pv-hero-acciones { display:flex; gap:.4rem; margin-left:auto; }
     .pv-btn-link-canal { min-height:30px; padding:.32rem .72rem; border:1px solid rgba(100,149,237,.28); border-radius:7px; background:linear-gradient(135deg,rgba(100,149,237,.15),rgba(100,149,237,.05)); color:#8fb2ff; font:600 .6rem 'Inter',sans-serif; cursor:pointer; transition:all .2s; letter-spacing:.06em; text-transform:uppercase; }
     .pv-btn-link-canal:hover { border-color:rgba(100,149,237,.45); color:#fff; box-shadow:0 0 12px rgba(100,149,237,.2); }
     .pv-btn-qr-dl { min-height:30px; padding:.32rem .72rem; border:1px solid rgba(80,200,120,.28); border-radius:7px; background:linear-gradient(135deg,rgba(80,200,120,.15),rgba(80,200,120,.05)); color:#6ee89a; font:600 .6rem 'Inter',sans-serif; cursor:pointer; transition:all .2s; letter-spacing:.06em; text-transform:uppercase; }
@@ -835,7 +750,7 @@
     .pv-mini-sub { font-size:.46rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.28); margin:-.18rem 0 .42rem; }
     .pv-mini-wrap { position:relative; height:60px; }
     @media(max-width:560px){
-      .header{padding:.85rem .9rem}.header-brand img{width:clamp(150px,42vw,168px)}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:120px;padding:.7rem .9rem .75rem}.pv-kpi-n{font-size:2rem}.pv-kpi::before{top:12%;bottom:32%}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.9rem}
+      .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.9rem}
       .pv-live-bar{flex-direction:column;align-items:flex-start;gap:.45rem}
       .pv-live-left{width:100%}
       .pv-live-right{width:100%;justify-content:space-between}
@@ -1219,7 +1134,10 @@
     <img src="../assets/logos/logo-horizontal-negro.png" alt="Sur Patagonia" />
     <span>Red de aliados</span>
   </div>
-  <div class="header-canal" id="headerCanal" hidden></div>
+  <div class="header-right">
+    <div class="header-canal" id="headerCanal"></div>
+    <button class="btn-salir" onclick="salir()">Salir</button>
+  </div>
 </header>
 
 <!-- MAIN -->
@@ -1397,7 +1315,7 @@
     const visitaColor = visita[0]?.color || REC_COHORT_PALETTE[0];
     const ofertaColor = oferta[0]?.color || REC_COHORT_PALETTE[1];
     const cerradoColor = cerrado[0]?.color || REC_COHORT_PALETTE[2];
-    const stationCount = (x, y, n, color) => `<text x="${x}" y="${y}" text-anchor="middle" fill="${color}" font-size="13" font-weight="800" font-family="Inter">${Number(n || 0).toLocaleString('es-AR')}</text>`;
+    const badge = (x, y, n, color) => n > 0 ? `<g transform="translate(${x},${y})"><rect x="-14" y="-9" width="28" height="18" rx="9" fill="rgba(0,0,0,.48)" stroke="${color}" stroke-opacity=".5"/><text x="0" y="3" text-anchor="middle" fill="${color}" font-size="8" font-weight="800" font-family="Inter">${n}</text></g>` : '';
     const tipoWalkInline = () => `<g stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round">
       <circle cx="0" cy="-12" r="2.9" fill="currentColor" stroke="none"/>
       <line x1="0" y1="-8.6" x2="0" y2="-1"/>
@@ -1529,8 +1447,7 @@
           <ellipse cx="0" cy="-2" rx="64" ry="3" fill="url(#sombraGrad)" opacity=".5"/>
           ${localTipitos}
           ${localExtra > 0 ? `<text x="76" y="-38" text-anchor="middle" fill="#8a8f99" font-size="9" font-family="Inter">+${localExtra}</text>` : ''}
-          <text x="0" y="26" text-anchor="middle" fill="#8a8f99" font-size="9.5" letter-spacing="1.8" font-family="Inter">TUS CONTACTOS GENERADOS</text>
-          <text x="0" y="44" text-anchor="middle" fill="#8a8f99" font-size="13" font-weight="800" font-family="Inter">${total.toLocaleString('es-AR')}</text>
+          <text x="0" y="26" text-anchor="middle" fill="#8a8f99" font-size="9.5" letter-spacing="1.8" font-family="Inter">TUS CONTACTOS · ${total.toLocaleString('es-AR')} Y SUMANDO</text>
         </g>
 
         <g transform="translate(340,272)">
@@ -1542,6 +1459,8 @@
         </g>
 
         ${visitaTipitos}
+        ${badge(430, 214, visita.length, '#f29a5a')}
+
         <g transform="translate(590,272)">
           <path d="M -32 0 L -32 -36 L 0 -56 L 32 -36 L 32 0 Z" fill="rgba(242,154,90,.07)" stroke="#f29a5a" stroke-width="1.6"/>
           <rect x="-9" y="-21" width="18" height="21" fill="#f29a5a" opacity=".4"/>
@@ -1550,11 +1469,10 @@
           <text x="55.5" y="-20.5" text-anchor="middle" fill="#f29a5a" font-size="6.5" font-family="Inter">VENTA</text>
           <text x="0" y="24" text-anchor="middle" fill="#f29a5a" font-size="9" letter-spacing="1.6" font-family="Inter">VISITA PROGRAMADA</text>
         </g>
-        ${stationCount(590, 314, visita.length, '#f29a5a')}
 
         ${ofertaTipitos}
-        <text x="735" y="296" text-anchor="middle" fill="#3bbf88" font-size="9" letter-spacing="1.6" font-family="Inter" opacity=".85">OFERTA ENVIADA</text>
-        ${stationCount(735, 314, oferta.length, '#3bbf88')}
+        ${badge(700, 214, oferta.length, '#3bbf88')}
+        <text x="672" y="222" text-anchor="middle" fill="#3bbf88" font-size="8" letter-spacing="1.4" font-family="Inter" opacity=".85">OFERTA ENVIADA</text>
 
         <g transform="translate(880,272)">
           <path d="M -30 0 L -30 -34 L 0 -54 L 30 -34 L 30 0 Z" fill="rgba(201,168,76,.12)" stroke="#c9a84c" stroke-width="2"/>
@@ -1564,7 +1482,7 @@
           ${cerradoTipitos}
           <text x="0" y="24" text-anchor="middle" fill="#c9a84c" font-size="9" letter-spacing="1.6" font-family="Inter">SU CASA</text>
         </g>
-        ${stationCount(880, 314, cerrado.length, '#c9a84c')}
+        ${badge(932, 214, cerrado.length, '#c9a84c')}
       </svg>
       <div class="pv-recorrido-note">Lectura agregada y anónima. No muestra nombre, teléfono, email ni mensajes.</div>
     </section>`;
@@ -1602,13 +1520,9 @@
     const hace30    = new Date(ahora - 30 * 86400000).toISOString()
 
     // Header
-    const headerCanalEl = document.getElementById('headerCanal')
-    if (esPasivo) {
-      headerCanalEl.innerHTML = ''
-    } else {
-      headerCanalEl.innerHTML =
-        `<div style="display:flex;align-items:center;gap:.65rem;"><div><strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}</div></div>`
-    }
+    const badgeHtml = esPasivo ? '<div class="badge-aliado">Aliado</div>' : ''
+    document.getElementById('headerCanal').innerHTML =
+      `<div style="display:flex;align-items:center;gap:.65rem;">${badgeHtml}<div><strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}</div></div>`
 
     // ── Cargar métricas globales + mensajes ───────
     const canalIds    = canales.map(c => c.id)
@@ -2206,69 +2120,31 @@
 
       const pvQrCodigo = codigoQrCanonicoPasivo(canal)
       const pvQrUrl = linkQrCanonico(pvQrCodigo)
-      const alianzaGold = '#e8c96a'
-      const alianzaReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
-      const alianzaHexRgb = hex => {
-        const clean = String(hex || '').replace('#', '')
-        if (!/^[0-9a-f]{6}$/i.test(clean)) return null
-        return [
-          parseInt(clean.slice(0, 2), 16),
-          parseInt(clean.slice(2, 4), 16),
-          parseInt(clean.slice(4, 6), 16)
-        ]
-      }
-      const alianzaDist = (a, b) => {
-        const ar = alianzaHexRgb(a), br = alianzaHexRgb(b)
-        if (!ar || !br) return 999
-        return Math.sqrt((ar[0] - br[0]) ** 2 + (ar[1] - br[1]) ** 2 + (ar[2] - br[2]) ** 2)
-      }
-      const alianzaPaletaCanal = Array.isArray(window.SPCanalColors?.PALETA_CANALES)
-        ? window.SPCanalColors.PALETA_CANALES
-            .filter(c => /^#[0-9a-f]{6}$/i.test(String(c || '')))
-            .filter(c => alianzaDist(c, alianzaGold) >= 90)
-        : []
-      const alianzaCanalLoop = alianzaPaletaCanal.length ? [...alianzaPaletaCanal, alianzaPaletaCanal[0]] : ['#9d4eff']
-      const alianzaCanalValues = alianzaCanalLoop.join(';')
-      const alianzaCanalDur = '56s'
-      const alianzaCanalAnimate = alianzaReducedMotion ? '' : `<animate attributeName="stroke" values="${alianzaCanalValues}" dur="${alianzaCanalDur}" repeatCount="indefinite"></animate>`
 
       main.innerHTML = `
         <div class="pv-hero-header">
           <div class="pv-hero-title">
             <h1>${esc(canal.nombre)}</h1>
-            <div class="pv-hero-meta-actions">
-              <div class="pv-hero-sub-bar">
-                <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};${dotGlow};flex-shrink:0;display:inline-block;"></span>
-                <span>${geo ? esc(geo) + ' · ' : ''}${esc(dotLabel)}</span>
-              </div>
-              <div class="pv-hero-actions-row">
-                <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+            <div class="pv-hero-sub-bar">
+              <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};${dotGlow};flex-shrink:0;display:inline-block;"></span>
+              <span>${geo ? esc(geo) + ' · ' : ''}${esc(dotLabel)}</span>
+            </div>
+            <div class="pv-periodo-bar-hero">
+              <button class="pv-flt-btn activo" data-dias="hoy" onclick="pvSetPeriodo(this)">Hoy</button>
+              <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
+              <button class="pv-flt-btn" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
+              <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
+              <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+              <div class="pv-hero-acciones">
                 <button class="pv-btn-link-canal" onclick="copiarLink('${pvQrUrl}', this)">Link</button>
                 <button class="pv-btn-qr-dl" onclick="descargarQRPasivo('${pvQrCodigo}')">Descargar QR</button>
               </div>
             </div>
-          </div>
-          <div class="pv-alianza-hero" aria-label="Alianza Sur Patagonia y red de aliados">
-            <svg class="pv-alianza-rings" viewBox="0 0 92 52" aria-hidden="true">
-              <defs>
-                <filter id="alianzaBlur" x="-45%" y="-45%" width="190%" height="190%">
-                  <feGaussianBlur stdDeviation="4"></feGaussianBlur>
-                </filter>
-              </defs>
-              <circle class="pv-alianza-glow gold" cx="31" cy="26" r="21"></circle>
-              <circle class="pv-alianza-glow channel" cx="61" cy="26" r="21" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
-                ${alianzaCanalAnimate}
-              </circle>
-              <circle class="pv-alianza-ring channel pv-alianza-channel-back" cx="61" cy="26" r="21" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
-                ${alianzaCanalAnimate}
-              </circle>
-              <circle class="pv-alianza-ring gold" cx="31" cy="26" r="21"></circle>
-              <path class="pv-alianza-ring channel pv-alianza-channel-front" d="M 40 26 C 40 38 49 47 61 47 C 73 47 82 38 82 26" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
-                ${alianzaCanalAnimate}
-              </path>
-            </svg>
-            <div class="pv-alianza-kicker">GRACIAS POR SER PARTE DE NUESTRA RED</div>
-            <div class="pv-alianza-lema">Si nosotros ganamos, vos también.</div>
+            <div class="pv-flt-custom" id="pvFltCustom" style="display:none;margin-top:.8rem;">
+              <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
+              <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
+              <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
+            </div>
           </div>
           <div class="pv-hero-right-cluster">
             ${canal.latitud && canal.longitud ? `
@@ -2283,12 +2159,12 @@
           <div class="pv-titular-card" style="--pv-c:#6495ed">
             <div class="pv-titular-label">Clics</div>
             <div class="pv-titular-n pv-flip-num">${mkFlip(totalScans, '#7aaeff')}</div>
-            <div class="pv-titular-sub">Lectura de QR o clics en tu link.</div>
+            <div class="pv-titular-sub"><strong>+${m.v30.toLocaleString('es-AR')}</strong> en los últimos 30 días.</div>
           </div>
           <div class="pv-titular-card" style="--pv-c:#c9a84c">
             <div class="pv-titular-label">Consultas</div>
             <div class="pv-titular-n pv-flip-num">${mkFlip(contactos.length, '#e8c96a')}</div>
-            <div class="pv-titular-sub">Personas que se sumaron a tu registro.</div>
+            <div class="pv-titular-sub"><strong>+${m.c30.toLocaleString('es-AR')}</strong> en los últimos 30 días.</div>
           </div>
         </div>
 
@@ -2307,14 +2183,10 @@
                 <div class="msg-card-body" id="msgBody-${i}"><div class="msg-card-cuerpo">${esc(m.cuerpo)}</div></div>
               </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonia tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
           </div>
-        </div>
-
-        <div class="pv-logout-bottom">
-          <button class="pv-logout-card" onclick="salir()">Salir</button>
         </div>`
 
       requestAnimationFrame(() => {
-        renderGraficoPasivo(contactos, 7)
+        renderGraficoPasivo(contactos, 0)
         renderMiniMapaPasivo(canal)
         const heroQrCanvas = document.getElementById('pvHeroQrCanvas')
         const heroQrCodigo = codigoQrCanonicoPasivo(canal)
@@ -2416,10 +2288,6 @@
                 </div>
               </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonia tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
           </div>
-        </div>
-
-        <div class="pv-logout-bottom">
-          <button class="pv-logout-card" onclick="salir()">Salir</button>
         </div>`
 
       // Render de gráficos y QR canvases tras DOM
@@ -2623,31 +2491,50 @@
       })
 
       const mesesOrdenados = Object.keys(porMes).sort()
-      const anioVisible = mesesOrdenados.length
-        ? Number(mesesOrdenados[mesesOrdenados.length - 1].split('-')[0])
-        : new Date().getFullYear()
-      const mesesAnio = Array.from({ length: 12 }, (_, i) =>
-        `${anioVisible}-${String(i + 1).padStart(2, '0')}`
-      )
-      const MAX_BAR_H = 82
+      const MAX_BAR_H = 60
       const maxMes = mesesOrdenados.length ? Math.max(...mesesOrdenados.map(k => porMes[k])) : 1
-      const mesesGridCount = 12
-      const colorPorMesActivo = {}
-      mesesOrdenados.forEach((k, idx) => { colorPorMesActivo[k] = COHORT_PALETTE[idx % COHORT_PALETTE.length] })
 
       // Barras: Registros por mes — color de cohorte por mes (no color semántico de estado)
-      const barrasMes = mesesAnio.map(k => {
-        const activo = (porMes[k] || 0) > 0
-        const color = activo ? colorPorMesActivo[k] : 'rgba(255,255,255,.16)'
-        const h = activo ? Math.max(2, Math.round(porMes[k] / maxMes * MAX_BAR_H)) : 14
+      const barrasMes = mesesOrdenados.map((k, idx) => {
+        const color = COHORT_PALETTE[idx % COHORT_PALETTE.length]
+        const h = Math.max(2, Math.round(porMes[k] / maxMes * MAX_BAR_H))
         const [y, m] = k.split('-')
         const label = nombresMes[parseInt(m) - 1] + ' ' + y.slice(2)
-        return `<div class="pv-carta-mes-col${activo ? '' : ' is-locked'}">
-          <div class="pv-carta-mes-n"${activo ? ` style="color:${color}"` : ''}>${porMes[k] || 0}</div>
-          <div class="pv-carta-mes-bar"${activo ? ` style="height:${h}px;background:linear-gradient(to top,${color}cc,${color}44)"` : ` style="height:${h}px"`}></div>
+        return `<div class="pv-carta-mes-col">
+          <div class="pv-carta-mes-n" style="color:${color}">${porMes[k]}</div>
+          <div class="pv-carta-mes-bar" style="height:${h}px;background:linear-gradient(to top,${color}cc,${color}44)"></div>
           <div class="pv-carta-mes-label">${label}</div>
         </div>`
       }).join('')
+
+      // Estado actual por mes — gobernanza visual: color de estado ≠ color de cohorte
+      const EST_LABEL = { nueva: 'Sin avance', contactado: 'Contactado', visita: 'En visita', oferta: 'Oferta', cerrado: 'Cerrado', descartado: 'Descartado' }
+      const EST_COLOR = { nueva: '#b39ddb', contactado: '#35c6b4', visita: '#f29a5a', oferta: '#6ee89a', cerrado: '#e8c96a', descartado: '#7b7f88' }
+
+      const filasMesEstado = mesesOrdenados.map((k, idx) => {
+        const cohortColor = COHORT_PALETTE[idx % COHORT_PALETTE.length]
+        const [y, m] = k.split('-')
+        const mesLabel = nombresMes[parseInt(m) - 1] + ' ' + y
+        const datos = porMesEstado[k]
+        const pills = ['nueva','contactado','visita','oferta','cerrado','descartado']
+          .filter(est => datos[est] > 0)
+          .map(est =>
+            `<span class="pv-carta-est-pill" style="background:${EST_COLOR[est]}18;color:${EST_COLOR[est]};border-color:${EST_COLOR[est]}45">${datos[est]} ${EST_LABEL[est]}</span>`
+          ).join('')
+        if (!pills) return ''
+        return `<div class="pv-carta-mes-row">
+          <div class="pv-carta-mes-row-label" style="border-left:2px solid ${cohortColor};padding-left:.5rem">${mesLabel}</div>
+          <div class="pv-carta-mes-row-arrow">→ hoy:</div>
+          <div class="pv-carta-mes-row-pills">${pills}</div>
+        </div>`
+      }).filter(Boolean).join('')
+
+      // Canal de ingreso — solo canal_via (propiedad/proyecto NO visible al aliado)
+      const porQR   = contactos.filter(c => c.canal_via === 'qr').length
+      const porLink = total - porQR
+
+      const origenItem = (color, texto, n) =>
+        `<div class="pv-carta-origen-item"><span class="pv-carta-origen-dot" style="background:${color}"></span>${texto}<strong>${n}</strong></div>`
 
       return `<div class="pv-sec pv-cartera-sec">
         <div class="pv-sec-head">
@@ -2657,7 +2544,9 @@
           </div>
         </div>
 
-        <div class="pv-carta-evol" style="--mes-count:${mesesGridCount}">${barrasMes}</div>
+        ${mesesOrdenados.length > 0
+          ? `<div class="pv-carta-evol">${barrasMes}</div>`
+          : '<div class="pv-empty">Todavía no hay registros por mes.</div>'}
       </div>`
     }
 
@@ -2891,17 +2780,14 @@
       }
 
       const hoy = new Date()
-      const yearActual = hoy.getFullYear()
-      const currentMesKey = `${yearActual}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
+      const year = hoy.getFullYear()
+      const currentMesKey = `${year}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
       const bloques = filasTraza.filter(f => f.fila_tipo === 'bloque_estado_actual')
       const movimientos = filasTraza.filter(f =>
         f.fila_tipo === 'movimiento_registro_activo' || f.fila_tipo === 'movimiento_registro_anonimo'
       )
 
       const keysConDatos = [...new Set(filasTraza.map(f => f.mes_ingreso_key).filter(Boolean))].sort()
-      const anioVisible = keysConDatos.length
-        ? Number(keysConDatos[keysConDatos.length - 1].split('-')[0])
-        : yearActual
       const cohortColorMap = {}
       keysConDatos.forEach((k, idx) => { cohortColorMap[k] = COHORT_PALETTE_A[idx % COHORT_PALETTE_A.length] })
       const colorMes = k => cohortColorMap[k] || COHORT_PALETTE_A[Math.max(0, keysConDatos.length) % COHORT_PALETTE_A.length]
@@ -2967,22 +2853,27 @@
 
       const mesCells = Array.from({ length: 12 }, (_, i) => {
         const m = i + 1
-        const key = `${anioVisible}-${String(m).padStart(2, '0')}`
+        const key = `${year}-${String(m).padStart(2, '0')}`
         const row = Math.floor(i / 4)
         const col = i % 4
         const x = [-69, -23, 23, 69][col]
         const y = [-160, -98, -36][row]
         const n = ingresoPorMes[key] || 0
-        const activo = n > 0
         const isCurrent = key === currentMesKey
-        const color = activo ? colorMes(key) : 'rgba(255,255,255,.18)'
+        const color = n > 0 ? colorMes(key) : colorMes(currentMesKey)
         const label = NOMBRES_MES_A[i]
-        const dash = isCurrent && !activo ? ' stroke-dasharray="4 3"' : ''
-        return `<g transform="translate(${x},${y})" color="${color}">
-          <rect x="-18" y="-20" width="36" height="40" rx="4" fill="color-mix(in srgb, currentColor ${activo ? 24 : 8}%, transparent)" stroke="currentColor" stroke-width="${activo ? '1.5' : '1'}"${dash}/>
-          <rect x="-18" y="-20" width="36" height="40" rx="4" fill="url(#gradTarjeta)" opacity="${activo ? '1' : '.35'}"/>
-          <text x="0" y="5" text-anchor="middle" fill="${activo ? '#f5f3f0' : 'rgba(255,255,255,.22)'}" font-size="14" font-weight="700" font-family="Inter">${n}</text>
-          <text x="0" y="30" text-anchor="middle" fill="${activo ? 'currentColor' : 'rgba(255,255,255,.22)'}" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
+        if (n > 0 || isCurrent) {
+          const dash = isCurrent ? ' stroke-dasharray="4 3"' : ''
+          return `<g transform="translate(${x},${y})" color="${color}">
+            <rect x="-18" y="-20" width="36" height="40" rx="4" fill="color-mix(in srgb, currentColor ${n > 0 ? 24 : 8}%, transparent)" stroke="currentColor" stroke-width="1.5"${dash}/>
+            <rect x="-18" y="-20" width="36" height="40" rx="4" fill="url(#gradTarjeta)"/>
+            ${n > 0 ? `<text x="0" y="5" text-anchor="middle" fill="#f5f3f0" font-size="14" font-weight="700" font-family="Inter">${n}</text>` : ''}
+            <text x="0" y="30" text-anchor="middle" fill="currentColor" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
+          </g>`
+        }
+        return `<g transform="translate(${x},${y})">
+          <use href="#mesVacio"/>
+          <text x="0" y="30" text-anchor="middle" fill="rgba(255,255,255,.22)" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
         </g>`
       }).join('')
 
@@ -3155,18 +3046,15 @@
     }
 
     function renderEstadosConsultasPasivo(contactos) {
-      const personasMap = new Map()
-      ;(Array.isArray(contactos) ? contactos : []).forEach((c, index) => {
+      const cuenta = estado => contactos.filter(c => (c.estado || 'nueva') === estado).length
+      const personas = new Map()
+      contactos.forEach((c, index) => {
         const clave = obtenerClavePersonaRecorrido(c, index)
         const estado = normalizarEstadoRecorrido(c?.estado)
-        const actual = personasMap.get(clave)
-        if (!actual || (REC_ESTADO_ORDEN[estado] ?? 0) > (REC_ESTADO_ORDEN[actual] ?? 0)) {
-          personasMap.set(clave, estado)
-        }
+        const actual = personas.get(clave)
+        if (!actual || (REC_ESTADO_ORDEN[estado] ?? 0) > (REC_ESTADO_ORDEN[actual] ?? 0)) personas.set(clave, estado)
       })
-      const estadosPersona = [...personasMap.values()].filter(estado => estado !== 'descartado')
-      const cuenta = estado => estadosPersona.filter(e => e === estado).length
-      const total = estadosPersona.length
+      const total = [...personas.values()].filter(estado => estado !== 'descartado').length
       const items = [
         { n: total, label: 'Total', color: '#cdd2da' },
         { n: cuenta('visita'), label: 'En visita', color: '#f29a5a' },
@@ -3204,7 +3092,7 @@
     function renderDetallePasivo(contactos, filasTraza) {
       return `
         <details class="pv-detalle">
-          <summary class="pv-detalle-summary">Ver el recorrido de cada consulta <span>Leads acumulados por mes y su recorrido</span></summary>
+          <summary class="pv-detalle-summary">Ver detalle de trazabilidad <span>Leads acumulados por mes y su recorrido</span></summary>
           <div class="pv-detalle-body">
             ${renderCarteraAcumulada(contactos)}
             ${renderTrazabilidad(filasTraza, { anonimo: true })}
@@ -3218,22 +3106,11 @@
 
       return `
         <div class="pv-sec">
-          <div class="pv-sec-head pv-actividad-head">
-            <div class="pv-periodo-bar-chart">
-              <button class="pv-flt-btn" data-dias="hoy" onclick="pvSetPeriodo(this)">Hoy</button>
-              <button class="pv-flt-btn activo" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
-              <button class="pv-flt-btn" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
-              <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
-            </div>
-            <div class="pv-actividad-copy">
+          <div class="pv-sec-head">
+            <div>
               <div class="pv-sec-titulo">Actividad en el tiempo</div>
               <div class="pv-sec-sub">Clics y consultas reales generadas por tu QR y enlace.</div>
             </div>
-          </div>
-          <div class="pv-flt-custom" id="pvFltCustom" style="display:none;">
-            <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
-            <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
-            <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
           </div>
           <div id="pvLiveBar4" class="pv-live-bar">
             <div class="pv-live-left">
@@ -3814,7 +3691,6 @@
         }
         const _lbl = valor === 'hoy' ? 'hoy' : `últimos ${dias} días`
         renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot() })
-        if (esPasivo) return
         if (_modoMultiSlot()) renderPanelesActivos(contactos)
         actualizarKpisActivo(desde, hasta)
         actualizarSlotCards(desde, hasta)
@@ -3829,7 +3705,6 @@
       if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
       const fechaLocal = val => { const [y,m,d] = val.split('-').map(Number); return new Date(y, m-1, d) }
       renderGraficoPasivo(contactos, 30, desde, hasta, { multiSlot: _modoMultiSlot() })
-      if (esPasivo) return
       if (_modoMultiSlot()) renderPanelesActivos(contactos)
       actualizarKpisActivo(fechaLocal(desde), fechaLocal(hasta))
       actualizarSlotCards(fechaLocal(desde), fechaLocal(hasta))

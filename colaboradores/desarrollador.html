@@ -511,6 +511,7 @@
 
 </main>
 
+<script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
@@ -566,21 +567,7 @@ const FALLBACK = ['#c070c0','#e08060','#9b7fcc','#e87090','#8a9fd4','#e0a860']
 let _fi=0, _zc={}
 const zonaColor = z => ZONA_COLORS[z] || (_zc[z] = _zc[z] || FALLBACK[_fi++ % FALLBACK.length])
 
-// ── DEV-E4: Paleta de identidad de canal — 54 colores premium, familias intercaladas ──
-// Ninguno coincide con colores reservados de KPIs, estados CRM ni eventos.
-const CHANNEL_PALETTE = [
-  '#3a4eb8','#c0603e','#2a9d7a','#c040a0','#c08a2e',
-  '#1e5fa0','#7a1f2e','#3eb489','#7b3fb0','#b87333',
-  '#1d7a8c','#d20c5c','#8c7853','#1f4ed8','#a0c850',
-  '#d65d7a','#1a7a7a','#a86fb5','#dc143c','#a89878',
-  '#8a7d72','#5d2e5d','#d4ed00','#6b7a2c','#ff6b5b',
-  '#39ff14','#2c3e9c','#a8512f','#1f8473','#a82c8f',
-  '#cc9333','#2a6db5','#8b2236','#4fca9e','#6b3fa0',
-  '#c8843e','#0f6e80','#e0186b','#a0825d','#2e5cb8',
-  '#bcd96e','#c94869','#0d6b6b','#b87fc0','#e63946',
-  '#6b3470','#e6f23a','#7a8a3e','#e85a4f','#4dff4d',
-  '#4556a8','#3aa68a','#9c2740','#8a5fc4'
-]
+const { colorCanalDesdeIndex } = window.SPCanalColors
 
 // Helpers de color para canalBadge
 function hexToRgba(hex, alpha) {
@@ -592,50 +579,11 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-function hslToHex(h, s, l) {
-  s /= 100; l /= 100
-  const k = n => (n + h / 30) % 12
-  const a = s * Math.min(l, 1 - l)
-  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
-  const toHex = x => Math.round(255 * x).toString(16).padStart(2, '0')
-  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`
-}
-
-function generateExtraChannelColor(index) {
-  const hue = (index * 137.508 + 23) % 360
-  return hslToHex(hue, 62, 56)
-}
-
-function canalKeyFromEntry(entryKey, canal) {
-  return String(
-    canal?.id || canal?.canal_id || canal?.codigo || entryKey || canal?.nombre || ''
-  ).trim()
-}
-
-// CHANNEL_COLOR_MAP: asignación única sin colisiones mientras haya colores libres
-let CHANNEL_COLOR_MAP = {}
-
-function buildChannelColorMap() {
-  const entries = Object.entries(_canalMap || {})
-    .map(([entryKey, canal]) => ({
-      key: canalKeyFromEntry(entryKey, canal),
-      order: String(
-        canal?.created_at || canal?.codigo || canal?.nombre || canal?.id || entryKey || ''
-      ).toLowerCase(),
-      canal
-    }))
-    .filter(x => x.key)
-  entries.sort((a, b) => a.order.localeCompare(b.order) || a.key.localeCompare(b.key))
-  CHANNEL_COLOR_MAP = {}
-  entries.forEach((item, index) => {
-    CHANNEL_COLOR_MAP[item.key] = CHANNEL_PALETTE[index] || generateExtraChannelColor(index)
-  })
-}
-
 function canalColor(idOrKey) {
-  if (!CHANNEL_COLOR_MAP || Object.keys(CHANNEL_COLOR_MAP).length === 0) buildChannelColorMap()
   const key = String(idOrKey || '').trim()
-  return CHANNEL_COLOR_MAP[key] || CHANNEL_PALETTE[0]
+  const canal = _canalMap?.[key]
+    || Object.values(_canalMap || {}).find(c => String(c?.codigo || '').trim() === key || String(c?.nombre || '').trim() === key)
+  return colorCanalDesdeIndex(canal?.color_index)
 }
 
 // DEV-E4.2: PIPE_COLORS eliminado — era código muerto (nunca consumido). Pipeline usa clases CSS directamente.
@@ -796,14 +744,14 @@ async function cargarTodo() {
     // Cargar canales por separado (visible gracias a "Desarrollador ve canales de su proyecto")
     const canalIds = [...new Set(_refs.map(r => r.canal_id).filter(Boolean))]
     const { data: canalesData } = canalIds.length > 0
-      ? await supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, activo, latitud, longitud').in('id', canalIds)
+      ? await supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, activo, latitud, longitud, color_index').in('id', canalIds)
       : { data: [] }
 
     // Construir mapas
     _canalMap   = {}
     _refToCanal = {}
     canalesData?.forEach(c => {
-      _canalMap[c.id] = { id:c.id, nombre:c.nombre, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, latitud:c.latitud||null, longitud:c.longitud||null, refCodes:[], clicks:0, leads:0 }
+      _canalMap[c.id] = { id:c.id, nombre:c.nombre, codigo:c.codigo, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, latitud:c.latitud||null, longitud:c.longitud||null, color_index:c.color_index, refCodes:[], clicks:0, leads:0 }
     })
     _refs.forEach(r => {
       if (r.canal_id && _canalMap[r.canal_id]) {
