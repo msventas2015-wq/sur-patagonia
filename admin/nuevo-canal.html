@@ -579,16 +579,8 @@
 </div>
 
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-import { supabase, SUPABASE_URL, SUPABASE_KEY, PUBLIC_BASE_URL, PUBLIC_HOST } from '../js/config.js'
+import { supabase, PUBLIC_BASE_URL, PUBLIC_HOST } from '../js/config.js'
 import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
-
-// Cliente auxiliar para crear usuarios sin cerrar la sesión del admin
-// (necesita su propia instancia con persistSession:false)
-const supabaseAux = createClient(
-  SUPABASE_URL, SUPABASE_KEY,
-  { auth: { storageKey: 'sp-aux-create', autoRefreshToken: false, persistSession: false } }
-)
 
 const BASE_URL = PUBLIC_BASE_URL
 document.getElementById('publicHostPreview').textContent = `${PUBLIC_HOST}/`
@@ -604,7 +596,7 @@ let _proyectos          = []
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if ((session.user.app_metadata?.rol ?? session.user.user_metadata?.rol) !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault()
@@ -622,6 +614,18 @@ function toSlug(str) {
 
 function esActivo(tipo) {
   return tipo === 'inmobiliaria' || tipo === 'particular'
+}
+
+async function mensajeErrorFuncion(error, fallback) {
+  if (error?.context) {
+    try {
+      const payload = await error.context.json()
+      if (payload?.error) return payload.error
+    } catch (_) {
+      // Un error de red/relay puede no tener un body JSON consumible.
+    }
+  }
+  return error?.message || fallback
 }
 
 // Escape HTML para prevenir XSS al renderizar datos
@@ -1250,7 +1254,6 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
 
   let userId = null
-  let usuarioCreadoAhora = false
 
   // El email es la identidad del colaborador: siempre se resuelve antes de guardar.
   const { data: todosUsuarios, error: usuariosError } = await supabase.rpc('admin_listar_usuarios')
@@ -1276,33 +1279,30 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
       return
     }
 
-    const { data: signUpData, error: signUpError } = await supabaseAux.auth.signUp({
-      email: emailAcceso,
-      password: passAcceso,
-    })
+    const { data: altaData, error: altaError } = await supabase.functions.invoke(
+      'admin-crear-usuario',
+      {
+        body: {
+          email: emailAcceso,
+          password: passAcceso,
+          rol: 'colaborador',
+          tipo_acceso: tipoAcceso,
+          // El destino del canal no otorga permisos de desarrollador.
+          proyecto_slug: null,
+        },
+      }
+    )
 
-    if (signUpError || !signUpData.user?.id) {
-      alert('No se pudo crear el usuario colaborador: ' + (signUpError?.message || 'el servicio no devolvió su identificador.'))
+    if (altaError || !altaData?.user_id) {
+      const detalle = altaData?.error || await mensajeErrorFuncion(
+        altaError,
+        'el servicio no devolvió el identificador del usuario.'
+      )
+      alert('No se pudo crear el usuario colaborador: ' + detalle)
       return
     }
 
-    userId = signUpData.user.id
-    usuarioCreadoAhora = true
-
-    const { error: rolError } = await supabase.rpc('admin_set_user_rol', {
-      p_user_id: userId,
-      p_rol: 'colaborador',
-    })
-    const { error: tipoAccesoError } = await supabase.rpc('admin_set_tipo_acceso', {
-      p_user_id: userId,
-      p_tipo: tipoAcceso,
-    })
-
-    if (rolError || tipoAccesoError) {
-      await supabaseAux.auth.signOut()
-      alert('El usuario fue creado, pero no se pudo configurar como colaborador: ' + (rolError || tipoAccesoError).message + '. Revisalo desde Admin > Usuarios.')
-      return
-    }
+    userId = altaData.user_id
   }
 
   // Coordenadas: acepta el formato que copia Google Maps ("lat, lng")
@@ -1335,14 +1335,11 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
 
   if (error) {
-    if (usuarioCreadoAhora) await supabaseAux.auth.signOut()
     alert('Error al guardar: ' + error.message)
     return
   }
 
   _canalId = data.id
-
-  if (usuarioCreadoAhora) await supabaseAux.auth.signOut()
 
   // Reflejar la vinculación confirmada en el formulario.
   document.getElementById('userId').value = userId

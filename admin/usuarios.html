@@ -371,19 +371,12 @@
 </div>
 
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-import { supabase, SUPABASE_URL, SUPABASE_KEY } from '../js/config.js'
-
-// Cliente secundario para crear usuarios sin afectar la sesión admin
-// (necesita persistSession:false para no sobreescribir el token del admin)
-const supabaseAux = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { storageKey: 'sp-aux-session', persistSession: false }
-})
+import { supabase } from '../js/config.js'
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault()
@@ -516,40 +509,50 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
   if (pass.length < 6) { mostrar('La contraseña debe tener al menos 6 caracteres.', 'err'); return }
   if (pass !== pass2)  { mostrar('Las contraseñas no coinciden.', 'err'); return }
 
+  const tipoAcceso = rol === 'colaborador'
+    ? (document.getElementById('uTipoAcceso')?.value || 'pasivo')
+    : null
+  const proyectoSlug = tipoAcceso === 'desarrollador'
+    ? (document.getElementById('uProyectoSlug')?.value || '')
+    : null
+
+  if (tipoAcceso === 'desarrollador' && !proyectoSlug) {
+    mostrar('Elegí el proyecto del desarrollador antes de crear el usuario.', 'err')
+    return
+  }
+
   btn.disabled    = true
   btn.textContent = 'Creando…'
 
-  // Crear usuario con cliente auxiliar (no afecta sesión admin)
-  const { data, error } = await supabaseAux.auth.signUp({ email, password: pass })
+  // Alta privilegiada y atómica: la Edge Function valida al admin y crea la
+  // cuenta con sus claims confiables sin depender del signup público.
+  const { data, error } = await supabase.functions.invoke('admin-crear-usuario', {
+    body: {
+      email,
+      password: pass,
+      rol,
+      tipo_acceso: tipoAcceso,
+      proyecto_slug: proyectoSlug,
+    },
+  })
 
   if (error) {
-    mostrar('Error: ' + error.message, 'err')
+    let detalle = error.message || 'No se pudo crear el usuario.'
+    try {
+      const contexto = error.context?.clone ? error.context.clone() : error.context
+      const payloadError = await contexto?.json?.()
+      if (payloadError?.error) detalle = payloadError.error
+    } catch (_) {}
+    mostrar('Error: ' + detalle, 'err')
     btn.disabled = false; btn.textContent = 'Crear usuario'
     return
   }
 
-  const userId = data.user?.id
+  const userId = data?.user_id
   if (!userId) {
-    mostrar('Usuario creado. Debe confirmar su email para activarse.', 'ok')
+    mostrar('Error: el servicio no devolvió el identificador del usuario creado.', 'err')
     btn.disabled = false; btn.textContent = 'Crear usuario'
-    limpiarForm(); cargarUsuarios()
     return
-  }
-
-  // Asignar rol
-  await supabase.rpc('admin_set_user_rol', { p_user_id: userId, p_rol: rol })
-
-  // Guardar tipo_acceso y proyecto_slug en metadata si es colaborador
-  if (rol === 'colaborador') {
-    const tipoAcceso = document.getElementById('uTipoAcceso')?.value || 'pasivo'
-    await supabase.rpc('admin_set_tipo_acceso', { p_user_id: userId, p_tipo: tipoAcceso })
-
-    if (tipoAcceso === 'desarrollador') {
-      const proyectoSlug = document.getElementById('uProyectoSlug')?.value
-      if (proyectoSlug) {
-        await supabase.rpc('admin_set_proyecto_slug', { p_user_id: userId, p_slug: proyectoSlug })
-      }
-    }
   }
 
   const esDesarrollador = rol === 'colaborador' && document.getElementById('uTipoAcceso')?.value === 'desarrollador'
@@ -612,7 +615,15 @@ window.toggleUsuario = async (id, desactivado) => {
 
 // ── Cambiar tipo de acceso del colaborador ────────────────
 window.cambiarTipoAcceso = async (userId, tipo) => {
-  await supabase.rpc('admin_set_tipo_acceso', { p_user_id: userId, p_tipo: tipo })
+  const { error } = await supabase.rpc(
+    'admin_set_tipo_acceso',
+    { p_user_id: userId, p_tipo: tipo }
+  )
+  if (error) {
+    alert('Error al cambiar el acceso: ' + error.message)
+    cargarUsuarios()
+    return
+  }
   cargarUsuarios()
 }
 
