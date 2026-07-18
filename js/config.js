@@ -15,6 +15,16 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 // URL pública del bucket de imágenes
 export const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/imagenes/`
 
+// ── Dominio público canónico (FUENTE ÚNICA — no repetir el host en páginas) ──
+// Migración jul-2026: surpatagonia.com.ar queda como dominio legado (redirección).
+export const PUBLIC_BASE_URL = 'https://surpatagonian.com'
+export const PUBLIC_HOST = 'surpatagonian.com'
+export function buildPublicUrl(path = '/', params = null) {
+  const url = new URL(path, PUBLIC_BASE_URL)
+  if (params) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
+  return url.toString()
+}
+
 // ── Sistema de referidos (canales de venta) ──────────────────
 // Captura ?canal= o ?ref= del URL y lo persiste 30 días en localStorage.
 // Así la atribución sobrevive aunque el visitante navegue por el sitio.
