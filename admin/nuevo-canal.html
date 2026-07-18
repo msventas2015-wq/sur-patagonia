@@ -390,7 +390,7 @@
           </div>
           <div class="nc-field nc-field-full">
             <label class="admin-label">Código único</label>
-            <input type="text" id="codigo" class="admin-input" placeholder="Se genera automáticamente" />
+            <input type="text" id="codigo" class="admin-input" placeholder="Se genera automáticamente" maxlength="72" />
             <div class="nc-code-preview">Código: <span id="slugPreview">—</span></div>
           </div>
           <div class="nc-field nc-field-full nc-field-email">
@@ -434,7 +434,7 @@
             <label class="admin-label">URL personalizada</label>
             <input type="text" id="destinoCustom" class="admin-input" placeholder="Ej: /propiedades" oninput="actualizarDestinoPreview()" />
           </div>
-          <div class="nc-field nc-field-full nc-hint" id="destinoPreview">Todos los QRs llevarán a: <strong>surpatagonia.com.ar/</strong></div>
+          <div class="nc-field nc-field-full nc-hint" id="destinoPreview">Todos los QRs llevarán a: <strong id="publicHostPreview"></strong></div>
         </div>
       </section>
 
@@ -580,7 +580,7 @@
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-import { supabase, SUPABASE_URL, SUPABASE_KEY } from '../js/config.js'
+import { supabase, SUPABASE_URL, SUPABASE_KEY, PUBLIC_BASE_URL, PUBLIC_HOST } from '../js/config.js'
 import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
 
 // Cliente auxiliar para crear usuarios sin cerrar la sesión del admin
@@ -590,7 +590,8 @@ const supabaseAux = createClient(
   { auth: { storageKey: 'sp-aux-create', autoRefreshToken: false, persistSession: false } }
 )
 
-const BASE_URL = 'https://surpatagonia.com.ar'
+const BASE_URL = PUBLIC_BASE_URL
+document.getElementById('publicHostPreview').textContent = `${PUBLIC_HOST}/`
 const params   = new URLSearchParams(location.search)
 const editId   = params.get('id')
 function construirLinkDirecto(destino, codigo) {
@@ -746,13 +747,13 @@ window.onTipoChange = function() {
 document.getElementById('nombre').addEventListener('input', function() {
   document.getElementById('saveBarNombre').textContent = this.value.trim() || 'Nuevo canal'
   if (!editId) {
-    const slug = toSlug(this.value)
+    const slug = recortarSlugRef(toSlug(this.value), MAX_REF_CODE_LENGTH)
     document.getElementById('codigo').value        = slug
     document.getElementById('slugPreview').textContent = slug || '—'
   }
 })
 document.getElementById('codigo').addEventListener('input', function() {
-  this.value = toSlug(this.value)
+  this.value = recortarSlugRef(toSlug(this.value), MAX_REF_CODE_LENGTH)
   document.getElementById('slugPreview').textContent = this.value || '—'
 })
 
@@ -763,7 +764,7 @@ window.actualizarDestinoPreview = function() {
   document.getElementById('destinoCustomWrap').style.display   = tipo === 'custom'   ? '' : 'none'
   const dest = getDestinoUrl()
   document.getElementById('destinoPreview').innerHTML =
-    `El QR principal llevará a: <strong>surpatagonia.com.ar${dest}</strong>`
+    `El QR principal llevará a: <strong>${PUBLIC_HOST}${dest}</strong>`
 }
 
 function getDestinoUrl() {
@@ -845,7 +846,7 @@ async function cargarDestinos() {
   selDest.innerHTML = '<option value="">— Seleccionar destino —</option>'
 
   const generalesDest = [
-    { label: 'Inicio (surpatagonia.com.ar)', value: '/' },
+    { label: `Inicio (${PUBLIC_HOST})`, value: '/' },
     { label: 'Listado de propiedades',       value: '/propiedades' },
     { label: 'Listado de proyectos',         value: '/proyectos' },
   ]
@@ -867,7 +868,7 @@ async function cargarDestinos() {
   const grpGR = document.createElement('optgroup')
   grpGR.label = '🌐 Páginas generales'
   const generalesRef = [
-    { label: 'Inicio (surpatagonia.com.ar)', destino: '/',             slug: 'home' },
+    { label: `Inicio (${PUBLIC_HOST})`, destino: '/',             slug: 'home' },
     { label: 'Listado de propiedades',       destino: '/propiedades',  slug: 'propiedades' },
     { label: 'Listado de proyectos',         destino: '/proyectos',    slug: 'proyectos' },
   ]
@@ -1043,18 +1044,18 @@ window.agregarReferencia = async function() {
   ])
   let codigo
   if (canalActivo) {
-    const prefix = codigoCanal + '-'
     let slotNum = 1
     do {
-      codigo = `${prefix}${String(slotNum).padStart(2, '0')}`
+      codigo = codigoConSufijoSeguro(codigoCanal, String(slotNum).padStart(2, '0'))
       slotNum++
-    } while (codigosOcupados.has(codigo))
+    } while (codigo && codigosOcupados.has(codigo) && slotNum < 1000)
   } else {
     codigo = proximoCodigoPunto(codigoCanal, punto_tipo, punto_ubicacion, nombre, codigosOcupados)
-    if (!codigo || codigo.length > MAX_REF_CODE_LENGTH) {
-      alert(`No se pudo generar un código QR seguro. Usá un nombre de punto más corto. Máximo interno: ${MAX_REF_CODE_LENGTH} caracteres.`)
-      return
-    }
+  }
+  // Guarda global única antes del INSERT: nada entra a referencias fuera de rango.
+  if (!codigo || codigo.length > MAX_REF_CODE_LENGTH || !/^[a-z0-9-]{2,80}$/.test(codigo)) {
+    alert(`No se pudo generar un código QR seguro. Usá un nombre o código más corto. Máximo interno: ${MAX_REF_CODE_LENGTH} caracteres.`)
+    return
   }
 
   const proyecto_slug = canalActivo && (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
@@ -1219,6 +1220,12 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const nombre = document.getElementById('nombre').value.trim()
   const codigo = document.getElementById('codigo').value.trim()
   if (!nombre || !codigo) { alert('El nombre y el código son obligatorios.'); return }
+  // Guarda global: el código del canal es también su referencia principal (/r/{codigo})
+  // y prefijo de los slots. Límite interno 72 (regex del sistema admite hasta 80).
+  if (!new RegExp(`^[a-z0-9-]{2,${MAX_REF_CODE_LENGTH}}$`).test(codigo)) {
+    alert(`El código del canal debe tener entre 2 y ${MAX_REF_CODE_LENGTH} caracteres (minúsculas, números y guiones). Acortalo antes de guardar.`)
+    return
+  }
 
   const tipo      = document.getElementById('tipo').value
   const activo_v  = esActivo(tipo)

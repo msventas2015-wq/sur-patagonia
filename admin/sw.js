@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sur-patagonia-admin-v3';
+const CACHE_NAME = 'sur-patagonia-admin-v5';
 
 const STATIC_ASSETS = [
   '/assets/admin-icon-192.png',
@@ -31,7 +31,11 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET') return;
   if (url.hostname.includes('supabase.co')) return;
   if (req.headers.has('authorization')) return;
-  if (!url.origin.includes('surpatagonia.com.ar') && url.origin !== self.location.origin) return;
+  const isTransitionHost = url.hostname === 'surpatagonian.com' ||
+    url.hostname === 'www.surpatagonian.com' ||
+    url.hostname === 'surpatagonia.com.ar' ||
+    url.hostname === 'www.surpatagonia.com.ar';
+  if (!isTransitionHost && url.origin !== self.location.origin) return;
 
   // HTML del admin → siempre red primero
   if (url.pathname.startsWith('/admin/')) {

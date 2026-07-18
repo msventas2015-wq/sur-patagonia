@@ -868,7 +868,7 @@
           <div class="form-grupo form-full">
             <label>Nombre comercial del proyecto *</label>
             <input type="text" id="nombre" placeholder="Ej: Álamos I · Buena Vista · Río Azul" required />
-            <div class="slug-preview">URL de miniweb: surpatagonia.com.ar/<span id="slugPreview">—</span></div>
+            <div class="slug-preview">URL de miniweb: <span id="publicHostSlug"></span>/<span id="slugPreview">—</span></div>
           </div>
           <div class="form-grupo">
             <label>Slug (URL) *</label>
@@ -2071,7 +2071,9 @@ ALTER TABLE proyectos
 </style>
 
 <script type="module">
-  import { supabase, optimizarImagen } from "../js/config.js"
+  import { supabase, optimizarImagen, PUBLIC_HOST } from "../js/config.js"
+
+  document.getElementById('publicHostSlug').textContent = PUBLIC_HOST
 
   // ── Auth check ─────────────────────────────────────────
   const { data: { session } } = await supabase.auth.getSession()
@@ -2932,7 +2934,7 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
 
       const isActivo = proyecto.estado === 'activo'
       mostrarAlerta('ok', isActivo
-        ? `Proyecto publicado. Miniweb disponible en surpatagonia.com.ar/${proyecto.slug}`
+        ? `Proyecto publicado. Miniweb disponible en ${PUBLIC_HOST}/${proyecto.slug}`
         : 'Borrador guardado correctamente.')
 
       if (isActivo) {

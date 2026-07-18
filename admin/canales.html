@@ -374,10 +374,10 @@
 </div>
 
 <script type="module">
-import { supabase } from '../js/config.js'
+import { supabase, PUBLIC_BASE_URL } from '../js/config.js'
 import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
 
-const BASE_URL = 'https://surpatagonia.com.ar'
+const BASE_URL = PUBLIC_BASE_URL
 const TIPO_LABEL = {
   inmobiliaria: 'Inmobiliaria', particular: 'Particular',
   punto_venta: 'Punto de venta', 'campaña': 'Campaña', evento: 'Evento'
@@ -586,7 +586,7 @@ function renderCanalCard(c) {
         <a href="nuevo-canal.html?id=${c.id}" class="btn-cc">Editar</a>
         <a href="contactos.html" class="btn-cc">Ver consultas</a>
         <button class="btn-cc danger" onclick="toggleActivo('${c.id}', ${c.activo})">${c.activo ? 'Desactivar' : 'Activar'}</button>
-        <button class="btn-cc danger" onclick="eliminarCanal('${c.id}', '${esc(c.nombre)}')">Eliminar</button>
+        <button class="btn-cc danger" onclick="eliminarCanal('${c.id}', '${esc(c.nombre)}')">Archivar</button>
       </div>
       <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
         <div>
@@ -639,12 +639,15 @@ function initFiltrosCanales() {
   })
 }
 
-// ── Eliminar canal ────────────────────────────────────────
+// ── Archivar canal ────────────────────────────────────────
+// Regla de negocio: los códigos impresos NO se borran ni se reciclan.
+// Se desactivan el canal y todos sus puntos QR; visitas y consultas quedan intactas.
 window.eliminarCanal = async (id, nombre) => {
-  if (!confirm(`¿Eliminar el canal "${nombre}"?\n\nSe borrarán también sus referencias (QRs). Las consultas y visitas registradas NO se borran.`)) return
-  await supabase.from('referencias').delete().eq('canal_id', id)
-  const { error } = await supabase.from('canales').delete().eq('id', id)
-  if (error) { alert('Error al eliminar: ' + error.message); return }
+  if (!confirm(`¿Archivar el canal "${nombre}" y desactivar todos sus puntos QR?\n\nLos códigos impresos se conservan (no se reciclan) pero dejan de estar activos. Las consultas y visitas registradas NO se borran.`)) return
+  const { error: errRefs } = await supabase.from('referencias').update({ activo: false }).eq('canal_id', id)
+  if (errRefs) { alert('Error al desactivar los puntos: ' + errRefs.message); return }
+  const { error } = await supabase.from('canales').update({ activo: false }).eq('id', id)
+  if (error) { alert('Error al archivar: ' + error.message); return }
   cargarCanales()
 }
 
