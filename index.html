@@ -138,8 +138,34 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Montserrat:wght@200;300;400;500;600&display=swap" rel="stylesheet" />
 
   <!-- SCRIPTS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script>
+    // La intro nunca puede bloquear el home por un recurso externo.
+    (() => {
+      const INTRO_MAX_MS = 2200
+      const INTRO_FADE_MS = 250
+      let dismissed = false
+
+      window.__dismissHomeIntro = () => {
+        if (dismissed) return
+        dismissed = true
+        window.__homeIntroDismissed = true
+
+        const root = document.documentElement
+        root.classList.add('intro-finished')
+        if (!window.__homeExperienceReady) root.classList.add('home-motion-fallback')
+
+        const loading = document.getElementById('loading')
+        const nav = document.getElementById('nav')
+        if (loading) window.setTimeout(() => { loading.style.display = 'none' }, INTRO_FADE_MS)
+        if (nav) nav.classList.add('visible')
+        window.dispatchEvent(new CustomEvent('home:intro-dismissed'))
+      }
+
+      window.setTimeout(window.__dismissHomeIntro, INTRO_MAX_MS)
+    })()
+  </script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
@@ -151,7 +177,13 @@
     body { background: var(--bg); color: var(--text); font-family: 'Montserrat', sans-serif; font-weight: 300; overflow-x: hidden; }
     img { display: block; max-width: 100%; }
     a { text-decoration: none; color: inherit; }
-    #loading { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+    #loading { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; transition: opacity 0.25s ease, visibility 0.25s ease; }
+    html.intro-finished #loading { opacity: 0; visibility: hidden; pointer-events: none; }
+    html.intro-finished #nav { opacity: 1; pointer-events: all; }
+    html.home-motion-fallback .reveal,
+    html.home-motion-fallback .reveal-left,
+    html.home-motion-fallback .reveal-right { opacity: 1 !important; transform: none !important; }
+    html.home-motion-fallback .reveal-clip { clip-path: none !important; opacity: 1 !important; }
     #loading-content { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem; width: 100%; text-align: center; }
     #loading-picos { width: 110px; opacity: 0; transform: translateY(-18px); mix-blend-mode: screen; display: block; margin: 0 auto; }
     #loading-title { font-family: 'Montserrat', sans-serif; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.45em; text-transform: uppercase; color: var(--text); display: flex; gap: 0; overflow: hidden; }
@@ -161,21 +193,21 @@
     #loading-line-wrap { position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: rgba(255,255,255,0.04); }
     #loading-line { height: 100%; width: 0%; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
     #loading-wipe { position: absolute; inset: 0; background: var(--bg); transform: translateY(100%); }
-    #nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1001; display: flex; align-items: center; justify-content: space-between; padding: 0.93rem 3rem; background: rgba(8,8,8,0.6) !important; opacity: 0; pointer-events: none; transition: opacity 0.5s ease, padding 0.4s ease, background 0.5s ease, box-shadow 0.5s ease; }
+    #nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1001; display: flex; align-items: center; justify-content: space-between; padding: 0.93rem 3rem; background: rgba(9,9,9,0.72); opacity: 0; pointer-events: none; transition: opacity 0.5s ease, padding 0.4s ease, background 0.5s ease, box-shadow 0.5s ease; }
     #nav.visible { opacity: 1; pointer-events: all; }
     #nav.scrolled { background: rgba(8,8,8,0.95); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 1px 0 rgba(255,255,255,0.04); padding: 0.93rem 3rem; }
     .nav-logo { display: flex; align-items: center; }
     .nav-logo img { height: 44px; display: block; }
     .nav-links { display: flex; align-items: center; gap: 0.2rem; }
-    .nav-link { font-size: 0.68rem; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(240,237,232,0.55); padding: 0.5rem 1rem; transition: color 0.2s; }
-    .nav-link:hover, .nav-link.active { color: var(--text); }
+    .nav-link { font-size: 0.68rem; font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,243,240,0.86); padding: 0.5rem 1rem; text-shadow: 0 1px 12px rgba(0,0,0,0.72); transition: color 0.2s; }
+    .nav-link:hover, .nav-link.active { color: #f5f3f0; }
     .nav-sep { width: 1px; height: 14px; background: rgba(255,255,255,0.1); margin: 0 0.5rem; }
     .nav-cta { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bg); background: var(--gold); padding: 0.55rem 1.4rem; margin-left: 0.5rem; transition: background 0.2s; }
     .nav-cta:hover { background: var(--gold-light); }
     #hero { position: relative; height: 100vh; min-height: 600px; display: flex; align-items: center; overflow: hidden; }
-    #hero-video-wrap { position: absolute; inset: 0; overflow: hidden; }
-    #yt-bg { position: absolute; top: 50%; left: 50%; width: 100vw; height: 56.25vw; min-height: 100vh; min-width: 177.78vh; transform: translate(-50%, -50%); pointer-events: none; }
-    #yt-bg iframe, #yt-player, #yt-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; pointer-events: none; }
+    #hero-video-wrap { position: absolute; inset: 0; overflow: hidden; background: #0b0a09 url('/assets/hero-poster.jpg') center/cover no-repeat; }
+    #hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease; }
+    #hero-video.is-ready { opacity: 1; }
     .hero-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(8,8,8,0.6) 0%, rgba(8,8,8,0) 20%), linear-gradient(to bottom, rgba(8,8,8,0) 40%, rgba(8,8,8,0.6) 70%, rgba(8,8,8,1) 100%); }
     .hero-content { position: relative; z-index: 2; padding: 0 2rem; max-width: 1280px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; }
     .hero-eyebrow { font-size: 0.6rem; font-weight: 400; letter-spacing: 0.45em; text-transform: uppercase; color: rgba(201,168,76,0.8); margin-bottom: 2.5rem; opacity: 0; }
@@ -350,6 +382,7 @@
     .nav-burger.open { opacity: 0; pointer-events: none; }
     .nav-mob-header-logo { display: none; }
     @media (max-width: 768px) {
+      #hero-video { display: none; }
       #nav { padding: 1rem 1.5rem; }
       #nav.scrolled { padding: 1rem 1.5rem; }
       .nav-links { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(8,8,8,0.97); flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 12vh; padding-top: 12dvh; gap: 1.5rem; z-index: 999; text-align: center; }
@@ -599,11 +632,15 @@
       /* subir logo loading en mobile */
       #loading-content { transform: translateY(-8vh); }
     }
+    @media (prefers-reduced-motion: reduce) {
+      #hero-video { display: none; }
+    }
     /* Cursor custom — solo se activa en desktop vía JS (.cursor-enabled) */
     @media (hover: none), (pointer: coarse) {
       #cursor { display: none !important; }
     }
   </style>
+  <noscript><style>#loading{display:none!important}#nav{opacity:1!important;pointer-events:all!important}.reveal,.reveal-left,.reveal-right{opacity:1!important;transform:none!important}.reveal-clip{clip-path:none!important}</style></noscript>
 </head>
 <body>
 <div id="cursor"></div>
@@ -644,10 +681,9 @@
 <!-- HERO -->
 <section id="hero">
   <h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Sur Patagonian — Propiedades y Desarrollos en El Bolsón, Patagonia Argentina</h1>
-  <div id="hero-video-wrap">
-    <div id="yt-bg">
-      <div id="yt-player"></div>
-    </div>
+  <div id="hero-video-wrap" aria-hidden="true">
+    <video id="hero-video" autoplay muted loop playsinline preload="metadata"
+           poster="/assets/hero-poster.jpg" data-src="/assets/hero-loop.mp4"></video>
   </div>
   <div class="hero-overlay"></div>
   <div class="hero-content" style="width:90%;max-width:1100px;">
@@ -1495,7 +1531,7 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
 <section id="av-banner">
   <div id="av-video-wrap">
     <div id="av-yt-bg">
-      <iframe src="https://www.youtube.com/embed/7bxKpIxdhXU?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=7bxKpIxdhXU&playsinline=1&iv_load_policy=3&disablekb=1&start=0" allow="autoplay; encrypted-media" allowfullscreen title="Sur Patagonian Audiovisual"></iframe>
+      <iframe loading="lazy" src="https://www.youtube.com/embed/7bxKpIxdhXU?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playlist=7bxKpIxdhXU&playsinline=1&iv_load_policy=3&disablekb=1&start=0" allow="autoplay; encrypted-media" allowfullscreen title="Sur Patagonian Audiovisual"></iframe>
     </div>
   </div>
   <div id="av-overlay-flat"></div>
@@ -1724,7 +1760,6 @@ async function aplicarSiteConfig() {
     const slides = document.querySelectorAll('.story-slide')
     scrollKeys.forEach((key, i) => { if (cfg[key] && slides[i]) slides[i].style.backgroundImage = `url('${cfg[key]}')` })
     const ytParams = '?autoplay=1&mute=1&loop=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&disablekb=1'
-    if (cfg.video_hero) { window._ytHeroVideoId = cfg.video_hero; /* IFrame API player will use this on init */ }
     if (cfg.video_audiovisual) { const f = document.querySelector('#av-yt-bg iframe'); if (f) f.src = `https://www.youtube.com/embed/${cfg.video_audiovisual}${ytParams}&playlist=${cfg.video_audiovisual}` }
     if (cfg.overlay_hero) { const op = parseInt(cfg.overlay_hero)/100; const el = document.querySelector('.hero-overlay'); if (el) el.style.background = `linear-gradient(to bottom, rgba(8,8,8,${Math.min(op+0.2,1)}) 0%, rgba(8,8,8,0) 20%), linear-gradient(to bottom, rgba(8,8,8,0) 40%, rgba(8,8,8,${op}) 70%, rgba(8,8,8,1) 100%)` }
     const flatEl = document.getElementById('av-overlay-flat')
@@ -1772,13 +1807,7 @@ const wipeEl = document.getElementById('loading-wipe')
 
 // Safety: si GSAP no carga (CDN caído), cerrar el loading igual
 function closeSinGsap() {
-  loadingEl.style.transition = 'opacity 0.4s'
-  loadingEl.style.opacity = '0'
-  setTimeout(() => {
-    loadingEl.style.display = 'none'
-    const nav = document.getElementById('nav')
-    if (nav) nav.classList.add('visible')
-  }, 400)
+  window.__dismissHomeIntro?.()
 }
 
 if (!window.gsap) {
@@ -1791,8 +1820,9 @@ if (!window.gsap) {
     .to(chars, { opacity:1, y:0, duration:0.5, ease:'power2.out', stagger:0.05 }, 0.5)
     .to(subEl, { opacity:1, duration:0.6, ease:'power2.out' }, 1.3)
 
-  // Loading dinámico: espera al evento load real, mínimo 1400ms para que la animación se vea bien
-  const MIN_LOAD = 1400
+  // Loading dinámico con tope independiente: ningún recurso puede bloquear el home.
+  const MIN_LOAD = 1200
+  const MAX_LOAD = 2200
   let pageLoaded = false
   const loadStart = performance.now()
   window.addEventListener('load', () => { pageLoaded = true })
@@ -1800,16 +1830,17 @@ if (!window.gsap) {
 
   function closeLoading() {
     setTimeout(() => {
-      gsap.to(wipeEl, { y:0, duration:0.65, ease:'power3.inOut', onComplete: () => {
-        loadingEl.style.display = 'none'
-        document.getElementById('nav').classList.add('visible')
-        initHero(); initScroll()
-      }})
-    }, 300)
+      gsap.to(wipeEl, { y:0, duration:0.45, ease:'power3.inOut', onComplete: () => window.__dismissHomeIntro?.() })
+    }, 100)
   }
 
   function tick(now) {
     const elapsed = now - loadStart
+    if (elapsed >= MAX_LOAD) {
+      lineEl.style.width = '100%'
+      window.__dismissHomeIntro?.()
+      return
+    }
     let pct
     if (!pageLoaded) {
       // Página todavía cargando: llenar hasta 80% en MIN_LOAD ms
@@ -1827,6 +1858,17 @@ if (!window.gsap) {
   }
   requestAnimationFrame(tick)
 }
+let homeExperienceInitialized = false
+function initHomeExperience() {
+  if (homeExperienceInitialized || !window.gsap || !window.ScrollTrigger) return
+  homeExperienceInitialized = true
+  window.__homeExperienceReady = true
+  document.documentElement.classList.remove('home-motion-fallback')
+  initHero()
+  initScroll()
+}
+window.addEventListener('home:intro-dismissed', initHomeExperience, { once:true })
+if (window.__homeIntroDismissed) initHomeExperience()
 function initHero() {
   if (!document.querySelector('#heroEyebrow')) return
   gsap.timeline({ defaults:{ ease:'power3.out' } })
@@ -2571,48 +2613,46 @@ input.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(inpu
 </script>
 <!-- ── FIN CHAT IA ──────────────────────────────────────────────── -->
 
-<!-- ── YouTube IFrame API (iOS autoplay fix) ─────────────────────── -->
+<!-- ── Hero self-hosted: fuente sólo en desktop ───────────────────── -->
 <script>
 (function() {
-  var tag = document.createElement('script');
-  tag.src = 'https://www.youtube.com/iframe_api';
-  var first = document.getElementsByTagName('script')[0];
-  first.parentNode.insertBefore(tag, first);
-})();
+  const video = document.getElementById('hero-video')
+  if (!video) return
 
-window.onYouTubeIframeAPIReady = function() {
-  var videoId = window._ytHeroVideoId || 'VMkGpUK7E2Q';
-  var player = new YT.Player('yt-player', {
-    videoId: videoId,
-    playerVars: {
-      autoplay: 1,
-      mute: 1,
-      loop: 1,
-      controls: 0,
-      showinfo: 0,
-      rel: 0,
-      modestbranding: 1,
-      playlist: videoId,
-      playsinline: 1,
-      iv_load_policy: 3,
-      disablekb: 1
-    },
-    events: {
-      onReady: function(e) {
-        e.target.mute();
-        e.target.playVideo();
-      },
-      onStateChange: function(e) {
-        // If video ends or pauses unexpectedly, restart
-        if (e.data === YT.PlayerState.ENDED || e.data === YT.PlayerState.PAUSED) {
-          e.target.playVideo();
-        }
-      }
+  const desktop = window.matchMedia('(min-width: 769px)')
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+
+  function removeSource() {
+    video.pause()
+    video.classList.remove('is-ready')
+    video.querySelectorAll('source').forEach(source => source.remove())
+    video.load()
+  }
+
+  function syncHeroMedia() {
+    if (!desktop.matches || reducedMotion.matches) {
+      removeSource()
+      return
     }
-  });
-};
+
+    if (!video.querySelector('source')) {
+      const source = document.createElement('source')
+      source.src = video.dataset.src
+      source.type = 'video/mp4'
+      video.appendChild(source)
+      video.load()
+    }
+    video.play().catch(() => {})
+  }
+
+  video.addEventListener('canplay', () => video.classList.add('is-ready'))
+  video.addEventListener('error', () => video.classList.remove('is-ready'))
+  desktop.addEventListener?.('change', syncHeroMedia)
+  reducedMotion.addEventListener?.('change', syncHeroMedia)
+  syncHeroMedia()
+})()
 </script>
-<!-- ── FIN YouTube IFrame API ──────────────────────────────────────── -->
+<!-- ── FIN hero self-hosted ───────────────────────────────────────── -->
 
 
 <script type="module">
