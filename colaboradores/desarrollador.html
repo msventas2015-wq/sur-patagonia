@@ -528,8 +528,15 @@ leerConfigVisual(supabase).then(aplicarConfigVisual).catch(() => {})
 // ── Auth ─────────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { location.href = 'login.html'; throw new Error('no session') }
-const meta = session.user.user_metadata || {}
-if (meta.tipo_acceso !== 'desarrollador') { location.href = 'index.html'; throw new Error('not dev') }
+const meta = session.user.app_metadata || {}
+if (
+  meta.rol !== 'colaborador'
+  || meta.tipo_acceso !== 'desarrollador'
+  || !meta.proyecto_slug
+) {
+  location.href = 'login.html'
+  throw new Error('forbidden')
+}
 const proyectoSlug = meta.proyecto_slug || ''
 
 document.getElementById('btnSalir').addEventListener('click', async () => {
@@ -751,7 +758,7 @@ async function cargarTodo() {
     _canalMap   = {}
     _refToCanal = {}
     canalesData?.forEach(c => {
-      _canalMap[c.id] = { id:c.id, nombre:c.nombre, codigo:c.codigo, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, latitud:c.latitud||null, longitud:c.longitud||null, color_index:c.color_index, refCodes:[], clicks:0, leads:0 }
+      _canalMap[c.id] = { id:c.id, nombre:c.nombre, codigo:c.codigo, tipo:c.tipo, ciudad:c.ciudad, provincia:c.provincia, activo:c.activo, latitud:c.latitud||null, longitud:c.longitud||null, color_index:c.color_index, refCodes:[], clicks:0, leads:0, leadsWeb:0 }
     })
     _refs.forEach(r => {
       if (r.canal_id && _canalMap[r.canal_id]) {
@@ -765,7 +772,7 @@ async function cargarTodo() {
       refCodes.length > 0
         ? supabase.from('visitas').select('canal_ref, created_at').in('canal_ref', refCodes).limit(50000)
         : Promise.resolve({ data: [] }),
-      supabase.from('contactos').select('id, created_at, nombre, canal_ref, estado').eq('proyecto_slug', proyectoSlug).order('created_at',{ascending:false}).limit(5000),
+      supabase.from('contactos').select('id, created_at, nombre, canal_ref, origen, estado').eq('proyecto_slug', proyectoSlug).order('created_at',{ascending:false}).limit(5000),
       _proyectoId
         ? supabase.from('lotes').select('numero, tipo_lote, estado, mapa_x, mapa_y').eq('proyecto_id', _proyectoId)
         : Promise.resolve({ data: [] })
@@ -859,19 +866,19 @@ function calcularTermometro() {
   const hace60 = new Date(ahora - 60 * 86400000)
 
   const v30 = _visitas.filter(v => new Date(v.created_at) >= hace30).length
-  const c30 = _contactos.filter(c => new Date(c.created_at) >= hace30).length
+  const c30 = _contactos.filter(c => new Date(c.created_at) >= hace30 && c.origen !== 'manual').length
   const vAnterior = _visitas.filter(v => {
     const d = new Date(v.created_at)
     return d >= hace60 && d < hace30
   }).length
   const cAnterior = _contactos.filter(c => {
     const d = new Date(c.created_at)
-    return d >= hace60 && d < hace30
+    return d >= hace60 && d < hace30 && c.origen !== 'manual'
   }).length
 
   const canalesActivos = new Set()
   _visitas.forEach(v => { if (new Date(v.created_at) >= hace30 && _refToCanal[v.canal_ref]) canalesActivos.add(_refToCanal[v.canal_ref]) })
-  _contactos.forEach(c => { if (new Date(c.created_at) >= hace30 && _refToCanal[c.canal_ref]) canalesActivos.add(_refToCanal[c.canal_ref]) })
+  _contactos.forEach(c => { if (c.origen !== 'manual' && new Date(c.created_at) >= hace30 && _refToCanal[c.canal_ref]) canalesActivos.add(_refToCanal[c.canal_ref]) })
 
   const score = (v30 * 1) + (c30 * 5) + (canalesActivos.size * 3)
   const scoreAnterior = (vAnterior * 1) + (cAnterior * 5) + (canalesActivos.size * 3)
@@ -1039,7 +1046,7 @@ function renderEvolucion() {
         : fmtFechaAR(cursor, { day:'2-digit', month:'2-digit' })
     labels.push(label)
     dataV.push(_visitas.filter(v => { const d = new Date(v.created_at); return d >= cursor && d < siguiente }).length)
-    dataC.push(_contactos.filter(c => { const d = new Date(c.created_at); return d >= cursor && d < siguiente }).length)
+    dataC.push(_contactos.filter(c => { const d = new Date(c.created_at); return d >= cursor && d < siguiente && c.origen !== 'manual' }).length)
   }
 
   const deltaEl = document.getElementById('evolucionDelta')
@@ -1395,18 +1402,21 @@ function renderDynamic() {
 
   const filtV = desde ? _visitas.filter(v => new Date(v.created_at)>=desde) : _visitas
   const filtC = desde ? _contactos.filter(c => new Date(c.created_at)>=desde) : _contactos
+  const filtCWeb = filtC.filter(c => c.origen !== 'manual')
 
   // Reset canal clicks/leads para el periodo
-  Object.values(_canalMap).forEach(c => { c.clicks=0; c.leads=0 })
+  Object.values(_canalMap).forEach(c => { c.clicks=0; c.leads=0; c.leadsWeb=0 })
   filtV.forEach(v => { const id=_refToCanal[v.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].clicks++ })
   filtC.forEach(c => { const id=_refToCanal[c.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].leads++ })
+  filtCWeb.forEach(c => { const id=_refToCanal[c.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].leadsWeb++ })
 
   const canales     = Object.values(_canalMap)
   const nCanales    = canales.length
-  const nActivos    = canales.filter(c=>c.clicks>0||c.leads>0).length
+  const nActivos    = canales.filter(c=>c.clicks>0||c.leadsWeb>0).length
   const totalClicks = filtV.length
   const totalLeads  = filtC.length
-  const conv        = totalClicks>0 ? Math.round(totalLeads/totalClicks*100) : 0
+  const totalLeadsWeb = filtCWeb.length
+  const conv        = totalClicks>0 ? Math.round(totalLeadsWeb/totalClicks*100) : 0
 
   // Delta leads
   let deltaHtml = ''
@@ -1453,7 +1463,7 @@ function renderDynamic() {
   const fmtFila = c => {
     const tipoCls = `tipo-${(c.tipo||'otro').replace(' ','_').replace('ñ','n')}`
     const geo = [c.ciudad, c.provincia].filter(Boolean).join(', ') || '—'
-    const cv = c.clicks>0 ? Math.round(c.leads/c.clicks*100) : 0
+    const cv = c.clicks>0 ? Math.round(c.leadsWeb/c.clicks*100) : 0
     const cvW = Math.round(c.clicks/maxClicks*100)
     return `<tr>
       <td>
@@ -1536,7 +1546,7 @@ function renderDynamic() {
   const conRef = filtC.filter(c=>c.canal_ref).length
   const funnelData = [
     { lbl:'Clicks / lecturas',  val:totalClicks, color:'var(--azul)',  base:totalClicks }, // ancla: visualizaciones
-    { lbl:'Leads generados',    val:totalLeads,  color:'#e8c96a',      base:totalClicks }, // DEV-E4.2: leads → dorado-kpi
+    { lbl:'Leads generados',    val:totalLeads,  pctNumerator:totalLeadsWeb, color:'#e8c96a', base:totalClicks }, // Conteo Todos; % físico Web.
     { lbl:'Con atribución',     val:conRef,       color:'#c7ad6b',     base:totalLeads  }, // DEV-E4.2: atribución ≠ reservado
     { lbl:'Lotes disponibles',  val:lDisp,        color:'#4dc992',     base:lTot        }, // DEV-E4.2: lote disponible ≠ QR
     { lbl:'Lotes reservados',   val:lRsv,         color:'#b8955a',     base:lTot        }, // DEV-E4.2: lote reservado ≠ dorado UI
@@ -1544,7 +1554,7 @@ function renderDynamic() {
   ]
   document.getElementById('funnelWrap').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:.6rem">${funnelData.map(r=>{
-      const pct = r.base>0 ? Math.round(r.val/r.base*100) : 0
+      const pct = r.base>0 ? Math.round((r.pctNumerator ?? r.val)/r.base*100) : 0
       return `<div style="display:grid;grid-template-columns:150px 1fr 44px 40px;align-items:center;gap:.8rem">
         <div style="font-size:.72rem;color:var(--gris)">${r.lbl}</div>
         <div style="height:6px;background:rgba(255,255,255,.05);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${r.color};border-radius:99px"></div></div>
@@ -1567,7 +1577,7 @@ function renderDynamic() {
           const estLbl   = ESTADOS[est] || est
           return `<tr>
             <td><div class="l-name">${esc(c.nombre||'Sin nombre')}</div></td>
-            <td>${canalNm?`<span class="canal-bdg" style="color:${cColor};border-color:${hexToRgba(cColor,.44)};background:${hexToRgba(cColor,.13)}">${esc(canalNm)}</span>`:'<span style="color:var(--gris);font-size:.7rem">—</span>'}</td>
+            <td><span style="display:flex;gap:.35rem;align-items:center;flex-wrap:wrap">${canalNm?`<span class="canal-bdg" style="color:${cColor};border-color:${hexToRgba(cColor,.44)};background:${hexToRgba(cColor,.13)}">${esc(canalNm)}</span>`:'<span style="color:var(--gris);font-size:.7rem">—</span>'}${c.origen==='manual'?'<span class="canal-bdg" style="color:rgba(245,243,240,.62);border-color:rgba(245,243,240,.18);background:rgba(245,243,240,.06)">Manual</span>':''}</span></td>
             <td><span class="est-bdg est-${esc(est)}">${esc(estLbl)}</span></td>
             <td class="l-fecha">${fmtFecha(c.created_at)}</td>
           </tr>`

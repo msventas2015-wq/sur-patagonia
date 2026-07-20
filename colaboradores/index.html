@@ -1208,6 +1208,29 @@
     }
     .pv-rank-head span { font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.35); }
     .pv-rank-head span.r { text-align:right; }
+    .der-modal { position:fixed; inset:0; z-index:1200; display:grid; place-items:center; padding:1rem; background:rgba(0,0,0,.78); backdrop-filter:blur(5px); }
+    .der-modal[hidden] { display:none; }
+    .der-card { width:min(620px,100%); max-height:calc(100vh - 2rem); overflow:auto; background:#141414; border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:1.25rem; box-shadow:0 24px 70px rgba(0,0,0,.55); }
+    .der-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+    .der-title { color:#f5f3f0; font-size:1.05rem; font-weight:650; }
+    .der-sub { color:rgba(245,243,240,.45); font-size:.7rem; line-height:1.45; margin-top:.2rem; }
+    .der-close { width:44px; height:44px; flex:0 0 44px; border-radius:9px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); color:#f5f3f0; cursor:pointer; }
+    .der-grid { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; }
+    .der-field { min-width:0; font-size:.6rem; color:rgba(255,255,255,.42); text-transform:uppercase; letter-spacing:.08em; }
+    .der-field.full { grid-column:1/-1; }
+    .der-input { width:100%; min-height:44px; margin-top:.3rem; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:#0c0c0c; color:#f5f3f0; padding:.65rem .75rem; font:inherit; font-size:.78rem; text-transform:none; letter-spacing:0; }
+    textarea.der-input { min-height:88px; resize:vertical; }
+    .der-error { min-height:1.1rem; margin-top:.7rem; color:#f0956a; font-size:.7rem; text-transform:none; letter-spacing:0; }
+    .der-actions { display:flex; justify-content:flex-end; gap:.65rem; margin-top:1rem; }
+    .der-actions button { min-height:44px; }
+    @media(max-width:520px) {
+      .der-modal { padding:.5rem; align-items:end; }
+      .der-card { max-height:calc(100vh - 1rem); padding:1rem; border-radius:14px; }
+      .der-grid { grid-template-columns:1fr; }
+      .der-field.full { grid-column:auto; }
+      .der-actions { flex-direction:column-reverse; }
+      .der-actions button { width:100%; }
+    }
   </style>
 </head>
 <body>
@@ -1294,9 +1317,9 @@
   }
 
   function obtenerClavePersonaRecorrido(c, index = 0) {
-    const tel = String(c?.telefono || c?.telefono_contacto || '').replace(/\D/g, '');
+    if (c?.persona_id) return `p:${c.persona_id}`;
     const email = String(c?.email || c?.mail || '').trim().toLowerCase();
-    return tel ? `tel:${tel}` : email ? `email:${email}` : ('id:' + String(c?.id || `fila-${index}`));
+    return email ? `email:${email}` : ('id:' + String(c?.id || `fila-${index}`));
   }
 
   function fechaIngresoRecorrido(c) {
@@ -1584,6 +1607,17 @@
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { location.href = 'login.html'; return }
 
+    const meta = session.user.app_metadata || {}
+    if (meta.rol !== 'colaborador') {
+      await supabase.auth.signOut()
+      location.href = 'login.html'
+      return
+    }
+    if (meta.tipo_acceso === 'desarrollador') {
+      location.href = 'desarrollador.html'
+      return
+    }
+
     const userId = session.user.id
 
     // ── Cargar TODOS los canales del usuario ───────
@@ -1596,7 +1630,7 @@
       return
     }
 
-    const esPasivo  = session.user.user_metadata?.tipo_acceso !== 'activo'
+    const esPasivo  = meta.tipo_acceso !== 'activo'
     const codigos   = canales.map(c => c.codigo)
     const ahora     = new Date()
     const hace30    = new Date(ahora - 30 * 86400000).toISOString()
@@ -1638,7 +1672,7 @@
         .select('id, asunto, cuerpo, usuario_id, ciudad, provincia, tipo_acceso, provincias_arr, ciudades_arr, canal_ids, created_at, mensajes_respuestas(id, usuario_id, cuerpo, created_at)')
         .order('created_at', { ascending: false }),
       supabase.from('referencias')
-        .select('id, codigo, nombre, destino, activo, proyecto_slug, canal_id')
+        .select('id, codigo, nombre, destino, activo, proyecto_slug, canal_id, punto_tipo')
         .in('canal_id', canalIds)
         .order('created_at', { ascending: true })
     ])
@@ -2002,7 +2036,7 @@
       return true
     })
     const totalScans = visitas.length
-    const conv       = totalScans > 0 ? ((contactos.length / totalScans) * 100).toFixed(1) : 0
+    const conv       = totalScans > 0 ? ((contactos.filter(c => c.origen !== 'manual').length / totalScans) * 100).toFixed(1) : 0
 
     // Campaña activa por canal
     const campanaActiva = {}
@@ -2452,8 +2486,10 @@
       const c30 = contactos.filter(c => new Date(c.created_at) >= corte30).length
       const vAnt = visitas.filter(v => { const d = new Date(v.created_at); return d >= corte60 && d < corte30 }).length
       const cAnt = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 }).length
-      const conv30 = v30 > 0 ? Number((c30 / v30 * 100).toFixed(1)) : 0
-      const convAnt = vAnt > 0 ? Number((cAnt / vAnt * 100).toFixed(1)) : 0
+      const c30Web = contactos.filter(c => new Date(c.created_at) >= corte30 && c.origen !== 'manual').length
+      const cAntWeb = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 && c.origen !== 'manual' }).length
+      const conv30 = v30 > 0 ? Number((c30Web / v30 * 100).toFixed(1)) : 0
+      const convAnt = vAnt > 0 ? Number((cAntWeb / vAnt * 100).toFixed(1)) : 0
       return {
         v30, c30, vAnt, cAnt, conv30,
         deltaV: compararPeriodo(v30, vAnt),
@@ -2552,7 +2588,8 @@
       const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : null
       const fmtPct = (a, b) => { const v = pct(a, b); return v !== null ? `${v}% convirtió` : null }
 
-      const convC = fmtPct(totalConsultas, totalInteracciones)
+      const consultasWeb = contactosFunnel.filter(c => c.origen !== 'manual').length
+      const convC = fmtPct(consultasWeb, totalInteracciones)
       const convCo = fmtPct(totalContactadas, totalConsultas)
       const convV = fmtPct(totalVisitas, totalContactadas)
       const convO = fmtPct(totalOfertas, totalVisitas)
@@ -3184,7 +3221,7 @@
             return `<tr>
               <td style="width:10px">${(c.estado || 'nueva') === 'nueva' ? '<div class="pv-dot-nueva"></div>' : ''}</td>
               <td class="pv-fecha">${fmt(c.created_at)}</td>
-              <td><span class="pv-via ${c.canal_via === 'qr' ? 'qr' : 'link'}"><span class="pv-via-mark"></span>${c.canal_via === 'qr' ? 'QR físico' : 'Enlace'}</span></td>
+              <td><span class="pv-via ${c.origen === 'manual' ? '' : (c.canal_via === 'qr' ? 'qr' : 'link')}" ${c.origen === 'manual' ? 'style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${c.origen === 'manual' ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen === 'manual' ? 'Manual' : (c.canal_via === 'qr' ? 'QR físico' : 'Enlace')}</span></td>
               <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL_PASIVO[c.estado]||'Sin avance')}</span></td>
             </tr>`
           }).join('')
@@ -3214,7 +3251,8 @@
 
     function renderPasivo(contactos, filasTraza = [], canal = null) {
       const qrTotal = contactos.filter(c => c.canal_via === 'qr').length
-      const linkTotal = contactos.length - qrTotal
+      const manualTotal = contactos.filter(c => c.origen === 'manual').length
+      const linkTotal = contactos.length - qrTotal - manualTotal
 
       return `
         <div class="pv-sec">
@@ -3262,6 +3300,7 @@
           <div class="pv-chart-origin-chips">
             <span class="pv-origin-chip" style="--oc:#50c878"><span class="dot"></span>QR físico · ${qrTotal.toLocaleString('es-AR')}</span>
             <span class="pv-origin-chip" style="--oc:#6495ed"><span class="dot"></span>Enlace digital · ${linkTotal.toLocaleString('es-AR')}</span>
+            ${manualTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Manual · ${manualTotal.toLocaleString('es-AR')}</span>` : ''}
           </div>
         </div>
 
@@ -3778,7 +3817,8 @@
       const vP  = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
       const qrP = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 && v.canal_via==='qr' }).length
       const cP  = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 }).length
-      const conv = vP > 0 ? Number((cP / vP * 100).toFixed(1)) : 0
+      const cWebP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && c.origen !== 'manual' }).length
+      const conv = vP > 0 ? Number((cWebP / vP * 100).toFixed(1)) : 0
 
       const setEl   = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v }
       const clearEl = (id)    => { const el=document.getElementById(id); if(el) el.innerHTML='' }
@@ -3847,8 +3887,10 @@
         const int   = vSlot.length
         const qrN   = vSlot.filter(v => v.canal_via === 'qr').length
         const lnkN  = int - qrN
-        const cons  = contactos.filter(c => c.canal_ref === slot.codigo && en(c.created_at)).length
-        const conv  = int > 0 ? (cons / int * 100).toFixed(1) + '%' : '—'
+        const consultasSlot = contactos.filter(c => c.canal_ref === slot.codigo && en(c.created_at))
+        const cons  = consultasSlot.length
+        const consWeb = consultasSlot.filter(c => c.origen !== 'manual').length
+        const conv  = int > 0 ? (consWeb / int * 100).toFixed(1) + '%' : '—'
         set(`slot-n-int-${slot.id}`,  int)
         set(`slot-n-cons-${slot.id}`, cons)
         set(`slot-n-conv-${slot.id}`, conv)
@@ -3882,7 +3924,8 @@
         const attrSrc    = prop || proy
         const scans      = scansPorSlot[slot.codigo] || 0
         const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
-        const conv       = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
+        const slotConsWeb = slotCons.filter(c => c.origen !== 'manual')
+        const conv       = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
         const esActivo   = slot.activo !== false
         const redirectUrl = `${location.origin}/r/${slot.codigo}`
         const imgStyle = fotoUrl ? `background-image:url('${fotoUrl.replace(/'/g,"\\'")}')` : ''
@@ -3957,7 +4000,8 @@
       const canalCards = canalSlots.map(slot => {
         const scans      = scansPorSlot[slot.codigo] || 0
         const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
-        const conv       = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
+        const slotConsWeb = slotCons.filter(c => c.origen !== 'manual')
+        const conv       = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
         const esActivo   = slot.activo !== false
         const redirectUrl = `${location.origin}/r/${slot.codigo}`
         const dest       = slot.destino || '/'
@@ -4257,7 +4301,7 @@
       }
 
       // ── Panel 2: Conversión · últimos 30 días ──
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
       const ctxConv = document.getElementById('pvPanelConv30')?.getContext('2d')
       if (ctxConv && convDiaria.some(x=>x>0)) {
         _pvPanelConv = new Chart(ctxConv, {
@@ -4367,11 +4411,11 @@
       const mes0 = new Date(hoy0 - 30*86400000)
       const prev0 = new Date(hoy0 - 60*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
       const v30 = visitas.filter(v=>new Date(v.created_at)>=mes0).length
-      const c30 = contactos.filter(c=>new Date(c.created_at)>=mes0).length
+      const c30 = contactos.filter(c=>new Date(c.created_at)>=mes0 && c.origen !== 'manual').length
       const vAnt = visitas.filter(v=>{const d=new Date(v.created_at);return d>=prev0&&d<mes0}).length
-      const cAnt = contactos.filter(c=>{const d=new Date(c.created_at);return d>=prev0&&d<mes0}).length
+      const cAnt = contactos.filter(c=>{const d=new Date(c.created_at);return d>=prev0&&d<mes0&&c.origen!=='manual'}).length
       const conv30 = v30 > 0 ? Number((c30/v30*100).toFixed(1)) : 0
       const convAnt = vAnt > 0 ? Number((cAnt/vAnt*100).toFixed(1)) : null
       const delta = convAnt !== null ? Number((conv30-convAnt).toFixed(1)) : null
@@ -4449,10 +4493,11 @@
         </div>`
       const rows = misSlots.filter(s => s.activo !== false).map(slot => {
         const scans = scansPorSlot[slot.codigo] || 0
-        const slotCons = contactos.filter(c => c.canal_ref === slot.codigo).length
-        const conv = scans > 0 ? Number((slotCons/scans*100).toFixed(1)) : 0
+        const slotConsTodos = contactos.filter(c => c.canal_ref === slot.codigo)
+        const slotConsWeb = slotConsTodos.filter(c => c.origen !== 'manual').length
+        const conv = scans > 0 ? Number((slotConsWeb/scans*100).toFixed(1)) : 0
         const proy = proyImgs[slot.proyecto_slug]
-        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), scans, consultas: slotCons, conv }
+        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), scans, consultas: slotConsTodos.length, conv }
       }).sort((a,b) => b.scans - a.scans)
       return `
         <div class="pv-panel">
@@ -4478,7 +4523,8 @@
       const rows = misSlots.map(slot => {
         const scans     = scansPorSlot[slot.codigo] || 0
         const slotCons  = contactos.filter(c => c.canal_ref === slot.codigo)
-        const conv      = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
+        const slotConsWeb = slotCons.filter(c => c.origen !== 'manual')
+        const conv      = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
         const proy      = proyImgs[slot.proyecto_slug]
         const nombre    = proy?.nombre || slot.nombre || slot.codigo
         const esActivo  = slot.activo !== false
@@ -4522,6 +4568,125 @@
         </div>`
     }
 
+    // ── Canal activo: derivación manual ───────────────────────────────────────
+    let _derFocoAnterior = null
+
+    function principalesElegiblesPropias() {
+      return canales.map(canal => {
+        const principales = misSlots.filter(r =>
+          r.canal_id === canal.id && r.punto_tipo === 'principal' && r.activo && r.codigo === canal.codigo)
+        return principales.length === 1 ? { canal, principal: principales[0] } : null
+      }).filter(Boolean)
+    }
+
+    window.cerrarDerivar = function() {
+      const modal = document.getElementById('derModal')
+      if (!modal) return
+      modal.hidden = true
+      document.body.style.overflow = ''
+      const errorEl = document.getElementById('derError')
+      if (errorEl) errorEl.textContent = ''
+      if (_derFocoAnterior?.focus) _derFocoAnterior.focus()
+    }
+
+    window.abrirDerivar = async function() {
+      const elegibles = principalesElegiblesPropias()
+      if (!elegibles.length) {
+        alert('No hay una referencia principal elegible en tus canales. Pedile al administrador que revise las guardas.')
+        return
+      }
+
+      const { data: proyectosActivos, error: proyectosError } = await supabase
+        .from('proyectos')
+        .select('nombre, slug, estado')
+        .eq('estado', 'activo')
+        .order('nombre')
+      if (proyectosError) {
+        alert('No se pudo cargar el catálogo de proyectos: ' + proyectosError.message)
+        return
+      }
+
+      _derFocoAnterior = document.activeElement
+      ;['derNombre','derEmail','derTel','derNota'].forEach(id => { document.getElementById(id).value = '' })
+      document.getElementById('derError').textContent = ''
+
+      const canalSelect = document.getElementById('derCanal')
+      canalSelect.innerHTML = elegibles.map(({ canal }) => `<option value="${esc(canal.id)}">${esc(canal.nombre)}</option>`).join('')
+      canalSelect.disabled = elegibles.length === 1
+
+      const propiedadesActivas = rPropAll.data || []
+      document.getElementById('derDestino').innerHTML = '<option value="">Sin destino — consulta general</option>'
+        + propiedadesActivas.map(p => `<option value="prop:${esc(p.id)}">Propiedad · ${esc(p.titulo)}</option>`).join('')
+        + (proyectosActivos || []).filter(p => p.slug).map(p => `<option value="proy:${esc(p.slug)}">Proyecto · ${esc(p.nombre)}</option>`).join('')
+
+      document.getElementById('derModal').hidden = false
+      document.body.style.overflow = 'hidden'
+      requestAnimationFrame(() => document.getElementById('derNombre').focus())
+    }
+
+    window.guardarDerivacion = async function() {
+      const btn = document.getElementById('derGuardar')
+      if (btn.disabled) return
+      const nombre = document.getElementById('derNombre').value.trim()
+      const email = document.getElementById('derEmail').value.trim()
+      const telefono = document.getElementById('derTel').value.trim()
+      const canalId = document.getElementById('derCanal').value
+      const destino = document.getElementById('derDestino').value
+      const nota = document.getElementById('derNota').value.trim()
+      const errorEl = document.getElementById('derError')
+      errorEl.textContent = ''
+
+      if (!nombre || !email || !telefono) {
+        errorEl.textContent = 'Nombre, email y teléfono son obligatorios.'
+        return
+      }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        errorEl.textContent = 'Ingresá un email válido.'
+        return
+      }
+
+      const elegibles = principalesElegiblesPropias()
+      const seleccion = elegibles.find(({ canal }) => canal.id === canalId)
+      if (!seleccion) {
+        errorEl.textContent = 'El canal elegido ya no tiene una principal elegible.'
+        return
+      }
+
+      const fila = {
+        nombre,
+        email,
+        telefono,
+        mensaje: nota || null,
+        propiedad_id: destino.startsWith('prop:') ? destino.slice(5) : null,
+        proyecto_slug: destino.startsWith('proy:') ? destino.slice(5) : null,
+        canal_ref: seleccion.principal.codigo,
+        canal_via: null,
+        origen: 'manual',
+        estado: 'nueva',
+      }
+
+      btn.disabled = true
+      btn.textContent = 'Guardando…'
+      try {
+        const { error } = await supabase.from('contactos').insert(fila)
+        if (error) {
+          errorEl.textContent = 'No se pudo guardar: ' + (error.message || 'error desconocido')
+          return
+        }
+        location.reload()
+      } catch (error) {
+        errorEl.textContent = 'No se pudo guardar: ' + (error?.message || 'error de conexión')
+      } finally {
+        btn.disabled = false
+        btn.textContent = 'Guardar'
+      }
+    }
+
+    document.addEventListener('keydown', event => {
+      const modal = document.getElementById('derModal')
+      if (event.key === 'Escape' && modal && !modal.hidden) window.cerrarDerivar()
+    })
+
     // ── Canal activo: tabla de contactos enriquecida ─────────────────────────
     function renderContactosActivo_pv(contactos) {
       const nombreSlot = {}
@@ -4541,7 +4706,7 @@
             </td>
             <td style="font-size:.7rem;color:rgba(255,255,255,.55);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
             <td><span style="font-family:monospace;font-size:.65rem;color:#c9a84c;">${esc(nombreSlot[c.canal_ref] || c.canal_ref || '—')}</span></td>
-            <td><span class="pv-via ${c.canal_via==='qr'?'qr':'link'}"><span class="pv-via-mark"></span>${c.canal_via==='qr'?'QR':'Link'}</span></td>
+            <td><span class="pv-via ${c.origen==='manual' ? '' : (c.canal_via==='qr'?'qr':'link')}"${c.origen==='manual' ? ' style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${c.origen==='manual' ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen==='manual'?'Manual':(c.canal_via==='qr'?'QR':'Link')}</span></td>
             <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
           </tr>`).join('')
         : '<tr><td colspan="7"><div class="pv-empty"><div class="pv-empty-mark"></div>Aún no hay consultas generadas desde tus slots.</div></td></tr>'
@@ -4553,6 +4718,7 @@
               <div class="pv-sec-titulo">Consultas generadas</div>
               <div class="pv-sec-sub">Oportunidades de comisión vinculadas a tu actividad comercial.</div>
             </div>
+            <button class="qr-slot-btn" onclick="abrirDerivar()">＋ Derivar cliente</button>
           </div>
           <div style="overflow-x:auto">
             <table class="pv-tabla">
@@ -4562,6 +4728,27 @@
               <tbody>${filas}</tbody>
             </table>
           </div>
+        </div>
+        <div class="der-modal" id="derModal" hidden onclick="if(event.target===this) cerrarDerivar()">
+          <section class="der-card" role="dialog" aria-modal="true" aria-labelledby="derTitulo">
+            <div class="der-head">
+              <div><div class="der-title" id="derTitulo">Derivar cliente</div><div class="der-sub">Crea una consulta nueva vinculada a uno de tus canales.</div></div>
+              <button class="der-close" type="button" onclick="cerrarDerivar()" aria-label="Cerrar">✕</button>
+            </div>
+            <div class="der-grid">
+              <label class="der-field">Nombre *<input class="der-input" id="derNombre" autocomplete="name"></label>
+              <label class="der-field">Email *<input class="der-input" id="derEmail" type="email" autocomplete="email"></label>
+              <label class="der-field">Teléfono *<input class="der-input" id="derTel" autocomplete="tel"></label>
+              <label class="der-field">Canal<select class="der-input" id="derCanal"></select></label>
+              <label class="der-field full">Destino<select class="der-input" id="derDestino"></select></label>
+              <label class="der-field full">Nota<textarea class="der-input" id="derNota" placeholder="Observación opcional"></textarea></label>
+            </div>
+            <div class="der-error" id="derError" aria-live="polite"></div>
+            <div class="der-actions">
+              <button class="qr-slot-btn" type="button" onclick="cerrarDerivar()">Cancelar</button>
+              <button class="qr-slot-btn" id="derGuardar" type="button" onclick="guardarDerivacion()">Guardar</button>
+            </div>
+          </section>
         </div>`
     }
 
