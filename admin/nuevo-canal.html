@@ -1078,8 +1078,8 @@ window.agregarReferencia = async function() {
   })
 
   if (error) {
-    if (error.code === '23505') alert('Ese código de QR ya existe. Cambiá el nombre o la ubicación del punto para generar una variante única.')
-    else alert('Error: ' + error.message)
+    const ayuda = error.code === '23505' ? ' Revisá el código, nombre o ubicación del punto.' : ''
+    alert('No se pudo guardar el punto QR: ' + error.message + ayuda)
     return
   }
 
@@ -1235,9 +1235,6 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const activo_v  = esActivo(tipo)
   const tipoAcceso = activo_v ? 'activo' : 'pasivo'
   const destino   = activo_v ? '/' : getDestinoUrl()
-  const proyectoSlugDestino = activo_v
-    ? null
-    : getProyectoSlugDestino(destino)
 
   // Datos de acceso externo — usa el mismo email de Contacto y notificaciones
   const emailAcceso = document.getElementById('email').value.trim()
@@ -1341,17 +1338,31 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
 
   _canalId = data.id
 
+  // M1 crea y sincroniza la principal dentro de la transacción del canal.
+  // La UI solo confirma el guardado después de releer esa invariante.
+  const { data: principalGuardada, error: principalError } = await supabase
+    .from('referencias')
+    .select('id, codigo, nombre, destino, punto_tipo, activo')
+    .eq('canal_id', _canalId)
+    .eq('punto_tipo', 'principal')
+    .maybeSingle()
+  if (principalError || !principalGuardada || principalGuardada.codigo !== codigo || principalGuardada.activo !== payload.activo) {
+    const detalle = principalError?.message || 'la base no devolvió la principal exacta y sincronizada del canal — revisar guardas'
+    alert('Canal guardado, pero no se pudo verificar su referencia principal: ' + detalle)
+    return
+  }
+
   // Reflejar la vinculación confirmada en el formulario.
   document.getElementById('userId').value = userId
   document.getElementById('accesoExistente').style.display = ''
   document.getElementById('accesoNuevo').style.display = 'none'
   document.getElementById('accesoEmail').textContent = emailAcceso
 
-  // Para canales pasivos: asegurar QR principal/histórico y sincronizar destino común.
+  // Para canales pasivos: leer la principal creada por la base y sincronizar el destino común.
   if (!activo_v) {
     const { data: refsExistentes, error: refConsultaError } = await supabase
       .from('referencias')
-      .select('id, codigo, nombre, destino, punto_tipo')
+      .select('id, codigo, nombre, destino, punto_tipo, activo')
       .eq('canal_id', _canalId)
       .order('created_at', { ascending: true })
 
@@ -1360,50 +1371,22 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
       return
     }
 
-    let refError = null
     let destinoError = null
-    let refPrincipal =
-      refsExistentes?.find(r => r.codigo === codigo) ||
-      refsExistentes?.find(r => r.punto_tipo === 'principal') ||
-      (refsExistentes?.length === 1 ? refsExistentes[0] : null)
+    let refPrincipal = refsExistentes?.find(r => r.punto_tipo === 'principal') || null
     if (!refPrincipal) {
-      ;({ error: refError } = await supabase.from('referencias').insert({
-        canal_id: _canalId, nombre, codigo,
-        proyecto_slug: proyectoSlugDestino,
-        destino, activo: true,
-        punto_tipo: 'principal',
-        punto_ubicacion: null,
-        punto_orden: 0,
-      }))
-      if (!refError) {
-        const { data: refsNuevas } = await supabase
-          .from('referencias')
-          .select('id, codigo, nombre, destino, punto_tipo')
-          .eq('canal_id', _canalId)
-          .order('created_at', { ascending: true })
-        refPrincipal =
-          refsNuevas?.find(r => r.codigo === codigo) ||
-          refsNuevas?.find(r => r.punto_tipo === 'principal') ||
-          refsNuevas?.[0] ||
-          null
-      }
-      if (!refError && (refsExistentes || []).length) {
-        ;({ error: destinoError } = await supabase.from('referencias').update({
-          destino,
-        }).eq('canal_id', _canalId))
-        if (!destinoError && refPrincipal) refPrincipal = { ...refPrincipal, destino }
-      }
-    } else {
-      // El destino es común a todos los puntos QR del canal pasivo.
-      // Actualizar solo el campo destino; no tocar nombre, código, tipo, ubicación ni activo.
-      ;({ error: destinoError } = await supabase.from('referencias').update({
-        destino,
-      }).eq('canal_id', _canalId))
-      if (!destinoError) refPrincipal = { ...refPrincipal, destino }
+      alert('Canal guardado, pero la base no devolvió la principal del canal — revisar guardas.')
+      return
     }
 
-    if (refError || destinoError) {
-      alert('Canal guardado, pero no se pudieron sincronizar sus puntos QR: ' + (refError || destinoError).message)
+    // El destino es común a todos los puntos QR del canal pasivo.
+    // Actualizar solo destino; nombre/código/tipo/ubicación/actividad se preservan.
+    ;({ error: destinoError } = await supabase.from('referencias').update({
+      destino,
+    }).eq('canal_id', _canalId))
+    if (!destinoError) refPrincipal = { ...refPrincipal, destino }
+
+    if (destinoError) {
+      alert('Canal guardado, pero no se pudieron sincronizar sus puntos QR: ' + destinoError.message)
       return
     }
 

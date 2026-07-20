@@ -176,7 +176,7 @@
 
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) { location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
   document.getElementById('btnLogout').addEventListener('click', async e => {
     e.preventDefault(); await supabase.auth.signOut(); location.href = 'login.html'
   })
@@ -212,7 +212,7 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
 
     if (codigos.length) {
       let qV = supabase.from('visitas').select('canal_ref').in('canal_ref', codigos)
-      let qL = supabase.from('contactos').select('canal_ref').in('canal_ref', codigos)
+      let qL = supabase.from('contactos').select('canal_ref').in('canal_ref', codigos).eq('origen', 'web')
       if (camp.fecha_inicio) { qV = qV.gte('created_at', camp.fecha_inicio); qL = qL.gte('created_at', camp.fecha_inicio) }
       if (camp.fecha_fin)    { qV = qV.lte('created_at', camp.fecha_fin);    qL = qL.lte('created_at', camp.fecha_fin) }
       const [rV, rL] = await Promise.all([qV, qL])

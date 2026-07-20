@@ -241,6 +241,10 @@
       --seg-c:#8a8a82; --seg-b:rgba(138,138,130,.24); --seg-bh:rgba(138,138,130,.42);
       --seg-bg1:rgba(138,138,130,.12); --seg-bg2:rgba(138,138,130,.04); --seg-shadow:rgba(138,138,130,.18);
     }
+    .seg button[data-v="manual"] {
+      --seg-c:rgba(245,243,240,.68); --seg-b:rgba(245,243,240,.16); --seg-bh:rgba(245,243,240,.3);
+      --seg-bg1:rgba(245,243,240,.08); --seg-bg2:rgba(245,243,240,.025); --seg-shadow:rgba(245,243,240,.1);
+    }
     .seg button:hover { border-color:var(--seg-bh); box-shadow:0 0 12px var(--seg-shadow); }
     .seg button.on {
       border-color:var(--seg-bh);
@@ -525,6 +529,41 @@
       display: flex; gap: 1.2rem; flex-wrap: wrap;
     }
     .journey-attr strong { color: #e8c96a; }
+
+    /* ── Modal Cargar referido ────────────────────────────── */
+    .ref-modal {
+      position:fixed; inset:0; z-index:1000; display:grid; place-items:center;
+      padding:1rem; background:rgba(0,0,0,.76); backdrop-filter:blur(5px);
+    }
+    .ref-modal[hidden] { display:none; }
+    .ref-modal-card {
+      width:min(620px,100%); max-height:calc(100vh - 2rem); overflow:auto;
+      background:#141414; border:1px solid rgba(255,255,255,.12); border-radius:16px;
+      box-shadow:0 24px 70px rgba(0,0,0,.55); padding:1.35rem;
+    }
+    .ref-modal-head { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1rem; }
+    .ref-modal-title { color:var(--blanco); font-size:1.05rem; font-weight:650; }
+    .ref-modal-sub { color:var(--txt-soft); font-size:.7rem; margin-top:.25rem; line-height:1.45; }
+    .ref-modal-close {
+      width:44px; height:44px; flex:0 0 44px; border-radius:9px; cursor:pointer;
+      border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); color:var(--blanco);
+    }
+    .ref-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:.85rem; }
+    .ref-modal-field { min-width:0; }
+    .ref-modal-field.full { grid-column:1 / -1; }
+    .ref-modal-field .admin-input { width:100%; min-height:44px; }
+    .ref-modal-field textarea.admin-input { min-height:88px; resize:vertical; }
+    .ref-modal-actions { display:flex; justify-content:flex-end; gap:.65rem; margin-top:1rem; }
+    .ref-modal-actions button { min-height:44px; }
+    .ref-error { min-height:1.1rem; color:#f0956a; font-size:.7rem; margin-top:.75rem; }
+    @media (max-width:520px) {
+      .ref-modal { padding:.5rem; align-items:end; }
+      .ref-modal-card { max-height:calc(100vh - 1rem); border-radius:14px; padding:1rem; }
+      .ref-modal-grid { grid-template-columns:1fr; }
+      .ref-modal-field.full { grid-column:auto; }
+      .ref-modal-actions { flex-direction:column-reverse; }
+      .ref-modal-actions button { width:100%; }
+    }
   </style>
 </head>
 <body>
@@ -626,6 +665,7 @@
         <button class="rango-btn" data-dias="30">30 días</button>
         <button class="rango-btn" data-dias="90">90 días</button>
         <button class="rango-btn activo" data-dias="0">Todo</button>
+        <button class="btn-export" id="btnCargarReferido">＋ Cargar referido</button>
         <button class="btn-export" id="btnExport">Exportar</button>
       </div>
     </div>
@@ -680,6 +720,7 @@
           <option value="qr">QR físico</option>
           <option value="link">Link directo</option>
           <option value="directo">Directo (sin canal)</option>
+          <option value="manual">Carga manual</option>
         </select>
       </div>
       <div>
@@ -778,6 +819,7 @@
           <button data-v="qr">QR</button>
           <button data-v="link">Link</button>
           <button data-v="directo">Directas</button>
+          <button data-v="manual">Manuales</button>
         </div>
         <select id="lstCanal" class="admin-input slim"><option value="">Todos los canales</option></select>
         <select id="lstRef" class="admin-input slim"><option value="">Todos los QRs</option></select>
@@ -802,6 +844,31 @@
   </main>
 </div>
 
+<div class="ref-modal" id="modalReferido" hidden>
+  <section class="ref-modal-card" role="dialog" aria-modal="true" aria-labelledby="refModalTitulo">
+    <div class="ref-modal-head">
+      <div>
+        <div class="ref-modal-title" id="refModalTitulo">Cargar referido</div>
+        <div class="ref-modal-sub">Crea una consulta nueva. El canal y el destino son opcionales.</div>
+      </div>
+      <button class="ref-modal-close" id="refCerrar" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="ref-modal-grid">
+      <label class="ref-modal-field"><span class="filtro-label">Nombre *</span><input class="admin-input" id="refNombre" autocomplete="name" /></label>
+      <label class="ref-modal-field"><span class="filtro-label">Email *</span><input class="admin-input" id="refEmail" type="email" autocomplete="email" /></label>
+      <label class="ref-modal-field"><span class="filtro-label">Teléfono *</span><input class="admin-input" id="refTel" autocomplete="tel" /></label>
+      <label class="ref-modal-field"><span class="filtro-label">Canal</span><select class="admin-input" id="refCanal"></select></label>
+      <label class="ref-modal-field full"><span class="filtro-label">Destino</span><select class="admin-input" id="refDestino"></select></label>
+      <label class="ref-modal-field full"><span class="filtro-label">Nota</span><textarea class="admin-input" id="refNota" placeholder="Observación opcional"></textarea></label>
+    </div>
+    <div class="ref-error" id="refError" aria-live="polite"></div>
+    <div class="ref-modal-actions">
+      <button class="btn-limpiar" id="refCancelar" type="button">Cancelar</button>
+      <button class="btn-export" id="refGuardar" type="button">Guardar</button>
+    </div>
+  </section>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
@@ -815,7 +882,7 @@ if (typeof supabase.auth.refreshSession === 'function') {
   const { data: refreshed } = await supabase.auth.refreshSession().catch(() => ({ data: {} }))
   if (refreshed?.session) session = refreshed.session
 }
-const rolAdmin = session.user.app_metadata?.rol === 'admin' || session.user.user_metadata?.rol === 'admin'
+const rolAdmin = session.user.app_metadata?.rol === 'admin'
 if (!rolAdmin) { window.location.href = 'login.html'; throw new Error('not admin') }
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
@@ -859,14 +926,15 @@ let _layers = { canales:true, desarrollos:true, propiedades:true }
 let _ultActividad = {}           // nombre de canal → timestamp ms última visita/consulta
 // Filtros y orden propios de la LISTA (encima de los filtros globales)
 let _lstOrigen = '', _lstCanal = '', _lstRef = '', _lstEstado = '', _lstOrden = 'recientes'
+let _canalesRaw = [], _refsRaw = [], _propsRaw = [], _proysRaw = [], _personaMap = {}
 
 // ── Carga de datos ────────────────────────────────────────
 async function cargarTodo() {
   const [rLeads, rCanales, rRefs, rProy, rProp, rVisitas] = await Promise.all([
     supabase.from('contactos').select('*, propiedades(id, titulo)').order('created_at', { ascending: false }),
     supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, latitud, longitud, color_index, activo').eq('activo', true).order('nombre'),
-    supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug'),
-    supabase.from('proyectos').select('nombre, slug, latitud, longitud')
+    supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug, punto_tipo, activo'),
+    supabase.from('proyectos').select('nombre, slug, latitud, longitud, estado')
       .then(r => r.error ? supabase.from('proyectos').select('nombre, slug').then(r2 => r2.error ? supabase.from('proyectos').select('nombre') : r2) : r),
     supabase.from('propiedades').select('id, titulo, tipo, operacion, latitud, longitud, precio, moneda, activa').eq('activa', true).order('titulo'),
     supabase.from('visitas').select('canal_ref, created_at').not('canal_ref', 'is', null).order('created_at', { ascending: false }).limit(5000),
@@ -886,6 +954,10 @@ async function cargarTodo() {
   const canalPorId = {}
   const metaCanal  = {}   // nombre de canal → { ciudad, provincia, lat, lng }
   const canales = rCanales.data || []
+  _canalesRaw = canales
+  _refsRaw    = rRefs.data || []
+  _propsRaw   = rProp.data || []
+  _proysRaw   = rProy.data || []
   ;(rCanales.data || []).forEach(c => {
     canalPorId[c.id] = c.nombre
     metaCanal[c.nombre] = { ciudad: c.ciudad || null, provincia: c.provincia || null,
@@ -949,7 +1021,7 @@ async function cargarTodo() {
     const proyecto = c.proyecto_slug
       ? (proyPorSlug[c.proyecto_slug] || c.proyecto_slug)
       : (c.propiedades?.titulo || null)
-    const origen = c.canal_ref ? (c.canal_via === 'qr' ? 'qr' : 'link') : 'directo'
+    const origen = c.origen === 'manual' ? 'manual' : (c.canal_ref ? (c.canal_via === 'qr' ? 'qr' : 'link') : 'directo')
     const meta   = canalNombre ? (metaCanal[canalNombre] || {}) : {}
     // Tipo de fuente de la consulta para íconos y links diferenciados
     const _sourceType = c.proyecto_slug ? 'proyecto'
@@ -1406,11 +1478,12 @@ function renderKPIs(rows) {
   const nuevas    = rows.filter(l => l._estado === 'nueva')
   const porQR     = rows.filter(l => l._origen === 'qr').length
   const porLink   = rows.filter(l => l._origen === 'link').length
+  const porManual = rows.filter(l => l._origen === 'manual').length
 
   $('kTotal').childNodes[0].textContent = rows.length
   $('kTotalSub').textContent  = nuevas.length ? `${nuevas.length} sin atender` : 'todo atendido'
   $('kCanales').textContent   = deCanales.length
-  $('kCanalesSub').textContent = `${porQR} por QR · ${porLink} por link`
+  $('kCanalesSub').textContent = `${porQR} por QR · ${porLink} por link · ${porManual} manual${porManual === 1 ? '' : 'es'}`
   $('kDirectas').textContent  = rows.length - deCanales.length
   $('kDirectasSub').textContent = rows.length ? Math.round((rows.length - deCanales.length) / rows.length * 100) + '% del total' : ''
 
@@ -1566,13 +1639,14 @@ function renderOrigen(rows) {
   const qr = rows.filter(l => l._origen === 'qr').length
   const li = rows.filter(l => l._origen === 'link').length
   const di = rows.filter(l => l._origen === 'directo').length
-  const origenColors = ['#50c878','#6495ed','#8a8a82']
+  const man = rows.filter(l => l._origen === 'manual').length
+  const origenColors = ['#50c878','#6495ed','#8a8a82','rgba(245,243,240,.55)']
   nuevoChart('chOrigen', {
     type: 'doughnut',
 	    data: {
-	      labels: ['QR físico', 'Link directo', 'Directas'],
-	      datasets: [{
-	        data: [qr, li, di],
+      labels: ['QR físico', 'Link directo', 'Directas', 'Carga manual'],
+      datasets: [{
+        data: [qr, li, di, man],
 	        backgroundColor: context => gradienteDonut(context, origenColors[context.dataIndex] || '#8a8a82'),
 	        borderColor: '#0d0d0d',
 	        borderWidth: 2,
@@ -1625,7 +1699,7 @@ function renderBarras(rows) {
   // Por referencia (QR vs Link apilado)
   const porRef = {}
   rows.forEach(l => {
-    if (!l.canal_ref) return
+    if (!l.canal_ref || l._origen === 'manual') return
     if (!porRef[l.canal_ref]) porRef[l.canal_ref] = { qr: 0, link: 0 }
     porRef[l.canal_ref][l._origen === 'qr' ? 'qr' : 'link']++
   })
@@ -1689,6 +1763,7 @@ function renderLista(rows) {
     qr:      { dot: '#50c878', label: 'QR físico' },
     link:    { dot: '#6495ed', label: 'Link directo' },
     directo: { dot: '#8a8a82', label: 'Directa' },
+    manual:  { dot: 'rgba(245,243,240,.55)', label: 'Carga manual' },
   }
 
   $('listaLeads').innerHTML = lst.map(l => {
@@ -1698,16 +1773,21 @@ function renderLista(rows) {
     const est = l._estado
     const canalColor = l._canal ? (_colorMap[l._canal] || '#8a8a82') : null
     const otrosLeads = getPersonaLeads(l)
+    const esReingreso = otrosLeads.some(o =>
+      new Date(o.created_at) < new Date(l.created_at)
+      || (o.created_at === l.created_at && String(o.id) < String(l.id)))
     const journeyHtml = otrosLeads.length > 0 ? renderJourney(l, otrosLeads) : ''
     const journeyTag  = otrosLeads.length > 0 ? `<span class="journey-tag">${otrosLeads.length + 1} consultas</span>` : ''
     // Fuente de la consulta: link diferenciado por tipo, sin íconos
-    const sourceLabel = l._proyecto ? esc(l._proyecto) : (l._sourceType === 'general' ? 'Home' : 'Sin nombre')
+    const sourceLabel = l._proyecto ? esc(l._proyecto) : (l._sourceType === 'general' ? (l._origen === 'manual' ? 'Consulta general' : 'Home') : 'Sin nombre')
     const sourceHref = l._sourceType === 'propiedad' && l._sourceId
       ? `../propiedad?id=${encodeURIComponent(l._sourceId)}`
       : l._sourceType === 'proyecto' && l._sourceId
       ? `../proyecto-mini.html?slug=${encodeURIComponent(l._sourceId)}`
       : '../index.html'
-    const sourcePart = `<a class="lc-source-link" href="${esc(sourceHref)}" target="_blank" rel="noopener">${sourceLabel}</a>`
+    const sourcePart = l._origen === 'manual' && l._sourceType === 'general'
+      ? `<span class="lc-source-link">${sourceLabel}</span>`
+      : `<a class="lc-source-link" href="${esc(sourceHref)}" target="_blank" rel="noopener">${sourceLabel}</a>`
     const meta = [
       l._canal
         ? `<span class="canal-inline" style="--bc:${canalColor}"><span class="od"></span>${esc(l._canal)}</span>`
@@ -1723,6 +1803,7 @@ function renderLista(rows) {
           ${est === 'nueva' ? '<span class="lc-dot"></span>' : ''}
           <span class="lc-nombre">${esc(l.nombre) || '—'}</span>
           ${journeyTag}
+          ${esReingreso ? '<span class="journey-tag">Reingreso</span>' : ''}
         </div>
         <div class="lc-right">
           <span class="lc-fecha">${fecha}</span>
@@ -1768,6 +1849,121 @@ $('segOrigen').querySelectorAll('button').forEach(b => {
   _lstOrden  = $('lstOrden').value
   renderLista(filtrar())
 }))
+
+// ── Cargar referido (admin) ────────────────────────────────
+let _refFocoAnterior = null
+
+function canalesElegiblesReferido() {
+  // Elegible = canal activo con exactamente una principal activa y código exacto.
+  return _canalesRaw.filter(c => {
+    const principales = _refsRaw.filter(r =>
+      r.canal_id === c.id && r.punto_tipo === 'principal' && r.activo && r.codigo === c.codigo)
+    return c.activo && principales.length === 1
+  })
+}
+
+function cerrarModalReferido() {
+  $('modalReferido').hidden = true
+  document.body.style.overflow = ''
+  $('refError').textContent = ''
+  if (_refFocoAnterior?.focus) _refFocoAnterior.focus()
+}
+
+function abrirModalReferido() {
+  _refFocoAnterior = document.activeElement
+  $('refNombre').value = ''
+  $('refEmail').value = ''
+  $('refTel').value = ''
+  $('refNota').value = ''
+  $('refError').textContent = ''
+
+  const canales = canalesElegiblesReferido()
+  $('refCanal').innerHTML = '<option value="">Sin canal — contacto directo</option>'
+    + canales.map(c => `<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('')
+
+  const propiedades = _propsRaw.filter(p => p.activa)
+  const proyectos = _proysRaw.filter(p => p.estado === 'activo' && p.slug)
+  $('refDestino').innerHTML = '<option value="">Sin destino — consulta general</option>'
+    + propiedades.map(p => `<option value="prop:${esc(p.id)}">Propiedad · ${esc(p.titulo)}</option>`).join('')
+    + proyectos.map(p => `<option value="proy:${esc(p.slug)}">Proyecto · ${esc(p.nombre)}</option>`).join('')
+
+  $('modalReferido').hidden = false
+  document.body.style.overflow = 'hidden'
+  requestAnimationFrame(() => $('refNombre').focus())
+}
+
+async function guardarReferido() {
+  const btn = $('refGuardar')
+  if (btn.disabled) return
+  const nombre = $('refNombre').value.trim()
+  const email = $('refEmail').value.trim()
+  const telefono = $('refTel').value.trim()
+  const canalId = $('refCanal').value
+  const destino = $('refDestino').value
+  const nota = $('refNota').value.trim()
+  const errorEl = $('refError')
+  errorEl.textContent = ''
+
+  if (!nombre || !email || !telefono) {
+    errorEl.textContent = 'Nombre, email y teléfono son obligatorios.'
+    return
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    errorEl.textContent = 'Ingresá un email válido.'
+    return
+  }
+
+  let canal_ref = null
+  if (canalId) {
+    const canal = _canalesRaw.find(c => c.id === canalId && c.activo)
+    const principales = canal ? _refsRaw.filter(r =>
+      r.canal_id === canal.id && r.punto_tipo === 'principal' && r.activo && r.codigo === canal.codigo) : []
+    if (!canal || principales.length !== 1) {
+      errorEl.textContent = 'El canal elegido ya no tiene una principal elegible.'
+      return
+    }
+    canal_ref = principales[0].codigo
+  }
+
+  const fila = {
+    nombre,
+    email,
+    telefono,
+    mensaje: nota || null,
+    propiedad_id: destino.startsWith('prop:') ? destino.slice(5) : null,
+    proyecto_slug: destino.startsWith('proy:') ? destino.slice(5) : null,
+    canal_ref,
+    canal_via: null,
+    origen: 'manual',
+    estado: 'nueva',
+  }
+
+  btn.disabled = true
+  btn.textContent = 'Guardando…'
+  try {
+    const { error } = await supabase.from('contactos').insert(fila)
+    if (error) {
+      errorEl.textContent = 'No se pudo guardar: ' + (error.message || 'error desconocido')
+      return
+    }
+    cerrarModalReferido()
+    await cargarTodo()
+  } catch (error) {
+    errorEl.textContent = 'No se pudo guardar: ' + (error?.message || 'error de conexión')
+  } finally {
+    btn.disabled = false
+    btn.textContent = 'Guardar'
+  }
+}
+
+$('btnCargarReferido').addEventListener('click', abrirModalReferido)
+$('refGuardar').addEventListener('click', guardarReferido)
+$('refCancelar').addEventListener('click', cerrarModalReferido)
+$('refCerrar').addEventListener('click', cerrarModalReferido)
+$('modalReferido').addEventListener('click', e => { if (e.target === $('modalReferido')) cerrarModalReferido() })
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('modalReferido').hidden) cerrarModalReferido()
+})
 
 // Controles del mapa territorial v2
 document.querySelectorAll('.layer-btn').forEach(btn => {
@@ -1832,7 +2028,7 @@ $('btnExport').addEventListener('click', () => {
     new Date(l.created_at).toLocaleString('es-AR'),
     l.nombre, l.email, l.telefono, l.mensaje,
     l._proyecto || '', l._canal || 'Directo', l._ciudad || '', l._provincia || '', l.canal_ref || '',
-    l._origen === 'qr' ? 'QR físico' : l._origen === 'link' ? 'Link directo' : 'Directo',
+    l._origen === 'qr' ? 'QR físico' : l._origen === 'link' ? 'Link directo' : l._origen === 'manual' ? 'Carga manual' : 'Directo',
     ESTADOS[l._estado] || l._estado,
   ]))
   const csv = '﻿' + csvRow(head) + '\n' + lineas.join('\n')
@@ -1844,34 +2040,37 @@ $('btnExport').addEventListener('click', () => {
   URL.revokeObjectURL(a.href)
 })
 
-// ── Multi-touch: deduplicación por email / teléfono ───────
+// ── Multi-touch: identidad por persona_id / email legacy ──
 let _emailMap = {}
-let _telMap   = {}
 
 function buildPersonaMap() {
   _emailMap = {}
-  _telMap   = {}
+  _personaMap = {}
   _leads.forEach(l => {
-    const em  = (l.email    || '').trim().toLowerCase()
-    const tel = (l.telefono || '').replace(/\D/g, '')
-    if (em)                    { if (!_emailMap[em])  _emailMap[em]  = []; _emailMap[em].push(l)  }
-    if (tel && tel.length >= 7){ if (!_telMap[tel])   _telMap[tel]   = []; _telMap[tel].push(l)   }
+    const em = (l.email || '').trim().toLowerCase()
+    if (em) { if (!_emailMap[em]) _emailMap[em] = []; _emailMap[em].push(l) }
+    if (l.persona_id) {
+      if (!_personaMap[l.persona_id]) _personaMap[l.persona_id] = []
+      _personaMap[l.persona_id].push(l)
+    }
   })
 }
 
 function getPersonaLeads(lead) {
-  // Devuelve todos los otros leads de la misma persona (mismo email O mismo teléfono)
-  const em  = (lead.email    || '').trim().toLowerCase()
-  const tel = (lead.telefono || '').replace(/\D/g, '')
+  // V3.2: persona_id manda; fallback legacy solo email. El teléfono nunca une personas.
   const set = new Map()
-  if (em  && _emailMap[em])                  _emailMap[em].forEach(l  => { if (l.id  !== lead.id) set.set(l.id,  l)  })
-  if (tel && tel.length >= 7 && _telMap[tel]) _telMap[tel].forEach(l => { if (l.id !== lead.id)  set.set(l.id, l) })
-  return Array.from(set.values()).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  if (lead.persona_id && _personaMap[lead.persona_id]) {
+    _personaMap[lead.persona_id].forEach(l => { if (l.id !== lead.id) set.set(l.id, l) })
+  } else {
+    const em = (lead.email || '').trim().toLowerCase()
+    if (em && _emailMap[em]) _emailMap[em].forEach(l => { if (l.id !== lead.id) set.set(l.id, l) })
+  }
+  return Array.from(set.values()).sort((a, b) => new Date(a.created_at) - new Date(b.created_at) || String(a.id).localeCompare(String(b.id)))
 }
 
 function renderJourney(lead, otros) {
   // Timeline completo: otros leads + este lead, ordenados cronológicamente
-  const todos = [...otros, lead].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  const todos = [...otros, lead].sort((a, b) => new Date(a.created_at) - new Date(b.created_at) || String(a.id).localeCompare(String(b.id)))
   const primerLead = todos[0]
   const ultimoLead = todos[todos.length - 1]
   const primerCanal = primerLead._canal || primerLead.canal_ref || '(sin canal)'

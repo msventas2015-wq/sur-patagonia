@@ -402,7 +402,7 @@ const _filtrosCanales = {
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
 })
@@ -644,17 +644,45 @@ function initFiltrosCanales() {
 // Se desactivan el canal y todos sus puntos QR; visitas y consultas quedan intactas.
 window.eliminarCanal = async (id, nombre) => {
   if (!confirm(`¿Archivar el canal "${nombre}" y desactivar todos sus puntos QR?\n\nLos códigos impresos se conservan (no se reciclan) pero dejan de estar activos. Las consultas y visitas registradas NO se borran.`)) return
-  const { error: errRefs } = await supabase.from('referencias').update({ activo: false }).eq('canal_id', id)
-  if (errRefs) { alert('Error al desactivar los puntos: ' + errRefs.message); return }
+  // Orden M1: el trigger archiva la principal junto con el canal.
   const { error } = await supabase.from('canales').update({ activo: false }).eq('id', id)
   if (error) { alert('Error al archivar: ' + error.message); return }
+  // Completar todos los puntos, incluidos los legacy con punto_tipo NULL.
+  // La escritura es idempotente: la principal ya quedó inactiva por el trigger.
+  const { error: errRefs } = await supabase.from('referencias').update({ activo: false }).eq('canal_id', id)
+  if (errRefs) { alert('Canal archivado, pero falló la desactivación de puntos: ' + errRefs.message); return }
+
+  const [canalCheck, principalCheck, refsActivasCheck] = await Promise.all([
+    supabase.from('canales').select('activo').eq('id', id).maybeSingle(),
+    supabase.from('referencias').select('activo').eq('canal_id', id).eq('punto_tipo', 'principal').maybeSingle(),
+    supabase.from('referencias').select('id', { count: 'exact', head: true }).eq('canal_id', id).eq('activo', true),
+  ])
+  const checkError = canalCheck.error || principalCheck.error || refsActivasCheck.error
+  if (checkError) { alert('Canal archivado, pero no se pudo verificar el estado final: ' + checkError.message); return }
+  if (canalCheck.data?.activo !== false || principalCheck.data?.activo !== false || (refsActivasCheck.count || 0) !== 0) {
+    alert('Atención: el archivado quedó incompleto — revisar guardas antes de continuar.')
+    return
+  }
   cargarCanales()
 }
 
 // ── Toggle activo ─────────────────────────────────────────
 window.toggleActivo = async (id, actual) => {
   if (!confirm(actual ? '¿Desactivar este canal?' : '¿Activar este canal?')) return
-  await supabase.from('canales').update({ activo: !actual }).eq('id', id)
+  const esperado = !actual
+  const { error } = await supabase.from('canales').update({ activo: esperado }).eq('id', id)
+  if (error) { alert('No se pudo cambiar el estado: ' + error.message); return }
+  // La base sincroniza la principal; los puntos secundarios no se reactivan solos.
+  const [canalCheck, principalCheck] = await Promise.all([
+    supabase.from('canales').select('activo').eq('id', id).maybeSingle(),
+    supabase.from('referencias').select('activo').eq('canal_id', id).eq('punto_tipo', 'principal').maybeSingle(),
+  ])
+  const checkError = canalCheck.error || principalCheck.error
+  if (checkError) { alert('Estado cambiado, pero no se pudo verificar la principal: ' + checkError.message); return }
+  if (canalCheck.data?.activo !== esperado || principalCheck.data?.activo !== esperado) {
+    alert('Atención: canal y referencia principal no quedaron sincronizados — revisar guardas.')
+    return
+  }
   cargarCanales()
 }
 

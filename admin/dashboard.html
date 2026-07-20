@@ -389,7 +389,7 @@ const colorCanal = colorCanalDesdeIndex
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if ((session.user.app_metadata?.rol ?? session.user.user_metadata?.rol) !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
 })
@@ -402,7 +402,7 @@ async function cargar() {
   const hace60 = new Date(); hace60.setDate(hace60.getDate() - 60)
 
   const [rLeads60, rVisitas60, rCanales, rRefs, rProps, rNumProps, rNumProy, rNuevas] = await Promise.all([
-    supabase.from('contactos').select('nombre, mensaje, canal_ref, canal_via, proyecto_slug, estado, leido, created_at, propiedades(titulo)')
+    supabase.from('contactos').select('nombre, mensaje, canal_ref, canal_via, origen, proyecto_slug, estado, leido, created_at, propiedades(titulo)')
       .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }),
     supabase.from('visitas').select('canal_ref, canal_via, created_at')
       .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }).limit(50000),
@@ -687,7 +687,9 @@ async function cargar() {
         const canalColor = canal ? colorCanal(canalPorNombre[canal]?.color_index) : null
         const esNueva = (l.estado || 'nueva') === 'nueva'
         const fecha = new Date(l.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
-        const origenBadge = l.canal_ref
+        const origenBadge = l.origen === 'manual'
+          ? '<span class="badge-via badge-directo">Manual</span>'
+          : l.canal_ref
           ? (l.canal_via === 'qr'
               ? '<span class="badge-via badge-qr"><span class="badge-via-icon"></span>QR</span>'
               : '<span class="badge-via badge-link">Link</span>')

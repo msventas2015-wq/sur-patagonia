@@ -577,7 +577,7 @@ import { supabase } from '../js/config.js'
 // ── Auth ──
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
 })
@@ -648,7 +648,8 @@ function claveMapa(v) {
   return textoPlano(v).toLowerCase()
 }
 
-function infoVia(canalVia, directo = false) {
+function infoVia(canalVia, directo = false, origenCaptura = null) {
+  if (claveMapa(origenCaptura) === 'manual') return { label: 'Manual', color: COLOR_NEUTRO }
   if (directo) return { label: 'Directo', color: COLOR_NEUTRO }
   const via = claveMapa(canalVia)
   if (via === 'qr') return { label: 'QR', color: COLOR_VIA_QR }
@@ -700,8 +701,8 @@ function renderCanalChip(label, color, variante = 'badge') {
   return `<span class="canal-badge" style="--bc:${safe}"><i></i>${esc(txt)}</span>`
 }
 
-function renderViaBadge(canalVia, directo = false) {
-  const via = infoVia(canalVia, directo)
+function renderViaBadge(canalVia, directo = false, origenCaptura = null) {
+  const via = infoVia(canalVia, directo, origenCaptura)
   const icono = via.label === 'QR' ? '<span class="badge-via-icon" aria-hidden="true"></span>' : ''
   return `<span class="badge-via ${viaClase(via.label)}">${icono}<span>${esc(via.label.toUpperCase())}</span></span>`
 }
@@ -725,12 +726,12 @@ function renderEstadoPlano(estado, clase = 'crm-op-estado') {
   return `<span class="${clase}" style="--est:${info.color}">${esc(info.label)}</span>`
 }
 
-function renderCanalViaChips(canalRef, canalVia, canalColor = null, opciones = {}) {
+function renderCanalViaChips(canalRef, canalVia, canalColor = null, opciones = {}, origenCaptura = null) {
   const directo = !textoPlano(canalRef) && !textoPlano(canalVia)
   const canal = infoCanal(canalRef, canalColor)
   return [
     canal ? renderCanalChip(canal.label, canal.color, opciones.canal || 'inline') : '',
-    renderViaBadge(canalVia, directo)
+    renderViaBadge(canalVia, directo, origenCaptura)
   ].filter(Boolean).join('')
 }
 
@@ -888,7 +889,7 @@ function resolverCanal(canalRef) {
 function enriquecerLead(l) {
   const directo = !textoPlano(l.canal_ref)
   const canal = resolverCanal(l.canal_ref)
-  const via = infoVia(l.canal_via, directo)
+  const via = infoVia(l.canal_via, directo, l.origen)
   const proyectoSlug = textoPlano(l.proyecto_slug)
   const proyecto = proyectoSlug ? _proyectoPorSlug.get(claveMapa(proyectoSlug)) : null
   return {
@@ -1070,7 +1071,7 @@ function renderCard(l) {
   const canalChip = canalInfo
     ? renderCanalChip(canalInfo.label, canalInfo.color, 'inline')
     : renderCanalChip('Sin canal', COLOR_NEUTRO, 'inline')
-  const viaBadge = renderViaBadge(l.canal_via, l._directo)
+  const viaBadge = renderViaBadge(l.canal_via, l._directo, l.origen)
   const destino = destinoLead(l)
   const mensajeCrudo = textoPlano(l.mensaje)
   const mensaje = limpiarPrefijoMensaje(mensajeCrudo, destino)
@@ -1157,7 +1158,6 @@ function renderPersonaFicha(persona) {
     personaItem('Estado persona', personaVal(persona.estado_persona)),
     personaItem('Primera consulta', esc(fmtPersonaFecha(persona.primera_fecha))),
     personaItem('Primer canal', personaVal(persona.primer_canal_ref)),
-    personaItem('Vence atribución', esc(fmtPersonaFecha(persona.vence_atribucion_at))),
     personaItem('ID corto', esc(idCortoPersona(persona.id))),
   ]
   if (persona.email_norm) campos.push(personaItem('Email normalizado', personaVal(persona.email_norm)))
@@ -1211,8 +1211,8 @@ function renderCanalFila(canalRef, clase = 'crm-op-canal') {
   return `<span class="${clase}" style="--bc:${safe}"><i></i><span>${esc(info.label)}</span></span>`
 }
 
-function renderViaFila(canalVia, directo = false, clase = 'crm-op-via') {
-  const via = infoVia(canalVia, directo)
+function renderViaFila(canalVia, directo = false, clase = 'crm-op-via', origenCaptura = null) {
+  const via = infoVia(canalVia, directo, origenCaptura)
   const icono = via.label === 'QR' ? '<i aria-hidden="true"></i>' : ''
   return `<span class="${clase} ${viaClase(via.label)}">${icono}<span>${esc(via.label.toUpperCase())}</span></span>`
 }
@@ -1283,7 +1283,7 @@ function renderOportunidadesPersona(oportunidades, actualId) {
               </div>
               ${renderEstadoPlano(o.estado || 'nueva', 'crm-op-estado')}
               <span class="crm-op-fecha">${esc(fmtPersonaFecha(o.created_at || o.fecha))}</span>
-              ${renderViaFila(o.canal_via, !textoPlano(o.canal_ref), 'crm-op-via')}
+              ${renderViaFila(o.canal_via, !textoPlano(o.canal_ref), 'crm-op-via', o.origen)}
             </div>`
         }).join('')}
       </div>
@@ -1378,7 +1378,7 @@ async function cargarPersonaFicha(lead) {
   try {
     const { data, error } = await supabase
       .from('personas')
-      .select('id, nombre, email_norm, celular_norm, fijo_norm, estado_persona, primera_fecha, primer_canal_ref, vence_atribucion_at, retencion_hasta, created_at, updated_at')
+      .select('id, nombre, email_norm, celular_norm, fijo_norm, estado_persona, primera_fecha, primer_canal_ref, retencion_hasta, created_at, updated_at')
       .eq('id', lead.persona_id)
       .maybeSingle()
 
@@ -1451,7 +1451,7 @@ async function cargarPersonaOportunidades(lead) {
   try {
     const { data, error } = await supabase
       .from('contactos')
-      .select('id, created_at, fecha, estado, canal_ref, canal_via, propiedad_id, proyecto_slug, mensaje, propiedades(id, titulo)')
+      .select('id, created_at, fecha, estado, canal_ref, canal_via, origen, propiedad_id, proyecto_slug, mensaje, propiedades(id, titulo)')
       .eq('persona_id', lead.persona_id)
       .order('created_at', { ascending: false })
 
@@ -1480,7 +1480,7 @@ function abrirModal(id) {
     ['Email',      l.email     ? `<a href="mailto:${esc(l.email)}" style="color:var(--accent)">${esc(l.email)}</a>` : '—'],
     ['Teléfono',   l.telefono  || '—'],
     ['Propiedad',  l._propTitulo || '—'],
-    ['Canal',      `<span class="crm-inline-chips">${renderCanalViaChips(l.canal_ref, l.canal_via, l._canalColor)}</span>`],
+    ['Canal',      `<span class="crm-inline-chips">${renderCanalViaChips(l.canal_ref, l.canal_via, l._canalColor, {}, l.origen)}</span>`],
     ['Fecha',      new Date(l.created_at).toLocaleString('es-AR')],
   ]
   document.getElementById('modalRows').innerHTML = rows.map(([k,v]) =>

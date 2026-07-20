@@ -282,7 +282,7 @@ import { supabase } from '../js/config.js'
 // ── Auth ──
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
 })
@@ -304,7 +304,7 @@ async function cargar() {
 
   const [{ data: visitas, count: totalVisitas }, { data: contactos }, { data: props }] = await Promise.all([
     supabase.from('visitas').select('pagina, propiedad_id, dispositivo, canal_ref, canal_via, created_at', { count: 'exact' }).gte('created_at', desde).limit(10000),
-    supabase.from('contactos').select('id, created_at').gte('created_at', desde).limit(5000),
+    supabase.from('contactos').select('id, origen, created_at').gte('created_at', desde).limit(5000),
     supabase.from('propiedades').select('id, titulo').limit(500)
   ])
   // Advertir si se alcanzó el límite (datos incompletos)
@@ -312,12 +312,13 @@ async function cargar() {
 
   const vs = visitas || []
   const cs = contactos || []
+  const csWeb = cs.filter(c => c.origen !== 'manual')
 
   // ── KPIs ──
   const total = vs.length
   const propVistas = vs.filter(v => v.pagina === 'propiedad' || v.propiedad_id).length
   const tours = vs.filter(v => v.pagina === 'tour').length
-  const tasa = total > 0 ? ((cs.length / total) * 100).toFixed(1) : '0.0'
+  const tasa = total > 0 ? ((csWeb.length / total) * 100).toFixed(1) : '0.0'
 
   document.getElementById('kpiGrid').innerHTML = `
     <div class="kpi-card">

@@ -1199,7 +1199,7 @@ function syncGenerator(base = mapaBaseActual()) {
 
 async function auth() {
   const { data: { session } } = await supabase.auth.getSession()
-  const rol = session?.user?.app_metadata?.rol || session?.user?.user_metadata?.rol
+  const rol = session?.user?.app_metadata?.rol
   if (!session || rol !== 'admin') {
     window.location.href = 'login.html'
     throw new Error('no admin session')
@@ -1283,7 +1283,7 @@ async function cargarMetricas() {
   const desde = hace30()
   const [visitasRes, contactosRes] = await Promise.all([
     supabase.from('visitas').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).limit(50000),
-    supabase.from('contactos').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).limit(10000),
+    supabase.from('contactos').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).eq('origen', 'web').eq('canal_via', 'qr').limit(10000),
   ])
   if (visitasRes.error) throw visitasRes.error
   if (contactosRes.error) throw contactosRes.error

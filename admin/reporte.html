@@ -224,7 +224,7 @@
 
     // Scans y leads filtrados por fechas de campaña
     let qVisitas = supabase.from('visitas').select('canal_ref', { count: 'exact', head: false }).in('canal_ref', codigos)
-    let qLeads   = supabase.from('contactos').select('canal_ref', { count: 'exact', head: false }).in('canal_ref', codigos)
+    let qLeads   = supabase.from('contactos').select('canal_ref', { count: 'exact', head: false }).in('canal_ref', codigos).eq('origen', 'web')
     if (camp.fecha_inicio) { qVisitas = qVisitas.gte('created_at', camp.fecha_inicio); qLeads = qLeads.gte('created_at', camp.fecha_inicio) }
     if (camp.fecha_fin)    { qVisitas = qVisitas.lte('created_at', camp.fecha_fin);    qLeads = qLeads.lte('created_at', camp.fecha_fin) }
 
@@ -232,7 +232,7 @@
       qVisitas,
       qLeads,
       supabase.from('visitas').select('canal_ref').in('canal_ref', codigos).limit(10000),
-      supabase.from('contactos').select('canal_ref').in('canal_ref', codigos).limit(5000),
+      supabase.from('contactos').select('canal_ref').in('canal_ref', codigos).eq('origen', 'web').limit(5000),
     ])
 
     // Scans por canal

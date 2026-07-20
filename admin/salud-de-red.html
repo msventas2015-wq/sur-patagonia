@@ -432,7 +432,7 @@ import { supabase } from '../js/config.js'
 // ── Auth check ──────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault()
@@ -519,15 +519,17 @@ async function cargar() {
       supabase.from('canales').select('id, nombre, codigo, activo, tipo, ciudad, provincia, user_id, created_at').order('created_at', { ascending: false }),
       supabase.from('referencias').select('id, canal_id, codigo, activo'),
       supabase.from('visitas').select('canal_ref, canal_via, created_at').gte('created_at', desde).limit(25000),
-      supabase.from('contactos').select('id, canal_ref, canal_via, estado, created_at').gte('created_at', desde).limit(10000),
-      supabase.from('contactos').select('id, canal_ref, estado, created_at').limit(10000),
+      supabase.from('contactos').select('id, canal_ref, canal_via, origen, estado, created_at').gte('created_at', desde).limit(10000),
+      supabase.from('contactos').select('id, canal_ref, origen, estado, created_at').limit(10000),
     ])
 
     const canales   = rCanales.data   || []
     const refs      = rRefs.data      || []
     const visitas   = rVisitas.data   || []
-    const leads     = rContactos.data || []
-    const leadsAll  = rContactosTodos.data || []
+    const leadsTodos    = rContactos.data || []
+    const leadsWeb      = leadsTodos.filter(l => l.origen !== 'manual')
+    const leadsAllTodos = rContactosTodos.data || []
+    const leadsAllWeb   = leadsAllTodos.filter(l => l.origen !== 'manual')
 
     // ── Mapas de lookup ──────────────────────────────────────
     // codigo → canal
@@ -570,7 +572,7 @@ async function cargar() {
 
     // Para 60 días pedimos leads también
     const codigosLeads60 = new Set(
-      leadsAll.filter(l => l.created_at >= hace60 && l.canal_ref).map(l => l.canal_ref)
+      leadsAllWeb.filter(l => l.created_at >= hace60 && l.canal_ref).map(l => l.canal_ref)
     )
 
     const canalIdConVisita30 = new Set()
@@ -588,11 +590,15 @@ async function cargar() {
 
     // ── Actividad ────────────────────────────────────────────
     const totalVisitas  = visitas.length
-    const totalLeads    = leads.length
-    const leadsConCanal = leads.filter(l => l.canal_ref).length
+    const totalLeads    = leadsTodos.length
+    const leadsConCanal = leadsTodos.filter(l => l.canal_ref).length
     const leadsSinCanal = totalLeads - leadsConCanal
-    const leadsAllConCanal = leadsAll.filter(l => l.canal_ref).length
-    const leadsAllSinCanal = leadsAll.length - leadsAllConCanal
+    const totalLeadsWeb = leadsWeb.length
+    const leadsWebConCanal = leadsWeb.filter(l => l.canal_ref).length
+    const leadsWebSinCanal = totalLeadsWeb - leadsWebConCanal
+    const leadsAllConCanal = leadsAllTodos.filter(l => l.canal_ref).length
+    const leadsAllSinCanal = leadsAllTodos.length - leadsAllConCanal
+    const leadsAllWebConCanal = leadsAllWeb.filter(l => l.canal_ref).length
 
     // ── Ranking de canales (período activo) ─────────────────
     const visitasPorCodigo = {}
@@ -601,32 +607,43 @@ async function cargar() {
         visitasPorCodigo[v.canal_ref] = (visitasPorCodigo[v.canal_ref] || 0) + 1
       }
     })
-    const leadsPorCodigo = {}
-    leads.forEach(l => {
-      if (l.canal_ref) {
-        leadsPorCodigo[l.canal_ref] = (leadsPorCodigo[l.canal_ref] || 0) + 1
-      }
-    })
+    const contarLeadsPorCodigo = dataset => {
+      const porCodigo = {}
+      dataset.forEach(l => {
+        if (l.canal_ref) porCodigo[l.canal_ref] = (porCodigo[l.canal_ref] || 0) + 1
+      })
+      return porCodigo
+    }
+    const leadsTodosPorCodigo = contarLeadsPorCodigo(leadsTodos)
+    const leadsWebPorCodigo = contarLeadsPorCodigo(leadsWeb)
 
-    // Agrupar por canal (un canal puede tener múltiples refs)
-    const canalStats = {}
-    canales.forEach(c => {
-      canalStats[c.id] = { canal: c, visitas: 0, leads: 0 }
-    })
-    // Sumar por canal.codigo
-    canales.forEach(c => {
-      if (c.codigo) {
-        if (visitasPorCodigo[c.codigo]) canalStats[c.id].visitas += visitasPorCodigo[c.codigo]
-        if (leadsPorCodigo[c.codigo]) canalStats[c.id].leads += leadsPorCodigo[c.codigo]
-      }
-    })
-    // Sumar por refs del canal
-    refs.forEach(r => {
-      if (canalStats[r.canal_id]) {
-        if (visitasPorCodigo[r.codigo]) canalStats[r.canal_id].visitas += visitasPorCodigo[r.codigo]
-        if (leadsPorCodigo[r.codigo]) canalStats[r.canal_id].leads += leadsPorCodigo[r.codigo]
-      }
-    })
+    const construirCanalStats = leadsPorCodigo => {
+      const stats = {}
+      canales.forEach(c => {
+        stats[c.id] = { canal: c, visitas: 0, leads: 0 }
+      })
+      canales.forEach(c => {
+        if (c.codigo) {
+          if (visitasPorCodigo[c.codigo]) stats[c.id].visitas += visitasPorCodigo[c.codigo]
+          if (leadsPorCodigo[c.codigo]) stats[c.id].leads += leadsPorCodigo[c.codigo]
+        }
+      })
+      // La principal comparte código con el canal: solo sumar referencias de código distinto.
+      refs.forEach(r => {
+        if (stats[r.canal_id] && r.codigo !== stats[r.canal_id].canal.codigo) {
+          if (visitasPorCodigo[r.codigo]) stats[r.canal_id].visitas += visitasPorCodigo[r.codigo]
+          if (leadsPorCodigo[r.codigo]) stats[r.canal_id].leads += leadsPorCodigo[r.codigo]
+        }
+      })
+      return stats
+    }
+
+    // Ambos datasets quedan materializados: Todos para CRM/totales y Web para rendimiento físico.
+    const canalStatsTodos = construirCanalStats(leadsTodosPorCodigo)
+    const canalStats = construirCanalStats(leadsWebPorCodigo)
+    if (Object.keys(canalStatsTodos).length !== canales.length) {
+      console.warn('[salud-red] no se pudo construir el mapa completo de canales')
+    }
 
     const ranking = Object.values(canalStats)
       .filter(s => s.visitas > 0 || s.leads > 0)
@@ -646,22 +663,22 @@ async function cargar() {
       const iso = d.toISOString().slice(0, 10)
       diasLabels.push(i === 0 ? 'Hoy' : iso.slice(5))
       visitasDia.push(visitas.filter(v => v.created_at.slice(0, 10) === iso).length)
-      leadsDia.push(leads.filter(l => l.created_at.slice(0, 10) === iso).length)
+      leadsDia.push(leadsWeb.filter(l => l.created_at.slice(0, 10) === iso).length)
     }
 
     // ── Estado CRM ────────────────────────────────────────────
     const estadosCRM = {}
-    leadsAll.forEach(l => {
+    leadsAllTodos.forEach(l => {
       estadosCRM[l.estado || 'nueva'] = (estadosCRM[l.estado || 'nueva'] || 0) + 1
     })
-    const leadsProcesados = leadsAll.filter(l => l.estado && l.estado !== 'nueva').length
+    const leadsProcesadosWeb = leadsAllWeb.filter(l => l.estado && l.estado !== 'nueva').length
 
     // ── SCORE ─────────────────────────────────────────────────
     // A (30): % canales activos con visita en período
     const pA = canalesActivos > 0 ? Math.round(pct(canalIdConVisita30.size, canalesActivos) * 30 / 100) : 0
 
-    // B (25): % leads con canal (todos los tiempos)
-    const pB = leadsAll.length > 0 ? Math.round(pct(leadsAllConCanal, leadsAll.length) * 25 / 100) : 0
+    // B (25): calidad de tracking físico — solo consultas Web.
+    const pB = leadsAllWeb.length > 0 ? Math.round(pct(leadsAllWebConCanal, leadsAllWeb.length) * 25 / 100) : 0
 
     // C (20): % canales con referencia activa
     const canalesConRefActiva = canales.filter(c => {
@@ -675,7 +692,7 @@ async function cargar() {
     const pD = Math.round(crecimientoRatio * 15)
 
     // E (10): % leads procesados (estado != 'nueva')
-    const pE = leadsAll.length > 0 ? Math.round(pct(leadsProcesados, leadsAll.length) * 10 / 100) : 0
+    const pE = leadsAllWeb.length > 0 ? Math.round(pct(leadsProcesadosWeb, leadsAllWeb.length) * 10 / 100) : 0
 
     const score = pA + pB + pC + pD + pE
 
@@ -686,12 +703,12 @@ async function cargar() {
     const listaSinActividad = canales.filter(c => c.activo && !canalIdConVisita30.has(c.id))
     const listaInactivos    = canales.filter(c => !c.activo)
     renderEstadoGeneral(totalCanales, canalesActivos, canalesInactivos, canalesNuevosMes, listaSinActividad, listaInactivos, conUserID, totalCanales)
-    renderActividad(totalVisitas, totalLeads, leadsConCanal, leadsSinCanal, leadsAll.length, leadsAllConCanal, leadsAllSinCanal)
+    renderActividad(totalVisitas, totalLeads, leadsConCanal, totalLeadsWeb, leadsWebSinCanal, leadsAllTodos.length, leadsAllSinCanal)
     renderChart(diasLabels, visitasDia, leadsDia)
     renderRanking(ranking, maxVisitas)
     renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal)
-    renderCalidad(totalCanales, canalesSinRef, refsActivas, refs.length, leadsAll.length, leadsAllConCanal, leadsAllSinCanal)
-    renderAtribucion(leadsAll.length, leadsAllConCanal, leadsAllSinCanal, estadosCRM)
+    renderCalidad(totalCanales, canalesSinRef, refsActivas, refs.length, leadsAllTodos.length, leadsAllConCanal, leadsAllSinCanal)
+    renderAtribucion(leadsAllTodos.length, leadsAllConCanal, leadsAllSinCanal, estadosCRM)
 
     document.getElementById('loadingSpinner').style.display = 'none'
     document.getElementById('contenido').style.display = 'block'
@@ -767,14 +784,14 @@ function renderEstadoGeneral(total, activos, inactivos, nuevos, listaSinAct, lis
     </div>`).join('')
 }
 
-function renderActividad(visitas, leads, leadsConCanal, leadsSinCanal, leadsAll, leadsAllConCanal, leadsAllSinCanal) {
-  const convPct = pct(leads, visitas)
+function renderActividad(visitas, consultasTodos, consultasConCanal, leadsWeb, leadsWebSinCanal, leadsAll, leadsAllSinCanal) {
+  const convPct = pct(leadsWeb, visitas)
   const grid = document.getElementById('kpiActividad')
   grid.innerHTML = [
     { l: 'Visitas en período',       v: fmt(visitas), s: 'registradas en el período' },
-    { l: 'Leads generados',          v: fmt(leads),   s: 'consultas recibidas', cls: leads > 0 ? 'up' : '' },
-    { l: 'Leads con atribución',     v: fmt(leadsConCanal), s: `${pct(leadsConCanal,leads||1)}% atribuidos`, cls: pct(leadsConCanal,leads||1) >= 70 ? 'up' : 'warn' },
-    { l: 'Leads sin atribución',     v: fmt(leadsSinCanal), s: 'sin canal asignado', cls: leadsSinCanal > 0 ? 'warn' : 'up' },
+    { l: 'Consultas generadas',      v: fmt(consultasTodos), s: 'web + manuales', cls: consultasTodos > 0 ? 'up' : '' },
+    { l: 'Consultas con canal',      v: fmt(consultasConCanal), s: `${pct(consultasConCanal,consultasTodos||1)}% atribuidas`, cls: pct(consultasConCanal,consultasTodos||1) >= 70 ? 'up' : 'warn' },
+    { l: 'Leads web sin atribución', v: fmt(leadsWebSinCanal), s: 'sin canal físico asignado', cls: leadsWebSinCanal > 0 ? 'warn' : 'up' },
     { l: 'Tasa de conversión',       v: convPct + '%', s: 'visitas → leads', cls: convPct >= 3 ? 'up' : convPct > 0 ? 'warn' : '' },
     { l: 'Total histórico leads',    v: fmt(leadsAll), s: `${fmt(leadsAllSinCanal)} sin canal`, cls: leadsAllSinCanal === 0 ? 'up' : 'warn' },
   ].map(k => `
