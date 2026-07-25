@@ -305,6 +305,7 @@
               <option value="pasivo">Pasivo — Solo métricas (punto de venta)</option>
               <option value="activo">Activo — Métricas + consultas + CRM (inmo/vendedor)</option>
               <option value="desarrollador">Desarrollador — Panel de proyecto (desarrollador)</option>
+              <option value="propietario">Propietario — Panel de propiedades asignadas</option>
             </select>
           </div>
         </div>
@@ -452,6 +453,7 @@ async function cargarUsuarios() {
         <option value="pasivo"       ${tipoAcceso === 'pasivo'       ? 'selected':''}>Pasivo</option>
         <option value="activo"       ${tipoAcceso === 'activo'       ? 'selected':''}>Activo</option>
         <option value="desarrollador"${tipoAcceso === 'desarrollador'? 'selected':''}>Desarrollador</option>
+        <option value="propietario"  ${tipoAcceso === 'propietario'  ? 'selected':''}>Propietario</option>
       </select>
       ${tipoAcceso === 'desarrollador' ? `
       <select class="admin-input" style="padding:.2rem .4rem;font-size:.7rem;margin-top:.3rem;width:100%;"
@@ -524,14 +526,16 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
   btn.disabled    = true
   btn.textContent = 'Creando…'
 
-  // Alta privilegiada y atómica: la Edge Function valida al admin y crea la
-  // cuenta con sus claims confiables sin depender del signup público.
+  // La Edge Function desplegada todavía no admite "propietario". Para no
+  // publicar otra función en esta compuerta, esa cuenta nace como pasiva y se
+  // promueve inmediatamente mediante la RPC admin protegida.
+  const tipoAlta = tipoAcceso === 'propietario' ? 'pasivo' : tipoAcceso
   const { data, error } = await supabase.functions.invoke('admin-crear-usuario', {
     body: {
       email,
       password: pass,
       rol,
-      tipo_acceso: tipoAcceso,
+      tipo_acceso: tipoAlta,
       proyecto_slug: proyectoSlug,
     },
   })
@@ -555,8 +559,34 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
     return
   }
 
+  if (rol === 'colaborador' && tipoAcceso === 'propietario') {
+    const { error: tipoError } = await supabase.rpc(
+      'admin_set_tipo_acceso',
+      { p_user_id: userId, p_tipo: 'propietario' }
+    )
+    if (tipoError) {
+      const { error: cleanupError } = await supabase.rpc(
+        'admin_eliminar_usuario',
+        { p_user_id: userId }
+      )
+      const limpieza = cleanupError
+        ? ` La cuenta temporal no pudo eliminarse: ${cleanupError.message}`
+        : ' La cuenta temporal fue eliminada.'
+      mostrar(`Error al habilitar el panel de propietario: ${tipoError.message}.${limpieza}`, 'err')
+      btn.disabled = false
+      btn.textContent = 'Crear usuario'
+      return
+    }
+  }
+
   const esDesarrollador = rol === 'colaborador' && document.getElementById('uTipoAcceso')?.value === 'desarrollador'
-  mostrar(`✓ Usuario creado (${email}). ${esDesarrollador ? 'Ingresará al panel de proyecto.' : 'Asignale canales desde el panel de Canales.'}`, 'ok')
+  const esPropietario = rol === 'colaborador' && tipoAcceso === 'propietario'
+  const siguientePaso = esDesarrollador
+    ? 'Ingresará al panel de proyecto.'
+    : esPropietario
+      ? 'Asignale propiedades desde el panel de Propiedades.'
+      : 'Asignale canales desde el panel de Canales.'
+  mostrar(`✓ Usuario creado (${email}). ${siguientePaso}`, 'ok')
   limpiarForm()
   cargarUsuarios()
 

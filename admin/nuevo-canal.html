@@ -592,6 +592,8 @@ function construirLinkDirecto(destino, codigo) {
 
 let _canalId            = editId || null
 let _proyectos          = []
+let _destinosEditables  = []
+let _referenciasPorId   = new Map()
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -798,6 +800,80 @@ function getProyectoSlugDestino(destino) {
   return item?.slug || null
 }
 
+function propiedadIdDeDestino(data) {
+  return data?.tipo === 'propiedad' && data.id ? data.id : null
+}
+
+function propiedadIdDestinoPasivo() {
+  if (document.getElementById('tipoDestino').value !== 'proyecto') return null
+  const option = document.getElementById('destinoProyecto').selectedOptions[0]
+  return option?.dataset.tipo === 'propiedad'
+    ? (option.dataset.destinoId || null)
+    : null
+}
+
+async function sincronizarReferenciaPropiedad(referenciaId, propiedadId) {
+  if (propiedadId) {
+    return supabase
+      .from('referencia_propiedad')
+      .upsert(
+        { referencia_id: referenciaId, propiedad_id: propiedadId },
+        { onConflict: 'referencia_id' }
+      )
+  }
+  return supabase
+    .from('referencia_propiedad')
+    .delete()
+    .eq('referencia_id', referenciaId)
+}
+
+async function sincronizarReferenciasPropiedad(referenciaIds, propiedadId) {
+  if (!referenciaIds.length) return { error: null }
+  if (propiedadId) {
+    return supabase
+      .from('referencia_propiedad')
+      .upsert(
+        referenciaIds.map(referenciaId => ({
+          referencia_id: referenciaId,
+          propiedad_id: propiedadId,
+        })),
+        { onConflict: 'referencia_id' }
+      )
+  }
+  return supabase
+    .from('referencia_propiedad')
+    .delete()
+    .in('referencia_id', referenciaIds)
+}
+
+async function restaurarDestinoCanalYReferencias(canalId, canalAntes, referenciasAntes) {
+  const destinoAnterior = canalAntes?.destino || '/'
+  const canalRollback = canalAntes
+    ? { tipo: canalAntes.tipo, destino: destinoAnterior }
+    : { destino: '/' }
+  const { error: canalError } = await supabase
+    .from('canales')
+    .update(canalRollback)
+    .eq('id', canalId)
+
+  const restauraciones = referenciasAntes.length
+    ? referenciasAntes.map(ref =>
+        supabase
+          .from('referencias')
+          .update({ destino: ref.destino || '/' })
+          .eq('id', ref.id)
+      )
+    : [
+        supabase
+          .from('referencias')
+          .update({ destino: '/' })
+          .eq('canal_id', canalId),
+      ]
+  const resultados = await Promise.all(restauraciones)
+  const referenciaError = resultados.find(resultado => resultado.error)?.error || null
+  return canalError || referenciaError
+}
+
 // ── Cargar destinos disponibles (proyectos + propiedades) ─
 async function cargarDestinos() {
   // Proyectos: intentamos con slug (disponible después de correr el SQL de slugs)
@@ -815,6 +891,7 @@ async function cargarDestinos() {
 
   const proyectos = (dproy || []).map(p => ({
     tipo:    'proyecto',
+    id:      p.id,
     nombre:  p.nombre,
     slug:    p.slug || toSlug(p.nombre),
     // Destino = la MINIWEB del proyecto (/{slug}), con su personalización completa.
@@ -824,6 +901,7 @@ async function cargarDestinos() {
 
   const propiedades = (dprop || []).map(p => ({
     tipo:    'propiedad',
+    id:      p.id,
     nombre:  p.titulo,
     slug:    p.slug || toSlug(p.titulo),
     destino: `/propiedad.html?id=${p.id}`,
@@ -840,6 +918,8 @@ async function cargarDestinos() {
       const o = document.createElement('option')
       o.value       = fnValue(item)
       o.textContent = fnLabel(item)
+      o.dataset.tipo = item.tipo || ''
+      if (item.id) o.dataset.destinoId = item.id
       grp.appendChild(o)
     })
     sel.appendChild(grp)
@@ -876,6 +956,10 @@ async function cargarDestinos() {
     { label: 'Listado de propiedades',       destino: '/propiedades',  slug: 'propiedades' },
     { label: 'Listado de proyectos',         destino: '/proyectos',    slug: 'proyectos' },
   ]
+  _destinosEditables = [
+    ...generalesRef.map(g => ({ tipo: 'general', ...g, nombre: g.label })),
+    ..._proyectos,
+  ]
   generalesRef.forEach(g => {
     const o = document.createElement('option')
     o.value = JSON.stringify({ tipo: 'general', slug: g.slug, nombre: g.label, destino: g.destino })
@@ -901,24 +985,47 @@ const destinosListos = cargarDestinos()
 // ── REFERENCIAS ───────────────────────────────────────────
 async function cargarReferencias() {
   if (!_canalId) return
-  const { data } = await supabase
+  await destinosListos
+  const { data, error } = await supabase
     .from('referencias')
     .select('*')
     .eq('canal_id', _canalId)
     .order('created_at', { ascending: true })
 
   const lista = document.getElementById('listaReferencias')
+  if (error) {
+    lista.innerHTML = `<div class="nc-empty">No se pudieron cargar los puntos: ${esc(error.message)}</div>`
+    return
+  }
   if (!data?.length) {
+    _referenciasPorId = new Map()
     lista.innerHTML = '<div class="nc-empty">Sin puntos todavía. Agregá un QR abajo.</div>'
     return
   }
+
+  const { data: relaciones, error: relacionesError } = await supabase
+    .from('referencia_propiedad')
+    .select('referencia_id, propiedad_id')
+    .in('referencia_id', data.map(r => r.id))
+  if (relacionesError) {
+    lista.innerHTML = `<div class="nc-empty">No se pudieron verificar las propiedades vinculadas: ${esc(relacionesError.message)}</div>`
+    return
+  }
+  const propiedadPorReferencia = new Map(
+    (relaciones || []).map(r => [r.referencia_id, r.propiedad_id])
+  )
+  const referencias = data.map(r => ({
+    ...r,
+    propiedad_id: propiedadPorReferencia.get(r.id) || null,
+  }))
+  _referenciasPorId = new Map(referencias.map(r => [r.id, r]))
 
   // Escaneos del mes por slot
   const hace30 = new Date(Date.now() - 30 * 86400000).toISOString()
   const { data: visitas30 } = await supabase
     .from('visitas')
     .select('canal_ref')
-    .in('canal_ref', data.map(r => r.codigo))
+    .in('canal_ref', referencias.map(r => r.codigo))
     .gte('created_at', hace30)
   const scansPorCodigo = {}
   ;(visitas30 || []).forEach(v => {
@@ -926,7 +1033,7 @@ async function cargarReferencias() {
   })
   const canalActivo = esActivo(document.getElementById('tipo').value)
 
-  lista.innerHTML = `<div class="slot-list">${data.map(r => {
+  lista.innerHTML = `<div class="slot-list">${referencias.map(r => {
     const scans = scansPorCodigo[r.codigo] || 0
     const activo = r.activo !== false
     const puntoTipo = r.punto_tipo || (r.codigo === document.getElementById('codigo').value ? 'principal' : null)
@@ -973,14 +1080,22 @@ async function cargarReferencias() {
   }).join('')}</div>`
 
   // Poblar selects de edición con los mismos proyectos/propiedades
-  data.forEach(r => {
+  referencias.forEach(r => {
     const sel = document.getElementById(`edit-sel-${r.id}`)
     if (!sel) return
-    _proyectos.forEach(p => {
+    _destinosEditables.forEach(p => {
       const o = document.createElement('option')
       o.value = JSON.stringify(p)
       o.textContent = p.nombre
-      if (p.destino === r.destino) o.selected = true
+      const esPropiedadVinculada =
+        p.tipo === 'propiedad' &&
+        r.propiedad_id &&
+        p.id === r.propiedad_id
+      const esOtroDestino =
+        p.tipo !== 'propiedad' &&
+        !r.propiedad_id &&
+        p.destino === r.destino
+      if (esPropiedadVinculada || esOtroDestino) o.selected = true
       sel.appendChild(o)
     })
   })
@@ -995,6 +1110,12 @@ window.abrirEditarDestino = (id) => {
 }
 
 window.guardarDestinoRef = async (id) => {
+  const original = _referenciasPorId.get(id)
+  if (!original) {
+    alert('No se pudo verificar el estado actual del punto. Recargá la lista e intentá de nuevo.')
+    await cargarReferencias()
+    return
+  }
   const sel = document.getElementById(`edit-sel-${id}`)
   const nombre = document.getElementById(`edit-nombre-${id}`)?.value.trim()
   const punto_tipo = document.getElementById(`edit-punto-tipo-${id}`)?.value || null
@@ -1006,14 +1127,41 @@ window.guardarDestinoRef = async (id) => {
     punto_tipo,
     punto_ubicacion,
   }
+  let propiedadId = original.propiedad_id
   if (canalActivo) {
     if (!sel?.value) { alert('Seleccioná un destino.'); return }
-    const { tipo, slug, destino } = JSON.parse(sel.value)
+    const destinoData = JSON.parse(sel.value)
+    const { tipo, slug, destino } = destinoData
     payload.destino = destino
     payload.proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
+    propiedadId = propiedadIdDeDestino(destinoData)
   }
   const { error } = await supabase.from('referencias').update(payload).eq('id', id)
   if (error) { alert('Error al guardar: ' + error.message); return }
+
+  const { error: relacionError } = await sincronizarReferenciaPropiedad(id, propiedadId)
+  if (relacionError) {
+    const restaurarPayload = {
+      nombre: original.nombre,
+      punto_tipo: original.punto_tipo,
+      punto_ubicacion: original.punto_ubicacion,
+      destino: original.destino,
+      proyecto_slug: original.proyecto_slug,
+    }
+    const [
+      { error: restaurarRefError },
+      { error: restaurarRelacionError },
+    ] = await Promise.all([
+      supabase.from('referencias').update(restaurarPayload).eq('id', id),
+      sincronizarReferenciaPropiedad(id, original.propiedad_id),
+    ])
+    const compensacion = restaurarRefError || restaurarRelacionError
+      ? ' La compensación también falló; no sigas editando y revisá esta referencia.'
+      : ' El cambio fue revertido.'
+    alert('No se pudo guardar la relación con la propiedad: ' + relacionError.message + compensacion)
+    await cargarReferencias()
+    return
+  }
   cargarReferencias()
 }
 
@@ -1029,6 +1177,9 @@ window.agregarReferencia = async function() {
     ? JSON.parse(selVal)
     : { tipo: 'general', slug: null, destino: getDestinoUrl() }
   const { tipo, slug, destino } = destinoData
+  const propiedadId = canalActivo
+    ? propiedadIdDeDestino(destinoData)
+    : propiedadIdDestinoPasivo()
   const punto_tipo = canalActivo ? null : (document.getElementById('refPuntoTipo').value || 'personalizado')
   const punto_ubicacion = canalActivo ? null : (document.getElementById('refPuntoUbicacion').value.trim() || null)
 
@@ -1065,7 +1216,7 @@ window.agregarReferencia = async function() {
   const proyecto_slug = canalActivo && (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
   const punto_orden = canalActivo ? null : Math.max(0, ...(refsCanal || []).map(r => Number(r.punto_orden) || 0)) + 1
 
-  const { error } = await supabase.from('referencias').insert({
+  const { data: referenciaCreada, error } = await supabase.from('referencias').insert({
     canal_id: _canalId,
     nombre,
     codigo,
@@ -1075,11 +1226,27 @@ window.agregarReferencia = async function() {
     punto_tipo,
     punto_ubicacion,
     punto_orden,
-  })
+  }).select('id').single()
 
   if (error) {
     const ayuda = error.code === '23505' ? ' Revisá el código, nombre o ubicación del punto.' : ''
     alert('No se pudo guardar el punto QR: ' + error.message + ayuda)
+    return
+  }
+
+  const { error: relacionError } = await sincronizarReferenciaPropiedad(
+    referenciaCreada.id,
+    propiedadId
+  )
+  if (relacionError) {
+    const { error: cleanupError } = await supabase
+      .from('referencias')
+      .delete()
+      .eq('id', referenciaCreada.id)
+    const limpieza = cleanupError
+      ? ' El punto nuevo tampoco pudo eliminarse; frená y revisalo antes de emitir el QR.'
+      : ' El punto nuevo fue eliminado y el código no se emitió.'
+    alert('No se pudo guardar la relación con la propiedad: ' + relacionError.message + limpieza)
     return
   }
 
@@ -1324,6 +1491,27 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     user_id:  userId,
   }
 
+  let canalAntes = null
+  let referenciasAntes = []
+  if (_canalId) {
+    const [
+      { data: canalPrevio, error: canalPrevioError },
+      { data: refsPrevias, error: refsPreviasError },
+    ] = await Promise.all([
+      supabase.from('canales').select('tipo, destino').eq('id', _canalId).single(),
+      supabase.from('referencias').select('id, destino').eq('canal_id', _canalId),
+    ])
+    if (canalPrevioError || refsPreviasError) {
+      alert(
+        'No se pudo congelar el estado previo del canal. No se guardó ningún cambio: ' +
+        (canalPrevioError?.message || refsPreviasError?.message)
+      )
+      return
+    }
+    canalAntes = canalPrevio
+    referenciasAntes = refsPrevias || []
+  }
+
   let data, error
   if (_canalId) {
     ;({ data, error } = await supabase.from('canales').update(payload).eq('id', _canalId).select().single())
@@ -1390,11 +1578,45 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
       return
     }
 
+    const { error: relacionError } = await sincronizarReferenciasPropiedad(
+      (refsExistentes || []).map(r => r.id),
+      propiedadIdDestinoPasivo()
+    )
+    if (relacionError) {
+      const compensacionError = await restaurarDestinoCanalYReferencias(
+        _canalId,
+        canalAntes,
+        referenciasAntes
+      )
+      const compensacion = compensacionError
+        ? ' La compensación también falló; frená y revisá el canal antes de usar sus QRs.'
+        : ' El destino anterior fue restaurado; podés corregir el problema y reintentar.'
+      alert('No se pudo sincronizar la relación de sus puntos con la propiedad: ' + relacionError.message + compensacion)
+      return
+    }
+
     actualizarSeccionReferencias()
     await cargarReferencias()
     const codigoQR = refPrincipal?.codigo || codigo
     verQR(codigoQR, encodeURIComponent(refPrincipal?.nombre || nombre), encodeURIComponent(refPrincipal?.destino || destino))
   } else {
+    const { error: relacionPrincipalError } = await sincronizarReferenciaPropiedad(
+      principalGuardada.id,
+      null
+    )
+    if (relacionPrincipalError) {
+      const compensacionError = await restaurarDestinoCanalYReferencias(
+        _canalId,
+        canalAntes,
+        referenciasAntes
+      )
+      const compensacion = compensacionError
+        ? ' La compensación también falló; frená y revisá el canal.'
+        : ' El destino anterior fue restaurado.'
+      alert('No se pudo limpiar la relación de la referencia principal: ' + relacionPrincipalError.message + compensacion)
+      return
+    }
+
     // Canal activo: mostrar sección de referencias
     actualizarSeccionReferencias()
     cargarReferencias()

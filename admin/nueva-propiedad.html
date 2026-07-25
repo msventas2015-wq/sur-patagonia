@@ -192,6 +192,21 @@
       </div>
 
       <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); padding:2rem; margin-bottom:1.5rem;">
+        <h4 style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dorado); margin-bottom:1.5rem;">Propietario</h4>
+        <div class="form-grid">
+          <div class="form-grupo form-full">
+            <label for="propietarioUserId">Dueño asignado</label>
+            <select id="propietarioUserId">
+              <option value="">— Sin propietario asignado —</option>
+            </select>
+            <p style="font-size:0.72rem; color:var(--gris); margin-top:0.45rem; line-height:1.5;">
+              Podés asignar, reasignar o quitar el dueño. Sólo aparecen colaboradores activos con acceso de propietario.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); padding:2rem; margin-bottom:1.5rem;">
         <h4 style="font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--dorado); margin-bottom:1.5rem;">Financiación</h4>
         <div class="form-grid">
           <div class="form-grupo" style="flex-direction:row; align-items:center; gap:0.8rem;">
@@ -505,13 +520,103 @@
   // Auth check
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
 
   document.getElementById('btnLogout').addEventListener('click', async (e) => {
     e.preventDefault()
     await supabase.auth.signOut()
     window.location.href = 'login.html'
   })
+
+  // ── Propietarios asignables ───────────────────────────────────
+  const propietarioSelect = document.getElementById('propietarioUserId')
+  let propietarioInicial = null
+  let propietariosDisponibles = false
+  let usuariosAdministrables = []
+
+  async function cargarPropietariosAsignables() {
+    const { data, error } = await supabase.rpc('admin_listar_usuarios')
+    if (error) {
+      propietarioSelect.innerHTML = '<option value="">No se pudieron cargar los propietarios</option>'
+      propietarioSelect.disabled = true
+      return
+    }
+    usuariosAdministrables = data || []
+
+    const propietarios = usuariosAdministrables
+      .filter(u =>
+        u.rol === 'colaborador' &&
+        u.tipo_acceso === 'propietario' &&
+        !u.desactivado
+      )
+      .sort((a, b) => String(a.email || '').localeCompare(String(b.email || ''), 'es'))
+
+    propietarioSelect.innerHTML = '<option value="">— Sin propietario asignado —</option>'
+    propietarios.forEach(u => {
+      const option = document.createElement('option')
+      option.value = u.id
+      option.textContent = u.email
+      propietarioSelect.appendChild(option)
+    })
+    propietarioSelect.disabled = false
+    propietariosDisponibles = true
+  }
+
+  async function cargarPropietarioActual(propiedadId) {
+    const { data, error } = await supabase
+      .from('propiedad_propietario')
+      .select('user_id')
+      .eq('propiedad_id', propiedadId)
+      .maybeSingle()
+
+    if (error) {
+      propietariosDisponibles = false
+      propietarioSelect.disabled = true
+      throw new Error('No se pudo verificar el propietario actual: ' + error.message)
+    }
+
+    propietarioInicial = data?.user_id || null
+    if (
+      propietarioInicial &&
+      ![...propietarioSelect.options].some(option => option.value === propietarioInicial)
+    ) {
+      const usuarioActual = usuariosAdministrables.find(u => u.id === propietarioInicial)
+      const option = document.createElement('option')
+      option.value = propietarioInicial
+      option.textContent = usuarioActual?.email
+        ? `${usuarioActual.email} (no disponible para nuevas asignaciones)`
+        : 'Propietario actual (no disponible)'
+      option.disabled = true
+      propietarioSelect.appendChild(option)
+    }
+    propietarioSelect.value = propietarioInicial || ''
+  }
+
+  async function sincronizarPropietario(propiedadId) {
+    if (!propietariosDisponibles) {
+      throw new Error('No se verificó la lista de propietarios. Recargá la página antes de guardar.')
+    }
+    const propietarioElegido = propietarioSelect.value || null
+    if (propietarioElegido === propietarioInicial) return
+
+    const operacion = propietarioElegido
+      ? supabase
+          .from('propiedad_propietario')
+          .upsert(
+            { propiedad_id: propiedadId, user_id: propietarioElegido },
+            { onConflict: 'propiedad_id' }
+          )
+      : supabase
+          .from('propiedad_propietario')
+          .delete()
+          .eq('propiedad_id', propiedadId)
+
+    const { error } = await operacion
+    if (error) throw new Error('No se pudo actualizar el propietario: ' + error.message)
+    propietarioInicial = propietarioElegido
+  }
+
+  const propietariosListos = cargarPropietariosAsignables()
 
   // ── Upload imágenes normales ──────────────────────────────────
   const uploadArea = document.getElementById('uploadArea')
@@ -672,13 +777,25 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
 
   // ── Editar propiedad existente ────────────────────────────────
   const params = new URLSearchParams(window.location.search)
-  const editId = params.get('id')
+  let editId = params.get('id')
   let imagenesExistentes = []
 
   if (editId) {
     document.getElementById('tituloPagina').textContent = 'Editar propiedad'
     document.getElementById('headerAcciones').innerHTML =
       `<a class="btn-ver-prop" href="../propiedad?id=${editId}" target="_blank" rel="noopener">↗ Ver propiedad</a>`
+    await propietariosListos
+    try {
+      await cargarPropietarioActual(editId)
+    } catch (error) {
+      const alertaEl = document.getElementById('alerta')
+      alertaEl.innerHTML = ''
+      const div = document.createElement('div')
+      div.className = 'alerta alerta-error'
+      div.textContent = error.message
+      alertaEl.appendChild(div)
+    }
+
     const { data } = await supabase.from('propiedades').select('*').eq('id', editId).single()
     if (data) {
       document.getElementById('titulo').value = data.titulo || ''
@@ -742,6 +859,14 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
   // ── Guardar ───────────────────────────────────────────────────
   document.getElementById('formPropiedad').addEventListener('submit', async (e) => {
     e.preventDefault()
+
+    await propietariosListos
+    if (!propietariosDisponibles) {
+      document.getElementById('alerta').innerHTML =
+        '<div class="alerta alerta-error">No se verificó la lista de propietarios. Recargá la página antes de guardar.</div>'
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
 
     // Validar coordenadas si se ingresaron
     const latVal = document.getElementById('latitud').value
@@ -815,14 +940,36 @@ if (session.user.user_metadata?.rol !== 'admin') { window.location.href = 'login
         imagenes: todasImagenes
       }
 
-      let error
+      let propiedadGuardada, error
       if (editId) {
-        ({ error } = await supabase.from('propiedades').update(datos).eq('id', editId))
+        ({ data: propiedadGuardada, error } = await supabase
+          .from('propiedades')
+          .update(datos)
+          .eq('id', editId)
+          .select('id')
+          .single())
       } else {
-        ({ error } = await supabase.from('propiedades').insert(datos))
+        ({ data: propiedadGuardada, error } = await supabase
+          .from('propiedades')
+          .insert(datos)
+          .select('id')
+          .single())
       }
 
       if (error) throw error
+      try {
+        await sincronizarPropietario(propiedadGuardada.id)
+      } catch (propietarioError) {
+        if (!editId) {
+          editId = propiedadGuardada.id
+          history.replaceState({}, '', `?id=${encodeURIComponent(editId)}`)
+          document.getElementById('tituloPagina').textContent = 'Editar propiedad'
+        }
+        throw new Error(
+          `La propiedad quedó guardada, pero no su dueño. ${propietarioError.message} ` +
+          'El formulario quedó en modo edición para que puedas reintentar sin duplicarla.'
+        )
+      }
 
       document.getElementById('alerta').innerHTML =
         `<div class="alerta alerta-exito">✓ Propiedad ${editId ? 'actualizada' : 'creada'} correctamente.</div>`
