@@ -29,6 +29,7 @@
       --border:rgba(255,255,255,.07);
       --accent:#d76f3f;
       --dorado:#c9a84c;
+      --azul:#7aaeff;
       --verde:#50c878;
       --rojo:#e05c5c;
       --gris:#888;
@@ -123,7 +124,7 @@
       backdrop-filter:blur(4px);
     }
     .sec { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
-    .sec-t { color:var(--gris); font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+    .sec-t { color:var(--dorado); font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
     .sec-b {
       display:inline-block;
       padding:.18rem .6rem;
@@ -162,6 +163,12 @@
     .canal-tbl .r { text-align:right; }
     .canal-tbl strong { display:block; color:var(--blanco); font-weight:600; }
     .canal-tbl small { display:block; margin-top:.15rem; color:var(--gris); font-size:.67rem; line-height:1.45; }
+    .canal-tbl td.owner-network-inmobiliarias { color:var(--dorado); }
+    .canal-tbl td.owner-network-puntos { color:var(--azul); }
+    .owner-funnel-table tbody tr:nth-child(1) td:last-child { color:#b39ddb; }
+    .owner-funnel-table tbody tr:nth-child(2) td:last-child { color:#35c6b4; }
+    .owner-funnel-table tbody tr:nth-child(3) td:last-child { color:#f29a5a; }
+    .owner-funnel-table tbody tr:nth-child(4) td:last-child { color:#d9a7ff; }
     .owner-property-row { min-height:44px; cursor:pointer; }
     .owner-property-row:focus-visible { outline:2px solid var(--dorado); outline-offset:-2px; }
     .owner-property-thumb { display:block; width:64px; height:48px; object-fit:cover; }
@@ -251,10 +258,20 @@
       left:0;
       width:2px;
       border-radius:99px;
-      background:var(--c,var(--accent));
+      background:linear-gradient(to bottom,transparent,var(--c,var(--accent)),transparent);
     }
     .kpi-lbl { margin-bottom:.55rem; color:rgba(255,255,255,.42); font-size:.58rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; }
-    .kpi-n { margin-bottom:.35rem; color:var(--blanco); font-size:2.35rem; font-weight:300; line-height:1; }
+    .kpi-n {
+      margin-bottom:.35rem;
+      background:linear-gradient(135deg,#fff,rgba(255,255,255,.7));
+      color:var(--blanco);
+      font-size:2.35rem;
+      font-weight:300;
+      line-height:1;
+      background-clip:text;
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
     .kpi-m { color:var(--gris); font-size:.65rem; line-height:1.45; }
     .empty-msg { padding:2rem 1rem; color:rgba(255,255,255,.34); font-size:.75rem; line-height:1.6; text-align:center; }
     #legalNote { margin-top:1.4rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--gris); font-size:.68rem; line-height:1.6; }
@@ -671,22 +688,22 @@
       </div>
 
       <div class="kpi-row">
-        <div class="kpi" style="--c:var(--dorado)">
+        <div class="kpi" style="--c:#b88fd6">
           <div class="kpi-lbl">Vistas</div>
           <div class="kpi-n">${numero(detalle[`vistas_${sufijo}`])}</div>
           <div class="kpi-m">${esc(periodoTexto)}</div>
         </div>
-        <div class="kpi" style="--c:var(--accent)">
+        <div class="kpi" style="--c:var(--azul)">
           <div class="kpi-lbl">Consultas</div>
           <div class="kpi-n">${numero(detalle[`consultas_${sufijo}`])}</div>
           <div class="kpi-m">${esc(periodoTexto)}</div>
         </div>
-        <div class="kpi" style="--c:var(--verde)">
+        <div class="kpi" style="--c:var(--dorado)">
           <div class="kpi-lbl">Actores activos</div>
           <div class="kpi-n">${numero(detalle.actores_total)}</div>
           <div class="kpi-m">${numero(detalle.inmobiliarias_total)} inmobiliarias · ${numero(detalle.puntos_venta_total)} puntos</div>
         </div>
-        <div class="kpi" style="--c:var(--gris)">
+        <div class="kpi" style="--c:#3bbf88">
           <div class="kpi-lbl">Ciudades</div>
           <div class="kpi-n">${numero(detalle.ciudades_total)}</div>
           <div class="kpi-m">Última actividad: ${esc(fecha(detalle.ultima_actividad_fecha))}</div>
@@ -701,14 +718,14 @@
           <div class="sec-b">${numero(detalle.actores_total)} actores</div>
         </div>
         ${ciudades.length ? `
-          <table class="canal-tbl">
+          <table class="canal-tbl owner-network-table">
             <thead><tr><th>Ciudad</th><th class="r">Total</th><th class="r">Inmobiliarias</th><th class="r">Puntos de venta</th></tr></thead>
             <tbody>${ciudades.map(item => `
               <tr>
                 <td><strong>${esc(item.ciudad || 'Sin ciudad')}</strong></td>
                 <td class="r" data-label="Total">${numero(item.total)}</td>
-                <td class="r" data-label="Inmobiliarias">${numero(item.inmobiliarias)}</td>
-                <td class="r" data-label="Puntos de venta">${numero(item.puntos_venta)}</td>
+                <td class="r owner-network-inmobiliarias" data-label="Inmobiliarias">${numero(item.inmobiliarias)}</td>
+                <td class="r owner-network-puntos" data-label="Puntos de venta">${numero(item.puntos_venta)}</td>
               </tr>`).join('')}</tbody>
           </table>`
           : '<div class="empty-msg">Todavía no hay actores activos asociados.</div>'}
@@ -719,7 +736,7 @@
           <div class="sec-t">Embudo agregado</div>
           <div class="sec-b">${esc(periodoTexto)}</div>
         </div>
-        <table class="canal-tbl">
+        <table class="canal-tbl owner-funnel-table">
           <thead><tr><th>Etapa</th><th class="r">Cantidad</th></tr></thead>
           <tbody>${etapas.map(([label, value]) => `
             <tr><td><strong>${esc(label)}</strong></td><td class="r" data-label="Cantidad">${numero(value)}</td></tr>`
