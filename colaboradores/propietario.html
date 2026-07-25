@@ -6,6 +6,7 @@
   <title>Panel de Propietario — Sur Patagonia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="manifest" href="/colaboradores/manifest.json" />
   <meta name="theme-color" content="#090909" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -171,6 +172,42 @@
     .owner-chip-row { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:.85rem; }
     .owner-back { margin-bottom:1rem; }
     .owner-hidden { display:none !important; }
+    .owner-map-shell {
+      position:relative;
+      overflow:hidden;
+      width:100%;
+      height:400px;
+      margin-bottom:1.8rem;
+      border:1px solid rgba(255,255,255,.07);
+      border-top-color:rgba(255,255,255,.12);
+      border-radius:14px;
+      background:#0b0b0d;
+    }
+    .owner-map { width:100%; height:100%; background:#0b0b0d; }
+    .owner-map .leaflet-control-zoom a { background:rgba(12,12,14,.94); color:var(--dorado); border-color:var(--border); }
+    .owner-map .leaflet-control-zoom a:hover,
+    .owner-map .leaflet-control-zoom a:focus { background:var(--card); color:#e8c96a; }
+    .owner-map .leaflet-control-attribution { background:rgba(8,8,8,.72); color:var(--gris); }
+    .owner-map .leaflet-control-attribution a { color:var(--gris); }
+    .owner-map .leaflet-popup-content-wrapper {
+      border:1px solid rgba(201,168,76,.22);
+      border-radius:8px;
+      background:rgba(8,8,8,.94);
+      box-shadow:0 8px 26px rgba(0,0,0,.42);
+    }
+    .owner-map .leaflet-popup-tip { background:rgba(8,8,8,.94); }
+    .owner-map .leaflet-popup-content { margin:.8rem 1rem; }
+    .owner-map .leaflet-popup-close-button { color:var(--gris); }
+    .owner-map-marker {
+      display:block;
+      width:18px;
+      height:18px;
+      border:2px solid rgba(201,168,76,.5);
+      border-radius:50%;
+      background:var(--dorado);
+      box-shadow:0 0 12px rgba(201,168,76,.7),0 0 24px rgba(201,168,76,.3);
+    }
+    .owner-map-tooltip { color:var(--blanco); font-family:'Inter',system-ui,sans-serif; font-size:.72rem; font-weight:600; line-height:1.35; }
     .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin-bottom:1.2rem; }
     .kpi {
       position:relative;
@@ -214,6 +251,7 @@
       .kpi-row { grid-template-columns:repeat(2,1fr); }
       .owner-detail-grid { grid-template-columns:1fr; }
       #detailHero .owner-property-thumb { height:220px; }
+      .owner-map-shell { height:320px; }
     }
     @media(max-width:520px) {
       .header { padding:.8rem 1rem; }
@@ -234,6 +272,7 @@
       .canal-tbl .r { text-align:right; }
       .owner-property-thumb { width:72px; height:54px; }
       .owner-property-row { min-height:44px; }
+      .owner-map-shell { height:260px; margin-bottom:1.5rem; }
     }
   </style>
 </head>
@@ -254,6 +293,7 @@
   </div>
 </main>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
@@ -267,6 +307,7 @@
   let cartera = []
   let detalle = null
   let periodo = '30'
+  let ownerMap = null
 
   const esc = value => String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -333,7 +374,106 @@
     }
   }
 
+  function destroyOwnerMap() {
+    if (!ownerMap) return
+    ownerMap.off()
+    ownerMap.remove()
+    ownerMap = null
+  }
+
+  function coordenadaPropiedad(propiedad) {
+    if (!propiedad || propiedad.latitud == null || propiedad.latitud === '' ||
+        propiedad.longitud == null || propiedad.longitud === '') return null
+    const latitud = Number(propiedad.latitud)
+    const longitud = Number(propiedad.longitud)
+    if (!Number.isFinite(latitud) || !Number.isFinite(longitud) ||
+        latitud < -90 || latitud > 90 || longitud < -180 || longitud > 180) return null
+    return { propiedad, latitud, longitud }
+  }
+
+  function propiedadesConCoordenadas(propiedades) {
+    return (Array.isArray(propiedades) ? propiedades : [])
+      .map(coordenadaPropiedad)
+      .filter(Boolean)
+  }
+
+  function mapaMarkup(propiedades, etiqueta) {
+    if (!window.L || !propiedadesConCoordenadas(propiedades).length) return ''
+    return `
+      <div class="owner-map-shell" id="ownerMapShell">
+        <div class="owner-map" id="ownerMap" role="region" aria-label="${esc(etiqueta)}"></div>
+      </div>`
+  }
+
+  function renderOwnerMap(propiedades, vista) {
+    const puntos = propiedadesConCoordenadas(propiedades)
+    const shell = document.getElementById('ownerMapShell')
+    const container = document.getElementById('ownerMap')
+    const leaflet = window.L
+
+    if (!puntos.length || !shell || !container || !leaflet) {
+      shell?.remove()
+      return
+    }
+
+    const mapa = leaflet.map(container, {
+      zoomControl: true,
+      scrollWheelZoom: false,
+    })
+    ownerMap = mapa
+
+    leaflet.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(mapa)
+
+    const icono = leaflet.divIcon({
+      className: '',
+      html: '<span class="owner-map-marker" aria-hidden="true"></span>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+      popupAnchor: [0, -11],
+    })
+
+    puntos.forEach(({ propiedad, latitud, longitud }) => {
+      const titulo = String(propiedad.titulo || 'Propiedad')
+      const popup = document.createElement('div')
+      popup.className = 'owner-map-tooltip'
+      popup.textContent = titulo
+
+      const marker = leaflet.marker([latitud, longitud], {
+        icon: icono,
+        title: titulo,
+        alt: titulo,
+      }).bindPopup(popup).addTo(mapa)
+
+      if (vista === 'cartera') {
+        marker.on('click', () => {
+          marker.openPopup()
+          window.setTimeout(() => {
+            if (ownerMap === mapa) abrirDetalle(propiedad.propiedad_id)
+          }, 200)
+        })
+      }
+    })
+
+    if (vista === 'cartera' && puntos.length > 1) {
+      mapa.fitBounds(
+        leaflet.latLngBounds(puntos.map(({ latitud, longitud }) => [latitud, longitud])),
+        { padding: [40, 40], maxZoom: 13 }
+      )
+    } else {
+      mapa.setView([puntos[0].latitud, puntos[0].longitud], 13)
+    }
+
+    window.requestAnimationFrame(() => {
+      if (ownerMap === mapa) mapa.invalidateSize()
+    })
+  }
+
   function renderError(mensaje, accion) {
+    destroyOwnerMap()
     view.innerHTML = `
       <div class="hero">
         <h1>No pudimos cargar el panel</h1>
@@ -348,6 +488,7 @@
   }
 
   function renderCartera() {
+    destroyOwnerMap()
     detalle = null
     history.replaceState({}, '', 'propietario.html')
 
@@ -364,6 +505,7 @@
     }
 
     view.innerHTML = `
+      ${mapaMarkup(cartera, 'Ubicación de mis propiedades')}
       <div class="hero">
         <h1>Mis propiedades</h1>
         <div class="hero-sub">Visibilidad sobre la actividad registrada de tu propiedad. · Actualizado ${esc(fecha(new Date().toISOString().slice(0, 10)))}</div>
@@ -402,9 +544,11 @@
           </tbody>
         </table>
       </div>`
+    renderOwnerMap(cartera, 'cartera')
   }
 
   function renderDetalle() {
+    destroyOwnerMap()
     if (!detalle) return
     const desdePublicacion = periodo === 'all'
     const sufijo = desdePublicacion ? 'desde_publicacion' : '30d'
@@ -426,6 +570,7 @@
 
     view.innerHTML = `
       <button class="btn-p owner-back${volverOculto}" type="button" data-action="cartera">← Volver a mis propiedades</button>
+      ${mapaMarkup([detalle], `Ubicación de ${detalle.titulo || 'la propiedad'}`)}
       <div class="hero">
         <h1>Actividad de la propiedad</h1>
         <div class="hero-sub">Visibilidad sobre la actividad registrada de tu propiedad.</div>
@@ -541,9 +686,11 @@
         </div>
         <p id="legalNote">Los indicadores reflejan la actividad registrada por la plataforma. Son informativos y no constituyen garantía de consultas, ofertas ni venta.</p>
       </div>`
+    renderOwnerMap([detalle], 'detalle')
   }
 
   async function abrirDetalle(propiedadId) {
+    destroyOwnerMap()
     view.innerHTML = '<div class="empty-msg">Cargando actividad de la propiedad…</div>'
     const { data, error } = await supabase.rpc(
       'rpc_propietario_propiedad',
@@ -563,6 +710,7 @@
   }
 
   async function cargarCartera() {
+    destroyOwnerMap()
     view.innerHTML = '<div class="empty-msg">Cargando propiedades asignadas…</div>'
     const { data, error } = await supabase.rpc('rpc_propietario_cartera')
     if (error) {
@@ -615,9 +763,12 @@
   })
 
   document.getElementById('btnSalir').addEventListener('click', async () => {
+    destroyOwnerMap()
     await supabase.auth.signOut()
     location.href = 'login.html'
   })
+
+  window.addEventListener('pagehide', destroyOwnerMap)
 
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
