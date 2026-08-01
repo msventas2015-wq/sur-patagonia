@@ -1,5 +1,5 @@
 // ============================================================
-// SUR PATAGONIA — Configuración de Supabase
+// SUR PATAGONIAN — Configuración de Supabase
 // ============================================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
