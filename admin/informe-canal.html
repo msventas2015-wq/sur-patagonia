@@ -48,6 +48,7 @@
     .fatal-card p { line-height:1.6; margin-bottom:1.1rem; }
     .back-link,
     .rango-btn,
+    .btn-aplicar,
     .btn-export {
       display:inline-flex; align-items:center; justify-content:center;
       border:1px solid rgba(201,168,76,.28); border-radius:8px;
@@ -58,9 +59,11 @@
     }
     .back-link { padding:.48rem .9rem; }
     .rango-btn { padding:.36rem .88rem; letter-spacing:.08em; }
+    .btn-aplicar { padding:.38rem .72rem; }
     .btn-export { padding:.42rem .95rem; font-weight:700; }
     .back-link:hover,
     .rango-btn:hover,
+    .btn-aplicar:hover,
     .btn-export:hover { border-color:rgba(201,168,76,.45); }
     .rango-btn.activo {
       background:linear-gradient(135deg,rgba(201,168,76,.24),rgba(201,168,76,.09));
@@ -68,14 +71,26 @@
     }
     .rango-btn:disabled,
     .btn-export:disabled { opacity:.45; cursor:wait; box-shadow:none; }
+    .btn-aplicar:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; }
 
     .dash-header {
-      display:flex; align-items:flex-end; justify-content:space-between;
-      gap:1rem; flex-wrap:wrap; margin-bottom:.85rem;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:
+        "titulo selector"
+        "meta rangos";
+      align-items:start;
+      gap:.9rem 1.5rem;
+      margin-bottom:1.2rem;
     }
+    .dash-header .titulo-wrap { grid-area:titulo; min-width:0; }
+    .dash-header .header-meta { grid-area:meta; }
+    .dash-header .selector-wrap { grid-area:selector; justify-self:end; }
+    .dash-header .rangos { grid-area:rangos; justify-self:end; }
     .admin-page-title {
       font-family:'Inter',sans-serif; font-size:clamp(2rem,5vw,3rem); font-weight:800;
       letter-spacing:-.03em; text-transform:uppercase; margin:0;
+      overflow-wrap:anywhere;
       background:linear-gradient(120deg,#fff,rgba(255,255,255,.55));
       -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
     }
@@ -83,7 +98,23 @@
       display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; margin-top:.7rem;
       color:rgba(255,255,255,.45); font-size:.68rem;
     }
-    .rangos { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+    .rangos { display:flex; gap:.4rem; align-items:flex-end; justify-content:flex-end; flex-wrap:wrap; min-width:0; }
+    .ic-rango-custom { display:flex; align-items:flex-end; gap:.55rem; flex-wrap:wrap; }
+    .ic-rango-custom label {
+      display:flex; flex-direction:column; gap:.3rem;
+      color:rgba(255,255,255,.3); font-size:.55rem;
+      text-transform:uppercase; letter-spacing:.09em;
+    }
+    .ic-fecha {
+      padding:.38rem .5rem; border:1px solid rgba(255,255,255,.1);
+      border-radius:7px; background:rgba(255,255,255,.04);
+      color:#f5f3f0; color-scheme:dark; font:500 .67rem 'Inter',sans-serif;
+    }
+    .ic-fecha:focus { border-color:rgba(201,168,76,.25); outline:none; }
+    .ic-rango-error {
+      flex-basis:100%; min-height:.8rem; color:#f0956a;
+      font-size:.58rem; line-height:1.35; text-align:right;
+    }
     .canal-inline {
       --bc:#8a8a82; display:inline-flex; align-items:center; gap:5px;
       color:var(--bc); font-size:.7rem; font-weight:600;
@@ -200,6 +231,10 @@
     .equal-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem; }
     .chart-card { min-width:0; }
     .chart-wrap { position:relative; height:300px; margin-top:.9rem; }
+    .chart-empty {
+      position:absolute; inset:0; display:grid; place-items:center;
+      color:rgba(255,255,255,.28); font-size:.68rem; pointer-events:none;
+    }
 
     .feed { display:flex; flex-direction:column; gap:.2rem; }
     .feed-row {
@@ -256,8 +291,7 @@
     .ranking-value { color:var(--blanco); font-size:.74rem; font-weight:600; }
     .ranking-place { color:rgba(255,255,255,.35); font-size:.65rem; min-width:62px; text-align:right; }
 
-    .header-main { display:flex; align-items:flex-end; gap:.85rem; flex-wrap:wrap; }
-    .selector-wrap { display:flex; flex-direction:column; gap:.28rem; min-width:210px; }
+    .selector-wrap { display:flex; flex-direction:column; gap:.28rem; width:min(360px,100%); min-width:210px; }
     .selector-wrap label {
       color:rgba(255,255,255,.42); font-size:.55rem; font-weight:600;
       letter-spacing:.14em; text-transform:uppercase;
@@ -266,7 +300,7 @@
       background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
       border-radius:8px; padding:.45rem .6rem; color:var(--blanco);
       font-family:'Inter',sans-serif; font-size:.76rem; min-height:34px;
-      color-scheme:dark; cursor:pointer; outline:none; appearance:none;
+      width:100%; color-scheme:dark; cursor:pointer; outline:none; appearance:none;
     }
     .ic-select:focus { border-color:rgba(201,168,76,.25); }
     .ic-chip {
@@ -320,11 +354,23 @@
       .pipe-arrow { display:none; }
       .equal-grid { grid-template-columns:1fr; }
     }
+    @media(max-width:820px) {
+      .dash-header {
+        grid-template-columns:1fr;
+        grid-template-areas:"titulo" "meta" "selector" "rangos";
+      }
+      .dash-header .selector-wrap,
+      .dash-header .rangos { justify-self:stretch; }
+      .rangos { justify-content:flex-start; }
+      .ic-rango-error { text-align:left; }
+    }
     @media(max-width:680px) {
       .admin-page-title { font-size:1.65rem; }
-      .dash-header { align-items:flex-start; }
       .rangos { width:100%; }
       .rango-btn { flex:1; min-width:72px; }
+      .ic-rango-custom { width:100%; }
+      .ic-rango-custom label { flex:1; min-width:125px; }
+      .ic-fecha { width:100%; }
       .btn-export { width:100%; }
       .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; }
       .kpi { min-height:116px; padding:1rem .9rem; }
@@ -335,7 +381,7 @@
       .feed-row { grid-template-columns:8px minmax(0,1fr); }
       .feed-fecha { grid-column:2; }
       .bar-row { grid-template-columns:74px minmax(0,1fr) 48px; }
-      .header-main,.selector-wrap { width:100%; }
+      .selector-wrap { width:100%; }
       .selector-wrap { min-width:0; }
       .saturation-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .hour-grid { grid-template-columns:repeat(6,minmax(0,1fr)); }
@@ -433,22 +479,27 @@
 
     <div id="reportView" hidden>
       <div class="dash-header">
-        <div class="header-main">
-          <div>
-            <h1 class="admin-page-title" id="canalNombre">Informe de canal</h1>
-            <div class="header-meta" id="canalMeta"></div>
-          </div>
-          <div class="selector-wrap">
-            <label for="canalSelector">Cambiar canal</label>
-            <select class="ic-select" id="canalSelector" aria-label="Cambiar canal"></select>
-          </div>
+        <div class="titulo-wrap">
+          <h1 class="admin-page-title" id="canalNombre">Informe de canal</h1>
+        </div>
+        <div class="header-meta" id="canalMeta"></div>
+        <div class="selector-wrap">
+          <label for="canalSelector">Cambiar canal</label>
+          <select class="ic-select" id="canalSelector" aria-label="Cambiar canal"></select>
         </div>
         <div class="rangos">
+          <button class="rango-btn" data-dias="1">Hoy</button>
           <button class="rango-btn" data-dias="7">7 días</button>
           <button class="rango-btn activo" data-dias="30">30 días</button>
           <button class="rango-btn" data-dias="90">90 días</button>
           <button class="rango-btn" data-dias="0">Todo</button>
+          <div class="ic-rango-custom">
+            <label>Desde<input class="ic-fecha" id="fechaDesde" type="date" /></label>
+            <label>Hasta<input class="ic-fecha" id="fechaHasta" type="date" /></label>
+            <button class="btn-aplicar" id="btnAplicarRango" type="button" disabled>Aplicar</button>
+          </div>
           <button class="btn-export" id="btnExport" disabled>Exportar</button>
+          <div class="ic-rango-error" id="rangoError" role="status" aria-live="polite"></div>
         </div>
       </div>
 
@@ -501,7 +552,10 @@
       <div class="split-grid">
         <section class="chart-card">
           <h4>Evolución en el tiempo</h4>
-          <div class="chart-wrap"><canvas id="evolucionChart"></canvas></div>
+          <div class="chart-wrap">
+            <canvas id="evolucionChart"></canvas>
+            <div class="chart-empty" id="chartEmpty" hidden>Sin actividad hoy</div>
+          </div>
           <div class="chart-legend" id="qrLegend" hidden></div>
         </section>
         <section class="section-card">
@@ -633,7 +687,7 @@ const state = {
   visitasPares:[], contactosPares:[],
   refPorCodigo:new Map(), relacionPorRef:new Map(), propiedadPorId:new Map(),
   ordenFallback:[], colorPorRef:new Map(),
-  dias:30, chart:null, loadVersion:0, exportData:null
+  dias:30, rangoManual:null, chart:null, loadVersion:0, exportData:null, cargando:false
 }
 
 function esActivo() {
@@ -652,23 +706,62 @@ function unwrap(result, etiqueta) {
   return result && result.data ? result.data : []
 }
 
+function partesNegocio(value=new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA',{
+    timeZone:TZ_NEGOCIO, year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'
+  }).formatToParts(new Date(value))
+  return Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type,Number(part.value)]))
+}
+
+function fechaNegocio(year,month,day,hour=0,minute=0,second=0) {
+  const objetivoUtc = Date.UTC(year,month-1,day,hour,minute,second)
+  const reflejado = partesNegocio(new Date(objetivoUtc))
+  const reflejadoUtc = Date.UTC(reflejado.year,reflejado.month-1,reflejado.day,reflejado.hour,reflejado.minute,reflejado.second)
+  return new Date(objetivoUtc - (reflejadoUtc - objetivoUtc))
+}
+
 function startOfDay(value=new Date()) {
-  const date = new Date(value)
-  date.setHours(0,0,0,0)
-  return date
+  const parts = partesNegocio(value)
+  return fechaNegocio(parts.year,parts.month,parts.day)
 }
 
 function addDays(value, amount) {
-  const date = new Date(value)
-  date.setDate(date.getDate() + amount)
-  return date
+  const parts = partesNegocio(value)
+  const shifted = new Date(Date.UTC(parts.year,parts.month-1,parts.day + amount))
+  return fechaNegocio(shifted.getUTCFullYear(),shifted.getUTCMonth()+1,shifted.getUTCDate(),parts.hour,parts.minute,parts.second)
 }
 
-function rangoActual(dias) {
-  if (!dias) return { actualDesde:null, anteriorDesde:null }
-  const hoy = startOfDay()
-  const actualDesde = addDays(hoy,-(dias - 1))
-  return { actualDesde, anteriorDesde:addDays(actualDesde,-dias) }
+function claveFechaNegocio(value=new Date()) {
+  const parts = partesNegocio(value)
+  return String(parts.year).padStart(4,'0') + '-' + String(parts.month).padStart(2,'0') + '-' + String(parts.day).padStart(2,'0')
+}
+
+function parseFechaNegocio(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''))
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = fechaNegocio(year,month,day)
+  return claveFechaNegocio(date) === value ? date : null
+}
+
+function indiceDiaNegocio(value) {
+  const parts = partesNegocio(value)
+  return Date.UTC(parts.year,parts.month-1,parts.day) / DIA_MS
+}
+
+function rangoActual() {
+  if (state.rangoManual) return state.rangoManual
+  const ahora = new Date()
+  if (!state.dias) return { actualDesde:null, actualHasta:ahora, anteriorDesde:null, anteriorHasta:null, manual:false }
+  const hoy = startOfDay(ahora)
+  const actualDesde = addDays(hoy,-(state.dias - 1))
+  return {
+    actualDesde, actualHasta:ahora,
+    anteriorDesde:addDays(actualDesde,-state.dias), anteriorHasta:actualDesde, manual:false
+  }
 }
 
 function enRango(fecha, desde, hasta=null) {
@@ -681,10 +774,11 @@ function enRango(fecha, desde, hasta=null) {
 }
 
 function separarPeriodos(rows, rango) {
-  if (!rango.actualDesde) return { actual:rows.slice(), anterior:[] }
   return {
-    actual:rows.filter(row => enRango(row.created_at,rango.actualDesde)),
-    anterior:rows.filter(row => enRango(row.created_at,rango.anteriorDesde,rango.actualDesde))
+    actual:rows.filter(row => enRango(row.created_at,rango.actualDesde,rango.actualHasta)),
+    anterior:rango.anteriorDesde
+      ? rows.filter(row => enRango(row.created_at,rango.anteriorDesde,rango.anteriorHasta))
+      : []
   }
 }
 
@@ -692,21 +786,19 @@ function fechaCorta(value) {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString('es-AR',{ day:'2-digit',month:'short',year:'numeric' })
+  return date.toLocaleDateString('es-AR',{ timeZone:TZ_NEGOCIO,day:'2-digit',month:'short',year:'numeric' })
 }
 
 function fechaHora(value) {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleString('es-AR',{ day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit' })
+  return date.toLocaleString('es-AR',{ timeZone:TZ_NEGOCIO,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit' })
 }
 
 function diasDesde(value) {
   if (!value) return null
-  const date = startOfDay(value)
-  const diff = startOfDay().getTime() - date.getTime()
-  return Math.max(0,Math.floor(diff / DIA_MS))
+  return Math.max(0,indiceDiaNegocio(new Date()) - indiceDiaNegocio(value))
 }
 
 function fechaRelativa(value) {
@@ -874,7 +966,7 @@ async function cargarBase(canalId) {
     ...state.contactos.map(row => row.propiedad_id)
   ].filter(Boolean))]
   const propiedadesResult = propiedadIds.length
-    ? await supabase.from('propiedades').select('id,titulo,precio,moneda').in('id',propiedadIds).limit(5000)
+    ? await supabase.from('propiedades').select('id,titulo').in('id',propiedadIds).limit(5000)
     : { data:[],error:null }
   state.propiedades = unwrap(propiedadesResult,'Propiedades')
   state.propiedadPorId = new Map(state.propiedades.map(row => [row.id,row]))
@@ -929,7 +1021,11 @@ function renderKpis(datos) {
   } = datos
   const conversion = porcentaje(consultas.length,interacciones.length)
   $('kInteracciones').innerHTML = numero(interacciones.length) + deltaHtml(interacciones.length,interaccionesPrevias.length)
-  $('kInteraccionesSub').textContent = state.dias ? 'Últimos ' + state.dias + ' días · QR + link' : 'Desde el alta · QR + link'
+  $('kInteraccionesSub').textContent = state.rangoManual
+    ? 'Rango personalizado · QR + link'
+    : state.dias
+      ? (state.dias === 1 ? 'Hoy · QR + link' : 'Últimos ' + state.dias + ' días · QR + link')
+      : 'Desde el primer dato · QR + link'
   $('kConsultas').innerHTML = numero(consultas.length) + deltaHtml(consultas.length,consultasPrevias.length)
   $('kConsultasSub').textContent = 'Origen web · QR + link'
   $('kConversion').textContent = numero(conversion,1) + '%'
@@ -983,46 +1079,71 @@ function renderPipeline(interacciones,contactos) {
   $('pipelineNote').textContent = notas.join(' ')
 }
 
-function claveDia(date) {
-  return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0')
+function granularidadPara(desde,hasta) {
+  const dias = Math.max(1,Math.ceil((hasta - desde) / DIA_MS))
+  if (dias <= 2) return 'hora'
+  if (dias <= 60) return 'dia'
+  if (dias <= 180) return 'semana'
+  return 'mes'
 }
 
-function construirBuckets(interacciones,contactos) {
-  const hoy = startOfDay()
-  let inicio
-  let granularidad
-  if (state.dias === 7 || state.dias === 30) {
-    inicio = addDays(hoy,-(state.dias - 1))
-    granularidad = 'dia'
-  } else if (state.dias === 90) {
-    inicio = addDays(hoy,-89)
-    granularidad = 'semana'
-  } else {
-    const alta = new Date(state.canal.created_at || Date.now())
-    inicio = new Date(alta.getFullYear(),alta.getMonth(),1)
-    granularidad = 'mes'
-  }
+function inicioMesNegocio(value) {
+  const parts = partesNegocio(value)
+  return fechaNegocio(parts.year,parts.month,1)
+}
+
+function addMonthsNegocio(value,amount) {
+  const parts = partesNegocio(value)
+  const shifted = new Date(Date.UTC(parts.year,parts.month-1 + amount,1))
+  return fechaNegocio(shifted.getUTCFullYear(),shifted.getUTCMonth()+1,1)
+}
+
+function construirBuckets(interacciones,contactos,rango) {
+  const ahora = new Date()
+  const fechas = [...interacciones,...contactos]
+    .map(row => new Date(row.created_at))
+    .filter(date => Number.isFinite(date.getTime()))
+    .sort((a,b) => a-b)
+  const inicioRango = rango.actualDesde || (fechas[0] ? startOfDay(fechas[0]) : startOfDay(ahora))
+  const primerDato = fechas[0] ? startOfDay(fechas[0]) : null
+  const inicio = !rango.manual && primerDato && primerDato > inicioRango ? primerDato : inicioRango
+  const hasta = rango.actualHasta || ahora
+  const granularidad = granularidadPara(inicio,hasta)
   const buckets = []
   const indices = new Map()
-  if (granularidad === 'dia') {
-    for (let date=new Date(inicio); date<=hoy; date=addDays(date,1)) {
-      const key = claveDia(date)
+  const ultimoDia = startOfDay(new Date(Math.max(inicio.getTime(),hasta.getTime() - 1)))
+  if (granularidad === 'hora') {
+    const dias = Math.max(1,indiceDiaNegocio(ultimoDia) - indiceDiaNegocio(inicio) + 1)
+    for (let n=0;n<dias * 24;n++) {
+      const desde = new Date(inicio.getTime() + n * 3600000)
+      const hastaBucket = new Date(desde.getTime() + 3600000)
+      const hora = horaNegocio(desde)
+      const key = claveFechaNegocio(desde) + '-' + String(hora).padStart(2,'0')
+      const prefijo = dias > 1 ? desde.toLocaleDateString('es-AR',{ timeZone:TZ_NEGOCIO,day:'2-digit',month:'2-digit' }) + ' ' : ''
       indices.set(key,buckets.length)
-      buckets.push({ key,label:date.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}),interacciones:0,consultas:0,desde:new Date(date),hasta:addDays(date,1) })
+      buckets.push({ key,label:prefijo + String(hora).padStart(2,'0') + ':00',interacciones:0,consultas:0,desde,hasta:hastaBucket })
+    }
+  } else if (granularidad === 'dia') {
+    for (let date=new Date(inicio); date<=ultimoDia; date=addDays(date,1)) {
+      const key = claveFechaNegocio(date)
+      indices.set(key,buckets.length)
+      buckets.push({ key,label:date.toLocaleDateString('es-AR',{timeZone:TZ_NEGOCIO,day:'2-digit',month:'2-digit'}),interacciones:0,consultas:0,desde:new Date(date),hasta:addDays(date,1) })
     }
   } else if (granularidad === 'semana') {
-    for (let date=new Date(inicio),n=1; date<=hoy; date=addDays(date,7),n++) {
+    for (let date=new Date(inicio),n=1; date<=ultimoDia; date=addDays(date,7),n++) {
       buckets.push({ key:String(n-1),label:'Sem ' + n,interacciones:0,consultas:0,desde:new Date(date),hasta:addDays(date,7) })
     }
   } else {
-    for (let date=new Date(inicio); date<=hoy; date=new Date(date.getFullYear(),date.getMonth()+1,1)) {
-      const hasta = new Date(date.getFullYear(),date.getMonth()+1,1)
-      buckets.push({ key:date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0'),label:date.toLocaleDateString('es-AR',{month:'short',year:'2-digit'}),interacciones:0,consultas:0,desde:new Date(date),hasta })
+    for (let date=inicioMesNegocio(inicio); date<=ultimoDia; date=addMonthsNegocio(date,1)) {
+      const parts = partesNegocio(date)
+      const hastaBucket = addMonthsNegocio(date,1)
+      buckets.push({ key:parts.year + '-' + String(parts.month).padStart(2,'0'),label:date.toLocaleDateString('es-AR',{timeZone:TZ_NEGOCIO,month:'short',year:'2-digit'}),interacciones:0,consultas:0,desde:new Date(date),hasta:hastaBucket })
     }
   }
   const indice = value => {
     const date = new Date(value)
-    if (granularidad === 'dia') return indices.get(claveDia(date))
+    if (granularidad === 'hora') return indices.get(claveFechaNegocio(date) + '-' + String(horaNegocio(date)).padStart(2,'0'))
+    if (granularidad === 'dia') return indices.get(claveFechaNegocio(date))
     return buckets.findIndex(row => date >= row.desde && date < row.hasta)
   }
   interacciones.forEach(row => {
@@ -1033,7 +1154,7 @@ function construirBuckets(interacciones,contactos) {
     const i = indice(row.created_at)
     if (i >= 0 && buckets[i]) buckets[i].consultas += 1
   })
-  return { buckets,indice }
+  return { buckets,indice,granularidad }
 }
 
 function chartGradient(ctx, color) {
@@ -1043,23 +1164,30 @@ function chartGradient(ctx, color) {
   return gradient
 }
 
-function renderChart(interacciones,contactos) {
-  const built = construirBuckets(interacciones,contactos)
+function chartBarGradient(ctx,color) {
+  const gradient = ctx.createLinearGradient(0,0,Math.max(ctx.canvas.clientWidth || 0,320),0)
+  gradient.addColorStop(0,hexToRgba(color,.75))
+  gradient.addColorStop(1,hexToRgba(color,.35))
+  return gradient
+}
+
+function renderChart(interacciones,contactos,rango) {
+  const built = construirBuckets(interacciones,contactos,rango)
   const buckets = built.buckets
   const canvas = $('evolucionChart')
   if (state.chart) state.chart.destroy()
   const ctx = canvas.getContext('2d')
-  const datasets = [
-    {
-      label:'Interacciones',data:buckets.map(row => row.interacciones),borderColor:'#7aaeff',
-      backgroundColor:chartGradient(ctx,'#7aaeff'),borderWidth:2.5,tension:.35,
-      pointRadius:0,pointHoverRadius:5,fill:true,order:2
-    },
-    {
-      label:'Consultas',data:buckets.map(row => row.consultas),borderColor:'#e8c96a',
-      backgroundColor:'transparent',borderWidth:2.5,tension:.35,
-      pointRadius:0,pointHoverRadius:5,fill:false,spanGaps:true,order:1
-    }
+  const puntosConDatos = buckets.filter(row => row.interacciones > 0 || row.consultas > 0).length
+  const tipoGrafico = puntosConDatos < 4 ? 'bar' : 'line'
+  const sinActividadHoy = !state.rangoManual && state.dias === 1 && puntosConDatos === 0
+  $('chartEmpty').hidden = !sinActividadHoy
+  const datasets = sinActividadHoy ? [] : [
+    tipoGrafico === 'bar'
+      ? { label:'Interacciones',data:buckets.map(row => row.interacciones),borderColor:'#7aaeff',backgroundColor:chartBarGradient(ctx,'#7aaeff'),borderWidth:1,borderRadius:6,borderSkipped:false,order:2 }
+      : { label:'Interacciones',data:buckets.map(row => row.interacciones),borderColor:'#7aaeff',backgroundColor:chartGradient(ctx,'#7aaeff'),borderWidth:2.5,tension:.35,pointRadius:0,pointHoverRadius:5,fill:true,order:2 },
+    tipoGrafico === 'bar'
+      ? { label:'Consultas',data:buckets.map(row => row.consultas),borderColor:'#e8c96a',backgroundColor:chartBarGradient(ctx,'#e8c96a'),borderWidth:1,borderRadius:6,borderSkipped:false,order:1 }
+      : { label:'Consultas',data:buckets.map(row => row.consultas),borderColor:'#e8c96a',backgroundColor:'transparent',borderWidth:2.5,tension:.35,pointRadius:0,pointHoverRadius:5,fill:false,spanGaps:true,order:1 }
   ]
 
   const refsElegibles = esActivo()
@@ -1072,23 +1200,21 @@ function renderChart(interacciones,contactos) {
     const data = buckets.map(bucket => rows.filter(row => enRango(row.created_at,bucket.desde,bucket.hasta)).length)
     const prop = state.propiedadPorId.get(propiedadActual(ref))
     const label = esActivo()
-      ? (prop && prop.titulo ? prop.titulo : ref.codigo)
+      ? (prop && prop.titulo ? prop.titulo : 'Propiedad sin título')
       : (ref.punto_ubicacion || ref.codigo)
     return { ref,label,data,color:colorRef(ref) }
   }).filter(linea => linea.data.some(value => value > 0))
 
-  const ocultarInicial = refsElegibles.length >= 4
+  const ocultarInicial = false
   lineas.forEach((linea,index) => {
-    datasets.push({
-      label:linea.label,_refId:linea.ref.id,data:linea.data,order:10 + index,
-      borderColor:linea.color,backgroundColor:'transparent',borderWidth:1.4,
-      tension:.35,fill:false,spanGaps:true,pointRadius:0,pointHoverRadius:4,
-      hidden:ocultarInicial
-    })
+    datasets.push(tipoGrafico === 'bar'
+      ? { label:linea.label,_refId:linea.ref.id,data:linea.data,order:10 + index,borderColor:linea.color,backgroundColor:chartBarGradient(ctx,linea.color),borderWidth:1,borderRadius:6,borderSkipped:false,hidden:ocultarInicial }
+      : { label:linea.label,_refId:linea.ref.id,data:linea.data,order:10 + index,borderColor:linea.color,backgroundColor:'transparent',borderWidth:1.4,tension:.35,fill:false,spanGaps:true,pointRadius:0,pointHoverRadius:4,hidden:ocultarInicial }
+    )
   })
 
   state.chart = new Chart(ctx,{
-    type:'line',
+    type:tipoGrafico,
     data:{ labels:buckets.map(row => row.label),datasets },
     options:{
       responsive:true,maintainAspectRatio:false,animation:false,interaction:{intersect:false,mode:'index'},
@@ -1144,11 +1270,6 @@ function renderActividad(interacciones,contactos) {
     : '<div class="empty-state">Sin actividad registrada.</div>'
 }
 
-function precioPropiedad(prop) {
-  if (!prop || prop.precio === null || prop.precio === undefined || !Number.isFinite(Number(prop.precio))) return '—'
-  return (prop.moneda ? esc(prop.moneda) + ' ' : '') + numero(Number(prop.precio))
-}
-
 function categoriaModel(label,categoriaClave,interacciones,consultas,extra='') {
   const visitas = rowsCategoria(interacciones,categoriaClave)
   const leads = rowsCategoria(consultas,categoriaClave)
@@ -1172,12 +1293,12 @@ function renderCentralActivo(interacciones,consultas,visitasRango) {
   $('centralTitle').textContent = 'Rendimiento por propiedad'
   $('centralSub').textContent = 'Cada fila usa únicamente tráfico atribuible a la propiedad vigente. “QR creado” no es fecha de asignación.'
   $('mapStatus').hidden = true
-  $('centralHead').innerHTML = '<tr><th>Propiedad</th><th>Precio</th><th>QR creado</th><th>Interacciones</th><th>Consultas</th><th>Conversión</th><th>Último</th></tr>'
+  $('centralHead').innerHTML = '<tr><th>Propiedad</th><th>QR creado</th><th>Interacciones</th><th>Consultas</th><th>Conversión</th><th>Último</th></tr>'
 
   const refsPropiedad = state.refs.filter(ref => !esPrincipal(ref) && propiedadActual(ref))
   const rowsPropiedad = refsPropiedad.map(ref => {
     const propId = propiedadActual(ref)
-    const prop = state.propiedadPorId.get(propId) || { id:propId,titulo:'Propiedad sin título',precio:null,moneda:null }
+    const prop = state.propiedadPorId.get(propId) || { id:propId,titulo:'Propiedad sin título' }
     const visitas = interacciones.filter(row => row.canal_ref === ref.codigo && categoria(row,ref) === 'A')
     const leads = consultas.filter(row => row.canal_ref === ref.codigo && categoria(row,ref) === 'A')
     const ultimo = visitas.slice().sort((a,b) => new Date(b.created_at)-new Date(a.created_at))[0] || null
@@ -1215,18 +1336,18 @@ function renderCentralActivo(interacciones,consultas,visitasRango) {
   }
 
   if (!rowsPropiedad.length && !categorias.length) {
-    $('centralBody').innerHTML = '<tr><td colspan="7"><div class="empty-state">El canal no tiene propiedades asignadas. <a class="table-link" href="nuevo-canal.html?id=' + encodeURIComponent(state.canal.id) + '">Asignar una propiedad</a></div></td></tr>'
+    $('centralBody').innerHTML = '<tr><td colspan="6"><div class="empty-state">El canal no tiene propiedades asignadas. <a class="table-link" href="nuevo-canal.html?id=' + encodeURIComponent(state.canal.id) + '">Asignar una propiedad</a></div></td></tr>'
   } else {
     const htmlProps = rowsPropiedad.map(row => {
       const alerta = row.interacciones > 0 && row.consultas === 0 ? '<span class="attention">Interacciones sin consulta</span>' : ''
       return '<tr><td><span class="row-dot" style="--rc:' + colorRef(row.ref) + '"></span>' + esc(row.label) + alerta + '</td>' +
-        '<td>' + precioPropiedad(row.prop) + '</td><td>' + numero(diasDesde(row.ref.created_at)) + ' días</td>' +
+        '<td>' + numero(diasDesde(row.ref.created_at)) + ' días</td>' +
         '<td>' + numero(row.interacciones) + '</td><td>' + numero(row.consultas) + '</td>' +
         '<td>' + numero(row.conversion,1) + '%</td><td>' + (row.ultimo ? fechaRelativa(row.ultimo) : '—') + '</td></tr>'
     }).join('')
     const htmlCats = categorias.map(row =>
       '<tr class="category-row"><td>' + (row.ref ? '<span class="row-dot" style="--rc:' + colorRef(row.ref) + '"></span>' : '') + esc(row.label) +
-      (row.tipo === 'sin_via' ? ' · fuera del KPI' : '') + '</td><td>—</td><td>—</td><td>' + numero(row.interacciones) +
+      (row.tipo === 'sin_via' ? ' · fuera del KPI' : '') + '</td><td>—</td><td>' + numero(row.interacciones) +
       '</td><td>' + numero(row.consultas) + '</td><td>' + (row.interacciones ? numero(row.conversion,1) + '%' : '—') + '</td><td>—</td></tr>'
     ).join('')
     $('centralBody').innerHTML = htmlProps + htmlCats
@@ -1286,7 +1407,7 @@ function renderCentralPasivo(interacciones,consultas,visitasRango) {
   return rows
 }
 
-function renderSaturacion() {
+function renderSaturacion(visitasRango) {
   const section = $('saturacionSection')
   if (esActivo() || state.refs.length < 2) {
     section.hidden = true
@@ -1306,7 +1427,7 @@ function renderSaturacion() {
     return
   }
   const antesDesde = new Date(inicio.getTime() - 30 * DIA_MS)
-  const scans = state.visitas.filter(row => row.canal_via === 'qr')
+  const scans = visitasRango.filter(row => row.canal_via === 'qr')
   const antes = scans.filter(row => enRango(row.created_at,antesDesde,inicio)).length
   const despues = scans.filter(row => enRango(row.created_at,inicio,fin)).length
   const propios = scans.filter(row => row.canal_ref === nuevo.codigo && enRango(row.created_at,inicio,fin)).length
@@ -1412,7 +1533,7 @@ function peerStats(rowsVisitas,rowsContactos) {
   return map
 }
 
-function renderMetricasDerivadas(interacciones,consultas,rowsPropiedad,rango) {
+function renderMetricasDerivadas(interacciones,consultas,rango) {
   const cards = []
   const visitasPares = separarPeriodos(state.visitasPares.filter(viaDigital),rango).actual
   const contactosPares = separarPeriodos(state.contactosPares.filter(consultaDigital),rango).actual
@@ -1438,23 +1559,6 @@ function renderMetricasDerivadas(interacciones,consultas,rowsPropiedad,rango) {
   if (refsArranque.length >= 3) {
     const promedio = refsArranque.reduce((acc,value) => acc + value,0) / refsArranque.length
     cards.push({ label:'Tiempo de arranque QR',value:numero(promedio,1) + ' días',sub:numero(refsArranque.length) + ' QR con primer escaneo físico' })
-  }
-
-  if (esActivo() && rowsPropiedad && rowsPropiedad.length) {
-    const monedas = new Map()
-    rowsPropiedad.forEach(row => {
-      const precio = Number(row.prop && row.prop.precio)
-      const moneda = String(row.prop && row.prop.moneda || '').trim().toUpperCase()
-      if (!moneda || !Number.isFinite(precio) || precio <= 0 || row.interacciones <= 0) return
-      const item = monedas.get(moneda) || { suma:0,peso:0 }
-      item.suma += precio * row.interacciones
-      item.peso += row.interacciones
-      monedas.set(moneda,item)
-    })
-    if (monedas.size) {
-      const lineas = [...monedas.entries()].sort(([a],[b]) => a.localeCompare(b)).map(([moneda,item]) => moneda + ' ' + numero(item.suma / item.peso))
-      cards.push({ label:'Ticket promedio',value:lineas.join('<br>'),sub:'Ponderado por interacciones atribuibles; monedas separadas' })
-    }
   }
 
   const hoy = new Date()
@@ -1505,11 +1609,9 @@ function exportar() {
   const central = state.exportData.central || []
   if (esActivo()) {
     descargarCsv('propiedades-' + codigo + '-' + fecha + '.csv',
-      ['Propiedad','Precio','Moneda','QR creado','Interacciones','Consultas','Conversión','Último'],
+      ['Propiedad','QR creado','Interacciones','Consultas','Conversión','Último'],
       central.map(row => [
         row.label,
-        row.prop && row.prop.precio !== null ? row.prop.precio : '',
-        row.prop ? row.prop.moneda || '' : '',
         row.ref ? diasDesde(row.ref.created_at) + ' días' : '',
         row.interacciones,row.consultas,numero(row.conversion,1) + '%',row.ultimo ? fechaHora(row.ultimo) : ''
       ])
@@ -1537,12 +1639,56 @@ function exportar() {
   )
 }
 
+function mostrarErrorRango(mensaje='') {
+  $('rangoError').textContent = mensaje
+}
+
+function actualizarBotonAplicar() {
+  $('btnAplicarRango').disabled = state.cargando || !$('fechaDesde').value || !$('fechaHasta').value
+}
+
+function limpiarFechasManuales() {
+  $('fechaDesde').value = ''
+  $('fechaHasta').value = ''
+  state.rangoManual = null
+  mostrarErrorRango()
+  actualizarBotonAplicar()
+}
+
+function rangoManualDesdeInputs() {
+  const desde = parseFechaNegocio($('fechaDesde').value)
+  let hastaDia = parseFechaNegocio($('fechaHasta').value)
+  if (!desde || !hastaDia) return null
+  const ahora = new Date()
+  const hoy = startOfDay(ahora)
+  if (hastaDia > hoy) {
+    hastaDia = hoy
+    $('fechaHasta').value = claveFechaNegocio(hoy)
+  }
+  if (desde > hastaDia) {
+    mostrarErrorRango('El desde no puede ser posterior al hasta')
+    return null
+  }
+  const cantidadDias = indiceDiaNegocio(hastaDia) - indiceDiaNegocio(desde) + 1
+  return {
+    actualDesde:desde,
+    actualHasta:indiceDiaNegocio(hastaDia) === indiceDiaNegocio(hoy) ? ahora : addDays(hastaDia,1),
+    anteriorDesde:addDays(desde,-cantidadDias),
+    anteriorHasta:desde,
+    manual:true
+  }
+}
+
 async function cargarRango() {
   const version = ++state.loadVersion
   const botones = document.querySelectorAll('.rango-btn')
+  state.cargando = true
   botones.forEach(button => { button.disabled = true })
+  $('fechaDesde').disabled = true
+  $('fechaHasta').disabled = true
+  actualizarBotonAplicar()
   $('btnExport').disabled = true
-  const rango = rangoActual(state.dias)
+  const rango = rangoActual()
   try {
     const periodosVisitas = separarPeriodos(state.visitas,rango)
     const periodosContactos = separarPeriodos(state.contactos,rango)
@@ -1561,22 +1707,27 @@ async function cargarRango() {
     state.exportData = { central:[],consultas:[],serie:[] }
     renderKpis({ interacciones,consultas,manuales,interaccionesPrevias,consultasPrevias,visitasRango,ultimoTrafico })
     renderPipeline(interacciones,consultas)
-    const serie = renderChart(interacciones,consultas)
+    const serie = renderChart(interacciones,consultas,rango)
     renderActividad(interacciones,consultas)
-    const rowsCentral = esActivo()
-      ? renderCentralActivo(interacciones,consultas,visitasRango)
-      : renderCentralPasivo(interacciones,consultas,visitasRango)
-    renderSaturacion()
+    if (esActivo()) renderCentralActivo(interacciones,consultas,visitasRango)
+    else renderCentralPasivo(interacciones,consultas,visitasRango)
+    renderSaturacion(visitasRango)
     renderHorario(interacciones)
     renderConsultas(consultas)
     renderVias(interacciones,visitasRango)
-    renderMetricasDerivadas(interacciones,consultas,rowsCentral,rango)
+    renderMetricasDerivadas(interacciones,consultas,rango)
     state.exportData.serie = serie
     if (version === state.loadVersion) $('btnExport').disabled = false
   } catch (error) {
     if (version === state.loadVersion) mostrarFatal('No se pudo cargar el informe',error.message || 'Error de lectura.')
   } finally {
-    if (version === state.loadVersion) botones.forEach(button => { button.disabled = false })
+    if (version === state.loadVersion) {
+      state.cargando = false
+      botones.forEach(button => { button.disabled = false })
+      $('fechaDesde').disabled = false
+      $('fechaHasta').disabled = false
+      actualizarBotonAplicar()
+    }
   }
 }
 
@@ -1584,11 +1735,26 @@ function bindControles() {
   document.querySelectorAll('.rango-btn').forEach(button => {
     button.addEventListener('click',async () => {
       const dias = Number(button.dataset.dias)
-      if (dias === state.dias) return
+      const requiereRecarga = state.rangoManual || dias !== state.dias
+      limpiarFechasManuales()
       state.dias = dias
       document.querySelectorAll('.rango-btn').forEach(item => item.classList.toggle('activo',item === button))
-      await cargarRango()
+      if (requiereRecarga) await cargarRango()
     })
+  })
+  ;[$('fechaDesde'),$('fechaHasta')].forEach(input => {
+    input.addEventListener('input',() => {
+      mostrarErrorRango()
+      actualizarBotonAplicar()
+    })
+  })
+  $('btnAplicarRango').addEventListener('click',async () => {
+    const manual = rangoManualDesdeInputs()
+    if (!manual) return
+    mostrarErrorRango()
+    state.rangoManual = manual
+    document.querySelectorAll('.rango-btn').forEach(item => item.classList.remove('activo'))
+    await cargarRango()
   })
   $('btnExport').addEventListener('click',exportar)
   $('canalSelector').addEventListener('change',event => {
