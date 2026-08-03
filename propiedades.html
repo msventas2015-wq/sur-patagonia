@@ -41,11 +41,18 @@
     .mapa-popup-btn:hover { background: #c9a84c; color: #ffffff !important; }
     .mapa-popup-btn-tour { display: block; width: 100%; padding: 0.5rem; background: transparent; color: #c9a84c !important; font-family: 'Montserrat', sans-serif; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; text-align: center; text-decoration: none !important; border-top: 1px solid #e8e4de; transition: background 0.2s; }
     .mapa-popup-btn-tour:hover { background: rgba(201,168,76,0.08); }
+    .mapa-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .card-ver-mapa { color: var(--dorado); text-decoration: none; border-bottom: 1px solid rgba(201,168,76,0.35); transition: border-color 0.2s; white-space: nowrap; }
+    .card-ver-mapa:hover { border-bottom-color: var(--dorado); }
 
     /* Ocultar el borde por defecto del popup de Leaflet */
     .leaflet-popup-content-wrapper { border-radius: 0 !important; padding: 0 !important; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important; }
     .leaflet-popup-content { margin: 0 !important; }
     .leaflet-popup-tip-container { display: none; }
+    @media (max-width: 768px) {
+      .mapa-head { flex-direction: column; align-items: stretch; gap: 0.8rem; }
+      .mapa-head #mapaCiudad { width: 100%; }
+    }
   
 </style>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -232,7 +239,10 @@
   <div class="seccion" style="background:var(--negro-2); position:relative; z-index:1; isolation:isolate;">
     <div class="contenedor">
       <h3 style="font-family:'Cormorant Garamond',serif; font-weight:300; font-size:2rem; margin-bottom:0.5rem;">Mapa de <em style="color:var(--dorado); font-style:italic;">propiedades</em></h3>
-      <p style="font-size:0.8rem; color:var(--gris-claro); margin-bottom:1.5rem;">Todas las propiedades disponibles en el mapa. Hacé clic en cada punto para ver más detalles.</p>
+      <div class="mapa-head">
+        <p style="font-size:0.8rem; color:var(--gris-claro); margin:0;">Todas las propiedades disponibles en el mapa. Hacé clic en cada punto para ver más detalles.</p>
+        <select id="mapaCiudad" class="ordenar-select"><option value="">Todas las ciudades</option></select>
+      </div>
       <div id="mapaPropiedades" style="height:480px; border:1px solid var(--gris-oscuro);"></div>
     </div>
   </div>
@@ -558,6 +568,8 @@
     const POR_PAGINA = 9
     let paginaActual = 1
     let totalPropiedades = 0
+    let _tokenListado = 0
+    let _tokenMapa = 0
 
     // Nav mobile
     const menuBtn = document.getElementById('menuBtn')
@@ -586,20 +598,72 @@
       document.getElementById('precioMax').value = urlParams.get('precioMax')
     }
 
-    async function cargarPropiedades() {
-      const contenedor = document.getElementById('listadoPropiedades')
-      contenedor.innerHTML = `<div class="estado-cargando" style="grid-column:1/-1"><div class="spinner"></div><p>Cargando...</p></div>`
+    function modoInversionActivo() {
+      return document.getElementById('panelInversion').style.display === 'block'
+    }
 
-      // Filtros
+    function filtrosInvalidos() {
+      if (modoInversionActivo()) return false
+      const pMin = document.getElementById('precioMin').value
+      const pMax = document.getElementById('precioMax').value
+      return !!(pMin && pMax && parseFloat(pMin) > parseFloat(pMax))
+    }
+
+    function aplicarFiltrosEstandar(query) {
       const ops = [...document.querySelectorAll('.filtro-op:checked')].map(c => c.value)
       const tipos = [...document.querySelectorAll('.filtro-tipo:checked')].map(c => c.value)
       const dormMin = document.querySelector('.filtro-dorm:checked')?.value
       const precioMin = document.getElementById('precioMin').value
       const precioMaxVal = document.getElementById('precioMax').value
+      const termino = document.getElementById('busquedaTexto').value.trim()
+
+      if (ops.length > 0) query = query.in('operacion', ops)
+      if (tipos.length > 0) query = query.in('tipo', tipos)
+      if (dormMin) query = query.gte('dormitorios', parseInt(dormMin))
+      if (precioMin) query = query.gte('precio', parseFloat(precioMin))
+      if (precioMaxVal) query = query.lte('precio', parseFloat(precioMaxVal))
+      if (termino) {
+        const t = termino.replace(/[%_,()'"\\]/g, c => `\\${c}`)
+        query = query.or(`titulo.ilike.%${t}%,ciudad.ilike.%${t}%,ubicacion.ilike.%${t}%,tipo.ilike.%${t}%,descripcion.ilike.%${t}%`)
+      }
+      return query
+    }
+
+    function aplicarFiltrosInversion(query) {
+      const adelanto = parseFloat(document.getElementById('invAdelanto').value) || 0
+      const quiereCuotas = document.getElementById('invCuotasSi').checked
+      const cuotaMax = parseFloat(document.getElementById('invCuotaMax').value) || 0
+      const quiereVehiculo = document.getElementById('invVehiculo').checked
+
+      if (!quiereCuotas) {
+        if (adelanto > 0) query = query.lte('precio', adelanto)
+      } else {
+        query = query.eq('financiacion', true)
+        if (adelanto > 0) query = query.lte('adelanto_minimo', adelanto)
+        if (cuotaMax > 0) query = query.lte('cuota_minima', cuotaMax)
+      }
+      if (quiereVehiculo) query = query.eq('acepta_vehiculo', true)
+      return query
+    }
+
+    function coordenadasValidas(p) {
+      const lat = Number(p.latitud)
+      const lng = Number(p.longitud)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false
+      if (lat === 0 && lng === 0) return false
+      return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+    }
+
+    async function cargarPropiedades() {
+      const miToken = ++_tokenListado
+      const contenedor = document.getElementById('listadoPropiedades')
+      contenedor.innerHTML = `<div class="estado-cargando" style="grid-column:1/-1"><div class="spinner"></div><p>Cargando...</p></div>`
 
       // Validar rango de precios
-      if (precioMin && precioMaxVal && parseFloat(precioMin) > parseFloat(precioMaxVal)) {
+      if (filtrosInvalidos()) {
         contenedor.innerHTML = `<div class="estado-vacio" style="grid-column:1/-1"><p style="color:var(--rojo)">El precio mínimo no puede ser mayor que el máximo.</p></div>`
+        document.getElementById('totalResultados').textContent = '0'
+        document.getElementById('paginacion').innerHTML = ''
         return
       }
 
@@ -611,28 +675,16 @@
       }, ['created_at', 'desc'])
 
       let query = supabase.from('propiedades').select(
-        'id, titulo, tipo, operacion, precio, moneda, ubicacion, ciudad, dormitorios, banos, superficie_cubierta, superficie_total, imagenes, destacada, financiacion, adelanto_minimo, cuota_minima, cuotas_cantidad, acepta_vehiculo',
+        'id, titulo, tipo, operacion, precio, moneda, ubicacion, ciudad, dormitorios, banos, superficie_cubierta, superficie_total, imagenes, destacada, financiacion, adelanto_minimo, cuota_minima, cuotas_cantidad, acepta_vehiculo, latitud, longitud',
         { count: 'exact' }
       ).eq('activa', true)
-
-      if (ops.length > 0) query = query.in('operacion', ops)
-      if (tipos.length > 0) query = query.in('tipo', tipos)
-      if (dormMin) query = query.gte('dormitorios', parseInt(dormMin))
-      if (precioMin) query = query.gte('precio', parseFloat(precioMin))
-      if (precioMaxVal) query = query.lte('precio', parseFloat(precioMaxVal))
-
-      // Búsqueda por texto/voz
-      const termino = document.getElementById('busquedaTexto').value.trim()
-      if (termino) {
-        // Escapar caracteres especiales de PostgREST para evitar inyección
-        const t = termino.replace(/[%_,()'"\\]/g, c => `\\${c}`)
-        query = query.or(`titulo.ilike.%${t}%,ciudad.ilike.%${t}%,ubicacion.ilike.%${t}%,tipo.ilike.%${t}%,descripcion.ilike.%${t}%`)
-      }
+      query = aplicarFiltrosEstandar(query)
 
       query = query.order(ordenCol, { ascending: ordenDir === 'asc' })
       query = query.range((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA - 1)
 
       const { data, error, count } = await query
+      if (miToken !== _tokenListado) return
 
       totalPropiedades = count || 0
       document.getElementById('totalResultados').textContent = totalPropiedades
@@ -679,6 +731,8 @@
     }
 
     function renderCard(p) {
+      const id = String(p.id ?? '')
+      const idUrl = encodeURIComponent(id)
       const img = p.imagenes && p.imagenes.length > 0
         ? `<img src="${esc(p.imagenes[0])}" alt="${esc(p.titulo)}" loading="lazy" />`
         : `<div class="card-imagen-placeholder">🏠</div>`
@@ -687,8 +741,11 @@
         : 'Consultar'
       const opLabel = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
       const ubicacion = [p.ubicacion, p.ciudad].filter(Boolean).map(esc).join(', ')
+      const verEnMapa = coordenadasValidas(p)
+        ? `${ubicacion ? ' · ' : ''}<a href="#mapaPropiedades" class="card-ver-mapa" data-id="${esc(id)}">Ver en mapa</a>`
+        : ''
       return `
-        <div class="card-propiedad" onclick="window.open('propiedad.html?id=${p.id}','_blank')">
+        <div class="card-propiedad" onclick="window.open('propiedad.html?id=${idUrl}','_blank')">
           <div class="card-imagen">
             ${img}
             <div class="card-badge badge-${esc(p.operacion)}">${opLabel}</div>
@@ -697,7 +754,7 @@
           <div class="card-cuerpo">
             <p class="card-tipo">${esc(p.tipo)}</p>
             <h3 class="card-titulo">${esc(p.titulo)}</h3>
-            <p class="card-ubicacion">📍 ${ubicacion}</p>
+            <p class="card-ubicacion">📍 ${ubicacion}${verEnMapa}</p>
             <div class="card-precio">${precio} <span>${p.operacion !== 'venta' ? '/ mes' : ''}</span></div>
             <div class="card-detalles">
               ${p.dormitorios ? `<div class="card-detalle"><strong>${p.dormitorios}</strong>Dorm.</div>` : ''}
@@ -718,6 +775,8 @@
       document.getElementById('tabFiltros').style.color       = esFiltros ? '#000' : 'rgba(255,255,255,0.5)'
       document.getElementById('tabInversion').style.background = esFiltros ? 'none' : 'var(--dorado)'
       document.getElementById('tabInversion').style.color      = esFiltros ? 'rgba(255,255,255,0.5)' : '#000'
+      paginaActual = 1
+      actualizarResultados()
     }
 
     // Toggle cuotas en buscador inversión
@@ -730,31 +789,17 @@
 
     // ── Buscador por inversión ────────────────────────────────────
     async function buscarPorInversion() {
+      const miToken = ++_tokenListado
       const contenedor = document.getElementById('listadoPropiedades')
       contenedor.innerHTML = `<div class="estado-cargando" style="grid-column:1/-1"><div class="spinner"></div><p>Buscando propiedades...</p></div>`
 
-      const adelanto   = parseFloat(document.getElementById('invAdelanto').value) || 0
-      const quiereCuotas = document.getElementById('invCuotasSi').checked
-      const cuotaMax   = parseFloat(document.getElementById('invCuotaMax').value) || 0
-      const quiereVehiculo = document.getElementById('invVehiculo').checked
-
       let query = supabase.from('propiedades').select(
-        'id, titulo, tipo, operacion, precio, moneda, ubicacion, ciudad, dormitorios, banos, superficie_cubierta, superficie_total, imagenes, destacada, financiacion, adelanto_minimo, cuota_minima, cuotas_cantidad, acepta_vehiculo'
+        'id, titulo, tipo, operacion, precio, moneda, ubicacion, ciudad, dormitorios, banos, superficie_cubierta, superficie_total, imagenes, destacada, financiacion, adelanto_minimo, cuota_minima, cuotas_cantidad, acepta_vehiculo, latitud, longitud'
       ).eq('activa', true)
-
-      // Si no puede pagar cuotas, solo mostrar propiedades donde el adelanto cubre el precio total
-      if (!quiereCuotas) {
-        if (adelanto > 0) query = query.lte('precio', adelanto)
-      } else {
-        // Puede pagar cuotas: mostrar las que tienen financiación con adelanto y cuota accesibles
-        query = query.eq('financiacion', true)
-        if (adelanto > 0)   query = query.lte('adelanto_minimo', adelanto)
-        if (cuotaMax > 0)   query = query.lte('cuota_minima', cuotaMax)
-      }
-
-      if (quiereVehiculo) query = query.eq('acepta_vehiculo', true)
+      query = aplicarFiltrosInversion(query)
 
       const { data, error } = await query.order('precio', { ascending: true })
+      if (miToken !== _tokenListado) return
 
       document.getElementById('totalResultados').textContent = data?.length || 0
 
@@ -782,7 +827,10 @@
       document.getElementById('paginacion').innerHTML = ''
     }
 
-    document.getElementById('btnBuscarInversion').addEventListener('click', buscarPorInversion)
+    document.getElementById('btnBuscarInversion').addEventListener('click', () => {
+      paginaActual = 1
+      actualizarResultados()
+    })
     document.getElementById('btnLimpiarInversion').addEventListener('click', () => {
       document.getElementById('invAdelanto').value = ''
       document.getElementById('invCuotasNo').checked = true
@@ -790,14 +838,13 @@
       document.getElementById('invVehiculo').checked = false
       document.getElementById('grupoCuotasBusq').style.display = 'none'
       paginaActual = 1
-      cargarPropiedades()
       switchTab('filtros')
     })
 
     // Eventos filtros
     document.getElementById('btnAplicarFiltros').addEventListener('click', () => {
       paginaActual = 1
-      cargarPropiedades()
+      actualizarResultados()
     })
 
     document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
@@ -806,12 +853,13 @@
       document.getElementById('precioMin').value = ''
       document.getElementById('precioMax').value = ''
       paginaActual = 1
-      cargarPropiedades()
+      actualizarResultados()
     })
 
     document.getElementById('ordenar').addEventListener('change', () => {
       paginaActual = 1
-      cargarPropiedades()
+      const cargarListado = modoInversionActivo() ? buscarPorInversion : cargarPropiedades
+      cargarListado()
     })
 
     // ── Búsqueda por texto ────────────────────────────────────────
@@ -821,16 +869,16 @@
     inputBusq.addEventListener('input', () => {
       btnClear.style.display = inputBusq.value ? 'block' : 'none'
       clearTimeout(inputBusq._timer)
-      inputBusq._timer = setTimeout(() => { paginaActual = 1; cargarPropiedades() }, 400)
+      inputBusq._timer = setTimeout(() => { paginaActual = 1; actualizarResultados() }, 400)
     })
     inputBusq.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { paginaActual = 1; cargarPropiedades() }
+      if (e.key === 'Enter') { paginaActual = 1; actualizarResultados() }
     })
     btnClear.addEventListener('click', () => {
       inputBusq.value = ''
       btnClear.style.display = 'none'
       paginaActual = 1
-      cargarPropiedades()
+      actualizarResultados()
     })
 
     // ── Búsqueda por voz (Web Speech API) ────────────────────────
@@ -945,7 +993,7 @@
         btnClear.style.display = 'block'
         paginaActual = 1
         interpretarConsulta(texto)
-        cargarPropiedades()
+        actualizarResultados()
       })
 
       recognition.addEventListener('end', () => {
@@ -963,8 +1011,6 @@
         }
       })
     }
-
-    cargarPropiedades()
 
     // ── MAPA CON TODAS LAS PROPIEDADES ────────────────────────
     const mapaEl = document.getElementById('mapaPropiedades')
@@ -995,48 +1041,150 @@
       popupAnchor: [0, -60]
     })
 
-    // ── CAMBIO 3: SELECT incluye imagenes + popup con foto ──
-    const { data: propsMapa } = await supabase
-      .from('propiedades')
-      .select('id, titulo, ubicacion, ciudad, precio, moneda, operacion, tipo, latitud, longitud, imagenes, tour_publicado')
-      .eq('activa', true)
-      .not('latitud', 'is', null)
-      .not('longitud', 'is', null)
+    const capaMarcadores = L.layerGroup().addTo(mapa)
+    const selectorCiudad = document.getElementById('mapaCiudad')
+    let _marcadoresPorId = new Map()
+    let _centrosCiudad = new Map()
+    let _boundsMapa = []
 
-    if (propsMapa && propsMapa.length > 0) {
-      const bounds = []
-      propsMapa.forEach(p => {
+    function reconstruirSelectorCiudad(ciudades, ciudadPrevia = '') {
+      selectorCiudad.replaceChildren()
+      const opcionTodas = document.createElement('option')
+      opcionTodas.value = ''
+      opcionTodas.textContent = 'Todas las ciudades'
+      selectorCiudad.appendChild(opcionTodas)
+
+      ciudades.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })).forEach(ciudad => {
+        const opcion = document.createElement('option')
+        opcion.value = ciudad
+        opcion.textContent = ciudad
+        selectorCiudad.appendChild(opcion)
+      })
+      selectorCiudad.value = _centrosCiudad.has(ciudadPrevia) ? ciudadPrevia : ''
+    }
+
+    function limpiarMapa(ciudadPrevia = '') {
+      capaMarcadores.clearLayers()
+      _marcadoresPorId = new Map()
+      _centrosCiudad = new Map()
+      _boundsMapa = []
+      reconstruirSelectorCiudad([], ciudadPrevia)
+    }
+
+    async function dibujarMapa() {
+      const miToken = ++_tokenMapa
+      const ciudadPrevia = selectorCiudad.value
+
+      if (filtrosInvalidos()) {
+        limpiarMapa()
+        return
+      }
+
+      let query = supabase.from('propiedades').select(
+        'id, titulo, ubicacion, ciudad, precio, moneda, operacion, tipo, latitud, longitud, imagenes, tour_publicado, dormitorios, financiacion, adelanto_minimo, cuota_minima, acepta_vehiculo'
+      ).eq('activa', true)
+      query = modoInversionActivo() ? aplicarFiltrosInversion(query) : aplicarFiltrosEstandar(query)
+
+      const { data: propsMapa, error } = await query
+      if (miToken !== _tokenMapa) return
+
+      limpiarMapa(ciudadPrevia)
+      if (error) {
+        console.warn('Mapa:', error.message)
+        return
+      }
+
+      const acumuladosCiudad = new Map()
+      const propiedadesValidas = (propsMapa || []).filter(coordenadasValidas)
+      propiedadesValidas.forEach(p => {
+        const lat = Number(p.latitud)
+        const lng = Number(p.longitud)
+        const id = String(p.id ?? '')
+        const idUrl = encodeURIComponent(id)
         const precio = p.precio
-          ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
+          ? `${esc(p.moneda || 'USD')} ${Number(p.precio).toLocaleString('es-AR')}`
           : 'Consultar'
         const imgUrl = p.imagenes && p.imagenes.length > 0 ? p.imagenes[0] : null
         const imgHtml = imgUrl
-          ? `<img class="mapa-popup-img" src="${imgUrl}" alt="${p.titulo}" />`
+          ? `<img class="mapa-popup-img" src="${esc(imgUrl)}" alt="${esc(p.titulo)}" />`
           : `<div class="mapa-popup-img-ph">🏠</div>`
-        const tipoLabel = p.tipo ? p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1) : ''
+        const tipo = p.tipo ? String(p.tipo) : ''
+        const tipoLabel = tipo ? esc(tipo.charAt(0).toUpperCase() + tipo.slice(1)) : ''
         const opLabel = p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'
-        const locLabel = [p.ubicacion, p.ciudad].filter(Boolean).join(', ')
-
+        const locLabel = [p.ubicacion, p.ciudad].filter(Boolean).map(esc).join(', ')
         const popupHtml = `
           <div class="mapa-popup">
             ${imgHtml}
             <div style="padding: 0 0.9rem 0.9rem;">
               <div class="mapa-popup-tipo">${tipoLabel} · ${opLabel}</div>
-              <div class="mapa-popup-titulo">${p.titulo}</div>
+              <div class="mapa-popup-titulo">${esc(p.titulo)}</div>
               ${locLabel ? `<div class="mapa-popup-loc">📍 ${locLabel}</div>` : ''}
               <div class="mapa-popup-precio">${precio}</div>
-              <a href="propiedad.html?id=${p.id}" class="mapa-popup-btn">Ver propiedad →</a>
-              ${p.tour_publicado ? `<a href="propiedad.html?id=${p.id}#tour-interior" class="mapa-popup-btn-tour">▶ Ver tour 360°</a>` : ''}
+              <a href="propiedad.html?id=${idUrl}" class="mapa-popup-btn">Ver propiedad →</a>
+              ${p.tour_publicado ? `<a href="propiedad.html?id=${idUrl}#tour-interior" class="mapa-popup-btn-tour">▶ Ver tour 360°</a>` : ''}
             </div>
           </div>`
 
-        L.marker([p.latitud, p.longitud], { icon: iconoProp })
-          .addTo(mapa)
+        const marcador = L.marker([lat, lng], { icon: iconoProp })
+          .addTo(capaMarcadores)
           .bindPopup(popupHtml, { maxWidth: 240 })
-        bounds.push([p.latitud, p.longitud])
+        _marcadoresPorId.set(id, marcador)
+        _boundsMapa.push([lat, lng])
+
+        const ciudad = String(p.ciudad || '').trim()
+        if (ciudad) {
+          const claveCiudad = ciudad.toLocaleLowerCase('es')
+          const acumulado = acumuladosCiudad.get(claveCiudad) || { ciudad, lat: 0, lng: 0, cantidad: 0 }
+          acumulado.lat += lat
+          acumulado.lng += lng
+          acumulado.cantidad += 1
+          acumuladosCiudad.set(claveCiudad, acumulado)
+        }
       })
-      mapa.fitBounds(bounds, { padding: [40, 40] })
+
+      acumuladosCiudad.forEach(valor => {
+        _centrosCiudad.set(valor.ciudad, [valor.lat / valor.cantidad, valor.lng / valor.cantidad])
+      })
+      reconstruirSelectorCiudad([..._centrosCiudad.keys()], ciudadPrevia)
+
+      if (selectorCiudad.value && _centrosCiudad.has(selectorCiudad.value)) {
+        mapa.flyTo(_centrosCiudad.get(selectorCiudad.value), 13)
+      } else if (_boundsMapa.length > 0) {
+        mapa.fitBounds(_boundsMapa, { padding: [40, 40] })
+      }
     }
+
+    async function actualizarResultados() {
+      const cargarListado = modoInversionActivo() ? buscarPorInversion : cargarPropiedades
+      await Promise.all([cargarListado(), dibujarMapa()])
+    }
+
+    selectorCiudad.addEventListener('change', () => {
+      const ciudad = selectorCiudad.value
+      if (ciudad && _centrosCiudad.has(ciudad)) {
+        mapa.flyTo(_centrosCiudad.get(ciudad), 13)
+      } else if (_boundsMapa.length > 0) {
+        mapa.fitBounds(_boundsMapa, { padding: [40, 40] })
+      }
+    })
+
+    document.getElementById('listadoPropiedades').addEventListener('click', event => {
+      const enlace = event.target.closest('.card-ver-mapa')
+      if (!enlace) return
+      event.preventDefault()
+      event.stopPropagation()
+      const marcador = _marcadoresPorId.get(String(enlace.dataset.id || ''))
+      if (!marcador) return
+      mapaEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setTimeout(() => {
+        mapa.invalidateSize()
+        mapa.flyTo(marcador.getLatLng(), 15, { duration: 0.8 })
+        marcador.openPopup()
+      }, 350)
+    }, true)
+
+    // El mapa, su capa y sus íconos ya existen antes de la primera consulta.
+    actualizarResultados()
 
     // Cargar imágenes y opacidades desde site_config (cacheado en sessionStorage)
     getSiteConfig().then(cfg => {
