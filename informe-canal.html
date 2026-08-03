@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Informe de canal — Sur Patagonian Admin</title>
+  <link rel="stylesheet" href="../css/estilos.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#090909; --card-bg:#141414;
+      --card-border:rgba(255,255,255,0.07); --card-radius:14px;
+      --accent:#d76f3f; --dorado:#c9a84c;
+      --gris:#888; --blanco:#f5f3f0; --txt-soft:rgba(245,243,240,.5);
+      --via-qr:#50c878; --via-link:#6495ed; --via-directo:#8a8a82;
+    }
+
+    [hidden] { display:none !important; }
+    body { background:var(--bg); color:var(--blanco); }
+    .sp-bg-brand {
+      position:fixed; bottom:6vh; left:0; right:0; height:65vh;
+      background:url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52%/cover no-repeat;
+      filter:grayscale(1) brightness(.75); opacity:.11;
+      pointer-events:none; z-index:9;
+      -webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%);
+      mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%);
+    }
+    .admin-layout { position:relative; z-index:10; }
+    .admin-main { min-width:0; font-family:'Inter',system-ui,sans-serif; background:transparent; }
+    .admin-main h1,
+    .admin-main h2,
+    .admin-main h3,
+    .admin-main h4 { font-family:'Inter',sans-serif; }
+
+    .loading-state,
+    .fatal-state {
+      min-height:58vh; display:grid; place-items:center; text-align:center;
+      color:rgba(255,255,255,.28); font-size:.8rem;
+    }
+    .fatal-card {
+      width:min(520px,100%); padding:2rem;
+      background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12);
+      border-radius:14px; box-shadow:0 4px 14px rgba(0,0,0,.18);
+    }
+    .fatal-card h2 { color:var(--blanco); font-size:1.1rem; margin-bottom:.55rem; }
+    .fatal-card p { line-height:1.6; margin-bottom:1.1rem; }
+    .back-link,
+    .rango-btn,
+    .btn-export {
+      display:inline-flex; align-items:center; justify-content:center;
+      border:1px solid rgba(201,168,76,.28); border-radius:8px;
+      background:linear-gradient(135deg,rgba(201,168,76,.15),rgba(201,168,76,.05));
+      color:#e8c96a; font:600 .63rem 'Inter',sans-serif;
+      letter-spacing:.06em; text-transform:uppercase; text-decoration:none;
+      cursor:pointer; transition:border-color .18s,box-shadow .18s,background .18s;
+    }
+    .back-link { padding:.48rem .9rem; }
+    .rango-btn { padding:.36rem .88rem; letter-spacing:.08em; }
+    .btn-export { padding:.42rem .95rem; font-weight:700; }
+    .back-link:hover,
+    .rango-btn:hover,
+    .btn-export:hover {
+      border-color:rgba(201,168,76,.45); box-shadow:0 0 12px rgba(201,168,76,.2);
+    }
+    .rango-btn.activo {
+      background:linear-gradient(135deg,rgba(201,168,76,.24),rgba(201,168,76,.09));
+      border-color:rgba(201,168,76,.42); box-shadow:0 0 14px rgba(201,168,76,.12);
+    }
+    .rango-btn:disabled,
+    .btn-export:disabled { opacity:.45; cursor:wait; box-shadow:none; }
+
+    .dash-header {
+      display:flex; align-items:flex-end; justify-content:space-between;
+      gap:1rem; flex-wrap:wrap; margin-bottom:.85rem;
+    }
+    .admin-page-title {
+      font-family:'Inter',sans-serif; font-size:2.2rem; font-weight:600;
+      letter-spacing:.04em; color:var(--blanco); margin:0;
+    }
+    .header-meta {
+      display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; margin-top:.7rem;
+      color:rgba(255,255,255,.45); font-size:.68rem;
+    }
+    .rangos { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+    .canal-inline {
+      --bc:#8a8a82; display:inline-flex; align-items:center; gap:5px;
+      color:var(--bc); font-size:.7rem; font-weight:600;
+    }
+    .canal-inline .od {
+      width:7px; height:7px; border-radius:50%; flex:0 0 auto;
+      background:var(--bc); box-shadow:0 0 6px var(--bc);
+    }
+    .tipo-badge,
+    .est-bdg {
+      display:inline-block; padding:.14rem .45rem; border-radius:5px;
+      font-size:.6rem; font-weight:600; border:1px solid;
+    }
+    .tipo-badge { text-transform:uppercase; }
+    .estado-canal { display:inline-flex; align-items:center; gap:.35rem; }
+    .estado-canal i { width:7px; height:7px; border-radius:50%; background:#52d68c; }
+    .estado-canal.off i { background:#7b7f88; }
+    .simulacion-note {
+      margin:0 0 1.25rem; padding:.75rem .9rem;
+      color:rgba(255,255,255,.45); font-size:.66rem; line-height:1.55;
+      border-left:2px solid rgba(201,168,76,.5);
+      background:linear-gradient(90deg,rgba(201,168,76,.07),transparent);
+    }
+
+    .kpi-grid {
+      display:grid; grid-template-columns:repeat(5,minmax(150px,1fr));
+      gap:.9rem; margin-bottom:1.25rem;
+    }
+    .kpi {
+      background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08); border-top-color:rgba(255,255,255,.14);
+      border-radius:14px; padding:1.4rem 1.35rem; position:relative; overflow:hidden;
+      backdrop-filter:blur(4px); box-shadow:0 4px 14px rgba(0,0,0,.18);
+      transition:transform .18s,border-color .18s,box-shadow .18s;
+    }
+    .kpi::before {
+      content:''; position:absolute; left:0; top:20%; bottom:20%; width:2px;
+      border-radius:99px; background:var(--c,var(--accent)); opacity:.75;
+    }
+    .kpi:hover {
+      transform:translateY(-1px); border-color:rgba(255,255,255,.16);
+      box-shadow:0 14px 34px rgba(0,0,0,.26);
+    }
+    .kpi-label {
+      margin-bottom:.55rem; color:rgba(255,255,255,.42);
+      font-size:.58rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    }
+    .kpi-valor {
+      font-size:2.45rem; font-weight:300; line-height:1;
+      background:linear-gradient(135deg,#fff,rgba(255,255,255,.7));
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    .kpi-sub { min-height:1rem; margin-top:.5rem; color:var(--gris); font-size:.65rem; line-height:1.45; }
+    .delta { margin-left:.35rem; font-size:.68rem; font-weight:600; -webkit-text-fill-color:initial; }
+    .delta.up { color:#6ee89a; }
+    .delta.down { color:#f0956a; }
+    .delta.neutral { color:rgba(255,255,255,.3); }
+
+    .section-card,
+    .chart-card {
+      min-width:0;
+      background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12);
+      border-radius:var(--card-radius); padding:1.4rem 1.6rem;
+      backdrop-filter:blur(4px); box-shadow:0 4px 14px rgba(0,0,0,.18);
+      margin-bottom:.9rem; position:relative; overflow:hidden;
+    }
+    .section-head {
+      display:flex; justify-content:space-between; align-items:flex-start;
+      gap:1rem; flex-wrap:wrap; margin-bottom:1rem;
+    }
+    .section-title,
+    .chart-card h4 {
+      color:var(--gris); font-size:.6rem; font-weight:700;
+      letter-spacing:.14em; text-transform:uppercase; margin:0;
+    }
+    .section-sub { margin-top:.35rem; color:rgba(255,255,255,.45); font-size:.66rem; line-height:1.45; }
+    .empty-state { color:rgba(255,255,255,.28); font-size:.7rem; padding:1.35rem 0; text-align:center; }
+
+    .pipeline-block { margin-bottom:.9rem; }
+    .pipeline-head { margin-bottom:.8rem; }
+    .pipeline {
+      display:grid; grid-template-columns:1fr 22px 1fr 22px 1fr 22px 1fr 22px 1fr 22px 1fr;
+      gap:0; align-items:stretch;
+    }
+    .pipe-step {
+      position:relative; display:flex; flex-direction:column; align-items:center;
+      padding:1.4rem .75rem 1.2rem; text-align:center;
+      border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12);
+      border-radius:12px; background:linear-gradient(160deg,rgba(255,255,255,.048),rgba(255,255,255,.015));
+      box-shadow:0 4px 14px rgba(0,0,0,.15);
+    }
+    .pipe-ico {
+      width:36px; height:36px; display:grid; place-items:center;
+      border-radius:50%; margin-bottom:.75rem;
+    }
+    .pipe-dot { width:10px; height:10px; border-radius:50%; background:currentColor; }
+    .pipe-num { font-size:2.45rem; font-weight:300; line-height:1; color:var(--blanco); margin-bottom:.35rem; }
+    .pipe-label {
+      color:rgba(255,255,255,.38); font-size:.52rem; font-weight:700;
+      letter-spacing:.16em; text-transform:uppercase; line-height:1.35;
+    }
+    .pipe-conv { min-height:.85rem; margin-top:.55rem; color:rgba(255,255,255,.28); font-size:.6rem; font-weight:600; }
+    .pipe-arrow { display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.15); font-size:.75rem; }
+    .pipe-step.p0 { border-top-color:rgba(255,255,255,.16); }
+    .pipe-step.p0 .pipe-ico { color:rgba(255,255,255,.55); background:rgba(255,255,255,.06); }
+    .pipe-step.p1 { border-top-color:rgba(232,201,106,.35); }
+    .pipe-step.p1 .pipe-ico { color:#e8c96a; background:rgba(232,201,106,.1); }
+    .pipe-step.p2 { border-top-color:rgba(53,198,180,.35); }
+    .pipe-step.p2 .pipe-ico { color:#35c6b4; background:rgba(53,198,180,.1); }
+    .pipe-step.p3 { border-top-color:rgba(242,154,90,.35); }
+    .pipe-step.p3 .pipe-ico { color:#f29a5a; background:rgba(242,154,90,.1); }
+    .pipe-step.p4 { border-top-color:rgba(217,167,255,.35); }
+    .pipe-step.p4 .pipe-ico { color:#d9a7ff; background:rgba(217,167,255,.1); }
+    .pipe-step.p5 { border-top-color:rgba(169,220,122,.38); }
+    .pipe-step.p5 .pipe-ico { color:#a9dc7a; background:rgba(169,220,122,.1); }
+    .pipeline-note { margin-top:.7rem; color:rgba(255,255,255,.28); font-size:.62rem; text-align:center; }
+
+    .split-grid { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(270px,.75fr); gap:.9rem; }
+    .equal-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem; }
+    .chart-card { min-width:0; }
+    .chart-wrap { position:relative; height:300px; margin-top:.9rem; }
+
+    .feed { display:flex; flex-direction:column; gap:.2rem; }
+    .feed-row {
+      display:grid; grid-template-columns:8px minmax(0,1fr) auto;
+      align-items:center; gap:.65rem; padding:.52rem .2rem;
+      border-bottom:1px solid rgba(255,255,255,.045);
+    }
+    .feed-row:last-child { border-bottom:0; }
+    .feed-dot { width:6px; height:6px; border-radius:50%; }
+    .feed-dot.qr { background:#50c878; box-shadow:0 0 7px rgba(80,200,120,.4); }
+    .feed-dot.link { background:#6495ed; box-shadow:0 0 7px rgba(100,149,237,.35); }
+    .feed-dot.directo { background:#8a8a82; box-shadow:0 0 7px rgba(138,138,130,.3); }
+    .feed-dot.consulta { background:#b39ddb; box-shadow:0 0 7px rgba(179,157,219,.35); }
+    .feed-desc { color:rgba(255,255,255,.67); font-size:.7rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .feed-fecha { color:rgba(255,255,255,.25); font-size:.61rem; white-space:nowrap; }
+
+    .table-wrap { width:100%; max-width:100%; min-width:0; overflow-x:auto; }
+    .tabla { width:100%; border-collapse:collapse; min-width:680px; }
+    .tabla th {
+      padding:.5rem .65rem; border-bottom:1px solid rgba(255,255,255,.06);
+      color:rgba(255,255,255,.3); font-size:.54rem; font-weight:600;
+      letter-spacing:.1em; text-transform:uppercase; text-align:left;
+    }
+    .tabla td {
+      padding:.75rem .65rem; border-bottom:1px solid rgba(255,255,255,.04);
+      color:rgba(255,255,255,.78); font-size:.73rem; vertical-align:middle;
+    }
+    .tabla tr:last-child td { border-bottom:0; }
+    .tabla tr:hover td { background:rgba(255,255,255,.02); }
+    .tabla tr.zero { opacity:.52; }
+    .sin-escaneos { color:#f0956a; }
+    .badge-via {
+      position:static; display:inline-flex; align-items:center; gap:4px;
+      padding:0; border:0; border-radius:0; background:transparent;
+      font-size:.55rem; font-weight:600; letter-spacing:.07em;
+      text-transform:uppercase; line-height:1; opacity:.92;
+    }
+    .badge-via-icon { width:8px; height:8px; border-radius:2px; background:currentColor; }
+
+    .bars { display:flex; flex-direction:column; gap:1rem; }
+    .bar-row { display:grid; grid-template-columns:86px minmax(0,1fr) 58px; gap:.7rem; align-items:center; }
+    .bar-track { height:10px; border-radius:6px; background:rgba(255,255,255,.04); overflow:hidden; }
+    .bar-fill { height:100%; min-width:0; border-radius:6px; border-right:1px solid currentColor; }
+    .bar-value { color:rgba(255,255,255,.67); font-size:.68rem; text-align:right; }
+
+    .ranking-list { display:flex; flex-direction:column; }
+    .ranking-row {
+      display:grid; grid-template-columns:minmax(0,1fr) auto auto;
+      gap:.8rem; padding:.72rem 0; border-bottom:1px solid rgba(255,255,255,.045);
+      align-items:center;
+    }
+    .ranking-row:last-child { border-bottom:0; }
+    .ranking-label { color:rgba(255,255,255,.67); font-size:.7rem; }
+    .ranking-value { color:var(--blanco); font-size:.74rem; font-weight:600; }
+    .ranking-place { color:rgba(255,255,255,.35); font-size:.65rem; min-width:62px; text-align:right; }
+
+    @media(max-width:1180px) {
+      .kpi-grid { grid-template-columns:repeat(3,minmax(160px,1fr)); }
+      .split-grid { grid-template-columns:1fr; }
+    }
+    @media(max-width:900px) {
+      .pipeline { grid-template-columns:repeat(3,1fr); gap:.5rem; }
+      .pipe-arrow { display:none; }
+      .equal-grid { grid-template-columns:1fr; }
+    }
+    @media(max-width:680px) {
+      .admin-page-title { font-size:1.65rem; }
+      .dash-header { align-items:flex-start; }
+      .rangos { width:100%; }
+      .rango-btn { flex:1; min-width:72px; }
+      .btn-export { width:100%; }
+      .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; }
+      .kpi { min-height:116px; padding:1rem .9rem; }
+      .kpi-valor { font-size:2rem; }
+      .pipeline { grid-template-columns:repeat(2,1fr); }
+      .section-card,.chart-card { padding:1rem; }
+      .chart-wrap { height:245px; }
+      .feed-row { grid-template-columns:8px minmax(0,1fr); }
+      .feed-fecha { grid-column:2; }
+      .bar-row { grid-template-columns:74px minmax(0,1fr) 48px; }
+    }
+  </style>
+</head>
+<body>
+<div class="sp-bg-brand"></div>
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-logo">
+      <img src="../assets/logos/logo-vertical-blanco.png" alt="Sur Patagonian">
+    </div>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="propiedades.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Propiedades
+      </a>
+      <a href="proyectos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Proyectos
+      </a>
+      <a href="contactos.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Consultas
+      </a>
+      <a href="crm.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
+        CRM
+      </a>
+      <a href="canales.html" class="admin-nav-item activo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Canales
+      </a>
+      <a href="mapa-qr.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 21s-6-5.686-6-10a6 6 0 1 1 12 0c0 4.314-6 10-6 10z"/><circle cx="12" cy="11" r="2.5"/></svg>
+        Mapa QR
+      </a>
+      <a href="salud-de-red.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Salud de Red
+      </a>
+      <a href="campanas.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Campañas
+      </a>
+      <a href="tour360.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12c0-1.5 4.5-5 10-5s10 3.5 10 5-4.5 5-10 5-10-3.5-10-5z"/><circle cx="12" cy="12" r="2"/></svg>
+        Tour 360°
+      </a>
+      <a href="trafico.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Tráfico
+      </a>
+      <a href="usuarios.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Usuarios
+      </a>
+      <a href="apariencia.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        Apariencia
+      </a>
+      <a href="generador-pdf.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Generar PDF
+      </a>
+      <a href="colaboradores.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+        Colaboradores
+      </a>
+      <a href="paneles.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
+        Visual paneles
+      </a>
+      <a href="../index.html" class="admin-nav-item" style="margin-top:auto;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Ver sitio
+      </a>
+      <a href="#" class="admin-nav-item" id="btnLogout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir
+      </a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <div id="loadingView" class="loading-state">Cargando informe del canal…</div>
+    <div id="fatalView" class="fatal-state" hidden></div>
+
+    <div id="reportView" hidden>
+      <div class="dash-header">
+        <div>
+          <h1 class="admin-page-title" id="canalNombre">Informe de canal</h1>
+          <div class="header-meta" id="canalMeta"></div>
+        </div>
+        <div class="rangos">
+          <button class="rango-btn" data-dias="7">7 días</button>
+          <button class="rango-btn activo" data-dias="30">30 días</button>
+          <button class="rango-btn" data-dias="90">90 días</button>
+          <button class="rango-btn" data-dias="0">Todo</button>
+          <button class="btn-export" id="btnExport" disabled>Exportar</button>
+        </div>
+      </div>
+
+      <p class="simulacion-note">Los datos de este informe son de simulación y se usan como set de prueba. No deben interpretarse como comportamiento comercial real.</p>
+
+      <div class="kpi-grid">
+        <div class="kpi" style="--c:#f0956a">
+          <div class="kpi-label">Días sin escaneos</div>
+          <div class="kpi-valor" id="kDias">—</div>
+          <div class="kpi-sub" id="kDiasSub"></div>
+        </div>
+        <div class="kpi" style="--c:#c9a84c">
+          <div class="kpi-label">Escaneos en el rango</div>
+          <div class="kpi-valor" id="kEscaneos">—</div>
+          <div class="kpi-sub" id="kEscaneosSub"></div>
+        </div>
+        <div class="kpi" style="--c:#d76f3f">
+          <div class="kpi-label">Consultas en el rango</div>
+          <div class="kpi-valor" id="kConsultas">—</div>
+          <div class="kpi-sub" id="kConsultasSub"></div>
+        </div>
+        <div class="kpi" style="--c:#52d68c">
+          <div class="kpi-label">Puntos con tráfico</div>
+          <div class="kpi-valor" id="kPuntos">—</div>
+          <div class="kpi-sub" id="kPuntosSub"></div>
+        </div>
+        <div class="kpi" style="--c:#7aaeff">
+          <div class="kpi-label">Conversión</div>
+          <div class="kpi-valor" id="kConversion">—</div>
+          <div class="kpi-sub" id="kConversionSub"></div>
+        </div>
+      </div>
+
+      <section class="pipeline-block">
+        <div class="section-head pipeline-head">
+          <div>
+            <h2 class="section-title">Pipeline del canal</h2>
+            <p class="section-sub">La etapa sale del estado actual de cada consulta. Con menos de 20 interacciones se ocultan los porcentajes.</p>
+          </div>
+        </div>
+        <div class="pipeline" id="pipeline"></div>
+        <div class="pipeline-note" id="pipelineNote"></div>
+      </section>
+
+      <div class="split-grid">
+        <section class="chart-card">
+          <h4>Evolución en el tiempo</h4>
+          <div class="chart-wrap"><canvas id="evolucionChart"></canvas></div>
+        </section>
+        <section class="section-card">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Actividad reciente</h2>
+              <p class="section-sub">Últimos 15 movimientos del rango.</p>
+            </div>
+          </div>
+          <div id="actividadFeed"></div>
+        </section>
+      </div>
+
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Rendimiento por punto QR</h2>
+            <p class="section-sub">“Instalado” indica cuándo el punto fue creado en el admin, no cuándo se colocó físicamente.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="tabla">
+            <thead><tr><th>Ubicación</th><th>Tipo</th><th>Instalado</th><th>Escaneos</th><th>Consultas</th><th>Último escaneo</th></tr></thead>
+            <tbody id="puntosBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Consultas del canal</h2>
+            <p class="section-sub">Ordenadas por días sin movimiento, de mayor a menor.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="tabla">
+            <thead><tr><th>Persona</th><th>Fecha</th><th>Vía</th><th>Propiedad</th><th>Estado</th><th>Días sin movimiento</th></tr></thead>
+            <tbody id="consultasBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="equal-grid">
+        <section class="section-card">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Cómo llegan</h2>
+              <p class="section-sub">Distribución de interacciones por vía.</p>
+            </div>
+          </div>
+          <div class="bars" id="viasBars"></div>
+        </section>
+        <section class="section-card">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Contra su tipo</h2>
+              <p class="section-sub" id="rankingSub">Comparación entre canales equivalentes.</p>
+            </div>
+          </div>
+          <div class="ranking-list" id="rankingList"></div>
+        </section>
+      </div>
+
+      <section class="section-card" id="asignadoSection" hidden>
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Asignado contra mirado</h2>
+            <p class="section-sub">Propiedades asignadas a los puntos del canal y visualizaciones registradas.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="tabla">
+            <thead><tr><th>Propiedad</th><th>Puntos asignados</th><th>Visualizaciones</th></tr></thead>
+            <tbody id="asignadoBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
+<script type="module">
+import { supabase } from '../js/config.js'
+
+const $ = id => document.getElementById(id)
+const esc = value => String(value ?? '')
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const DIA_MS = 86400000
+const TIPO_LABEL = {
+  inmobiliaria:'Inmobiliaria', particular:'Particular', punto_venta:'Punto de venta',
+  campaña:'Campaña', evento:'Evento', otro:'Otro', activo:'Activo'
+}
+const TIPO_COLOR = {
+  inmobiliaria:'#9fb7d9', particular:'#9cc9b5', punto_venta:'#d7a86e',
+  campaña:'#c68bc8', evento:'#b88f75', otro:'#888'
+}
+const ESTADOS = {
+  nueva:{ label:'Nuevo lead', color:'#b39ddb' },
+  contactado:{ label:'Contactado', color:'#35c6b4' },
+  visita:{ label:'Visita coordinada', color:'#f29a5a' },
+  visita_realizada:{ label:'Visita realizada', color:'#7fd1c6' },
+  oferta:{ label:'Oferta enviada', color:'#d9a7ff' },
+  cerrado:{ label:'Cerrado', color:'#a9dc7a' },
+  descartado:{ label:'Descartado', color:'#7b7f88' },
+  cerrado_sin_operacion:{ label:'Cerrado sin operación', color:'#8a9aa8' }
+}
+const CANAL_COLORS = window.SPCanalColors || {}
+const colorCanalDesdeIndex = CANAL_COLORS.colorCanalDesdeIndex || (() => '#8a8a82')
+const colorCssSeguro = CANAL_COLORS.colorCssSeguro || ((value, fallback='#8a8a82') => /^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value) : fallback)
+const hexToRgba = CANAL_COLORS.hexToRgba || ((hex, alpha) => {
+  const clean = String(hex || '').replace('#','')
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return `rgba(255,255,255,${alpha})`
+  return `rgba(${parseInt(clean.slice(0,2),16)},${parseInt(clean.slice(2,4),16)},${parseInt(clean.slice(4,6),16)},${alpha})`
+})
+
+const state = {
+  canal:null, refs:[], peerCanales:[], peerRefs:[], relaciones:[],
+  dias:30, chart:null, loadVersion:0, exportData:null
+}
+
+function mostrarFatal(titulo, mensaje) {
+  $('loadingView').hidden = true
+  $('reportView').hidden = true
+  $('fatalView').hidden = false
+  $('fatalView').innerHTML = `<div class="fatal-card"><h2>${esc(titulo)}</h2><p>${esc(mensaje)}</p><a class="back-link" href="canales.html">Volver a canales</a></div>`
+}
+
+function startOfDay(value=new Date()) {
+  const date = new Date(value)
+  date.setHours(0,0,0,0)
+  return date
+}
+
+function addDays(value, amount) {
+  const date = new Date(value)
+  date.setDate(date.getDate() + amount)
+  return date
+}
+
+function rangoActual(dias) {
+  if (!dias) return { actualDesde:null, consultaDesde:null, anteriorDesde:null }
+  const hoy = startOfDay()
+  const actualDesde = addDays(hoy, -(dias - 1))
+  const anteriorDesde = addDays(actualDesde, -dias)
+  return {
+    actualDesde,
+    anteriorDesde,
+    consultaDesde:anteriorDesde.toISOString()
+  }
+}
+
+function enRango(fecha, desde, hasta=null) {
+  if (!fecha) return false
+  const value = new Date(fecha).getTime()
+  if (!Number.isFinite(value)) return false
+  if (desde && value < desde.getTime()) return false
+  if (hasta && value >= hasta.getTime()) return false
+  return true
+}
+
+function fechaCorta(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('es-AR',{ day:'2-digit', month:'short', year:'numeric' })
+}
+
+function fechaHora(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString('es-AR',{ day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
+}
+
+function diasDesde(value) {
+  if (!value) return null
+  const date = startOfDay(value)
+  const diff = startOfDay().getTime() - date.getTime()
+  return Math.max(0,Math.floor(diff / DIA_MS))
+}
+
+function fechaRelativa(value) {
+  const diff = Math.max(0,Date.now() - new Date(value).getTime())
+  const minutos = Math.floor(diff / 60000)
+  if (minutos < 1) return 'ahora'
+  if (minutos < 60) return `hace ${minutos} min`
+  const horas = Math.floor(minutos / 60)
+  if (horas < 24) return `hace ${horas} h`
+  const dias = Math.floor(horas / 24)
+  return `hace ${dias} día${dias === 1 ? '' : 's'}`
+}
+
+function viaDe(row) {
+  const via = String(row?.canal_via || '').toLowerCase()
+  if (via === 'qr') return 'qr'
+  if (via === 'link') return 'link'
+  return 'directo'
+}
+
+function viaTag(row) {
+  const via = viaDe(row)
+  const info = {
+    qr:{ label:'QR', color:'#50c878' },
+    link:{ label:'Link', color:'#6495ed' },
+    directo:{ label:'Directo', color:'#8a8a82' }
+  }[via]
+  return `<span class="badge-via" style="color:${info.color}"><span class="badge-via-icon"></span>${info.label}</span>`
+}
+
+function estadoTag(estado) {
+  const info = ESTADOS[estado] || { label:'—', color:'#6f6b72' }
+  return `<span class="est-bdg" style="color:${info.color};border-color:${hexToRgba(info.color,.34)};background:${hexToRgba(info.color,.1)}">${esc(info.label)}</span>`
+}
+
+function unwrap(result, etiqueta) {
+  if (result?.error) throw new Error(`${etiqueta}: ${result.error.message}`)
+  return result?.data || []
+}
+
+function consultaVisitas(codigos, desdeISO, columnas='canal_ref, canal_via, created_at, propiedad_id, dispositivo') {
+  if (!codigos.length) return Promise.resolve({ data:[], error:null })
+  let query = supabase.from('visitas').select(columnas).in('canal_ref',codigos)
+  if (desdeISO) query = query.gte('created_at',desdeISO)
+  return query.limit(50000)
+}
+
+function consultaContactos(codigos, desdeISO, columnas='id, nombre, canal_ref, canal_via, created_at, estado, propiedad_id, persona_id') {
+  if (!codigos.length) return Promise.resolve({ data:[], error:null })
+  let query = supabase.from('contactos').select(columnas).in('canal_ref',codigos)
+  if (desdeISO) query = query.gte('created_at',desdeISO)
+  return query.limit(50000)
+}
+
+function consultaEventos(contactoIds) {
+  if (!contactoIds.length) return Promise.resolve({ data:[], error:null })
+  return supabase
+    .from('crm_eventos')
+    .select('contacto_id, fecha_evento')
+    .in('contacto_id',contactoIds)
+    .limit(50000)
+}
+
+function consultaPropiedades(propiedadIds) {
+  if (!propiedadIds.length) return Promise.resolve({ data:[], error:null })
+  return supabase.from('propiedades').select('id, titulo').in('id',propiedadIds).limit(5000)
+}
+
+async function cargarBase(canalId) {
+  const canalResult = await supabase
+    .from('canales')
+    .select('id, nombre, codigo, tipo, ciudad, provincia, email, activo, color_index, user_id, created_at, destino')
+    .eq('id',canalId)
+    .maybeSingle()
+
+  if (canalResult.error) throw new Error(`Canal: ${canalResult.error.message}`)
+  if (!canalResult.data) return false
+  state.canal = canalResult.data
+
+  const refsResult = await supabase
+    .from('referencias')
+    .select('id, canal_id, codigo, punto_tipo, punto_ubicacion, punto_orden, created_at, activo')
+    .eq('canal_id',canalId)
+    .limit(5000)
+  state.refs = unwrap(refsResult,'Referencias')
+
+  const peerResult = await supabase
+    .from('canales')
+    .select('id, nombre, tipo')
+    .eq('tipo',state.canal.tipo)
+    .limit(5000)
+  state.peerCanales = unwrap(peerResult,'Canales comparables')
+
+  const peerIds = state.peerCanales.map(row => row.id)
+  const refIds = state.refs.map(row => row.id)
+  const [peerRefsResult, relacionesResult] = await Promise.all([
+    peerIds.length
+      ? supabase.from('referencias').select('id, canal_id, codigo, activo').in('canal_id',peerIds).limit(10000)
+      : Promise.resolve({ data:[], error:null }),
+    refIds.length
+      ? supabase.from('referencia_propiedad').select('referencia_id, propiedad_id').in('referencia_id',refIds).limit(10000)
+      : Promise.resolve({ data:[], error:null })
+  ])
+  state.peerRefs = unwrap(peerRefsResult,'Referencias comparables')
+  state.relaciones = unwrap(relacionesResult,'Relaciones con propiedades')
+  return true
+}
+
+function renderHeader() {
+  const canal = state.canal
+  const canalColor = colorCssSeguro(colorCanalDesdeIndex(canal.color_index),'#8a8a82')
+  const tipoColor = TIPO_COLOR[canal.tipo] || '#888'
+  const ubicacion = [canal.ciudad,canal.provincia].filter(Boolean).join(', ')
+  $('canalNombre').textContent = canal.nombre || 'Canal sin nombre'
+  $('canalMeta').innerHTML = `
+    <span class="canal-inline" style="--bc:${canalColor}"><span class="od"></span>${esc(canal.codigo || 'Sin código')}</span>
+    <span class="tipo-badge" style="color:${tipoColor};border-color:${hexToRgba(tipoColor,.34)};background:${hexToRgba(tipoColor,.1)}">${esc(TIPO_LABEL[canal.tipo] || canal.tipo || 'Otro')}</span>
+    <span class="estado-canal ${canal.activo ? '' : 'off'}"><i></i>${canal.activo ? 'Activo' : 'Inactivo'}</span>
+    ${ubicacion ? `<span>${esc(ubicacion)}</span>` : ''}
+    ${canal.email ? `<span>${esc(canal.email)}</span>` : ''}
+    <span>Alta ${fechaCorta(canal.created_at)}</span>`
+}
+
+function separarPeriodos(rows, rango) {
+  if (!rango.actualDesde) return { actual:rows, anterior:[] }
+  return {
+    actual:rows.filter(row => enRango(row.created_at,rango.actualDesde)),
+    anterior:rows.filter(row => enRango(row.created_at,rango.anteriorDesde,rango.actualDesde))
+  }
+}
+
+function deltaHtml(actual, anterior) {
+  if (!state.dias) return '<span class="delta neutral">acumulado</span>'
+  if (anterior === 0) {
+    return actual > 0
+      ? '<span class="delta up">actividad nueva</span>'
+      : '<span class="delta neutral">sin variación</span>'
+  }
+  const delta = Math.round(((actual - anterior) / anterior) * 100)
+  if (delta === 0) return '<span class="delta neutral">0%</span>'
+  return `<span class="delta ${delta > 0 ? 'up' : 'down'}">${delta > 0 ? '↑' : '↓'} ${Math.abs(delta)}%</span>`
+}
+
+function calcularRanking(visitas,contactos) {
+  const canalPorCodigo = new Map(state.peerRefs.map(ref => [ref.codigo,ref.canal_id]))
+  const stats = new Map(state.peerCanales.map(canal => [canal.id,{ canal,escaneos:0,consultas:0,puntos:0,conversion:0 }]))
+  state.peerRefs.forEach(ref => {
+    if (ref.activo && stats.has(ref.canal_id)) stats.get(ref.canal_id).puntos += 1
+  })
+  visitas.forEach(row => {
+    const canalId = canalPorCodigo.get(row.canal_ref)
+    if (stats.has(canalId)) stats.get(canalId).escaneos += 1
+  })
+  contactos.forEach(row => {
+    const canalId = canalPorCodigo.get(row.canal_ref)
+    if (stats.has(canalId)) stats.get(canalId).consultas += 1
+  })
+  stats.forEach(item => {
+    item.conversion = item.escaneos > 0 ? item.consultas / item.escaneos * 100 : 0
+  })
+  const rows = [...stats.values()]
+  const target = stats.get(state.canal.id) || { escaneos:0,consultas:0,puntos:state.refs.filter(ref => ref.activo).length,conversion:0 }
+  const puesto = key => 1 + rows.filter(row => row[key] > target[key]).length
+  return { rows,target,puestos:{
+    escaneos:puesto('escaneos'), consultas:puesto('consultas'),
+    conversion:puesto('conversion'), puntos:puesto('puntos')
+  }}
+}
+
+function renderKpis(visitas,contactos,visitasPrevias,contactosPrevios,ultimaVisita,ranking) {
+  const refsConTrafico = new Set(visitas.map(row => row.canal_ref)).size
+  const conversion = visitas.length ? contactos.length / visitas.length * 100 : 0
+  const sinEscaneos = ultimaVisita ? diasDesde(ultimaVisita.created_at) : null
+
+  $('kDias').textContent = sinEscaneos === null ? '—' : sinEscaneos.toLocaleString('es-AR')
+  $('kDiasSub').textContent = ultimaVisita ? `Último: ${fechaHora(ultimaVisita.created_at)}` : 'Sin escaneos registrados'
+  $('kEscaneos').innerHTML = `${visitas.length.toLocaleString('es-AR')}${deltaHtml(visitas.length,visitasPrevias.length)}`
+  $('kEscaneosSub').textContent = state.dias ? `Últimos ${state.dias} días` : 'Desde el alta del canal'
+  $('kConsultas').innerHTML = `${contactos.length.toLocaleString('es-AR')}${deltaHtml(contactos.length,contactosPrevios.length)}`
+  $('kConsultasSub').textContent = state.dias ? `Últimos ${state.dias} días` : 'Desde el alta del canal'
+  $('kPuntos').textContent = `${refsConTrafico}/${state.refs.length}`
+  $('kPuntosSub').textContent = state.refs.length ? 'puntos con al menos una interacción' : 'Sin puntos de referencia'
+  $('kConversion').textContent = `${conversion.toLocaleString('es-AR',{ maximumFractionDigits:1 })}%`
+  $('kConversionSub').textContent = `Puesto ${ranking.puestos.conversion} de ${ranking.rows.length || 1} entre ${TIPO_LABEL[state.canal.tipo] || state.canal.tipo || 'su tipo'}`
+}
+
+function renderPipeline(visitas,contactos) {
+  const nivel = { nueva:0, contactado:1, visita:2, visita_realizada:3, oferta:4, cerrado:5 }
+  const activos = contactos.filter(contacto => contacto.estado !== 'descartado' && contacto.estado !== 'cerrado_sin_operacion')
+  const etapas = [
+    { cls:'p0', label:'Interacciones', value:visitas.length },
+    { cls:'p1', label:'Consultas', value:contactos.length },
+    { cls:'p2', label:'Contactado', value:activos.filter(c => (nivel[c.estado] ?? 0) >= 1).length },
+    { cls:'p3', label:'En visita', value:activos.filter(c => (nivel[c.estado] ?? 0) >= 2).length },
+    { cls:'p4', label:'Oferta', value:activos.filter(c => (nivel[c.estado] ?? 0) >= 4).length },
+    { cls:'p5', label:'Cerrado', value:activos.filter(c => c.estado === 'cerrado').length }
+  ]
+  const mostrarPorcentajes = visitas.length >= 20
+  const pasos = etapas.map((etapa,index) => {
+    const anterior = index ? etapas[index - 1].value : 0
+    const porcentaje = mostrarPorcentajes && index > 0 && anterior > 0
+      ? `${Math.round(etapa.value / anterior * 100)}% del paso anterior`
+      : ''
+    return `<div class="pipe-step ${etapa.cls}">
+      <div class="pipe-ico"><span class="pipe-dot"></span></div>
+      <div class="pipe-num">${etapa.value.toLocaleString('es-AR')}</div>
+      <div class="pipe-label">${etapa.label}</div>
+      <div class="pipe-conv">${porcentaje ? esc(porcentaje) : '&nbsp;'}</div>
+    </div>`
+  })
+  $('pipeline').innerHTML = pasos.map((paso,index) => index < pasos.length - 1 ? `${paso}<div class="pipe-arrow">›</div>` : paso).join('')
+  const descartados = contactos.filter(contacto => contacto.estado === 'descartado').length
+  const notas = []
+  if (visitas.length < 20) notas.push('Muestra menor a 20 interacciones: porcentajes ocultos.')
+  if (descartados) notas.push(`${descartados} consulta${descartados === 1 ? '' : 's'} descartada${descartados === 1 ? '' : 's'} fuera de las etapas de avance.`)
+  if (!visitas.length && !contactos.length) notas.push('Sin actividad registrada en el rango.')
+  $('pipelineNote').textContent = notas.join(' ')
+}
+
+function claveDia(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth()+1).padStart(2,'0')
+  const d = String(date.getDate()).padStart(2,'0')
+  return `${y}-${m}-${d}`
+}
+
+function construirSerie(visitas,contactos) {
+  const hoy = startOfDay()
+  let inicio
+  let granularidad
+  if (state.dias === 7 || state.dias === 30) {
+    inicio = addDays(hoy,-(state.dias - 1)); granularidad = 'dia'
+  } else if (state.dias === 90) {
+    inicio = addDays(hoy,-89); granularidad = 'semana'
+  } else {
+    const base = new Date(state.canal.created_at || Date.now())
+    inicio = new Date(base.getFullYear(),base.getMonth(),1); granularidad = 'mes'
+  }
+
+  const buckets = []
+  const indexPorClave = new Map()
+  if (granularidad === 'dia') {
+    for (let date=new Date(inicio); date<=hoy; date=addDays(date,1)) {
+      const key = claveDia(date)
+      indexPorClave.set(key,buckets.length)
+      buckets.push({ key,label:date.toLocaleDateString('es-AR',{ day:'2-digit',month:'2-digit' }),escaneos:0,consultas:0 })
+    }
+  } else if (granularidad === 'semana') {
+    for (let date=new Date(inicio),n=1; date<=hoy; date=addDays(date,7),n++) {
+      const key = String(n-1)
+      indexPorClave.set(key,buckets.length)
+      buckets.push({ key,label:`Sem ${n}`,escaneos:0,consultas:0 })
+    }
+  } else {
+    for (let date=new Date(inicio); date<=hoy; date=new Date(date.getFullYear(),date.getMonth()+1,1)) {
+      const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`
+      indexPorClave.set(key,buckets.length)
+      buckets.push({ key,label:date.toLocaleDateString('es-AR',{ month:'short',year:'2-digit' }),escaneos:0,consultas:0 })
+    }
+  }
+
+  const indice = value => {
+    const date = new Date(value)
+    if (granularidad === 'dia') return indexPorClave.get(claveDia(date))
+    if (granularidad === 'semana') return Math.floor((startOfDay(date).getTime() - inicio.getTime()) / (7 * DIA_MS))
+    return indexPorClave.get(`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`)
+  }
+  visitas.forEach(row => { const i=indice(row.created_at); if (buckets[i]) buckets[i].escaneos += 1 })
+  contactos.forEach(row => { const i=indice(row.created_at); if (buckets[i]) buckets[i].consultas += 1 })
+  return buckets
+}
+
+function chartGradient(ctx,color) {
+  const gradient = ctx.createLinearGradient(0,0,0,300)
+  gradient.addColorStop(0,hexToRgba(color,.35))
+  gradient.addColorStop(1,hexToRgba(color,0))
+  return gradient
+}
+
+function renderChart(visitas,contactos) {
+  const buckets = construirSerie(visitas,contactos)
+  const canvas = $('evolucionChart')
+  if (state.chart) state.chart.destroy()
+  const tieneDatos = visitas.length > 0 || contactos.length > 0
+  const ctx = canvas.getContext('2d')
+  state.chart = new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:buckets.map(row => row.label),
+      datasets:[
+        {
+          label:'Escaneos', data:tieneDatos ? buckets.map(row => row.escaneos) : [],
+          borderColor:'#c9a84c', backgroundColor:chartGradient(ctx,'#c9a84c'),
+          borderWidth:2.5, tension:.35, pointRadius:0, pointHoverRadius:5, fill:true
+        },
+        {
+          label:'Consultas', data:tieneDatos ? buckets.map(row => row.consultas) : [],
+          borderColor:'#d76f3f', backgroundColor:chartGradient(ctx,'#d76f3f'),
+          borderWidth:2.5, tension:.35, pointRadius:0, pointHoverRadius:5, fill:true
+        }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false, interaction:{ intersect:false,mode:'index' },
+      scales:{
+        x:{ grid:{ color:'rgba(255,255,255,.05)' },ticks:{ color:'rgba(255,255,255,.45)',font:{ family:'Inter',size:10 },maxTicksLimit:12 } },
+        y:{ beginAtZero:true,grid:{ color:'rgba(255,255,255,.05)' },ticks:{ color:'rgba(255,255,255,.45)',font:{ family:'Inter',size:10 },precision:0 } }
+      },
+      plugins:{
+        legend:{ labels:{ color:'rgba(255,255,255,.6)',usePointStyle:true,pointStyle:'circle',font:{ family:'Inter',size:10 } } },
+        tooltip:{
+          backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1,
+          titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)', titleFont:{ family:'Inter' }, bodyFont:{ family:'Inter' }
+        }
+      }
+    }
+  })
+  return buckets
+}
+
+function renderActividad(visitas,contactos) {
+  const actividad = [
+    ...visitas.map(row => ({
+      fecha:row.created_at, tipo:viaDe(row),
+      texto:viaDe(row) === 'qr' ? `Escaneo QR · ${row.canal_ref || 'sin referencia'}` : viaDe(row) === 'link' ? `Visita desde enlace · ${row.canal_ref || 'sin referencia'}` : 'Visita directa'
+    })),
+    ...contactos.map(row => ({ fecha:row.created_at,tipo:'consulta',texto:`Consulta · ${row.nombre || 'Sin nombre'}` }))
+  ].filter(row => row.fecha).sort((a,b) => new Date(b.fecha)-new Date(a.fecha)).slice(0,15)
+
+  $('actividadFeed').innerHTML = actividad.length
+    ? `<div class="feed">${actividad.map(row => `<div class="feed-row"><span class="feed-dot ${row.tipo}"></span><span class="feed-desc">${esc(row.texto)}</span><span class="feed-fecha">${fechaRelativa(row.fecha)}</span></div>`).join('')}</div>`
+    : '<div class="empty-state">Sin actividad registrada.</div>'
+}
+
+function renderPuntos(visitas,contactos) {
+  const scans = new Map()
+  const leads = new Map()
+  const ultimo = new Map()
+  visitas.forEach(row => {
+    scans.set(row.canal_ref,(scans.get(row.canal_ref) || 0) + 1)
+    if (!ultimo.get(row.canal_ref) || new Date(row.created_at) > new Date(ultimo.get(row.canal_ref))) ultimo.set(row.canal_ref,row.created_at)
+  })
+  contactos.forEach(row => leads.set(row.canal_ref,(leads.get(row.canal_ref) || 0) + 1))
+  const rows = state.refs.map(ref => ({
+    ref, scans:scans.get(ref.codigo) || 0, leads:leads.get(ref.codigo) || 0, ultimo:ultimo.get(ref.codigo) || null
+  })).sort((a,b) => b.scans-a.scans || (a.ref.punto_orden ?? 9999)-(b.ref.punto_orden ?? 9999) || String(a.ref.codigo).localeCompare(String(b.ref.codigo)))
+
+  $('puntosBody').innerHTML = rows.length ? rows.map(row => {
+    const tipo = row.ref.punto_tipo || (row.ref.codigo === state.canal.codigo ? 'Principal' : '—')
+    const ubicacion = row.ref.punto_ubicacion || row.ref.codigo || '—'
+    return `<tr class="${row.scans ? '' : 'zero'}">
+      <td>${esc(ubicacion)}</td><td>${esc(tipo)}</td><td>${fechaCorta(row.ref.created_at)}</td>
+      <td>${row.scans.toLocaleString('es-AR')}</td><td>${row.leads.toLocaleString('es-AR')}</td>
+      <td>${row.ultimo ? fechaHora(row.ultimo) : '<span class="sin-escaneos">Sin escaneos</span>'}</td>
+    </tr>`
+  }).join('') : '<tr><td colspan="6"><div class="empty-state">El canal no tiene puntos de referencia.</div></td></tr>'
+  return rows
+}
+
+function renderConsultas(contactos,eventos,propiedadesMap) {
+  const ultimoEvento = new Map()
+  eventos.forEach(evento => {
+    if (!evento.fecha_evento) return
+    const actual = ultimoEvento.get(evento.contacto_id)
+    if (!actual || new Date(evento.fecha_evento) > new Date(actual)) ultimoEvento.set(evento.contacto_id,evento.fecha_evento)
+  })
+  const rows = contactos.map(contacto => ({
+    contacto,
+    movimiento:ultimoEvento.get(contacto.id) || null,
+    dias:diasDesde(ultimoEvento.get(contacto.id))
+  })).sort((a,b) => {
+    if (a.dias === null && b.dias !== null) return -1
+    if (a.dias !== null && b.dias === null) return 1
+    return (b.dias ?? 0)-(a.dias ?? 0) || new Date(a.contacto.created_at)-new Date(b.contacto.created_at)
+  })
+
+  $('consultasBody').innerHTML = rows.length ? rows.map(row => `<tr>
+    <td>${esc(row.contacto.nombre || 'Sin nombre')}</td>
+    <td>${fechaHora(row.contacto.created_at)}</td>
+    <td>${viaTag(row.contacto)}</td>
+    <td>${esc(propiedadesMap.get(row.contacto.propiedad_id) || '—')}</td>
+    <td>${estadoTag(row.contacto.estado)}</td>
+    <td>${row.dias === null ? '—' : row.dias.toLocaleString('es-AR')}</td>
+  </tr>`).join('') : '<tr><td colspan="6"><div class="empty-state">Sin consultas en el rango.</div></td></tr>'
+  return rows
+}
+
+function renderVias(visitas) {
+  const counts = { qr:0,link:0,directo:0 }
+  visitas.forEach(row => { counts[viaDe(row)] += 1 })
+  const total = visitas.length
+  const rows = [
+    { key:'qr',label:'QR',color:'#50c878' },
+    { key:'link',label:'Link',color:'#6495ed' },
+    { key:'directo',label:'Directo',color:'#8a8a82' }
+  ]
+  $('viasBars').innerHTML = rows.map(row => {
+    const porcentaje = total ? counts[row.key] / total * 100 : 0
+    return `<div class="bar-row">
+      <span class="badge-via" style="color:${row.color}"><span class="badge-via-icon"></span>${row.label}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${porcentaje}%;color:${row.color};background:linear-gradient(90deg,${hexToRgba(row.color,.75)},${hexToRgba(row.color,.35)})"></div></div>
+      <span class="bar-value">${counts[row.key]} · ${Math.round(porcentaje)}%</span>
+    </div>`
+  }).join('')
+}
+
+function renderRanking(ranking) {
+  const total = ranking.rows.length || 1
+  const tipo = TIPO_LABEL[state.canal.tipo] || state.canal.tipo || 'su tipo'
+  $('rankingSub').textContent = `${total} canal${total === 1 ? '' : 'es'} del tipo ${tipo}.`
+  const items = [
+    { label:'Escaneos',key:'escaneos',value:ranking.target.escaneos.toLocaleString('es-AR') },
+    { label:'Consultas',key:'consultas',value:ranking.target.consultas.toLocaleString('es-AR') },
+    { label:'Conversión',key:'conversion',value:`${ranking.target.conversion.toLocaleString('es-AR',{ maximumFractionDigits:1 })}%` },
+    { label:'Puntos activos',key:'puntos',value:ranking.target.puntos.toLocaleString('es-AR') }
+  ]
+  $('rankingList').innerHTML = items.map(item => `<div class="ranking-row">
+    <span class="ranking-label">${item.label}</span><span class="ranking-value">${item.value}</span>
+    <span class="ranking-place">#${ranking.puestos[item.key]} de ${total}</span>
+  </div>`).join('')
+}
+
+function renderAsignado(visitas,propiedadesMap) {
+  const conPropiedad = visitas.filter(row => row.propiedad_id)
+  if (conPropiedad.length < 10) {
+    $('asignadoSection').hidden = true
+    $('asignadoBody').innerHTML = ''
+    return []
+  }
+  const asignadas = new Map()
+  state.relaciones.forEach(row => asignadas.set(row.propiedad_id,(asignadas.get(row.propiedad_id) || 0) + 1))
+  const miradas = new Map()
+  conPropiedad.forEach(row => miradas.set(row.propiedad_id,(miradas.get(row.propiedad_id) || 0) + 1))
+  const ids = [...new Set([...asignadas.keys(),...miradas.keys()])]
+  const rows = ids.map(id => ({ id,titulo:propiedadesMap.get(id) || 'Propiedad sin título',asignadas:asignadas.get(id) || 0,miradas:miradas.get(id) || 0 }))
+    .sort((a,b) => b.miradas-a.miradas || a.titulo.localeCompare(b.titulo))
+  $('asignadoBody').innerHTML = rows.map(row => `<tr><td>${esc(row.titulo)}</td><td>${row.asignadas}</td><td>${row.miradas}</td></tr>`).join('')
+  $('asignadoSection').hidden = false
+  return rows
+}
+
+function csvCell(value) {
+  let text = String(value ?? '')
+  if (/^[=+\-@]/.test(text)) text = `'${text}`
+  return `"${text.replace(/"/g,'""')}"`
+}
+
+function descargarCsv(nombre,cabecera,filas) {
+  const contenido = '\uFEFF' + [cabecera,...filas].map(row => row.map(csvCell).join(';')).join('\n')
+  const blob = new Blob([contenido],{ type:'text/csv;charset=utf-8' })
+  const enlace = document.createElement('a')
+  enlace.href = URL.createObjectURL(blob)
+  enlace.download = nombre
+  enlace.click()
+  setTimeout(() => URL.revokeObjectURL(enlace.href),0)
+}
+
+function slugArchivo(value) {
+  return String(value || 'canal').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'canal'
+}
+
+function exportar() {
+  if (!state.exportData) return
+  const base = slugArchivo(state.canal.nombre)
+  const { puntos,consultas,serie } = state.exportData
+  descargarCsv(`puntos-${base}.csv`,['Ubicación','Tipo','Instalado','Escaneos','Consultas','Último escaneo'],puntos.map(row => [
+    row.ref.punto_ubicacion || row.ref.codigo || '—',row.ref.punto_tipo || (row.ref.codigo === state.canal.codigo ? 'Principal' : '—'),
+    fechaCorta(row.ref.created_at),row.scans,row.leads,row.ultimo ? fechaHora(row.ultimo) : 'Sin escaneos'
+  ]))
+  descargarCsv(`consultas-${base}.csv`,['Persona','Fecha','Vía','Propiedad','Estado','Días sin movimiento'],consultas.map(row => [
+    row.contacto.nombre || 'Sin nombre',fechaHora(row.contacto.created_at),viaDe(row.contacto),
+    state.exportData.propiedadesMap.get(row.contacto.propiedad_id) || '—',ESTADOS[row.contacto.estado]?.label || '—',row.dias ?? '—'
+  ]))
+  descargarCsv(`serie-${base}.csv`,['Período','Escaneos','Consultas'],serie.map(row => [row.label,row.escaneos,row.consultas]))
+}
+
+async function cargarRango() {
+  const version = ++state.loadVersion
+  const botones = document.querySelectorAll('.rango-btn')
+  botones.forEach(button => { button.disabled = true })
+  $('btnExport').disabled = true
+  const rango = rangoActual(state.dias)
+  const codigos = state.refs.map(ref => ref.codigo).filter(Boolean)
+  const peerCodigos = state.peerRefs.map(ref => ref.codigo).filter(Boolean)
+
+  try {
+    const [visitasResult,contactosResult,peerVisitasResult,peerContactosResult,ultimaResult] = await Promise.all([
+      consultaVisitas(codigos,rango.consultaDesde),
+      consultaContactos(codigos,rango.consultaDesde),
+      consultaVisitas(peerCodigos,rango.actualDesde?.toISOString() || null,'canal_ref, created_at'),
+      consultaContactos(peerCodigos,rango.actualDesde?.toISOString() || null,'canal_ref, created_at'),
+      codigos.length
+        ? supabase.from('visitas').select('created_at').in('canal_ref',codigos).order('created_at',{ ascending:false }).limit(1)
+        : Promise.resolve({ data:[], error:null })
+    ])
+    if (version !== state.loadVersion) return
+    const visitasRaw = unwrap(visitasResult,'Visitas')
+    const contactosRaw = unwrap(contactosResult,'Contactos')
+    const peerVisitas = unwrap(peerVisitasResult,'Visitas comparables')
+    const peerContactos = unwrap(peerContactosResult,'Contactos comparables')
+    const ultimaVisita = unwrap(ultimaResult,'Última visita')[0] || null
+    const visitasPeriodos = separarPeriodos(visitasRaw,rango)
+    const contactosPeriodos = separarPeriodos(contactosRaw,rango)
+    const visitas = visitasPeriodos.actual
+    const contactos = contactosPeriodos.actual
+
+    const eventosResult = await consultaEventos(contactos.map(row => row.id))
+    if (version !== state.loadVersion) return
+    const eventos = unwrap(eventosResult,'Eventos CRM')
+    const propiedadIds = [...new Set([
+      ...contactos.map(row => row.propiedad_id),
+      ...visitas.map(row => row.propiedad_id),
+      ...state.relaciones.map(row => row.propiedad_id)
+    ].filter(Boolean))]
+    const propiedades = unwrap(await consultaPropiedades(propiedadIds),'Propiedades')
+    if (version !== state.loadVersion) return
+    const propiedadesMap = new Map(propiedades.map(row => [row.id,row.titulo]))
+    const ranking = calcularRanking(peerVisitas,peerContactos)
+
+    renderKpis(visitas,contactos,visitasPeriodos.anterior,contactosPeriodos.anterior,ultimaVisita,ranking)
+    renderPipeline(visitas,contactos)
+    const serie = renderChart(visitas,contactos)
+    renderActividad(visitas,contactos)
+    const puntos = renderPuntos(visitas,contactos)
+    const consultas = renderConsultas(contactos,eventos,propiedadesMap)
+    renderVias(visitas)
+    renderRanking(ranking)
+    renderAsignado(visitas,propiedadesMap)
+    state.exportData = { puntos,consultas,serie,propiedadesMap }
+    $('btnExport').disabled = false
+  } catch (error) {
+    if (version === state.loadVersion) mostrarFatal('No se pudo cargar el informe',error.message || 'Error de lectura.')
+  } finally {
+    if (version === state.loadVersion) botones.forEach(button => { button.disabled = false })
+  }
+}
+
+function bindControles() {
+  document.querySelectorAll('.rango-btn').forEach(button => {
+    button.addEventListener('click',async () => {
+      const dias = Number(button.dataset.dias)
+      if (dias === state.dias) return
+      state.dias = dias
+      document.querySelectorAll('.rango-btn').forEach(item => item.classList.toggle('activo',item === button))
+      await cargarRango()
+    })
+  })
+  $('btnExport').addEventListener('click',exportar)
+}
+
+async function iniciar() {
+  const { data:{ session },error:sessionError } = await supabase.auth.getSession()
+  if (sessionError || !session) { window.location.href='login.html'; return }
+  if (session.user.app_metadata?.rol !== 'admin') { window.location.href='login.html'; return }
+  $('btnLogout').addEventListener('click',async event => {
+    event.preventDefault()
+    await supabase.auth.signOut()
+    window.location.href='login.html'
+  })
+
+  const canalId = new URLSearchParams(window.location.search).get('id') || ''
+  if (!UUID_RE.test(canalId)) {
+    mostrarFatal('Canal no encontrado','El identificador del canal falta o tiene un formato inválido.')
+    return
+  }
+
+  try {
+    const existe = await cargarBase(canalId)
+    if (!existe) {
+      mostrarFatal('Canal no encontrado','No existe un canal con ese identificador.')
+      return
+    }
+    renderHeader()
+    bindControles()
+    $('loadingView').hidden = true
+    $('reportView').hidden = false
+    await cargarRango()
+  } catch (error) {
+    mostrarFatal('No se pudo cargar el informe',error.message || 'Error de lectura.')
+  }
+}
+
+iniciar()
+</script>
+</body>
+</html>
