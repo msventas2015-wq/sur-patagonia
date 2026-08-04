@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="../css/estilos.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="" />
   <style>
     :root{
       --bg:#090909; --card-bg:#141414;
@@ -90,34 +94,32 @@
       display:grid;
       grid-template-columns:minmax(0,1fr) auto;
       grid-template-areas:
-        "volver   volver"
-        "titulo   export"
-        "meta     export"
-        "filtros  filtros"
-        "selector selector";
+        "volver    export"
+        "identidad mapa"
+        "filtros   direccion"
+        "selector  direccion"
+        "pie       pie";
       align-items:start;
       gap:.6rem 1.5rem;
       margin-bottom:1.4rem;
     }
-    .dash-header .back-link { grid-area:volver; justify-self:start; margin-bottom:.4rem; }
-    .dash-header .titulo-wrap { grid-area:titulo; min-width:0; }
-    .dash-header .header-meta { grid-area:meta; min-width:0; }
-    .dash-header .btn-export { grid-area:export; justify-self:end; align-self:start; }
+    .dash-header .back-link { grid-area:volver; justify-self:start; }
+    .dash-header .btn-export { grid-area:export; justify-self:end; }
+    .dash-header .identidad-wrap { grid-area:identidad; min-width:0; }
+    .dash-header .ic-mini-mapa-wrap { grid-area:mapa; justify-self:end; align-self:start; }
+    .dash-header .ic-mapa-dir { grid-area:direccion; justify-self:end; text-align:right; }
     .dash-header .filtros-wrap {
       grid-area:filtros; display:flex; align-items:flex-end;
       gap:.55rem; flex-wrap:wrap; margin-top:.5rem;
     }
     .dash-header .selector-wrap { grid-area:selector; justify-self:start; margin-top:.3rem; }
-    .admin-page-title {
-      font-family:'Inter',sans-serif; font-size:clamp(2rem,5vw,3rem); font-weight:800;
+    .dash-header .header-pie { grid-area:pie; }
+    .nombre-canal {
+      font-family:'Inter',sans-serif; font-size:clamp(1.8rem,4vw,2.4rem); font-weight:800;
       letter-spacing:-.03em; text-transform:uppercase; margin:0;
       overflow-wrap:anywhere;
       background:linear-gradient(120deg,#fff,rgba(255,255,255,.55));
       -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
-    }
-    .header-meta {
-      display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; margin-top:.7rem;
-      color:rgba(255,255,255,.45); font-size:.68rem;
     }
     .ic-rango-custom { display:flex; align-items:flex-end; gap:.55rem; flex-wrap:wrap; }
     .ic-rango-custom label {
@@ -147,15 +149,64 @@
       width:7px; height:7px; border-radius:50%; flex:0 0 auto;
       background:var(--bc); box-shadow:0 0 6px var(--bc);
     }
-    .tipo-badge,
     .est-bdg {
       display:inline-block; padding:.14rem .45rem; border-radius:5px;
       font-size:.6rem; font-weight:600; border:1px solid;
     }
-    .tipo-badge { text-transform:uppercase; }
-    .estado-canal { display:inline-flex; align-items:center; gap:.35rem; }
-    .estado-canal i { width:7px; height:7px; border-radius:50%; background:#52d68c; }
-    .estado-canal.off i { background:#7b7f88; }
+    .tipo-badge {
+      display:inline-flex; align-items:center;
+      padding:.34rem .85rem; border:1px solid var(--tipo-border); border-radius:8px;
+      background:var(--tipo-bg); color:var(--tipo-color);
+      font:700 .6rem 'Inter',sans-serif; letter-spacing:.14em; text-transform:uppercase;
+      margin-bottom:.7rem; transition:border-color .18s,box-shadow .18s;
+    }
+    .tipo-badge:hover { border-color:var(--tipo-border-hover); box-shadow:0 0 12px var(--tipo-shadow); }
+    .codigo-canal { margin-top:.45rem; color:rgba(255,255,255,.3); font:500 .66rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    .estado-canal {
+      display:inline-flex; align-items:center; gap:.45rem;
+      margin-top:.9rem; padding:.3rem .75rem; border-radius:999px;
+      border:1px solid rgba(82,214,140,.28); background:rgba(82,214,140,.08);
+      color:#52d68c; font-size:.6rem; font-weight:600;
+      letter-spacing:.1em; text-transform:uppercase;
+    }
+    .estado-canal i {
+      width:6px; height:6px; border-radius:50%;
+      background:#52d68c; box-shadow:0 0 8px rgba(82,214,140,.6);
+    }
+    .estado-canal.off { border-color:rgba(123,127,136,.28); background:rgba(123,127,136,.08); color:#7b7f88; }
+    .estado-canal.off i { background:#7b7f88; box-shadow:none; }
+    .ic-mini-mapa-wrap { display:flex; flex-direction:column; gap:.5rem; width:210px; }
+    .ic-mini-mapa {
+      position:relative; width:210px; height:150px;
+      border-radius:10px; overflow:hidden;
+      border:1px solid rgba(255,255,255,.12); background:#0d0f10;
+      cursor:pointer; transition:border-color .18s,box-shadow .18s;
+    }
+    .ic-mini-mapa:hover { border-color:var(--map-border); box-shadow:0 0 16px var(--map-shadow); }
+    #icMiniMapa .leaflet-control-zoom { display:none !important; }
+    #icMiniMapa .leaflet-tile-pane { filter:invert(1) grayscale(1) contrast(.85) brightness(1.5); }
+    .ic-mapa-abrir {
+      position:absolute; right:.5rem; bottom:.5rem; z-index:500;
+      padding:.22rem .5rem; border-radius:5px;
+      background:rgba(9,9,9,.82); border:1px solid rgba(255,255,255,.12);
+      color:rgba(255,255,255,.7); font-size:.53rem; font-weight:600;
+      letter-spacing:.08em; text-transform:uppercase; pointer-events:none;
+    }
+    .ic-mapa-dir {
+      width:210px; color:rgba(255,255,255,.62); font-size:.7rem;
+      line-height:1.5; overflow-wrap:anywhere;
+    }
+    .ic-mapa-dir strong { display:block; color:var(--blanco); font-weight:600; margin-bottom:.1rem; }
+    .ic-mapa-attr { margin:0; color:rgba(255,255,255,.28); font-size:.5rem; }
+    .ic-mapa-attr a { color:rgba(255,255,255,.4); text-decoration:none; }
+    .ic-mapa-attr a:hover { text-decoration:underline; }
+    .header-pie {
+      display:flex; gap:1.3rem; flex-wrap:wrap;
+      margin-top:1.3rem; padding-top:.9rem;
+      border-top:1px solid rgba(255,255,255,.07);
+      color:rgba(255,255,255,.38); font-size:.66rem;
+    }
+    .header-pie b { color:rgba(255,255,255,.62); font-weight:500; }
 
     .kpi-grid {
       display:grid; grid-template-columns:repeat(4,minmax(180px,1fr));
@@ -367,16 +418,18 @@
     @media(max-width:820px) {
       .dash-header {
         grid-template-columns:1fr;
-        grid-template-areas:"volver" "titulo" "meta" "export" "filtros" "selector";
+        grid-template-areas:"volver" "export" "identidad" "direccion" "filtros" "selector" "pie";
       }
       .dash-header .btn-export,
       .dash-header .selector-wrap { justify-self:stretch; }
       .dash-header .btn-export { width:100%; }
+      .dash-header .ic-mini-mapa-wrap { display:none; }
+      .dash-header .ic-mapa-dir { width:100%; justify-self:start; text-align:left; }
       .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .ic-rango-error { text-align:left; }
     }
     @media(max-width:680px) {
-      .admin-page-title { font-size:1.65rem; }
+      .nombre-canal { font-size:1.65rem; }
       .filtros-wrap { width:100%; }
       .rango-btn { flex:1; min-width:72px; }
       .ic-rango-custom { width:100%; }
@@ -498,11 +551,20 @@
     <div id="reportView" hidden>
       <div class="dash-header">
         <a class="back-link" href="canales.html">← Volver a canales</a>
-        <div class="titulo-wrap">
-          <h1 class="admin-page-title" id="canalNombre">Informe de canal</h1>
-        </div>
-        <div class="header-meta" id="canalMeta"></div>
         <button class="btn-export" id="btnExport" disabled>Exportar</button>
+        <div class="identidad-wrap">
+          <span class="tipo-badge" id="canalTipo">Canal</span>
+          <h1 class="nombre-canal" id="canalNombre">Informe de canal</h1>
+          <div class="codigo-canal" id="canalCodigo"></div>
+          <span class="estado-canal" id="canalEstado"><i></i>Activo</span>
+        </div>
+        <div class="ic-mini-mapa-wrap" id="icMiniMapaWrap" hidden>
+          <div class="ic-mini-mapa" id="icMiniMapa" aria-label="Abrir ubicación del canal en Google Maps">
+            <span class="ic-mapa-abrir">Abrir mapa ↗</span>
+          </div>
+          <p class="ic-mapa-attr">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></p>
+        </div>
+        <div class="ic-mapa-dir" id="icMapaDir"></div>
         <div class="filtros-wrap">
           <button class="rango-btn" data-dias="1">Hoy</button>
           <button class="rango-btn" data-dias="7">7 días</button>
@@ -520,6 +582,7 @@
           <label for="canalSelector">Cambiar canal</label>
           <select class="ic-select" id="canalSelector" aria-label="Cambiar canal"></select>
         </div>
+        <div class="header-pie" id="canalPie"></div>
       </div>
 
       <div class="kpi-grid">
@@ -646,6 +709,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
 <script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
@@ -922,7 +988,7 @@ async function cargarBase(canalId) {
   const [canalesResult,canalResult] = await Promise.all([
     supabase.from('canales').select('id,nombre,codigo,tipo,activo,color_index').order('nombre',{ ascending:true }).limit(5000),
     supabase.from('canales')
-      .select('id,nombre,codigo,tipo,ciudad,provincia,email,activo,color_index,user_id,created_at,destino,mapa_base')
+      .select('id,nombre,codigo,tipo,ciudad,provincia,email,activo,color_index,user_id,created_at,destino,mapa_base,latitud,longitud')
       .eq('id',canalId).maybeSingle()
   ])
   state.canales = unwrap(canalesResult,'Canales')
@@ -1001,16 +1067,73 @@ function renderHeader() {
   const canal = state.canal
   const canalColor = colorCssSeguro(colorCanalDesdeIndex(canal.color_index),'#8a8a82')
   const tipoColor = TIPO_COLOR[canal.tipo] || '#888'
-  const ubicacion = [canal.ciudad,canal.provincia].filter(Boolean).join(', ')
   $('canalNombre').textContent = canal.nombre || 'Canal sin nombre'
-  $('canalMeta').innerHTML =
-    '<span class="canal-inline" style="--bc:' + canalColor + '"><span class="od"></span>' + esc(canal.codigo || 'Sin código') + '</span>' +
-    '<span class="tipo-badge" style="color:' + tipoColor + ';border-color:' + hexToRgba(tipoColor,.34) + ';background:' + hexToRgba(tipoColor,.1) + '">' + esc(TIPO_LABEL[canal.tipo] || canal.tipo || 'Otro') + '</span>' +
-    '<span class="estado-canal ' + (canal.activo ? '' : 'off') + '"><i></i>' + (canal.activo ? 'Activo' : 'Inactivo') + '</span>' +
-    (ubicacion ? '<span>' + esc(ubicacion) + '</span>' : '') +
-    (canal.email ? '<span>' + esc(canal.email) + '</span>' : '') +
-    '<span>Alta ' + fechaCorta(canal.created_at) + '</span>'
+  const tipo = $('canalTipo')
+  tipo.textContent = TIPO_LABEL[canal.tipo] || canal.tipo || 'Otro'
+  tipo.style.setProperty('--tipo-color',tipoColor)
+  tipo.style.setProperty('--tipo-border',hexToRgba(tipoColor,.28))
+  tipo.style.setProperty('--tipo-border-hover',hexToRgba(tipoColor,.45))
+  tipo.style.setProperty('--tipo-bg','linear-gradient(135deg,' + hexToRgba(tipoColor,.15) + ',' + hexToRgba(tipoColor,.05) + ')')
+  tipo.style.setProperty('--tipo-shadow',hexToRgba(tipoColor,.2))
+  $('canalCodigo').innerHTML = '<span class="canal-inline" style="--bc:' + canalColor + '"><span class="od"></span>' + esc(canal.codigo || 'Sin código') + '</span>'
+  const estado = $('canalEstado')
+  estado.className = 'estado-canal' + (canal.activo ? '' : ' off')
+  estado.innerHTML = '<i></i>' + (canal.activo ? 'Activo' : 'Inactivo')
+
+  const ciudad = String(canal.ciudad || '').trim()
+  const provincia = String(canal.provincia || '').trim()
+  const direccion = $('icMapaDir')
+  direccion.hidden = !ciudad && !provincia
+  direccion.innerHTML = (ciudad ? '<strong>' + esc(ciudad) + '</strong>' : '') + (provincia ? esc(provincia) : '')
+
+  const pie = []
+  if (canal.user_id && canal.email) pie.push('Colaborador <b>' + esc(canal.email) + '</b>')
+  pie.push('Alta <b>' + fechaCorta(canal.created_at) + '</b>')
+  $('canalPie').innerHTML = pie.map(item => '<span>' + item + '</span>').join('<span aria-hidden="true">·</span>')
   renderSelector()
+}
+
+function coordValida(value, max) {
+  if (value === null || value === undefined || value === '') return false
+  const numeroCoord = Number(value)
+  return Number.isFinite(numeroCoord) && Math.abs(numeroCoord) <= max
+}
+
+function initMiniMapa() {
+  const wrap = $('icMiniMapaWrap')
+  const contenedor = $('icMiniMapa')
+  const leaflet = window.L
+  const canal = state.canal
+  if (!wrap || !contenedor || !leaflet || !canal
+      || !coordValida(canal.latitud,90) || !coordValida(canal.longitud,180)
+      || window.innerWidth <= 820) return
+
+  const latitud = Number(canal.latitud)
+  const longitud = Number(canal.longitud)
+  const mapa = leaflet.map(contenedor,{
+    zoomControl:false,attributionControl:false,dragging:false,
+    scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false,keyboard:false
+  }).setView([latitud,longitud],15)
+
+  leaflet.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:19
+  }).addTo(mapa)
+
+  const color = colorCssSeguro(colorCanalDesdeIndex(canal.color_index),'#8a8a82')
+  wrap.style.setProperty('--map-border',hexToRgba(color,.5))
+  wrap.style.setProperty('--map-shadow',hexToRgba(color,.15))
+  const icono = leaflet.divIcon({
+    className:'',
+    html:'<div style="width:14px;height:14px;background:' + color + ';border:2px solid rgba(255,255,255,.35);border-radius:50%;box-shadow:0 0 12px ' + color + ',0 0 26px rgba(255,255,255,.15)"></div>',
+    iconSize:[14,14],iconAnchor:[7,7]
+  })
+  leaflet.marker([latitud,longitud],{ icon:icono }).addTo(mapa)
+  contenedor.addEventListener('click',() => {
+    window.open('https://www.google.com/maps/search/?api=1&query=' + latitud + ',' + longitud,'_blank','noopener')
+  })
+  wrap.hidden = false
+  setTimeout(() => mapa.invalidateSize(),100)
 }
 
 function deltaHtml(actual, anterior) {
@@ -1827,6 +1950,7 @@ async function iniciar() {
     bindControles()
     $('loadingView').hidden = true
     $('reportView').hidden = false
+    initMiniMapa()
     await cargarRango()
   } catch (error) {
     mostrarFatal('No se pudo cargar el informe',error.message || 'Error de lectura.')
