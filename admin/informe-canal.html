@@ -48,8 +48,7 @@
     .fatal-card p { line-height:1.6; margin-bottom:1.1rem; }
     .back-link,
     .rango-btn,
-    .btn-aplicar,
-    .btn-export {
+    .btn-aplicar {
       display:inline-flex; align-items:center; justify-content:center;
       border:1px solid rgba(201,168,76,.28); border-radius:8px;
       background:linear-gradient(135deg,rgba(201,168,76,.15),rgba(201,168,76,.05));
@@ -60,11 +59,9 @@
     .back-link { padding:.48rem .9rem; }
     .rango-btn { padding:.36rem .88rem; letter-spacing:.08em; }
     .btn-aplicar { padding:.38rem .72rem; }
-    .btn-export { padding:.42rem .95rem; font-weight:700; }
     .back-link:hover,
     .rango-btn:hover,
-    .btn-aplicar:hover,
-    .btn-export:hover { border-color:rgba(201,168,76,.45); }
+    .btn-aplicar:hover { border-color:rgba(201,168,76,.45); }
     .rango-btn.activo {
       background:linear-gradient(135deg,rgba(201,168,76,.24),rgba(201,168,76,.09));
       border-color:rgba(201,168,76,.42);
@@ -72,21 +69,38 @@
     .rango-btn:disabled,
     .btn-export:disabled { opacity:.45; cursor:wait; box-shadow:none; }
     .btn-aplicar:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; }
+    .btn-export {
+      display:inline-flex; align-items:center; justify-content:center;
+      background:var(--accent); border:1px solid var(--accent); color:var(--blanco);
+      padding:.42rem .95rem; border-radius:8px;
+      font:700 .63rem 'Inter',sans-serif; letter-spacing:.06em;
+      text-transform:uppercase; cursor:pointer;
+      transition:border-color .18s,box-shadow .18s,background .18s;
+    }
+    .btn-export:hover { box-shadow:0 0 14px rgba(215,111,63,.25); }
 
     .dash-header {
       display:grid;
       grid-template-columns:minmax(0,1fr) auto;
       grid-template-areas:
-        "titulo selector"
-        "meta rangos";
+        "volver   volver"
+        "titulo   export"
+        "meta     export"
+        "filtros  filtros"
+        "selector selector";
       align-items:start;
-      gap:.9rem 1.5rem;
-      margin-bottom:1.2rem;
+      gap:.6rem 1.5rem;
+      margin-bottom:1.4rem;
     }
+    .dash-header .back-link { grid-area:volver; justify-self:start; margin-bottom:.4rem; }
     .dash-header .titulo-wrap { grid-area:titulo; min-width:0; }
-    .dash-header .header-meta { grid-area:meta; }
-    .dash-header .selector-wrap { grid-area:selector; justify-self:end; }
-    .dash-header .rangos { grid-area:rangos; justify-self:end; }
+    .dash-header .header-meta { grid-area:meta; min-width:0; }
+    .dash-header .btn-export { grid-area:export; justify-self:end; align-self:start; }
+    .dash-header .filtros-wrap {
+      grid-area:filtros; display:flex; align-items:flex-end;
+      gap:.55rem; flex-wrap:wrap; margin-top:.5rem;
+    }
+    .dash-header .selector-wrap { grid-area:selector; justify-self:start; margin-top:.3rem; }
     .admin-page-title {
       font-family:'Inter',sans-serif; font-size:clamp(2rem,5vw,3rem); font-weight:800;
       letter-spacing:-.03em; text-transform:uppercase; margin:0;
@@ -98,7 +112,6 @@
       display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; margin-top:.7rem;
       color:rgba(255,255,255,.45); font-size:.68rem;
     }
-    .rangos { display:flex; gap:.4rem; align-items:flex-end; justify-content:flex-end; flex-wrap:wrap; min-width:0; }
     .ic-rango-custom { display:flex; align-items:flex-end; gap:.55rem; flex-wrap:wrap; }
     .ic-rango-custom label {
       display:flex; flex-direction:column; gap:.3rem;
@@ -134,13 +147,14 @@
     .estado-canal.off i { background:#7b7f88; }
 
     .kpi-grid {
-      display:grid; grid-template-columns:repeat(5,minmax(150px,1fr));
-      gap:.9rem; margin-bottom:1.25rem;
+      display:grid; grid-template-columns:repeat(4,minmax(180px,1fr));
+      gap:1rem; margin-bottom:1.4rem;
     }
     .kpi {
       background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
       border:1px solid rgba(255,255,255,.08); border-top-color:rgba(255,255,255,.14);
-      border-radius:14px; padding:1.4rem 1.35rem; position:relative; overflow:hidden;
+      border-radius:14px; padding:1.4rem 1.6rem; position:relative; overflow:hidden;
+      display:flex; flex-direction:column; min-height:168px;
       backdrop-filter:blur(4px); box-shadow:0 4px 14px rgba(0,0,0,.18);
       transition:transform .18s,border-color .18s,box-shadow .18s;
     }
@@ -161,8 +175,9 @@
       background:linear-gradient(135deg,#fff,rgba(255,255,255,.7));
       -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
     }
-    .kpi-sub { min-height:1rem; margin-top:.5rem; color:var(--gris); font-size:.65rem; line-height:1.45; }
-    .delta { margin-left:.35rem; font-size:.68rem; font-weight:600; -webkit-text-fill-color:initial; }
+    .kpi-sub { margin-top:.5rem; color:var(--gris); font-size:.65rem; line-height:1.45; }
+    .kpi-delta { margin-top:auto; padding-top:.65rem; min-height:1.5rem; }
+    .delta { font-size:.68rem; font-weight:600; -webkit-text-fill-color:initial; }
     .delta.up { color:#6ee89a; }
     .delta.down { color:#f0956a; }
     .delta.neutral { color:rgba(255,255,255,.3); }
@@ -174,7 +189,7 @@
       border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12);
       border-radius:var(--card-radius); padding:1.4rem 1.6rem;
       backdrop-filter:blur(4px); box-shadow:0 4px 14px rgba(0,0,0,.18);
-      margin-bottom:.9rem; position:relative; overflow:hidden;
+      margin-bottom:1.4rem; position:relative; overflow:hidden;
     }
     .section-head {
       display:flex; justify-content:space-between; align-items:flex-start;
@@ -188,47 +203,41 @@
     .section-sub { margin-top:.35rem; color:rgba(255,255,255,.45); font-size:.66rem; line-height:1.45; }
     .empty-state { color:rgba(255,255,255,.28); font-size:.7rem; padding:1.35rem 0; text-align:center; }
 
-    .pipeline-block { margin-bottom:.9rem; }
-    .pipeline-head { margin-bottom:.8rem; }
-    .pipeline {
-      display:grid; grid-template-columns:1fr 22px 1fr 22px 1fr 22px 1fr 22px 1fr 22px 1fr;
-      gap:0; align-items:stretch;
-    }
-    .pipe-step {
-      position:relative; display:flex; flex-direction:column; align-items:center;
-      padding:1.4rem .75rem 1.2rem; text-align:center;
+    .pipeline-block {
+      margin-bottom:1.4rem; padding:1.4rem 1.6rem;
+      background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
       border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12);
-      border-radius:12px; background:linear-gradient(160deg,rgba(255,255,255,.048),rgba(255,255,255,.015));
-      box-shadow:0 4px 14px rgba(0,0,0,.15);
+      border-radius:var(--card-radius); backdrop-filter:blur(4px);
+      box-shadow:0 4px 14px rgba(0,0,0,.18);
     }
-    .pipe-ico {
-      width:36px; height:36px; display:grid; place-items:center;
-      border-radius:50%; margin-bottom:.75rem;
+    .pipeline-head { margin-bottom:1rem; }
+    .pipeline { display:flex; flex-direction:column; gap:.8rem; }
+    .pipe-step {
+      display:grid; grid-template-columns:minmax(120px,1fr) 48px minmax(100px,auto);
+      gap:.75rem; align-items:center;
     }
-    .pipe-dot { width:10px; height:10px; border-radius:50%; background:currentColor; }
-    .pipe-num { font-size:2.45rem; font-weight:300; line-height:1; color:var(--blanco); margin-bottom:.35rem; }
+    .pipeline.con-porcentajes .pipe-step {
+      grid-template-columns:minmax(120px,1fr) 48px minmax(100px,auto) minmax(105px,auto);
+    }
+    .pipe-track { height:10px; border-radius:5px; background:rgba(255,255,255,.04); overflow:visible; }
+    .pipe-fill { width:var(--w); height:10px; min-width:3px; border-radius:5px; }
+    .pipe-fill.p0 { background:linear-gradient(90deg,rgba(255,255,255,.41),rgba(255,255,255,.19)); }
+    .pipe-fill.p1 { background:linear-gradient(90deg,rgba(232,201,106,.75),rgba(232,201,106,.35)); }
+    .pipe-fill.p2 { background:linear-gradient(90deg,rgba(53,198,180,.75),rgba(53,198,180,.35)); }
+    .pipe-fill.p3 { background:linear-gradient(90deg,rgba(242,154,90,.75),rgba(242,154,90,.35)); }
+    .pipe-fill.p4 { background:linear-gradient(90deg,rgba(217,167,255,.75),rgba(217,167,255,.35)); }
+    .pipe-fill.p5 { background:linear-gradient(90deg,rgba(169,220,122,.75),rgba(169,220,122,.35)); }
+    .pipe-fill.zero { width:3px; min-width:3px; background:rgba(255,255,255,.08); }
+    .pipe-num { color:var(--blanco); font-size:1.35rem; font-weight:300; line-height:1; text-align:right; }
     .pipe-label {
-      color:rgba(255,255,255,.38); font-size:.52rem; font-weight:700;
-      letter-spacing:.16em; text-transform:uppercase; line-height:1.35;
+      color:rgba(255,255,255,.42); font-size:.62rem; font-weight:700;
+      letter-spacing:.12em; text-transform:uppercase; line-height:1.35;
     }
-    .pipe-conv { min-height:.85rem; margin-top:.55rem; color:rgba(255,255,255,.28); font-size:.6rem; font-weight:600; }
-    .pipe-arrow { display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.15); font-size:.75rem; }
-    .pipe-step.p0 { border-top-color:rgba(255,255,255,.16); }
-    .pipe-step.p0 .pipe-ico { color:rgba(255,255,255,.55); background:rgba(255,255,255,.06); }
-    .pipe-step.p1 { border-top-color:rgba(232,201,106,.35); }
-    .pipe-step.p1 .pipe-ico { color:#e8c96a; background:rgba(232,201,106,.1); }
-    .pipe-step.p2 { border-top-color:rgba(53,198,180,.35); }
-    .pipe-step.p2 .pipe-ico { color:#35c6b4; background:rgba(53,198,180,.1); }
-    .pipe-step.p3 { border-top-color:rgba(242,154,90,.35); }
-    .pipe-step.p3 .pipe-ico { color:#f29a5a; background:rgba(242,154,90,.1); }
-    .pipe-step.p4 { border-top-color:rgba(217,167,255,.35); }
-    .pipe-step.p4 .pipe-ico { color:#d9a7ff; background:rgba(217,167,255,.1); }
-    .pipe-step.p5 { border-top-color:rgba(169,220,122,.38); }
-    .pipe-step.p5 .pipe-ico { color:#a9dc7a; background:rgba(169,220,122,.1); }
+    .pipe-conv { color:rgba(255,255,255,.28); font-size:.6rem; font-weight:600; text-align:right; }
     .pipeline-note { margin-top:.7rem; color:rgba(255,255,255,.28); font-size:.62rem; text-align:center; }
 
-    .split-grid { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(270px,.75fr); gap:.9rem; }
-    .equal-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem; }
+    .split-grid { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(270px,.75fr); gap:1rem; }
+    .equal-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
     .chart-card { min-width:0; }
     .chart-wrap { position:relative; height:300px; margin-top:.9rem; }
     .chart-empty {
@@ -314,18 +323,21 @@
     .ic-chip.off { opacity:.4; }
     .chart-legend { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; margin-top:.8rem; }
     .chart-legend[hidden] { display:none !important; }
-    .kpi-grid.dynamic { grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); }
-    .kpi.manual { --c:#888; }
-    .metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:.9rem; margin-bottom:.9rem; }
     .metric-card {
-      min-width:0; padding:1rem 1.1rem;
+      min-width:0; margin-bottom:1.4rem; padding:1.4rem 1.6rem;
       background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
       border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12);
       border-radius:14px; backdrop-filter:blur(4px); box-shadow:0 4px 14px rgba(0,0,0,.18);
     }
-    .metric-label { color:rgba(255,255,255,.42); font-size:.56rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; }
-    .metric-value { margin-top:.42rem; color:var(--blanco); font-size:1.2rem; font-weight:500; line-height:1.35; }
-    .metric-sub { margin-top:.3rem; color:var(--gris); font-size:.63rem; line-height:1.45; }
+    .metric-title {
+      margin:0 0 .9rem; color:var(--gris); font-size:.6rem; font-weight:700;
+      letter-spacing:.14em; text-transform:uppercase;
+    }
+    .metric-line { display:flex; align-items:baseline; gap:.7rem; flex-wrap:wrap; }
+    .metric-item { display:inline-flex; align-items:baseline; gap:.38rem; }
+    .metric-label { color:rgba(255,255,255,.42); font-size:.62rem; font-weight:500; }
+    .metric-value { color:var(--blanco); font-size:.86rem; font-weight:600; }
+    .metric-separator { color:rgba(255,255,255,.18); }
     .row-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:.48rem; background:var(--rc,#888); vertical-align:middle; }
     .category-row td { color:rgba(255,255,255,.28); }
     .attention { display:inline-block; margin-left:.45rem; color:#e8c96a; font-size:.58rem; font-weight:600; }
@@ -346,36 +358,40 @@
     .via-null { color:rgba(255,255,255,.42); font-size:.65rem; margin-top:.9rem; }
 
     @media(max-width:1180px) {
-      .kpi-grid { grid-template-columns:repeat(3,minmax(160px,1fr)); }
       .split-grid { grid-template-columns:1fr; }
     }
     @media(max-width:900px) {
-      .pipeline { grid-template-columns:repeat(3,1fr); gap:.5rem; }
-      .pipe-arrow { display:none; }
       .equal-grid { grid-template-columns:1fr; }
     }
     @media(max-width:820px) {
       .dash-header {
         grid-template-columns:1fr;
-        grid-template-areas:"titulo" "meta" "selector" "rangos";
+        grid-template-areas:"volver" "titulo" "meta" "export" "filtros" "selector";
       }
-      .dash-header .selector-wrap,
-      .dash-header .rangos { justify-self:stretch; }
-      .rangos { justify-content:flex-start; }
+      .dash-header .btn-export,
+      .dash-header .selector-wrap { justify-self:stretch; }
+      .dash-header .btn-export { width:100%; }
+      .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .ic-rango-error { text-align:left; }
     }
     @media(max-width:680px) {
       .admin-page-title { font-size:1.65rem; }
-      .rangos { width:100%; }
+      .filtros-wrap { width:100%; }
       .rango-btn { flex:1; min-width:72px; }
       .ic-rango-custom { width:100%; }
       .ic-rango-custom label { flex:1; min-width:125px; }
       .ic-fecha { width:100%; }
-      .btn-export { width:100%; }
       .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; }
-      .kpi { min-height:116px; padding:1rem .9rem; }
+      .kpi { min-height:166px; padding:1rem .9rem; }
       .kpi-valor { font-size:2rem; }
-      .pipeline { grid-template-columns:repeat(2,1fr); }
+      .pipeline-block { padding:1rem; }
+      .pipe-step,
+      .pipeline.con-porcentajes .pipe-step {
+        grid-template-columns:minmax(0,1fr) 38px;
+        gap:.45rem .65rem;
+      }
+      .pipe-label { grid-column:1; grid-row:2; }
+      .pipe-conv { grid-column:2; grid-row:2; }
       .section-card,.chart-card { padding:1rem; }
       .chart-wrap { height:245px; }
       .feed-row { grid-template-columns:8px minmax(0,1fr); }
@@ -387,6 +403,7 @@
       .hour-grid { grid-template-columns:repeat(6,minmax(0,1fr)); }
       .chart-legend { align-items:stretch; }
       .ic-chip { max-width:100%; }
+      .metric-card { padding:1.4rem 1.6rem; }
     }
   </style>
 </head>
@@ -479,15 +496,13 @@
 
     <div id="reportView" hidden>
       <div class="dash-header">
+        <a class="back-link" href="canales.html">← Volver a canales</a>
         <div class="titulo-wrap">
           <h1 class="admin-page-title" id="canalNombre">Informe de canal</h1>
         </div>
         <div class="header-meta" id="canalMeta"></div>
-        <div class="selector-wrap">
-          <label for="canalSelector">Cambiar canal</label>
-          <select class="ic-select" id="canalSelector" aria-label="Cambiar canal"></select>
-        </div>
-        <div class="rangos">
+        <button class="btn-export" id="btnExport" disabled>Exportar</button>
+        <div class="filtros-wrap">
           <button class="rango-btn" data-dias="1">Hoy</button>
           <button class="rango-btn" data-dias="7">7 días</button>
           <button class="rango-btn activo" data-dias="30">30 días</button>
@@ -498,51 +513,43 @@
             <label>Hasta<input class="ic-fecha" id="fechaHasta" type="date" /></label>
             <button class="btn-aplicar" id="btnAplicarRango" type="button" disabled>Aplicar</button>
           </div>
-          <button class="btn-export" id="btnExport" disabled>Exportar</button>
           <div class="ic-rango-error" id="rangoError" role="status" aria-live="polite"></div>
+        </div>
+        <div class="selector-wrap">
+          <label for="canalSelector">Cambiar canal</label>
+          <select class="ic-select" id="canalSelector" aria-label="Cambiar canal"></select>
         </div>
       </div>
 
-      <div class="kpi-grid dynamic">
+      <div class="kpi-grid">
         <div class="kpi" style="--c:#7aaeff">
           <div class="kpi-label">Interacciones</div>
           <div class="kpi-valor" id="kInteracciones">—</div>
           <div class="kpi-sub" id="kInteraccionesSub"></div>
+          <div class="kpi-delta" id="kInteraccionesDelta"></div>
         </div>
         <div class="kpi" style="--c:#e8c96a">
           <div class="kpi-label">Consultas</div>
           <div class="kpi-valor" id="kConsultas">—</div>
           <div class="kpi-sub" id="kConsultasSub"></div>
+          <div class="kpi-delta" id="kConsultasDelta"></div>
         </div>
         <div class="kpi" style="--c:#3bbf88">
           <div class="kpi-label">Conversión</div>
           <div class="kpi-valor" id="kConversion">—</div>
-          <div class="kpi-sub">Consultas digitales ÷ interacciones</div>
+          <div class="kpi-sub" id="kConversionSub"></div>
         </div>
         <div class="kpi" style="--c:#52d68c">
-          <div class="kpi-label" id="kPuntosLabel">Puntos con tráfico</div>
+          <div class="kpi-label" id="kPuntosLabel">Puntos con actividad</div>
           <div class="kpi-valor" id="kPuntos">—</div>
           <div class="kpi-sub" id="kPuntosSub"></div>
         </div>
-        <div class="kpi" style="--c:#f0956a">
-          <div class="kpi-label" id="kDiasLabel">Días sin actividad</div>
-          <div class="kpi-valor" id="kDias">—</div>
-          <div class="kpi-sub" id="kDiasSub"></div>
-        </div>
-        <div class="kpi manual" id="kManualCard" hidden>
-          <div class="kpi-label">Referidos manuales</div>
-          <div class="kpi-valor" id="kManual">—</div>
-          <div class="kpi-sub">Fuera de la conversión digital</div>
-        </div>
       </div>
-
-      <div class="metric-grid" id="metricasDerivadas" hidden></div>
 
       <section class="pipeline-block">
         <div class="section-head pipeline-head">
           <div>
             <h2 class="section-title">Pipeline del canal</h2>
-            <p class="section-sub">La etapa sale del estado actual de cada consulta digital. Con menos de 20 interacciones se ocultan los porcentajes.</p>
           </div>
         </div>
         <div class="pipeline" id="pipeline"></div>
@@ -551,7 +558,7 @@
 
       <div class="split-grid">
         <section class="chart-card">
-          <h4>Evolución en el tiempo</h4>
+          <h4 id="chartTitle">Actividad por día</h4>
           <div class="chart-wrap">
             <canvas id="evolucionChart"></canvas>
             <div class="chart-empty" id="chartEmpty" hidden>Sin actividad hoy</div>
@@ -573,7 +580,6 @@
         <div class="section-head">
           <div>
             <h2 class="section-title" id="centralTitle"></h2>
-            <p class="section-sub" id="centralSub"></p>
           </div>
           <div class="map-status" id="mapStatus" hidden></div>
         </div>
@@ -624,11 +630,15 @@
         <div class="section-head">
           <div>
             <h2 class="section-title">Cómo llegan</h2>
-            <p class="section-sub">QR físico, clic de link y registros sin vía.</p>
           </div>
         </div>
         <div class="bars" id="viasBars"></div>
         <div class="via-null" id="viaNull" hidden></div>
+      </section>
+
+      <section class="metric-card" id="metricasDerivadas" hidden>
+        <h2 class="metric-title">Métricas del canal</h2>
+        <div class="metric-line" id="metricasLinea"></div>
       </section>
     </div>
   </main>
@@ -1006,49 +1016,49 @@ function deltaHtml(actual, anterior) {
   if (!state.dias) return '<span class="delta neutral">acumulado</span>'
   if (anterior === 0) {
     return actual > 0
-      ? '<span class="delta up">actividad nueva</span>'
-      : '<span class="delta neutral">sin variación</span>'
+      ? '<span class="delta up">actividad nueva · antes 0</span>'
+      : '<span class="delta neutral">sin variación · antes 0</span>'
   }
   const delta = Math.round((actual - anterior) / anterior * 100)
-  if (!delta) return '<span class="delta neutral">0%</span>'
-  return '<span class="delta ' + (delta > 0 ? 'up' : 'down') + '">' + (delta > 0 ? '↑' : '↓') + ' ' + Math.abs(delta) + '%</span>'
+  if (!delta) return '<span class="delta neutral">0% · antes ' + numero(anterior) + '</span>'
+  return '<span class="delta ' + (delta > 0 ? 'up' : 'down') + '">' + (delta > 0 ? '↑' : '↓') + ' ' + Math.abs(delta) + '% · antes ' + numero(anterior) + '</span>'
+}
+
+function textoPeriodoRango() {
+  if (state.rangoManual) return 'en el rango elegido'
+  if (state.dias === 1) return 'hoy'
+  if (state.dias) return 'en los últimos ' + state.dias + ' días'
+  return 'acumulado desde el inicio'
 }
 
 function renderKpis(datos) {
   const {
-    interacciones,consultas,manuales,interaccionesPrevias,consultasPrevias,
-    visitasRango,ultimoTrafico
+    interacciones,consultas,interaccionesPrevias,consultasPrevias,visitasRango
   } = datos
   const conversion = porcentaje(consultas.length,interacciones.length)
-  $('kInteracciones').innerHTML = numero(interacciones.length) + deltaHtml(interacciones.length,interaccionesPrevias.length)
-  $('kInteraccionesSub').textContent = state.rangoManual
-    ? 'Rango personalizado · QR + link'
-    : state.dias
-      ? (state.dias === 1 ? 'Hoy · QR + link' : 'Últimos ' + state.dias + ' días · QR + link')
-      : 'Desde el primer dato · QR + link'
-  $('kConsultas').innerHTML = numero(consultas.length) + deltaHtml(consultas.length,consultasPrevias.length)
-  $('kConsultasSub').textContent = 'Origen web · QR + link'
+  const periodo = textoPeriodoRango()
+  $('kInteracciones').textContent = numero(interacciones.length)
+  $('kInteraccionesSub').textContent = periodo
+  $('kInteraccionesDelta').innerHTML = deltaHtml(interacciones.length,interaccionesPrevias.length)
+  $('kConsultas').textContent = numero(consultas.length)
+  $('kConsultasSub').textContent = 'desde el sitio web · ' + periodo
+  $('kConsultasDelta').innerHTML = deltaHtml(consultas.length,consultasPrevias.length)
   $('kConversion').textContent = numero(conversion,1) + '%'
+  $('kConversionSub').textContent = consultas.length === 0
+    ? 'Sin consultas en el rango'
+    : '1 de cada ' + Math.max(1,Math.round(interacciones.length / consultas.length))
 
   let refsConTrafico
   if (esActivo()) {
     refsConTrafico = new Set(rowsCategoria(interacciones,'A').map(row => row.canal_ref)).size
-    $('kPuntosLabel').textContent = 'Propiedades con interacción'
-    $('kPuntosSub').textContent = 'Categoría A en el rango'
-    $('kDiasLabel').textContent = 'Días sin interacciones'
+    $('kPuntosLabel').textContent = 'Propiedades con actividad'
+    $('kPuntosSub').textContent = 'propiedades que generaron interés'
   } else {
     refsConTrafico = new Set(visitasRango.filter(row => row.canal_via === 'qr').map(row => row.canal_ref)).size
-    $('kPuntosLabel').textContent = 'Ubicaciones con escaneos'
-    $('kPuntosSub').textContent = 'Escaneos físicos en el rango'
-    $('kDiasLabel').textContent = 'Días sin escaneos'
+    $('kPuntosLabel').textContent = 'Puntos con actividad'
+    $('kPuntosSub').textContent = 'ubicaciones con escaneos'
   }
   $('kPuntos').textContent = numero(refsConTrafico) + '/' + numero(state.refs.length)
-  const sinActividad = ultimoTrafico ? diasDesde(ultimoTrafico.created_at) : null
-  $('kDias').textContent = sinActividad === null ? '—' : numero(sinActividad)
-  $('kDiasSub').textContent = ultimoTrafico ? 'Último: ' + fechaHora(ultimoTrafico.created_at) : (esActivo() ? 'Sin interacciones registradas' : 'Sin escaneos registrados')
-
-  $('kManualCard').hidden = manuales.length === 0
-  if (manuales.length) $('kManual').textContent = numero(manuales.length)
 }
 
 function renderPipeline(interacciones,contactos) {
@@ -1063,20 +1073,23 @@ function renderPipeline(interacciones,contactos) {
     { cls:'p5',label:'Cerrado',value:activos.filter(row => row.estado === 'cerrado').length }
   ]
   const mostrar = interacciones.length >= 20
+  const base = Math.max(etapas[0].value,1)
   const pasos = etapas.map((etapa,index) => {
     const anterior = index ? etapas[index - 1].value : 0
     const conv = mostrar && index > 0 && anterior > 0 ? Math.round(etapa.value / anterior * 100) + '% del paso anterior' : ''
-    return '<div class="pipe-step ' + etapa.cls + '"><div class="pipe-ico"><span class="pipe-dot"></span></div>' +
-      '<div class="pipe-num">' + numero(etapa.value) + '</div><div class="pipe-label">' + etapa.label + '</div>' +
-      '<div class="pipe-conv">' + (conv ? esc(conv) : '&nbsp;') + '</div></div>'
+    const ancho = etapa.value === 0 ? 0 : Math.min(100,etapa.value / base * 100)
+    const porcentaje = mostrar ? '<div class="pipe-conv">' + esc(conv) + '</div>' : ''
+    return '<div class="pipe-step"><div class="pipe-track"><div class="pipe-fill ' + etapa.cls + (etapa.value === 0 ? ' zero' : '') + '" style="--w:' + ancho.toFixed(2) + '%"></div></div>' +
+      '<div class="pipe-num">' + numero(etapa.value) + '</div><div class="pipe-label">' + etapa.label + '</div>' + porcentaje + '</div>'
   })
-  $('pipeline').innerHTML = pasos.map((paso,index) => index < pasos.length - 1 ? paso + '<div class="pipe-arrow">›</div>' : paso).join('')
+  $('pipeline').classList.toggle('con-porcentajes',mostrar)
+  $('pipeline').innerHTML = pasos.join('')
   const notas = []
-  if (!mostrar) notas.push('Muestra menor a 20 interacciones: porcentajes ocultos.')
   const descartados = contactos.filter(row => row.estado === 'descartado').length
   if (descartados) notas.push(numero(descartados) + ' consulta' + (descartados === 1 ? '' : 's') + ' descartada' + (descartados === 1 ? '' : 's') + ' fuera de las etapas de avance.')
   if (!interacciones.length && !contactos.length) notas.push('Sin actividad registrada en el rango.')
   $('pipelineNote').textContent = notas.join(' ')
+  $('pipelineNote').hidden = notas.length === 0
 }
 
 function granularidadPara(desde,hasta) {
@@ -1174,6 +1187,8 @@ function chartBarGradient(ctx,color) {
 function renderChart(interacciones,contactos,rango) {
   const built = construirBuckets(interacciones,contactos,rango)
   const buckets = built.buckets
+  const granularidadLabel = { hora:'hora',dia:'día',semana:'semana',mes:'mes' }
+  $('chartTitle').textContent = 'Actividad por ' + granularidadLabel[built.granularidad]
   const canvas = $('evolucionChart')
   if (state.chart) state.chart.destroy()
   const ctx = canvas.getContext('2d')
@@ -1290,10 +1305,9 @@ function validarParticion(interacciones) {
 
 function renderCentralActivo(interacciones,consultas,visitasRango) {
   validarParticion(interacciones)
-  $('centralTitle').textContent = 'Rendimiento por propiedad'
-  $('centralSub').textContent = 'Cada fila usa únicamente tráfico atribuible a la propiedad vigente. “QR creado” no es fecha de asignación.'
+  $('centralTitle').textContent = 'Propiedades'
   $('mapStatus').hidden = true
-  $('centralHead').innerHTML = '<tr><th>Propiedad</th><th>QR creado</th><th>Interacciones</th><th>Consultas</th><th>Conversión</th><th>Último</th></tr>'
+  $('centralHead').innerHTML = '<tr><th>Propiedad</th><th>Antigüedad</th><th>Interacciones</th><th>Consultas</th><th>Conversión</th><th>Último</th></tr>'
 
   const refsPropiedad = state.refs.filter(ref => !esPrincipal(ref) && propiedadActual(ref))
   const rowsPropiedad = refsPropiedad.map(ref => {
@@ -1374,11 +1388,10 @@ function tieneMapa() {
 }
 
 function renderCentralPasivo(interacciones,consultas,visitasRango) {
-  $('centralTitle').textContent = 'Rendimiento por ubicación'
-  $('centralSub').textContent = 'Escaneos y consultas de ubicación usan exclusivamente la vía QR. “Instalado” es la fecha de creación del punto.'
+  $('centralTitle').textContent = 'Ubicaciones'
   $('mapStatus').innerHTML = 'Plano del local: <strong>' + (tieneMapa() ? 'cargado' : 'sin cargar') + '</strong>'
   $('mapStatus').hidden = false
-  $('centralHead').innerHTML = '<tr><th>Ubicación</th><th>Tipo</th><th>Instalado</th><th>Escaneos</th><th>Consultas</th><th>Conversión</th><th>Estado</th></tr>'
+  $('centralHead').innerHTML = '<tr><th>Ubicación</th><th>Tipo</th><th>Antigüedad</th><th>Escaneos</th><th>Consultas</th><th>Conversión</th><th>Estado</th></tr>'
 
   const rows = state.refs.map(ref => {
     const scans = interacciones.filter(row => row.canal_ref === ref.codigo && row.canal_via === 'qr')
@@ -1501,12 +1514,14 @@ function renderConsultas(contactos) {
 function renderVias(interacciones,visitasRango) {
   const counts = {
     qr:interacciones.filter(row => row.canal_via === 'qr').length,
-    link:interacciones.filter(row => row.canal_via === 'link').length
+    link:interacciones.filter(row => row.canal_via === 'link').length,
+    directo:visitasRango.filter(row => row.canal_via === null).length
   }
-  const total = counts.qr + counts.link
+  const total = counts.qr + counts.link + counts.directo
   const rows = [
     { key:'qr',label:'QR físico',color:'#50c878' },
-    { key:'link',label:'Clic de link',color:'#6495ed' }
+    { key:'link',label:'Clic de link',color:'#6495ed' },
+    { key:'directo',label:'Directo',color:'#8a8a82' }
   ]
   $('viasBars').innerHTML = rows.map(row => {
     const pct = porcentaje(counts[row.key],total)
@@ -1514,9 +1529,9 @@ function renderVias(interacciones,visitasRango) {
       '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;color:' + row.color + ';background:linear-gradient(90deg,' + hexToRgba(row.color,.75) + ',' + hexToRgba(row.color,.35) + ')"></div></div>' +
       '<span class="bar-value">' + numero(counts[row.key]) + ' · ' + numero(pct) + '%</span></div>'
   }).join('')
-  const sinVia = visitasRango.filter(row => row.canal_via === null).length
+  const sinVia = counts.directo
   $('viaNull').hidden = sinVia === 0
-  $('viaNull').textContent = sinVia ? 'Sin vía registrada: ' + numero(sinVia) + ' · excluidas de interacciones y escaneos.' : ''
+  $('viaNull').textContent = sinVia ? numero(sinVia) + ' llegaron sin vía identificable' : ''
 }
 
 function peerStats(rowsVisitas,rowsContactos) {
@@ -1533,8 +1548,8 @@ function peerStats(rowsVisitas,rowsContactos) {
   return map
 }
 
-function renderMetricasDerivadas(interacciones,consultas,rango) {
-  const cards = []
+function renderMetricasDerivadas(interacciones,consultas,rango,manuales,ultimoTrafico) {
+  const metricas = []
   const visitasPares = separarPeriodos(state.visitasPares.filter(viaDigital),rango).actual
   const contactosPares = separarPeriodos(state.contactosPares.filter(consultaDigital),rango).actual
   const stats = peerStats(visitasPares,contactosPares)
@@ -1544,10 +1559,7 @@ function renderMetricasDerivadas(interacciones,consultas,rango) {
   const convPares = porcentaje(consultasPares,interaccionesPares)
   const convCanal = porcentaje(consultas.length,interacciones.length)
   if (interacciones.length >= 20 && paresElegibles.length >= 3 && interaccionesPares >= 100 && convPares > 0) {
-    cards.push({
-      label:'Índice de eficiencia',value:numero(convCanal / convPares,2) + '×',
-      sub:'Conversión del canal ÷ conversión ponderada de ' + paresElegibles.length + ' pares'
-    })
+    metricas.push({ label:'Eficiencia',value:numero(convCanal / convPares,2) + '× vs. pares' })
   }
 
   const refsArranque = state.refs.filter(ref => !(esActivo() && esPrincipal(ref))).map(ref => {
@@ -1558,7 +1570,7 @@ function renderMetricasDerivadas(interacciones,consultas,rango) {
   }).filter(value => value !== null)
   if (refsArranque.length >= 3) {
     const promedio = refsArranque.reduce((acc,value) => acc + value,0) / refsArranque.length
-    cards.push({ label:'Tiempo de arranque QR',value:numero(promedio,1) + ' días',sub:numero(refsArranque.length) + ' QR con primer escaneo físico' })
+    metricas.push({ label:'Arranque de QR',value:numero(promedio,1) + ' días' })
   }
 
   const hoy = new Date()
@@ -1567,14 +1579,19 @@ function renderMetricasDerivadas(interacciones,consultas,rango) {
     const interaccionesMes = state.visitas.filter(row => viaDigital(row) && enRango(row.created_at,inicioMes)).length
     const diasMes = new Date(hoy.getFullYear(),hoy.getMonth()+1,0).getDate()
     const proyeccion = interaccionesMes / hoy.getDate() * diasMes
-    cards.push({ label:'Ritmo proyectado',value:numero(proyeccion),sub:numero(interaccionesMes) + ' interacciones MTD · independiente del rango elegido' })
+    metricas.push({ label:'Ritmo del mes',value:numero(proyeccion) })
   }
 
+  const sinActividad = ultimoTrafico ? diasDesde(ultimoTrafico.created_at) : null
+  if (sinActividad !== null) metricas.push({ label:'Sin actividad',value:numero(sinActividad) + ' días' })
+  if (manuales.length) metricas.push({ label:'Referidos manuales',value:numero(manuales.length) })
+
   const host = $('metricasDerivadas')
-  host.innerHTML = cards.map(card =>
-    '<div class="metric-card"><div class="metric-label">' + card.label + '</div><div class="metric-value">' + card.value + '</div><div class="metric-sub">' + card.sub + '</div></div>'
+  $('metricasLinea').innerHTML = metricas.map((metrica,index) =>
+    (index ? '<span class="metric-separator">·</span>' : '') +
+    '<span class="metric-item"><span class="metric-label">' + metrica.label + '</span><span class="metric-value">' + metrica.value + '</span></span>'
   ).join('')
-  host.hidden = cards.length === 0
+  host.hidden = metricas.length === 0
 }
 
 function csvCell(value) {
@@ -1705,7 +1722,7 @@ async function cargarRango() {
     const ultimoTrafico = traficoUltimoUniverso.slice().sort((a,b) => new Date(b.created_at)-new Date(a.created_at))[0] || null
 
     state.exportData = { central:[],consultas:[],serie:[] }
-    renderKpis({ interacciones,consultas,manuales,interaccionesPrevias,consultasPrevias,visitasRango,ultimoTrafico })
+    renderKpis({ interacciones,consultas,interaccionesPrevias,consultasPrevias,visitasRango })
     renderPipeline(interacciones,consultas)
     const serie = renderChart(interacciones,consultas,rango)
     renderActividad(interacciones,consultas)
@@ -1715,7 +1732,7 @@ async function cargarRango() {
     renderHorario(interacciones)
     renderConsultas(consultas)
     renderVias(interacciones,visitasRango)
-    renderMetricasDerivadas(interacciones,consultas,rango)
+    renderMetricasDerivadas(interacciones,consultas,rango,manuales,ultimoTrafico)
     state.exportData.serie = serie
     if (version === state.loadVersion) $('btnExport').disabled = false
   } catch (error) {
