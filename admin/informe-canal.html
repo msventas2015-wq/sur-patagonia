@@ -1243,7 +1243,8 @@ function construirBuckets(interacciones,contactos,rango) {
     .sort((a,b) => a-b)
   const inicioRango = rango.actualDesde || (fechas[0] ? startOfDay(fechas[0]) : startOfDay(ahora))
   const primerDato = fechas[0] ? startOfDay(fechas[0]) : null
-  const inicio = !rango.manual && primerDato && primerDato > inicioRango ? primerDato : inicioRango
+  const esRangoTodo = !rango.manual && !rango.actualDesde
+  const inicio = esRangoTodo && primerDato ? primerDato : inicioRango
   const hasta = rango.actualHasta || ahora
   const granularidad = granularidadPara(inicio,hasta)
   const buckets = []
@@ -1311,7 +1312,7 @@ function renderChart(interacciones,contactos,rango) {
   const ctx = canvas.getContext('2d')
   const puntosConDatos = buckets.filter(row => row.interacciones > 0 || row.consultas > 0).length
   const tipoGrafico = 'line'
-  const pointRadius = buckets.length <= 8 ? 4 : 0
+  const pointRadius = 3
   const sinActividadHoy = !state.rangoManual && state.dias === 1 && puntosConDatos === 0
   $('chartEmpty').hidden = !sinActividadHoy
   const datasets = sinActividadHoy ? [] : [
