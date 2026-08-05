@@ -2146,6 +2146,9 @@ async function cargarProyectos() {
 
 <!-- ── CHAT IA FLOTANTE ────────────────────────────────────────── -->
 <style>
+#sp-chat-btn[hidden],
+#sp-chat-box[hidden] { display: none !important; }
+
 #sp-chat-btn {
   position: fixed; bottom: 2rem; right: 2rem; z-index: 9000;
   width: 54px; height: 54px; border-radius: 50%;
@@ -2289,7 +2292,7 @@ async function cargarProyectos() {
 </style>
 
 <!-- Botón flotante -->
-<button id="sp-chat-btn" aria-label="Abrir chat">
+<button id="sp-chat-btn" aria-label="Abrir chat" hidden disabled aria-hidden="true">
   <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.37 5.07L2 22l5.07-1.35A9.93 9.93 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
   </svg>
@@ -2297,7 +2300,7 @@ async function cargarProyectos() {
 </button>
 
 <!-- Panel del chat -->
-<div id="sp-chat-box">
+<div id="sp-chat-box" hidden inert aria-hidden="true">
   <div class="sp-chat-header">
     <div class="sp-chat-avatar"><picture><source srcset="picos.webp" type="image/webp"><img src="picos.png" alt="Sur Patagonian"></picture></div>
     <div class="sp-chat-header-info">
@@ -2308,13 +2311,16 @@ async function cargarProyectos() {
   <div class="sp-chat-msgs" id="spMsgs"></div>
   <div class="sp-quick-btns" id="spQuickBtns"></div>
   <div class="sp-chat-input">
-    <input type="text" id="spInput" placeholder="Escribí tu mensaje..." />
-    <button id="spSend">→</button>
+    <input type="text" id="spInput" placeholder="Escribí tu mensaje..." disabled />
+    <button id="spSend" disabled>→</button>
   </div>
 </div>
 
 <script type="module">
 import { supabase, getRef, getRefVia } from './js/config.js'
+
+// CONTENCIÓN CHATBOT-01: cambiar a true para rehabilitar la interfaz conservada.
+const SP_CHAT_ENABLED = false
 
 const btn = document.getElementById('sp-chat-btn')
 const box = document.getElementById('sp-chat-box')
@@ -2323,6 +2329,16 @@ const input = document.getElementById('spInput')
 const sendBtn = document.getElementById('spSend')
 const quickBtns = document.getElementById('spQuickBtns')
 
+btn.hidden = !SP_CHAT_ENABLED
+btn.disabled = !SP_CHAT_ENABLED
+btn.setAttribute('aria-hidden', String(!SP_CHAT_ENABLED))
+box.hidden = !SP_CHAT_ENABLED
+box.toggleAttribute('inert', !SP_CHAT_ENABLED)
+box.setAttribute('aria-hidden', String(!SP_CHAT_ENABLED))
+input.disabled = !SP_CHAT_ENABLED
+sendBtn.disabled = !SP_CHAT_ENABLED
+
+if (SP_CHAT_ENABLED) {
 let state = { step: 'inicio', operacion: null, tipo: null, presupuesto: null, ciudad: null, nombre: null, telefono: null }
 
 btn.addEventListener('click', () => {
@@ -2616,6 +2632,7 @@ async function handleInput(text) {
 
 sendBtn.addEventListener('click', () => handleInput(input.value))
 input.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(input.value) })
+}
 </script>
 <!-- ── FIN CHAT IA ──────────────────────────────────────────────── -->
 
