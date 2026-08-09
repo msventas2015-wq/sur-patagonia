@@ -326,6 +326,7 @@
       <button class="filtro-btn" data-f="activo">Activos</button>
       <button class="filtro-btn" data-f="borrador">Borradores</button>
       <button class="filtro-btn" data-f="pausado">Pausados</button>
+      <button class="filtro-btn" data-f="archivado">Archivados</button>
     </div>
 
     <div class="proyectos-grid" id="proyectosGrid">
@@ -336,14 +337,17 @@
   </main>
 </div>
 
-<!-- Modal confirmar borrado -->
+<!-- Modal confirmar archivado -->
 <div class="modal-overlay" id="modalBorrar">
   <div class="modal-box">
-    <h3>Eliminar proyecto</h3>
-    <p id="modalTexto">¿Seguro que querés eliminar este proyecto? Esta acción no se puede deshacer.</p>
+    <h3>Archivar proyecto</h3>
+    <p id="modalTexto">Calculando el impacto sobre los QR...</p>
+    <p id="modalCanales" style="white-space:pre-line;margin-top:0.8rem;"></p>
+    <label for="motivoArchivado" style="display:block;margin-top:1rem;font-size:0.75rem;">Motivo del archivado</label>
+    <textarea id="motivoArchivado" rows="3" style="width:100%;margin-top:0.35rem;padding:0.65rem;" placeholder="Escribí el motivo operativo"></textarea>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-delete" id="btnConfirmarBorrar">Eliminar</button>
+      <button class="btn-delete" id="btnConfirmarBorrar" disabled>Archivar y enviar QR al inicio</button>
     </div>
   </div>
 </div>
@@ -363,6 +367,7 @@ document.getElementById('btnLogout').addEventListener('click', async (e) => {
 
 let todosLosProyectos = []
 let idABorrar = null
+let previewArchivado = null
 
 async function cargar() {
   const { data, error } = await supabase
@@ -380,7 +385,7 @@ async function cargar() {
   }
 
   todosLosProyectos = data
-  renderGrid(data)
+  renderGrid(data.filter(p => p.estado !== 'archivado'))
 }
 
 function renderGrid(proyectos) {
@@ -398,7 +403,7 @@ function renderGrid(proyectos) {
 
   grid.innerHTML = proyectos.map(p => {
     const badgeClass = p.estado === 'activo' ? 'badge-activo' : p.estado === 'pausado' ? 'badge-pausado' : 'badge-borrador'
-    const badgeText  = p.estado === 'activo' ? 'Activo' : p.estado === 'pausado' ? 'Pausado' : 'Borrador'
+    const badgeText  = p.estado === 'activo' ? 'Activo' : p.estado === 'pausado' ? 'Pausado' : p.estado === 'archivado' ? 'Archivado' : 'Borrador'
     const thumb = p.foto_portada
       ? `<img class="card-thumb" src="${p.foto_portada}" alt="${p.nombre}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="card-thumb-placeholder" style="display:none">Sin imagen</div>`
       : `<div class="card-thumb-placeholder">Sin imagen</div>`
@@ -423,10 +428,10 @@ function renderGrid(proyectos) {
         <a href="nuevo-proyecto.html?id=${p.id}" class="btn-accion primary">Editar</a>
         <a href="nuevo-proyecto.html?duplicar=${p.id}" class="btn-accion">Duplicar</a>
         <a href="../${p.slug}" target="_blank" class="btn-accion">Ver miniweb</a>
-        ${p.estado !== 'activo'
+        ${p.estado === 'archivado' ? '' : p.estado !== 'activo'
           ? `<button class="btn-accion" onclick="publicar('${p.id}')">Publicar</button>`
           : `<button class="btn-accion" onclick="pausar('${p.id}')">Pausar</button>`}
-        <button class="btn-accion danger" onclick="confirmarBorrar('${p.id}', '${p.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+        ${p.estado === 'archivado' ? '' : `<button class="btn-accion danger" onclick="confirmarBorrar('${p.id}', '${p.nombre.replace(/'/g,"\\'")}')">Archivar</button>`}
       </div>
     </div>`
   }).join('')
@@ -437,7 +442,7 @@ document.querySelectorAll('.filtro-btn').forEach(btn => {
     document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('activo'))
     btn.classList.add('activo')
     const f = btn.dataset.f
-    renderGrid(f === 'todos' ? todosLosProyectos : todosLosProyectos.filter(p => p.estado === f))
+    renderGrid(f === 'todos' ? todosLosProyectos.filter(p => p.estado !== 'archivado') : todosLosProyectos.filter(p => p.estado === f))
   })
 })
 
@@ -446,22 +451,58 @@ window.publicar = async (id) => {
   cargar()
 }
 window.pausar = async (id) => {
-  await supabase.from('proyectos').update({ estado: 'pausado' }).eq('id', id)
+  const { error } = await supabase.from('proyectos').update({ estado: 'pausado' }).eq('id', id)
+  if (error) {
+    alert(error.message.includes('P2_USE_RPC_ARCHIVAR_PROYECTO')
+      ? 'Este proyecto tiene QR asignados y no puede pausarse directamente. Usá Archivar para enviarlos al inicio de forma segura.'
+      : 'No se pudo pausar: ' + error.message)
+    return
+  }
   cargar()
 }
 
-window.confirmarBorrar = (id, nombre) => {
+window.confirmarBorrar = async (id, nombre) => {
   idABorrar = id
-  document.getElementById('modalTexto').textContent = `¿Seguro que querés eliminar "${nombre}"? Esta acción no se puede deshacer.`
+  previewArchivado = null
+  document.getElementById('modalTexto').textContent = `Calculando el impacto de archivar "${nombre}"...`
+  document.getElementById('modalCanales').textContent = ''
+  document.getElementById('motivoArchivado').value = ''
+  document.getElementById('btnConfirmarBorrar').disabled = true
   document.getElementById('modalBorrar').classList.add('open')
+  const { data, error } = await supabase.rpc('admin_previsualizar_archivado_proyecto', { p_proyecto_id: id })
+  if (error) {
+    document.getElementById('modalTexto').textContent = 'No se pudo calcular el impacto. No se modificó nada.'
+    return
+  }
+  previewArchivado = data
+  document.getElementById('modalTexto').textContent = `⚠️ Archivar "${data.contenido}" moverá ${data.qrs} puntos QR de ${data.canales} canales a la página principal. Los códigos impresos seguirán funcionando.`
+  const nombres = Array.isArray(data.nombres) ? data.nombres : []
+  document.getElementById('modalCanales').textContent = `${data.canales_activos} canales activos para avisar:\n${nombres.length ? nombres.join(' · ') : 'Ninguno'}`
+  document.getElementById('btnConfirmarBorrar').disabled = false
 }
 window.cerrarModal = () => {
   document.getElementById('modalBorrar').classList.remove('open')
   idABorrar = null
+  previewArchivado = null
 }
 document.getElementById('btnConfirmarBorrar').addEventListener('click', async () => {
-  if (!idABorrar) return
-  await supabase.from('proyectos').delete().eq('id', idABorrar)
+  if (!idABorrar || !previewArchivado) return
+  const motivo = document.getElementById('motivoArchivado').value.trim()
+  if (!motivo) { alert('Escribí el motivo del archivado.'); return }
+  const btn = document.getElementById('btnConfirmarBorrar')
+  btn.disabled = true
+  const { error } = await supabase.rpc('admin_archivar_proyecto', {
+    p_proyecto_id: idABorrar,
+    p_motivo: motivo,
+    p_expected_digest: previewArchivado.digest
+  })
+  if (error) {
+    alert(error.message.includes('P2_DIGEST_DESACTUALIZADO')
+      ? 'Los destinos cambiaron desde que abriste el cartel. No se archivó nada; revisá el impacto nuevamente.'
+      : 'No se pudo archivar. No se modificó nada: ' + error.message)
+    btn.disabled = false
+    return
+  }
   cerrarModal()
   cargar()
 })
