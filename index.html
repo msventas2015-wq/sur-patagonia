@@ -2094,7 +2094,7 @@ if (formBuscador) formBuscador.addEventListener('submit', e => {
 async function cargarStats() {
   const [{ count:cp },{ count:cpr }] = await Promise.all([
     supabase.from('propiedades').select('*',{ count:'exact', head:true }).eq('activa',true),
-    supabase.from('proyectos').select('*',{ count:'exact', head:true }).eq('activo',true)
+    supabase.from('proyectos').select('*',{ count:'exact', head:true }).eq('estado','activo')
   ])
   animNum('statProp', cp||0); animNum('statProy', cpr||0)
 }
@@ -2134,12 +2134,12 @@ async function cargarPropiedades() {
   })
 }
 async function cargarProyectos() {
-  const { data } = await supabase.from('proyectos').select('*').eq('activo',true).limit(3)
+  const { data } = await supabase.from('proyectos').select('*').eq('estado','activo').limit(3)
   const grid = document.getElementById('proyGrid')
   if (!data||!data.length) { grid.innerHTML=`<div style="grid-column:1/-1;padding:4rem;text-align:center;color:var(--muted);">Los proyectos aparecerán aquí una vez que los cargues.</div>`; return }
   grid.innerHTML = data.map(p => {
-    const img = p.imagen_portada ? `<img class="proy-img" src="${p.imagen_portada}" alt="${p.titulo}" loading="lazy" />` : `<div class="proy-placeholder">🏔️</div>`
-    return `<div class="proy-card" onclick="location.href='${p.slug ? '/'+p.slug : 'proyectos.html'}'">${img}<div class="proy-content"><div class="proy-type">${p.tipo||'Proyecto'} · ${p.ciudad||''}</div><div class="proy-title">${p.titulo}</div><div class="proy-desc">${(p.descripcion||'').substring(0,120)}</div></div></div>`
+    const img = p.foto_portada ? `<img class="proy-img" src="${p.foto_portada}" alt="${p.nombre}" loading="lazy" />` : `<div class="proy-placeholder">🏔️</div>`
+    return `<div class="proy-card" onclick="location.href='${p.slug ? '/'+p.slug : 'proyectos.html'}'">${img}<div class="proy-content"><div class="proy-type">${p.tipo_propiedad||p.categoria||'Proyecto'} · ${p.ciudad||''}</div><div class="proy-title">${p.nombre}</div><div class="proy-desc">${(p.descripcion||'').substring(0,120)}</div></div></div>`
   }).join('')
 }
 </script>
@@ -2486,7 +2486,7 @@ async function mostrarDesarrollos() {
   state.step = 'desarrollos'
   addTyping()
   try {
-    const { data } = await supabase.from('proyectos').select('*').eq('activo', true).limit(3)
+    const { data } = await supabase.from('proyectos').select('*').eq('estado', 'activo').limit(3)
     removeTyping()
     if (data && data.length > 0) {
       addMsg('Estos son nuestros desarrollos activos:')
@@ -2495,10 +2495,10 @@ async function mostrarDesarrollos() {
         div.className = 'sp-prop-card'
         div.onclick = () => window.open(p.slug ? `/${p.slug}` : 'proyectos.html', '_blank')
         div.innerHTML = `
-          ${p.imagen_portada ? `<img src="${p.imagen_portada}" alt="${p.titulo}" loading="lazy" />` : ''}
+          ${p.foto_portada ? `<img src="${p.foto_portada}" alt="${p.nombre}" loading="lazy" />` : ''}
           <div class="sp-prop-card-body">
-            <div class="sp-prop-card-tipo">${p.tipo || 'Desarrollo'} · ${p.ciudad || ''}</div>
-            <div class="sp-prop-card-titulo">${p.titulo}</div>
+            <div class="sp-prop-card-tipo">${p.tipo_propiedad || p.categoria || 'Desarrollo'} · ${p.ciudad || ''}</div>
+            <div class="sp-prop-card-titulo">${p.nombre}</div>
             <div class="sp-prop-card-precio">Consultar precio</div>
             <div class="sp-prop-card-loc">📍 ${p.ciudad || 'Patagonia Argentina'}</div>
           </div>`
