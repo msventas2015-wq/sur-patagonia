@@ -6,6 +6,7 @@
   <title>Monitoreo QR — Sur Patagonian Admin</title>
   <link rel="stylesheet" href="../css/estilos.css" />
   <link rel="stylesheet" href="../css/admin-theme.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -24,6 +25,7 @@
     .tabla-wrap{overflow-x:auto}.tabla{width:100%;border-collapse:collapse;min-width:950px}.tabla th{padding:.5rem .65rem;border-bottom:1px solid rgba(255,255,255,.06);color:rgba(255,255,255,.3);font-size:.54rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;text-align:left;white-space:nowrap}.tabla td{padding:.75rem .65rem;border-bottom:1px solid rgba(255,255,255,.04);color:rgba(255,255,255,.78);font-size:.73rem}.tabla tr:last-child td{border-bottom:none}.tabla tbody tr:not(.general){cursor:pointer}.tabla tbody tr:hover td{background:rgba(255,255,255,.02)}.tabla tr.seleccionada td{background:rgba(215,111,63,.055)}
     .contenido-nombre{font-weight:700;color:var(--adm-text);margin-bottom:.3rem}.tipo-pill{display:inline-flex;padding:.2rem .48rem;border-radius:8px;font-size:.54rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em}.tipo-proyecto{color:#9fb7d9;border:1px solid rgba(159,183,217,.28);background:linear-gradient(135deg,rgba(159,183,217,.15),rgba(159,183,217,.04))}.tipo-propiedad{color:#9cc9b5;border:1px solid rgba(156,201,181,.28);background:linear-gradient(135deg,rgba(156,201,181,.15),rgba(156,201,181,.04))}.general .contenido-nombre{color:rgba(255,255,255,.58)}.num-qr{color:var(--adm-qr);font-weight:700}.num-views{color:var(--adm-views);font-weight:700}.num-leads{color:var(--adm-leads);font-weight:700}.subdato{display:block;margin-top:.2rem;color:rgba(255,255,255,.35);font-size:.59rem}.origen{font-size:.59rem;color:rgba(255,255,255,.48);line-height:1.4}.sort{cursor:pointer}.sort.activo{color:var(--adm-accent)}
     .detalle-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}.detalle-title{margin:0;font-size:1.1rem;font-weight:700}.detalle-meta{margin-top:.35rem;font-size:.62rem;color:rgba(255,255,255,.42)}.btn-close{border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;font-size:1.1rem}.codigo{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.67rem;color:rgba(255,255,255,.72)}.clase-pill{display:inline-flex;padding:.2rem .48rem;border-radius:8px;font-size:.54rem;font-weight:700;text-transform:uppercase}.clase-activo{color:#9cc9b5;border:1px solid rgba(156,201,181,.28);background:linear-gradient(135deg,rgba(156,201,181,.15),rgba(156,201,181,.04))}.clase-pasivo{color:#d7a86e;border:1px solid rgba(215,168,110,.28);background:linear-gradient(135deg,rgba(215,168,110,.15),rgba(215,168,110,.04))}.destino{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,.52)}.empty-state{text-align:center;padding:2.5rem 1rem;color:rgba(255,255,255,.28);font-size:.76rem}.error{color:#e05c5c}.oculto{display:none!important}
+    .mapa-panel{padding:0;overflow:hidden}.mapa-head{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid rgba(255,255,255,.06)}.mapa-head strong{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase}.mapa-meta{font-size:.61rem;color:rgba(255,255,255,.4)}.mapa-toggle{border:0;background:transparent;color:#c9a84c;cursor:pointer;font:600 .62rem Inter}.mapa-wrap{height:380px}.mapa-wrap.cerrado{display:none}#mapaMonitoreo{height:100%;background:#0b0b0d}.mapa-alerta{color:#efa27e}.leaflet-control-zoom a{background:rgba(12,12,14,.94)!important;color:#c9a84c!important;border-color:rgba(255,255,255,.08)!important}.leaflet-control-attribution{background:rgba(8,8,8,.72)!important;color:#666!important}.leaflet-control-attribution a{color:#888!important}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:rgba(8,8,8,.94);color:#f5f3f0;border:1px solid rgba(201,168,76,.22);border-radius:8px;backdrop-filter:blur(6px)}.mapa-tip{font-family:Inter,sans-serif;line-height:1.45}.mapa-tip b{font-size:.75rem}.mapa-tip span{font-size:.63rem;color:rgba(255,255,255,.55)}.map-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.82);box-shadow:0 0 0 4px color-mix(in srgb,var(--dot) 25%,transparent),0 3px 10px rgba(0,0,0,.55);background:var(--dot)}.map-dot.seleccionado{width:18px;height:18px;box-shadow:0 0 0 7px color-mix(in srgb,var(--dot) 32%,transparent),0 0 18px var(--dot)}
     @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.crm-filtros{grid-template-columns:repeat(2,1fr)}.filtro.buscar{grid-column:1/-1}}@media(max-width:680px){.kpis,.crm-filtros{grid-template-columns:1fr}.filtro.buscar{grid-column:auto}.admin-main{padding-left:1rem;padding-right:1rem}.panel{padding:1rem}}
   </style>
 </head>
@@ -72,10 +74,12 @@
         <button class="btn-clear" id="limpiar">Limpiar</button>
       </div><div class="filtro-resumen" id="resumen">Cargando contenidos…</div>
     </section>
+    <section class="panel mapa-panel"><div class="mapa-head"><div><strong>Mapa de alcance</strong> <span class="mapa-meta" id="mapaMeta">Cargando puntos…</span></div><button class="mapa-toggle" id="mapaToggle">Ocultar mapa</button></div><div class="mapa-wrap" id="mapaWrap"><div id="mapaMonitoreo"></div></div></section>
     <section class="panel tabla-wrap"><table class="tabla"><thead><tr><th>Contenido</th><th class="sort activo" data-sort="puntos_qr">Puntos QR ↓</th><th>Canales</th><th>Alcance</th><th class="sort" data-sort="visitas">Visitas</th><th class="sort" data-sort="consultas">Consultas</th><th>Origen del dato</th></tr></thead><tbody id="tbody"><tr><td colspan="7" class="empty-state">Cargando monitoreo…</td></tr></tbody></table></section>
-    <section class="panel oculto" id="detalle"><div class="detalle-head"><div><h2 class="detalle-title" id="detalleTitulo"></h2><div class="detalle-meta" id="detalleMeta"></div></div><button class="btn-close" id="cerrarDetalle" aria-label="Cerrar detalle">×</button></div><div class="tabla-wrap"><table class="tabla"><thead><tr><th>Código</th><th>Punto</th><th>Canal</th><th>Ubicación</th><th>Alcance</th><th>Destino</th><th>Visitas · Consultas</th><th>Última visita</th></tr></thead><tbody id="detalleBody"></tbody></table></div></section>
+    <section class="panel oculto" id="detalle"><div class="detalle-head"><div><h2 class="detalle-title" id="detalleTitulo"></h2><div class="detalle-meta" id="detalleMeta"></div></div><button class="btn-close" id="cerrarDetalle" aria-label="Cerrar detalle">×</button></div><h3>Actualmente muestran este contenido</h3><div class="tabla-wrap"><table class="tabla"><thead><tr><th>Código</th><th>Punto</th><th>Canal</th><th>Ubicación</th><th>Desde</th><th>Hasta</th><th>Tiempo</th><th>Visitas · Consultas</th></tr></thead><tbody id="detalleBody"></tbody></table></div><div id="historialBloque" class="oculto"><h3>Ya no muestran este contenido</h3><div class="tabla-wrap"><table class="tabla"><thead><tr><th>Código</th><th>Canal</th><th>Ubicación</th><th>Desde</th><th>Hasta</th><th>Tiempo</th><th>Visitas</th><th>Origen</th></tr></thead><tbody id="historialBody"></tbody></table></div></div></section>
   </main>
 </div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
 const { data:{ session } }=await supabase.auth.getSession()
@@ -85,22 +89,27 @@ document.getElementById('btnLogout').addEventListener('click',async e=>{e.preven
 const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
 const fecha=v=>v?new Intl.DateTimeFormat('es-AR',{day:'numeric',month:'short',year:'numeric'}).format(new Date(v)):'—'
-let filas=[],orden='puntos_qr',desc=true,seleccion=null
-async function cargar(){
- const {data,error}=await supabase.rpc('admin_monitoreo_contenidos',{p_busqueda:null})
+let filas=[],filasBase=[],orden='puntos_qr',desc=true,seleccion=null,seleccionTipo=null,cargaSeq=0,mapa=null,capaMapa=null,mapaSeq=0
+const coloresCanal={inmobiliaria:'#9fb7d9',particular:'#9cc9b5',punto_venta:'#d7a86e',evento:'#b88f75'}
+const duracion=s=>{if(s==null)return '—';const d=Math.floor(s/86400);if(d)return `${d} día${d===1?'':'s'}`;const h=Math.max(0,Math.floor(s/3600));return `${h} h`}
+async function cargar(inicial=false){
+ const seq=++cargaSeq,{data,error}=await supabase.rpc('admin_monitoreo_contenidos',{p_busqueda:null,p_provincia:$('provincia').value||null,p_clase_canal:$('clase').value||null,p_contenido_tipo:$('tipo').value||null})
+ if(seq!==cargaSeq)return
  if(error){$('tbody').innerHTML='<tr><td colspan="7" class="empty-state error">No tenés permiso para ver este monitoreo o no se pudo cargar.</td></tr>';return}
- filas=data||[];const general=filas.find(x=>x.contenido_tipo==='general')
+ filas=data||[];if(inicial)filasBase=filas;const general=filas.find(x=>x.contenido_tipo==='general')
  $('kpiQr').textContent=filas.reduce((n,x)=>n+Number(x.puntos_qr||0),0)
  $('kpiContenidos').textContent=filas.filter(x=>x.contenido_tipo!=='general').length
  $('kpiGeneral').textContent=general?.puntos_qr||0
- $('kpiCanales').textContent='58'
- const provincias=[...new Set(filas.flatMap(x=>x.lista_provincias||[]))].sort((a,b)=>a.localeCompare(b,'es'))
- $('provincia').innerHTML='<option value="">Todas</option>'+provincias.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')
- render()
+ if(inicial){const {count}=await supabase.from('canales').select('id',{count:'exact',head:true});$('kpiCanales').textContent=count??'—'}
+ if(inicial){const provincias=[...new Set(filasBase.flatMap(x=>x.lista_provincias||[]))].sort((a,b)=>a.localeCompare(b,'es'));$('provincia').innerHTML='<option value="">Todas</option>'+provincias.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}
+ render();actualizarMapa()
 }
+function asegurarMapa(){if(mapa)return;mapa=L.map('mapaMonitoreo',{zoomControl:true}).setView([-40.4,-65.2],4);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(mapa);capaMapa=L.layerGroup().addTo(mapa)}
+function separarCoordenadas(data){const grupos=new Map();data.forEach(x=>{const k=`${x.latitud}|${x.longitud}`;if(!grupos.has(k))grupos.set(k,[]);grupos.get(k).push(x)});for(const grupo of grupos.values())grupo.forEach((x,i)=>{const n=grupo.length,a=2*Math.PI*i/n,r=n>1?.018:0;x._lat=Number(x.latitud)+Math.sin(a)*r;x._lng=Number(x.longitud)+Math.cos(a)*r})}
+async function actualizarMapa(){const seq=++mapaSeq;asegurarMapa();const {data,error}=await supabase.rpc('admin_monitoreo_mapa',{p_provincia:$('provincia').value||null,p_clase_canal:$('clase').value||null,p_contenido_tipo:seleccionTipo,p_contenido_id:seleccion});if(seq!==mapaSeq)return;capaMapa.clearLayers();if(error){$('mapaMeta').textContent='No se pudo cargar el mapa';return}const puntos=data||[];separarCoordenadas(puntos);const bounds=[];puntos.forEach(x=>{const color=coloresCanal[x.canal_tipo]||'#9fb7d9',icon=L.divIcon({className:'',html:`<div class="map-dot ${seleccion?'seleccionado':''}" style="--dot:${color}"></div>`,iconSize:seleccion?[18,18]:[14,14],iconAnchor:seleccion?[9,9]:[7,7]});const marker=L.marker([x._lat,x._lng],{icon}).addTo(capaMapa);marker.bindPopup(`<div class="mapa-tip"><b>${esc(x.canal_nombre)}</b><br><span>${esc(x.ciudad||'—')} · ${esc(x.provincia||'')}</span><br><span>${x.puntos_qr} QR · ${x.visitas} visitas · ${x.consultas} consultas</span>${x.fuera_argentina?'<br><span class="mapa-alerta">Coordenadas a revisar</span>':''}</div>`);if(!x.fuera_argentina)bounds.push([x._lat,x._lng])});const fuera=puntos.filter(x=>x.fuera_argentina).length;$('mapaMeta').innerHTML=`${puntos.length} canales visibles${fuera?` · <span class="mapa-alerta">${fuera} con coordenadas a revisar</span>`:''}`;if(bounds.length)mapa.fitBounds(bounds,{padding:[28,28],maxZoom:seleccion?8:6});setTimeout(()=>mapa.invalidateSize(),0)}
 function filtradas(){
- const q=norm($('buscar').value),tipo=$('tipo').value,prov=$('provincia').value,clase=$('clase').value,estado=$('estado').value
- return filas.filter(x=>(!q||norm(x.contenido_nombre).includes(q))&&(!tipo||x.contenido_tipo===tipo)&&(!prov||(x.lista_provincias||[]).includes(prov))&&(!clase||(clase==='pasivo'?Number(x.canales_pasivos)>0:Number(x.canales_activos)>0))&&(!estado||(estado==='vigente'?x.contenido_vigente:!x.contenido_vigente))).sort((a,b)=>(desc?-1:1)*(Number(a[orden]||0)-Number(b[orden]||0)))
+ const q=norm($('buscar').value),estado=$('estado').value
+ return filas.filter(x=>(!q||norm(x.contenido_nombre).includes(q))&&(!estado||(estado==='vigente'?x.contenido_vigente:!x.contenido_vigente))).sort((a,b)=>(desc?-1:1)*(Number(a[orden]||0)-Number(b[orden]||0)))
 }
 function render(){
  const data=filtradas();$('resumen').textContent=`${data.length} de ${filas.length} resultados`
@@ -115,18 +124,22 @@ function render(){
 }
 async function abrirDetalle(tipo,id){
  if(tipo==='general')return
- seleccion=id;render();$('detalle').classList.remove('oculto');$('detalleTitulo').textContent='Cargando detalle…';$('detalleMeta').textContent='';$('detalleBody').innerHTML='<tr><td colspan="8" class="empty-state">Consultando puntos QR…</td></tr>'
- const fila=filas.find(x=>x.contenido_id===id),{data,error}=await supabase.rpc('admin_monitoreo_detalle',{p_contenido_tipo:tipo,p_contenido_id:id})
+ seleccion=id;seleccionTipo=tipo;render();actualizarMapa();$('detalle').classList.remove('oculto');$('detalleTitulo').textContent='Cargando detalle…';$('detalleMeta').textContent='';$('detalleBody').innerHTML='<tr><td colspan="8" class="empty-state">Consultando puntos QR…</td></tr>'
+ const fila=filas.find(x=>x.contenido_id===id),{data,error}=await supabase.rpc('admin_monitoreo_detalle',{p_contenido_tipo:tipo,p_contenido_id:id,p_provincia:$('provincia').value||null,p_clase_canal:$('clase').value||null})
  if(error){$('detalleTitulo').textContent='No se pudo cargar el detalle';$('detalleBody').innerHTML='<tr><td colspan="8" class="empty-state error">La consulta fue rechazada.</td></tr>';return}
- $('detalleTitulo').textContent=fila.contenido_nombre;$('detalleMeta').textContent=`${data.length} puntos QR · conocido desde ${fecha(fila.observado_desde)}`
- $('detalleBody').innerHTML=data.map(x=>`<tr><td class="codigo">${esc(x.codigo)}</td><td>${esc(x.punto_tipo||'—')}<span class="subdato">${esc(x.punto_ubicacion||'')}</span></td><td>${esc(x.canal_nombre)}<span class="subdato"><span class="clase-pill clase-${x.canal_clase}">${x.canal_clase}</span></span></td><td>${esc(x.ciudad||'—')}<span class="subdato">${esc(x.provincia||'')}</span></td><td>${esc(x.alcance)}</td><td class="destino" title="${esc(x.destino_url)}">${esc(x.destino_url)}</td><td><span class="num-views">${x.visitas}</span> · <span class="num-leads">${x.consultas}</span></td><td>${fecha(x.ultima_visita)}</td></tr>`).join('')
+ const actuales=(data||[]).filter(x=>x.esta_vigente),historicos=[...new Map((data||[]).filter(x=>!x.esta_vigente).map(x=>[x.asignacion_id,x])).values()]
+ $('detalleTitulo').textContent=fila.contenido_nombre;$('detalleMeta').textContent=`${actuales.length} puntos QR vigentes · ${historicos.length} períodos históricos`
+ $('detalleBody').innerHTML=actuales.map(x=>`<tr><td class="codigo">${esc(x.codigo)}</td><td>${esc(x.punto_tipo||'—')}<span class="subdato">${esc(x.punto_ubicacion||'')}</span></td><td>${esc(x.canal_nombre)}<span class="subdato"><span class="clase-pill clase-${x.canal_clase}">${x.canal_clase}</span></span></td><td>${esc(x.ciudad||'—')}<span class="subdato">${esc(x.provincia||'')}</span></td><td>${x.desde_backfill?'Registro inicial · conocido desde '+fecha(x.observado_desde):fecha(x.vigente_desde)}</td><td>Vigente</td><td>${duracion(x.duracion_segundos)}</td><td><span class="num-views">${x.visitas}</span> · <span class="num-leads">${x.consultas}</span></td></tr>`).join('')||'<tr><td colspan="8" class="empty-state">No hay puntos vigentes con estos filtros.</td></tr>'
+ $('historialBloque').classList.toggle('oculto',!historicos.length);$('historialBody').innerHTML=historicos.map(x=>`<tr><td class="codigo">${esc(x.codigo)}</td><td>${esc(x.canal_nombre)}</td><td>${esc(x.ciudad||'—')}<span class="subdato">${esc(x.provincia||'')}</span></td><td>${fecha(x.vigente_desde)}</td><td>${fecha(x.vigente_hasta)}</td><td>${duracion(x.duracion_segundos)}</td><td><span class="num-views">${x.visitas}</span></td><td>${x.origen==='simulacion_demo'?'Simulación de prueba':esc(x.origen)}</td></tr>`).join('')
  $('detalle').scrollIntoView({behavior:'smooth',block:'start'})
 }
-for(const id of ['buscar','tipo','provincia','clase','estado'])$(id).addEventListener(id==='buscar'?'input':'change',render)
-$('limpiar').addEventListener('click',()=>{for(const id of ['buscar','tipo','provincia','clase','estado'])$(id).value='';render()})
+for(const id of ['tipo','provincia','clase'])$(id).addEventListener('change',()=>cargar(false))
+for(const id of ['buscar','estado'])$(id).addEventListener(id==='buscar'?'input':'change',render)
+$('limpiar').addEventListener('click',()=>{for(const id of ['buscar','tipo','provincia','clase','estado'])$(id).value='';cargar(false)})
 document.querySelectorAll('.sort').forEach(th=>th.addEventListener('click',()=>{const next=th.dataset.sort;if(orden===next)desc=!desc;else{orden=next;desc=true}document.querySelectorAll('.sort').forEach(x=>x.classList.remove('activo'));th.classList.add('activo');render()}))
-$('cerrarDetalle').addEventListener('click',()=>{$('detalle').classList.add('oculto');seleccion=null;render()})
-cargar()
+$('cerrarDetalle').addEventListener('click',()=>{$('detalle').classList.add('oculto');seleccion=null;seleccionTipo=null;render();actualizarMapa()})
+const mapaCerrado=localStorage.getItem('monitoreo_mapa_cerrado')==='1';$('mapaWrap').classList.toggle('cerrado',mapaCerrado);$('mapaToggle').textContent=mapaCerrado?'Mostrar mapa':'Ocultar mapa';$('mapaToggle').addEventListener('click',()=>{const cerrado=$('mapaWrap').classList.toggle('cerrado');localStorage.setItem('monitoreo_mapa_cerrado',cerrado?'1':'0');$('mapaToggle').textContent=cerrado?'Mostrar mapa':'Ocultar mapa';if(!cerrado)setTimeout(()=>mapa?.invalidateSize(),0)})
+cargar(true)
 </script>
 </body>
 </html>
