@@ -310,6 +310,7 @@
         Mapa QR
       </a>
       <a href="monitoreo-qr.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h4v4h-7z"/></svg>Monitoreo QR</a>
+      <a href="destinos-qr.html" class="admin-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><path d="M12 6h6l2 2.5L18 11h-6z"/><path d="M12 13H6l-2 2.5L6 18h6z"/></svg>Destinos QR</a>
       <a href="salud-de-red.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         Salud de Red
@@ -742,13 +743,15 @@ window.onTipoChange = function() {
   // Acceso externo siempre visible — cualquier canal puede tener colaborador
 
   const hints = {
-    inmobiliaria: 'Canal activo — puede vender múltiples proyectos con links independientes.',
-    particular:   'Canal activo — vendedor individual con links por proyecto.',
-    punto_venta:  'Canal pasivo — un QR fijo, sin panel de acceso.',
-    'campaña':    'Canal pasivo — link de seguimiento para campaña digital.',
-    evento:       'Canal pasivo — tracking temporal para un evento.',
+    inmobiliaria: 'Canal activo — cada QR puede mostrar una propiedad o un proyecto distinto.',
+    particular:   'Canal activo — vendedor individual; cada QR con su propio destino.',
+    punto_venta:  'Canal pasivo — espacio físico con uno o más puntos QR, todos con el mismo destino, y panel de seguimiento.',
+    'campaña':    'Canal pasivo — difusión digital con destino común a todos sus QR.',
+    evento:       'Canal pasivo — QR creados para un evento puntual, con destino común.',
   }
-  document.getElementById('tipoHint').textContent = hints[tipo] || ''
+  document.getElementById('tipoHint').textContent = editId
+    ? 'La clase del canal es definitiva y no puede modificarse después de su creación.'
+    : (hints[tipo] || '')
 
   actualizarSeccionReferencias()
   if (_canalId) cargarReferencias()
@@ -1326,6 +1329,7 @@ if (editId) {
   document.getElementById('pageTitle').textContent  = 'Editar canal'
   document.getElementById('breadcrumb').textContent = 'Editar'
   document.getElementById('btnGuardar').textContent = 'Guardar cambios'
+  document.getElementById('tipo').disabled = true
 
   const { data: c } = await supabase.from('canales').select('*').eq('id', editId).single()
   if (c) {
