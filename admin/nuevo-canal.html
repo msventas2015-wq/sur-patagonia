@@ -579,6 +579,7 @@
   </div>
 </div>
 
+<script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script type="module">
 import { supabase, PUBLIC_BASE_URL, PUBLIC_HOST } from '../js/config.js'
 import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
@@ -618,6 +619,9 @@ function toSlug(str) {
 function esActivo(tipo) {
   return tipo === 'inmobiliaria' || tipo === 'particular'
 }
+
+function colorLab(hex){const rgb=hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4),f=x=>x>.008856?Math.cbrt(x):7.787*x+16/116,x=(rgb[0]*.4124+rgb[1]*.3576+rgb[2]*.1805)/.95047,y=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722,z=(rgb[0]*.0193+rgb[1]*.1192+rgb[2]*.9505)/1.08883;return[116*f(y)-16,500*(f(x)-f(y)),200*(f(y)-f(z))]}
+async function siguienteColorIndex(){const paleta=window.SPCanalColors?.PALETA_CANALES||[];if(!paleta.length)throw new Error('Paleta canónica de canales no disponible');const {data,error}=await supabase.from('canales').select('color_index');if(error)throw error;const usados=new Set((data||[]).map(x=>Number(x.color_index)).filter(Number.isInteger)),labs=paleta.map(colorLab),dist=(a,b)=>Math.sqrt(a.reduce((n,v,i)=>n+(v-b[i])**2,0));const libres=paleta.map((_,i)=>i).filter(i=>!usados.has(i));if(!libres.length)throw new Error('No quedan colores de canal disponibles');return libres.reduce((mejor,i)=>{const minimo=[...usados].reduce((m,j)=>Math.min(m,dist(labs[i],labs[j])),Infinity);return minimo>mejor.dist?{i,dist:minimo}:mejor},{i:libres[0],dist:-1}).i}
 
 async function mensajeErrorFuncion(error, fallback) {
   if (error?.context) {
@@ -1479,6 +1483,8 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     else { alert('Las coordenadas no tienen formato válido. Ejemplo: -40.1572, -71.3534'); return }
   }
 
+  let colorIndexNuevo=null
+  if(!_canalId){try{colorIndexNuevo=await siguienteColorIndex()}catch(e){alert('No se pudo asignar una identidad de color al canal: '+e.message);return}}
   const payload = {
     nombre, codigo, tipo,
     activo:   document.getElementById('activo').checked,
@@ -1491,6 +1497,7 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     destino,
     user_id:  userId,
   }
+  if(!_canalId)payload.color_index=colorIndexNuevo
 
   let canalAntes = null
   let referenciasAntes = []
