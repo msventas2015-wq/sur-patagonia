@@ -1407,7 +1407,7 @@ window.verQR = (codigo, nombreEnc, destinoEnc) => {
   document.getElementById('modalLinkDirecto').textContent = linkDirecto
 
   QRCode.toCanvas(document.getElementById('qrCanvas'), linkQR, {
-    width: 220, margin: 2,
+    width: 220, margin: 2, errorCorrectionLevel: 'H',
     color: { dark: '#1a1a1a', light: '#ffffff' }
   })
   document.getElementById('modalQR').classList.add('open')
@@ -1416,13 +1416,89 @@ window.verQR = (codigo, nombreEnc, destinoEnc) => {
 window.cerrarModal = () => document.getElementById('modalQR').classList.remove('open')
 document.getElementById('modalQR').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModal() })
 
-window.descargarQR = () => {
-  const canvas = document.getElementById('qrCanvas')
+const QR_DOWNLOAD_SIZE = 4000
+const QR_DOWNLOAD_FALLBACK_SIZE = 1024
+let qrDownloadEnCurso = false
+
+function canvasTieneQR(canvas) {
+  if (!canvas || canvas.width < 1 || canvas.height < 1) return false
+  const muestra = document.createElement('canvas')
+  muestra.width = 64
+  muestra.height = 64
+  const ctx = muestra.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return false
+  ctx.drawImage(canvas, 0, 0, muestra.width, muestra.height)
+  const pixeles = ctx.getImageData(0, 0, muestra.width, muestra.height).data
+  let oscuros = 0
+  let claros = 0
+  for (let i = 0; i < pixeles.length; i += 4) {
+    if (pixeles[i + 3] < 200) continue
+    const luminancia = 0.2126 * pixeles[i] + 0.7152 * pixeles[i + 1] + 0.0722 * pixeles[i + 2]
+    if (luminancia < 80) oscuros++
+    if (luminancia > 220) claros++
+  }
+  return oscuros >= 16 && claros >= 16
+}
+
+function canvasABlobPng(canvas) {
+  if (typeof canvas.toBlob !== 'function') return Promise.reject(new Error('Canvas sin soporte para PNG Blob'))
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob && blob.size >= 100) resolve(blob)
+      else reject(new Error('PNG vacío o inválido'))
+    }, 'image/png')
+  })
+}
+
+async function generarPngQR(url, size, color) {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  await QRCode.toCanvas(canvas, url, {
+    width: size, margin: 4, errorCorrectionLevel: 'H', color
+  })
+  if (canvas.width !== size || canvas.height !== size || !canvasTieneQR(canvas)) {
+    throw new Error(`Canvas QR ${size}×${size} vacío o incompleto`)
+  }
+  return canvasABlobPng(canvas)
+}
+
+async function descargarPngQR(url, nombreArchivo, color) {
+  if (qrDownloadEnCurso) return
+  qrDownloadEnCurso = true
+  try {
+    let blob
+    try {
+      blob = await generarPngQR(url, QR_DOWNLOAD_SIZE, color)
+    } catch (error4000) {
+      console.warn('[QR] Falló la generación 4000×4000; se intenta 1024×1024:', error4000)
+      try {
+        blob = await generarPngQR(url, QR_DOWNLOAD_FALLBACK_SIZE, color)
+      } catch (error1024) {
+        console.error('[QR] No se generó un PNG válido:', error1024)
+        alert('No se pudo generar un QR válido. No se descargó ningún archivo.')
+        return
+      }
+      alert('Tu dispositivo no pudo generar el QR en 4000 × 4000. Se descargará una versión segura de 1024 × 1024.')
+    }
+
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.download = nombreArchivo
+    a.href = blobUrl
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+  } finally {
+    qrDownloadEnCurso = false
+  }
+}
+
+window.descargarQR = async () => {
   const nombre = document.getElementById('modalNombre').textContent
-  const a = document.createElement('a')
-  a.download = `qr-${toSlug(nombre)}.png`
-  a.href = canvas.toDataURL('image/png')
-  a.click()
+  const linkQR = document.getElementById('modalLinkQR').textContent
+  await descargarPngQR(linkQR, `qr-${toSlug(nombre)}.png`, { dark: '#1a1a1a', light: '#ffffff' })
 }
 
 window.copiarLink = (id) => {
