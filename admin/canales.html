@@ -602,7 +602,7 @@ async function cargarCanales() {
 const esActivo = t => t === 'inmobiliaria' || t === 'particular'
 const normalizarFiltro = v => String(v ?? '').trim().toLowerCase()
 const campoFiltro = v => normalizarFiltro(v)
-const labelAcceso = v => String(v || 'sin acceso').replace(/_/g, ' ')
+const claseAccesoCanal = canal => esActivo(canal.tipo) ? 'Activo' : 'Pasivo'
 
 function valoresUnicosCanales(campo, base = _canales) {
   return [...new Set(base.map(c => String(c[campo] ?? '').trim()).filter(Boolean))]
@@ -626,7 +626,7 @@ function renderFiltroOpcionesCanales() {
   setOpcionesCanales('fProvincia', valoresUnicosCanales('provincia'), 'Todas las provincias', _filtrosCanales.provincia)
   setOpcionesCanales('fCiudad', ciudades, 'Todas las ciudades', _filtrosCanales.ciudad)
   setOpcionesCanales('fTipo', valoresUnicosCanales('tipo'), 'Todos los tipos', _filtrosCanales.tipo)
-  setOpcionesCanales('fAcceso', valoresUnicosCanales('tipo_acceso').map(labelAcceso), 'Todos los accesos', _filtrosCanales.acceso)
+  setOpcionesCanales('fAcceso', ['Activo', 'Pasivo'], 'Todos los accesos', _filtrosCanales.acceso)
 }
 
 function actualizarFiltrosCanalesDesdeUI() {
@@ -643,7 +643,7 @@ function canalesFiltrados() {
     if (_filtrosCanales.provincia && String(c.provincia || '') !== _filtrosCanales.provincia) return false
     if (_filtrosCanales.ciudad && String(c.ciudad || '') !== _filtrosCanales.ciudad) return false
     if (_filtrosCanales.tipo && String(c.tipo || '') !== _filtrosCanales.tipo) return false
-    if (_filtrosCanales.acceso && labelAcceso(c.tipo_acceso) !== _filtrosCanales.acceso) return false
+    if (_filtrosCanales.acceso && claseAccesoCanal(c) !== _filtrosCanales.acceso) return false
     if (_filtrosCanales.estado) {
       const estado = c.activo ? 'activo' : 'inactivo'
       if (estado !== _filtrosCanales.estado) return false
