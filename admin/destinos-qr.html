@@ -107,7 +107,7 @@
     <section class="panel error" id="historialAdvertencia" role="alert" hidden></section>
     <section class="kpis"><article class="kpi" style="--c:var(--adm-channel)"><div class="kpi-num" id="kpiCanales">—</div><div class="kpi-lbl">Canales pasivos</div></article><article class="kpi" style="--c:var(--adm-qr)"><div class="kpi-num" id="kpiQr">—</div><div class="kpi-lbl">Puntos QR</div></article><article class="kpi" style="--c:var(--adm-text)"><div class="kpi-num" id="kpiVisibles">—</div><div class="kpi-lbl">Canales visibles</div></article></section>
     <section class="panel"><div class="filtros"><div class="filtro buscar"><label for="buscar">Buscar</label><input id="buscar" placeholder="Canal, ciudad o provincia" autocomplete="off" /></div><div class="filtro"><label for="provincia">Provincia</label><select id="provincia"><option value="">Todas</option></select></div><div class="filtro"><label for="ciudad">Ciudad</label><select id="ciudad"><option value="">Todas</option></select></div><div class="filtro"><label for="destino">Destino actual</label><select id="destino"><option value="">Todos</option></select></div><div class="filtro"><label for="rubro">Rubro</label><select id="rubro"><option value="">Todos</option></select></div><button class="btn" id="limpiarFiltros" type="button">Limpiar filtros</button></div></section>
-    <section class="panel selection-bar"><label class="select-visible"><input class="canal-check" id="todosVisibles" type="checkbox" />Seleccionar todos los visibles</label><div class="selection-count" id="selectionCount">0 canales seleccionados · <span class="qr">0 puntos QR</span></div><div class="selection-note" id="selectionNote"></div><div class="selection-spacer"></div><div class="filtro destination-action"><label for="nuevoDestino">Nuevo destino</label><input id="nuevoDestino" type="text" placeholder="/ · /proyecto · /propiedad.html?id=…" autocomplete="off" /></div><button class="btn" id="prepararCambio" type="button" disabled>Revisar cambio</button><button class="btn" id="limpiarSeleccion" type="button">Limpiar selección</button><div class="action-feedback" id="accionFeedback" role="status" aria-live="polite" hidden></div></section>
+    <section class="panel selection-bar"><label class="select-visible"><input class="canal-check" id="todosVisibles" type="checkbox" />Seleccionar todos los visibles</label><div class="selection-count" id="selectionCount">0 canales seleccionados · <span class="qr">0 puntos QR</span></div><div class="selection-note" id="selectionNote"></div><div class="selection-spacer"></div><div class="filtro destination-action"><label for="nuevoDestino">Nuevo destino</label><select class="admin-input" id="nuevoDestino" disabled><option value="">— Seleccionar destino —</option></select></div><button class="btn" id="prepararCambio" type="button" disabled>Revisar cambio</button><button class="btn" id="limpiarSeleccion" type="button">Limpiar selección</button><div class="action-feedback" id="accionFeedback" role="status" aria-live="polite" hidden></div></section>
     <section class="panel tabla-wrap"><table class="tabla"><thead><tr><th></th><th>Canal</th><th>Ubicación</th><th style="color:var(--adm-qr)">QR</th><th>Qué muestra hoy</th><th class="metrica">Visitas</th><th class="metrica">Consultas</th><th>Última actividad</th></tr></thead><tbody id="tbody"><tr><td colspan="8" class="empty">Cargando canales pasivos…</td></tr></tbody></table></section>
   </main>
 </div>
@@ -128,7 +128,7 @@
 </div>
 <script src="../js/paleta-canales.js"></script>
 <script type="module">
-import {supabase,buildPublicUrl} from '../js/config.js'
+import {supabase,buildPublicUrl,PUBLIC_HOST} from '../js/config.js'
 import {cargarEstadoHistorial,textoAdvertenciaHistorial} from '../js/historial-alertas.js'
 const {data:{session}}=await supabase.auth.getSession()
 if(!session){location.href='login.html';throw new Error('no session')}
@@ -138,25 +138,42 @@ const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,
 let canales=[],links=[],seleccionados=new Set(),proyectosPorSlug=new Map(),propiedadesPorId=new Map()
 let estadoHistorial={verificado:false,total:null,canalIds:new Set(),masReciente:null},catalogosVerificados=false,selectorIntegro=false,cambioPendiente=null,accionOcupada=false
 const linksPorCanal=new Map()
-const mensajeFormas='Usá /, /propiedades, /slug-de-proyecto, /proyecto-mini?slug=slug-de-proyecto o /propiedad.html?id=uuid.'
+const mensajeFormas='Elegí una página general, un proyecto vigente o una propiedad activa del selector.'
 
-function etiquetaDestino(url,nombre){if(url==='/')return 'Página principal';if(url==='/propiedades')return 'Listado de propiedades';return nombre||url||'Destino no registrado'}
+function etiquetaDestino(url,nombre){if(url==='/')return 'Página principal';if(url==='/propiedades')return 'Listado de propiedades';if(url==='/proyectos')return 'Listado de proyectos';return nombre||url||'Destino no registrado'}
 function destinosCanal(id){const grupos=new Map();for(const l of linksPorCanal.get(id)||[]){const key=l.destino_url||'/';if(!grupos.has(key))grupos.set(key,{...l,puntos:0});grupos.get(key).puntos++}return [...grupos.values()]}
 function resumenDestinos(c){const ds=destinosCanal(c.canal_id);return `<span class="que-muestra-total">${ds.length} contenido${ds.length===1?'':'s'}</span><div class="lista-destinos">${ds.map(d=>`<span class="destino-linea"><span class="destino-qr">${d.puntos} QR</span><a class="destino-link" href="${esc(buildPublicUrl(d.destino_url))}" target="_blank" rel="noopener">${esc(etiquetaDestino(d.destino_url,d.contenido_nombre))}</a></span>`).join('')}</div>`}
 function renderAdvertenciaHistorial(estado){const aviso=$('historialAdvertencia'),texto=textoAdvertenciaHistorial(estado,fecha);aviso.textContent=texto;aviso.hidden=!texto}
 function mostrarAccion(texto,tipo=''){const aviso=$('accionFeedback');aviso.textContent=texto;aviso.hidden=!texto;aviso.className=`action-feedback${tipo?` ${tipo}`:''}`}
 function opciones(id,valores,etiqueta=x=>x,valor=x=>x){$(id).innerHTML='<option value="">Todos</option>'+valores.map(v=>`<option value="${esc(valor(v))}">${esc(etiqueta(v))}</option>`).join('')}
+function agregarGrupo(sel,label,items,fnValue,fnLabel){
+  if(!items.length)return
+  const grupo=document.createElement('optgroup');grupo.label=label
+  for(const item of items){const opcion=document.createElement('option');opcion.value=fnValue(item);opcion.textContent=fnLabel(item);opcion.dataset.tipo=item.tipo||'';if(item.id)opcion.dataset.destinoId=item.id;grupo.appendChild(opcion)}
+  sel.appendChild(grupo)
+}
+function cargarSelectorDestinos(proyectos,propiedades){
+  const sel=$('nuevoDestino');sel.innerHTML='<option value="">— Seleccionar destino —</option>'
+  agregarGrupo(sel,'🌐 Páginas generales',[
+    {tipo:'pagina',nombre:`Inicio (${PUBLIC_HOST})`,destino:'/'},
+    {tipo:'pagina',nombre:'Listado de propiedades',destino:'/propiedades'},
+    {tipo:'pagina',nombre:'Listado de proyectos',destino:'/proyectos'},
+  ],item=>item.destino,item=>item.nombre)
+  agregarGrupo(sel,'📁 Proyectos',proyectos,item=>`/${item.slug}`,item=>item.nombre)
+  agregarGrupo(sel,'🏠 Propiedades',propiedades,item=>`/propiedad.html?id=${item.id}`,item=>item.titulo)
+}
 function visibles(){const q=norm($('buscar').value),prov=$('provincia').value,ciu=$('ciudad').value,dest=$('destino').value,rub=$('rubro').value;return canales.filter(c=>(!q||norm(`${c.canal_nombre} ${c.ciudad} ${c.provincia}`).includes(q))&&(!prov||c.provincia===prov)&&(!ciu||c.ciudad===ciu)&&(!dest||(linksPorCanal.get(c.canal_id)||[]).some(l=>(l.destino_url||'/')===dest))&&(!rub||c.rubro_id===rub))}
-function actualizarDisponibilidadCambio(){const bloqueado=accionOcupada||!selectorIntegro||!catalogosVerificados||!estadoHistorial.verificado||estadoHistorial.total!==0||seleccionados.size===0;$('prepararCambio').disabled=bloqueado;$('nuevoDestino').disabled=accionOcupada;$('limpiarSeleccion').disabled=accionOcupada;document.querySelectorAll('.canal-check').forEach(ch=>{ch.disabled=accionOcupada})}
+function actualizarDisponibilidadCambio(){const bloqueado=accionOcupada||!selectorIntegro||!catalogosVerificados||!estadoHistorial.verificado||estadoHistorial.total!==0||seleccionados.size===0||!$('nuevoDestino').value;$('prepararCambio').disabled=bloqueado;$('nuevoDestino').disabled=accionOcupada||!catalogosVerificados;$('limpiarSeleccion').disabled=accionOcupada;document.querySelectorAll('.canal-check').forEach(ch=>{ch.disabled=accionOcupada})}
 function actualizarSeleccion(data=visibles()){const visiblesIds=new Set(data.map(c=>c.canal_id)),ocultos=[...seleccionados].filter(id=>!visiblesIds.has(id)).length,qr=[...seleccionados].reduce((n,id)=>n+Number(canales.find(c=>c.canal_id===id)?.puntos_qr||0),0);$('selectionCount').innerHTML=`${seleccionados.size} canal${seleccionados.size===1?'':'es'} seleccionado${seleccionados.size===1?'':'s'} · <span class="qr">${qr} punto${qr===1?'':'s'} QR</span>`;$('selectionNote').textContent=ocultos?`${ocultos} seleccionado${ocultos===1?'':'s'} fuera de la vista actual`:'';$('selectionNote').classList.toggle('selection-warning',ocultos>0);$('todosVisibles').checked=data.length>0&&data.every(c=>seleccionados.has(c.canal_id));$('todosVisibles').indeterminate=data.some(c=>seleccionados.has(c.canal_id))&&!data.every(c=>seleccionados.has(c.canal_id));actualizarDisponibilidadCambio()}
 function render(){const data=visibles();$('kpiVisibles').textContent=data.length;if(!data.length){$('tbody').innerHTML='<tr><td colspan="8" class="empty">No hay canales que coincidan con los filtros.</td></tr>';actualizarSeleccion(data);return}$('tbody').innerHTML=data.map(c=>`<tr class="${seleccionados.has(c.canal_id)?'seleccionada':''}"><td><input class="canal-check row-check" type="checkbox" data-id="${esc(c.canal_id)}" ${seleccionados.has(c.canal_id)?'checked':''} aria-label="Seleccionar ${esc(c.canal_nombre)}" /></td><td><div class="identidad"><span class="pasivo-pill">Pasivo</span><span class="canal-nombre">${esc(c.canal_nombre)}</span></div></td><td><span class="ubicacion-ciudad">${esc(c.ciudad||'—')}</span><span class="ubicacion-provincia">${esc(c.provincia||'')}</span></td><td><span class="dato-principal num-qr">${c.puntos_qr}<small>QR</small></span></td><td>${resumenDestinos(c)}</td><td class="metrica"><span class="dato-principal num-views">${c.visitas}</span></td><td class="metrica"><span class="dato-principal num-leads">${c.consultas}</span></td><td class="fecha">${fecha(c.ultima_actividad)}</td></tr>`).join('');document.querySelectorAll('.row-check').forEach(ch=>ch.addEventListener('change',()=>{if(ch.checked)seleccionados.add(ch.dataset.id);else seleccionados.delete(ch.dataset.id);render()}));actualizarSeleccion(data)}
 
 function validarDestino(valor){
   const url=String(valor??'').trim()
   if(!catalogosVerificados)return {ok:false,mensaje:'No se pudieron verificar los proyectos y propiedades. No se habilitó ninguna escritura.'}
-  if(!url)return {ok:false,mensaje:`Ingresá un destino. ${mensajeFormas}`}
+  if(!url)return {ok:false,mensaje:`Seleccioná un destino. ${mensajeFormas}`}
   if(url==='/')return {ok:true,url,tipo:'pagina',etiqueta:'Página principal'}
   if(url==='/propiedades')return {ok:true,url,tipo:'pagina',etiqueta:'Listado de propiedades'}
+  if(url==='/proyectos')return {ok:true,url,tipo:'pagina',etiqueta:'Listado de proyectos'}
   let m=url.match(/^\/propiedad\.html\?id=([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/)
   if(m){const id=m[1].toLowerCase(),p=propiedadesPorId.get(id);if(!p)return {ok:false,mensaje:'La propiedad indicada no existe.'};if(!p.activa)return {ok:false,mensaje:'La propiedad indicada no está activa.'};return {ok:true,url:`/propiedad.html?id=${id}`,tipo:'propiedad',id,propiedadId:id,etiqueta:p.titulo}}
   m=url.match(/^\/proyecto-mini\?slug=([a-z0-9][a-z0-9-]*)$/)
@@ -271,12 +288,16 @@ async function cargar(){
   const [{data:rows,error:e1},{data:qr,error:e2},historial,rProyectos,rPropiedades]=await Promise.all([
     supabase.rpc('admin_monitoreo_canales',{p_busqueda:null,p_provincia:null,p_clase_canal:'pasivo',p_contenido_tipo:null}),
     supabase.rpc('admin_monitoreo_links_qr'),cargarEstadoHistorial(supabase),
-    supabase.from('proyectos').select('id,nombre,slug,estado'),supabase.from('propiedades').select('id,titulo,activa'),
+    supabase.from('proyectos').select('id,nombre,slug,estado').eq('estado','activo').order('nombre'),supabase.from('propiedades').select('id,titulo,activa').eq('activa',true).order('titulo'),
   ])
   estadoHistorial=historial;renderAdvertenciaHistorial(historial)
-  catalogosVerificados=!rProyectos.error&&!rPropiedades.error
-  proyectosPorSlug=new Map((rProyectos.data||[]).filter(p=>p.slug).map(p=>[p.slug,p]))
-  propiedadesPorId=new Map((rPropiedades.data||[]).map(p=>[String(p.id).toLowerCase(),p]))
+  const proyectos=rProyectos.data||[],propiedades=rPropiedades.data||[]
+  const slugs=proyectos.map(p=>String(p.slug||'')),idsPropiedades=propiedades.map(p=>String(p.id||'').toLowerCase())
+  const catalogosValidos=proyectos.every(p=>p.id&&p.nombre&&/^[a-z0-9][a-z0-9-]*$/.test(p.slug)&&p.estado==='activo')&&new Set(slugs).size===slugs.length&&propiedades.every(p=>p.id&&p.titulo&&p.activa===true)&&new Set(idsPropiedades).size===idsPropiedades.length
+  catalogosVerificados=!rProyectos.error&&!rPropiedades.error&&catalogosValidos
+  proyectosPorSlug=new Map(catalogosVerificados?proyectos.map(p=>[p.slug,p]):[])
+  propiedadesPorId=new Map(catalogosVerificados?propiedades.map(p=>[String(p.id).toLowerCase(),p]):[])
+  cargarSelectorDestinos(catalogosVerificados?proyectos:[],catalogosVerificados?propiedades:[])
   if(!catalogosVerificados)mostrarAccion('No se pudieron verificar los destinos vigentes. La acción de cambio quedó bloqueada.','error')
   if(e1||e2){$('tbody').innerHTML='<tr><td colspan="8" class="empty error">No se pudo cargar el selector.</td></tr>';actualizarDisponibilidadCambio();return}
   const recibidos=rows||[]
@@ -299,7 +320,7 @@ $('todosVisibles').addEventListener('change',()=>{const data=visibles();for(cons
 $('limpiarSeleccion').addEventListener('click',()=>{seleccionados.clear();mostrarAccion('');render()})
 $('limpiarFiltros').addEventListener('click',()=>{for(const id of ['buscar','provincia','ciudad','destino','rubro'])$(id).value='';render()})
 $('prepararCambio').addEventListener('click',prepararCambio)
-$('nuevoDestino').addEventListener('keydown',e=>{if(e.key==='Enter'&&!$('prepararCambio').disabled)prepararCambio()})
+$('nuevoDestino').addEventListener('change',()=>{mostrarAccion('');actualizarDisponibilidadCambio()})
 $('cancelarCambio').addEventListener('click',()=>cerrarModalCambio())
 $('confirmarCambio').addEventListener('click',confirmarCambio)
 $('modalCambioDestino').addEventListener('click',e=>{if(e.target===$('modalCambioDestino'))cerrarModalCambio()})
