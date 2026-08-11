@@ -430,6 +430,7 @@
 
 <script type="module">
 import { supabase } from '../js/config.js'
+import { cargarEstadoHistorial } from '../js/historial-alertas.js'
 
 // ── Auth check ──────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -517,12 +518,13 @@ async function cargar() {
 
   try {
     // ── Queries paralelas ─────────────────────────────────────
-    const [rCanales, rRefs, rVisitas, rContactos, rContactosTodos] = await Promise.all([
+    const [rCanales, rRefs, rVisitas, rContactos, rContactosTodos, historialEstado] = await Promise.all([
       supabase.from('canales').select('id, nombre, codigo, activo, tipo, ciudad, provincia, user_id, created_at').order('created_at', { ascending: false }),
       supabase.from('referencias').select('id, canal_id, codigo, activo'),
       supabase.from('visitas').select('canal_ref, canal_via, created_at').gte('created_at', desde).limit(25000),
       supabase.from('contactos').select('id, canal_ref, canal_via, origen, estado, created_at').gte('created_at', desde).limit(10000),
       supabase.from('contactos').select('id, canal_ref, origen, estado, created_at').limit(10000),
+      cargarEstadoHistorial(supabase),
     ])
 
     const canales   = rCanales.data   || []
@@ -708,7 +710,7 @@ async function cargar() {
     renderActividad(totalVisitas, totalLeads, leadsConCanal, totalLeadsWeb, leadsWebSinCanal, leadsAllTodos.length, leadsAllSinCanal)
     renderChart(diasLabels, visitasDia, leadsDia)
     renderRanking(ranking, maxVisitas)
-    renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal)
+    renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal, historialEstado)
     renderCalidad(totalCanales, canalesSinRef, refsActivas, refs.length, leadsAllTodos.length, leadsAllConCanal, leadsAllSinCanal)
     renderAtribucion(leadsAllTodos.length, leadsAllConCanal, leadsAllSinCanal, estadosCRM)
 
@@ -859,11 +861,16 @@ function renderRanking(ranking, maxVisitas) {
   }).join('')
 }
 
-function renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal) {
+function renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal, historialEstado) {
   const sinVisita30 = canales.filter(c => c.activo && !canalIdConVisita30.has(c.id))
   const sinLead60   = canales.filter(c => c.activo && !canalIdConLead60.has(c.id))
   const inactivos   = canales.filter(c => !c.activo)
   const sinRef      = canales.filter(c => !(refsPorCanal[c.id]?.length))
+  const canalesPorId = new Map(canales.map(c => [c.id, c]))
+  const historialCanales = [...historialEstado.canalIds].map(id => canalesPorId.get(id) || {
+    nombre: `Canal ${id.slice(0, 8)}…`,
+    tipo: null,
+  })
 
   const grid = document.getElementById('alertasGrid')
   grid.innerHTML = [
@@ -899,6 +906,20 @@ function renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCan
       empty: 'Todos tienen QR/referencia',
       total: sinRef.length,
     },
+    {
+      titulo: `Historial de destinos con fallos`,
+      dot: historialEstado.verificado && historialEstado.total === 0 ? 'verde' : 'rojo',
+      riesgo: !historialEstado.verificado || historialEstado.total > 0,
+      items: historialCanales.slice(0, 6),
+      empty: !historialEstado.verificado
+        ? 'No se pudo verificar la integridad del historial'
+        : historialEstado.total > 0
+          ? 'Hay fallos sin canal identificable'
+          : 'El historial se registró completo',
+      emptyIcon: historialEstado.verificado && historialEstado.total === 0 ? '✓' : '⚠',
+      total: historialEstado.verificado ? historialEstado.total : 0,
+      itemTotal: historialCanales.length,
+    },
   ].map(a => `
     <div class="alerta-card ${a.riesgo ? 'riesgo' : 'ok'}">
       <div class="alerta-header">
@@ -906,14 +927,14 @@ function renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCan
         <div class="alerta-titulo">${a.titulo} ${a.total > 0 ? `<span style="color:var(--gris-claro);font-weight:400">(${a.total})</span>` : ''}</div>
       </div>
       ${a.items.length === 0
-        ? `<p class="alerta-empty">✓ ${a.empty}</p>`
+        ? `<p class="alerta-empty">${a.emptyIcon || '✓'} ${a.empty}</p>`
         : `<ul class="alerta-lista">
             ${a.items.map(c => `
               <li>
                 <span>${c.nombre}</span>
                 <span class="li-val">${TIPO_LABELS[c.tipo] || c.tipo || '—'}</span>
               </li>`).join('')}
-            ${a.total > 6 ? `<li><span style="color:var(--accent)">+${a.total - 6} más</span></li>` : ''}
+            ${(a.itemTotal ?? a.total) > 6 ? `<li><span style="color:var(--accent)">+${(a.itemTotal ?? a.total) - 6} más</span></li>` : ''}
           </ul>`
       }
     </div>`).join('')
