@@ -31,6 +31,34 @@
     .kpi-valor { font-size: 1.8rem; font-weight: 700; line-height: 1; color: var(--blanco); }
     .kpi-sub { font-size: 0.66rem; color: var(--gris-claro); margin-top: 0.45rem; }
 
+    /* Rubros administrables: viven dentro de Canales, sin sumar navegación. */
+    .rubros-panel {
+      margin-bottom: 1.2rem; padding: 1rem 1.1rem;
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-top-color: rgba(255,255,255,.12); border-radius: var(--card-radius);
+    }
+    .rubros-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    .rubros-title { margin:0; font-size:.68rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--blanco); }
+    .rubros-copy { margin:.3rem 0 0; font-size:.68rem; color:var(--gris-claro); line-height:1.5; }
+    .rubros-form { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+    .rubros-form input {
+      min-width:230px; padding:.52rem .65rem; border:1px solid rgba(255,255,255,.1);
+      border-radius:8px; background:rgba(255,255,255,.04); color:var(--blanco); font:inherit; font-size:.72rem;
+    }
+    .rubros-form input:focus { outline:none; border-color:rgba(201,168,76,.5); }
+    .rubros-list { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.85rem; }
+    .rubro-chip, .rubro-badge {
+      display:inline-flex; align-items:center; padding:.2rem .58rem; border-radius:999px;
+      border:1px solid rgba(80,200,120,.24); background:rgba(80,200,120,.08);
+      color:#50c878; font-size:.6rem; font-weight:700; letter-spacing:.04em;
+    }
+    .rubro-badge.faltante {
+      border-color:rgba(215,111,63,.28); background:rgba(215,111,63,.08); color:var(--accent);
+    }
+    .rubros-msg { width:100%; margin-top:.35rem; font-size:.68rem; color:var(--gris-claro); }
+    .rubros-msg.error { color:#e07070; }
+    .rubros-msg.ok { color:#50c878; }
+
     /* Filtros estilo CRM */
     .crm-filtros {
       margin: 0 0 1.2rem;
@@ -170,6 +198,7 @@
     }
     @media (max-width: 760px) {
       .crm-filtros-grid { grid-template-columns: 1fr; }
+      .rubros-form, .rubros-form input { width:100%; min-width:0; }
     }
   </style>
 </head>
@@ -267,7 +296,7 @@
         <h2 class="admin-page-title">Canales de Venta</h2>
         <p class="admin-page-subtitle">Inmobiliarias, vendedores y puntos de venta · cuánto produce cada uno</p>
       </div>
-      <a href="nuevo-canal.html" class="btn-nuevo">+ Nuevo canal</a>
+      <a href="nuevo-canal.html" class="btn-nuevo">Nuevo canal</a>
     </div>
 
     <!-- KPIs -->
@@ -281,6 +310,11 @@
         <div class="kpi-label">QRs / Links activos</div>
         <div class="kpi-valor" id="kRefs">—</div>
         <div class="kpi-sub">referencias generadas</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Pasivos sin rubro</div>
+        <div class="kpi-valor" id="kSinRubro">—</div>
+        <div class="kpi-sub">requieren carga manual</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">Clicks vía canales</div>
@@ -298,6 +332,21 @@
         <div class="kpi-sub" id="kTopSub"></div>
       </div>
     </div>
+
+    <section class="rubros-panel" aria-labelledby="rubrosTitulo">
+      <div class="rubros-head">
+        <div>
+          <h3 class="rubros-title" id="rubrosTitulo">Rubros comerciales</h3>
+          <p class="rubros-copy">Administrá la lista disponible para canales pasivos. La base impide duplicados aunque cambien mayúsculas o acentos.</p>
+        </div>
+        <form class="rubros-form" id="formNuevoRubro">
+          <input id="nuevoRubroEtiqueta" type="text" maxlength="120" placeholder="Nombre del rubro" autocomplete="off">
+          <button type="submit" class="crm-filtro-limpiar">Crear rubro</button>
+        </form>
+      </div>
+      <div class="rubros-list" id="listaRubros"><span class="rubro-chip">Cargando…</span></div>
+      <div class="rubros-msg" id="rubrosMsg" role="status"></div>
+    </section>
 
     <!-- FILTROS -->
     <section class="crm-filtros" aria-label="Filtros de canales">
@@ -392,6 +441,7 @@ function construirLinkDirecto(destino, codigo) {
 let _canales = []
 let _statsCanales = {}
 let _colabsCanales = []
+let _rubrosCanales = []
 const _filtrosCanales = {
   provincia: '',
   ciudad: '',
@@ -409,17 +459,71 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
 })
 
+function renderRubros() {
+  const lista = document.getElementById('listaRubros')
+  if (!lista) return
+  const activos = _rubrosCanales.filter(r => r.activo)
+  lista.innerHTML = activos.length
+    ? activos.map(r => `<span class="rubro-chip">${esc(r.etiqueta)}</span>`).join('')
+    : '<span class="rubro-chip">Sin rubros activos</span>'
+}
+
+document.getElementById('formNuevoRubro')?.addEventListener('submit', async event => {
+  event.preventDefault()
+  const input = document.getElementById('nuevoRubroEtiqueta')
+  const msg = document.getElementById('rubrosMsg')
+  const btn = event.currentTarget.querySelector('button[type="submit"]')
+  const etiqueta = input.value.trim().replace(/\s+/g, ' ')
+  msg.textContent = ''; msg.className = 'rubros-msg'
+  if (etiqueta.length < 2) {
+    msg.textContent = 'Escribí un rubro de al menos 2 caracteres.'; msg.classList.add('error'); return
+  }
+
+  btn.disabled = true; btn.textContent = 'Creando…'
+  const { data, error } = await supabase.rpc('admin_crear_rubro_2f', { p_etiqueta: etiqueta })
+  btn.disabled = false; btn.textContent = 'Crear rubro'
+  if (error) {
+    const normalizado = etiqueta.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    const existente = _rubrosCanales.find(r => String(r.clave || '') === normalizado)
+    msg.textContent = error.code === '23505'
+      ? `Ese rubro ya existe${existente ? ': ' + existente.etiqueta : ''}.`
+      : error.message
+    msg.classList.add('error')
+    return
+  }
+
+  const rubroCreado = Array.isArray(data) ? data[0] : data
+  if (!rubroCreado?.id) {
+    msg.textContent = 'La base no devolvió el rubro creado. Recargá la página para verificar.'
+    msg.classList.add('error')
+    return
+  }
+  _rubrosCanales.push(rubroCreado)
+  _rubrosCanales.sort((a,b) => a.etiqueta.localeCompare(b.etiqueta, 'es', { sensitivity: 'base' }))
+  renderRubros()
+  input.value = ''
+  msg.textContent = `Rubro creado: ${rubroCreado.etiqueta}.`; msg.classList.add('ok')
+})
+
 // ── Cargar canales + métricas ─────────────────────────────
 async function cargarCanales() {
-  const [rCanales, rRefs, rLeads, rVisitas, rColabs] = await Promise.all([
-    supabase.from('canales').select('*').order('created_at', { ascending: false }),
+  const [rCanales, rRefs, rLeads, rVisitas, rColabs, rRubros] = await Promise.all([
+    supabase.from('canales').select('*, rubro:rubros(id, etiqueta, activo)').order('created_at', { ascending: false }),
     supabase.from('referencias').select('codigo, canal_id, activo'),
     supabase.from('contactos').select('canal_ref, created_at').not('canal_ref', 'is', null).limit(5000),
     supabase.from('visitas').select('canal_ref, canal_via, created_at').not('canal_ref', 'is', null).limit(50000),
-    supabase.rpc('admin_listar_usuarios'),
+    supabase.rpc('admin_listar_usuarios_2f'),
+    supabase.from('rubros').select('id, etiqueta, clave, activo').order('etiqueta'),
   ])
 
   const grid = document.getElementById('gridCanales')
+  _rubrosCanales = rRubros.data || []
+  renderRubros()
+  if (rRubros.error) {
+    const msg = document.getElementById('rubrosMsg')
+    msg.textContent = 'No se pudo cargar la lista de rubros: ' + rRubros.error.message
+    msg.classList.add('error')
+  }
   if (rCanales.error) {
     grid.innerHTML = `<div class="empty-state">Error al cargar canales: ${esc(rCanales.error.message)}<br>Verificá tu sesión y permisos (rol admin).</div>`
     document.getElementById('canalesFiltroResumen').textContent = 'No se pudieron cargar los canales'
@@ -435,7 +539,7 @@ async function cargarCanales() {
   const refs    = rRefs.data   || []
   const leads   = rLeads.data  || []
   const visitas = rVisitas.data || []
-  const colabs  = (rColabs.data || []).filter(u => u.rol === 'colaborador')
+  const colabs  = rColabs.data || []
 
   // Métricas por canal
   const canalDeRef = {}
@@ -475,6 +579,8 @@ async function cargarCanales() {
   document.getElementById('kCanales').textContent    = canales.length
   document.getElementById('kCanalesSub').textContent = `${activos} activo${activos === 1 ? '' : 's'}`
   document.getElementById('kRefs').textContent       = refs.filter(r => r.activo).length
+  const sinRubro = canales.filter(c => !esActivo(c.tipo) && !c.rubro_id).length
+  document.getElementById('kSinRubro').textContent   = sinRubro
   document.getElementById('kClicks').textContent     = visitas.length
   const clicksQr = visitas.filter(v => v.canal_via === 'qr').length
   document.getElementById('kClicksSub').textContent  = `${clicksQr} por QR · ${visitas.length - clicksQr} por link`
@@ -545,7 +651,8 @@ function canalesFiltrados() {
     if (_filtrosCanales.buscar) {
       const texto = [
         c.nombre, c.codigo, c.email, c.ciudad, c.provincia, c.tipo, TIPO_LABEL[c.tipo],
-        c.tipo_acceso, c.destino, c.direccion, c.localidad, c.ubicacion
+        c.tipo_acceso, c.destino, c.direccion, c.localidad, c.ubicacion,
+        Array.isArray(c.rubro) ? c.rubro[0]?.etiqueta : c.rubro?.etiqueta
       ].map(campoFiltro).join(' ')
       if (!texto.includes(_filtrosCanales.buscar)) return false
     }
@@ -556,6 +663,7 @@ function canalesFiltrados() {
 function renderCanalCard(c) {
   const st    = _statsCanales[c.id] || { clicks: 0, clicksQr: 0, clicksLink: 0, leads: 0, refs: 0, ultimo: null }
   const colab = _colabsCanales.find(x => x.id === c.user_id)
+  const rubro = Array.isArray(c.rubro) ? c.rubro[0] : c.rubro
   const ultimo = st.ultimo
     ? new Date(st.ultimo).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
     : '—'
@@ -567,6 +675,9 @@ function renderCanalCard(c) {
           <div class="cc-nombre">${esc(c.nombre)}</div>
           <span class="cc-codigo">${esc(c.codigo)}</span>
           ${c.ciudad ? `<span style="font-size:0.66rem; color:var(--gris-claro); display:block; margin-top:0.25rem;">📍 ${esc(c.ciudad)}${c.provincia ? ', ' + esc(c.provincia) : ''}</span>` : ''}
+          ${!esActivo(c.tipo)
+            ? `<span class="rubro-badge ${rubro ? '' : 'faltante'}" style="margin-top:.45rem;">${rubro ? esc(rubro.etiqueta) : 'Sin rubro'}</span>`
+            : ''}
         </div>
         <span class="tipo-badge tipo-${esc(c.tipo)}">${TIPO_LABEL[c.tipo] || esc(c.tipo)}</span>
       </div>
@@ -589,14 +700,14 @@ function renderCanalCard(c) {
         <a href="nuevo-canal.html?id=${c.id}" class="btn-cc">Editar</a>
         <a href="contactos.html" class="btn-cc">Ver consultas</a>
         <button class="btn-cc danger" onclick="toggleActivo('${c.id}', ${c.activo})">${c.activo ? 'Desactivar' : 'Activar'}</button>
-        <button class="btn-cc danger" onclick="eliminarCanal('${c.id}', '${esc(c.nombre)}')">Archivar</button>
+        <button class="btn-cc danger" onclick="eliminarCanal('${c.id}')">Archivar</button>
       </div>
       <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
         <div>
-          <div style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris-claro);margin-bottom:.25rem;">Colaborador</div>
+          <div style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris-claro);margin-bottom:.25rem;">Titular</div>
           ${colab
-            ? `<div style="font-size:.75rem;color:var(--blanco);">${esc(colab.email)}</div>`
-            : `<div style="font-size:.72rem;color:var(--gris-claro);">Sin colaborador asignado</div>`
+            ? `<div style="font-size:.75rem;color:var(--blanco);">${esc(colab.nombre_completo || 'Perfil incompleto')}</div><div style="font-size:.66rem;color:var(--gris-claro);margin-top:.18rem;">${esc(colab.email)}</div>`
+            : `<div style="font-size:.72rem;color:var(--gris-claro);">Sin titular asignado</div>`
           }
         </div>
         <a href="nuevo-canal.html?id=${c.id}" class="btn-cc" style="white-space:nowrap;font-size:.65rem;">${colab ? 'Ver acceso' : '+ Asignar'}</a>
@@ -645,7 +756,8 @@ function initFiltrosCanales() {
 // ── Archivar canal ────────────────────────────────────────
 // Regla de negocio: los códigos impresos NO se borran ni se reciclan.
 // Se desactivan el canal y todos sus puntos QR; visitas y consultas quedan intactas.
-window.eliminarCanal = async (id, nombre) => {
+window.eliminarCanal = async id => {
+  const nombre = _canales.find(c => c.id === id)?.nombre || 'este canal'
   if (!confirm(`¿Archivar el canal "${nombre}" y desactivar todos sus puntos QR?\n\nLos códigos impresos se conservan (no se reciclan) pero dejan de estar activos. Las consultas y visitas registradas NO se borran.`)) return
   // Orden M1: el trigger archiva la principal junto con el canal.
   const { error } = await supabase.from('canales').update({ activo: false }).eq('id', id)

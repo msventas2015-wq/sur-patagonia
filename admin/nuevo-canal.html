@@ -390,15 +390,22 @@
             </select>
             <div class="nc-hint" id="tipoHint">Canal activo — puede vender múltiples proyectos con links independientes.</div>
           </div>
+          <div class="nc-field nc-field-full" id="rubroWrap" style="display:none;">
+            <label class="admin-label">Rubro comercial *</label>
+            <select id="rubroId" class="admin-input">
+              <option value="">Cargando rubros…</option>
+            </select>
+            <div class="nc-hint" id="rubroHint">Obligatorio para nuevos canales pasivos.</div>
+          </div>
           <div class="nc-field nc-field-full">
             <label class="admin-label">Código único</label>
             <input type="text" id="codigo" class="admin-input" placeholder="Se genera automáticamente" maxlength="72" />
             <div class="nc-code-preview">Código: <span id="slugPreview">—</span></div>
           </div>
-          <div class="nc-field nc-field-full nc-field-email">
-            <label class="admin-label">Email del colaborador *</label>
-            <input type="email" id="email" class="admin-input" placeholder="colaborador@ejemplo.com" required />
-            <div class="nc-hint">Este email identifica al usuario que accede al panel y debe existir en Admin → Usuarios.</div>
+          <div class="nc-field nc-field-full nc-field-email" id="emailTitularWrap">
+            <label class="admin-label">Email de acceso del titular *</label>
+            <input type="email" id="email" class="admin-input" placeholder="titular@ejemplo.com" />
+            <div class="nc-hint">Es la credencial de acceso. Para modificarla después, usá Admin → Usuarios.</div>
           </div>
           <div class="nc-field nc-field-full">
             <label class="admin-label">Teléfono / WhatsApp</label>
@@ -482,18 +489,33 @@
       <!-- ── 5. ACCESO ────────────────────────────────── -->
       <section class="nc-section" id="seccionAcceso">
         <div class="nc-section-head"><h3 class="nc-section-title">Acceso</h3></div>
+        <div class="nc-field" style="margin-bottom:1rem;">
+          <label class="nc-toggle"><input type="checkbox" id="sinTitular"> Guardar este canal sin titular</label>
+          <div class="nc-hint">Usalo para canales propios de Sur Patagonia que no tienen una persona asociada al fee.</div>
+        </div>
         <div id="accesoExistente" class="nc-access-state" style="display:none;">
           <span class="nc-status-dot"></span>
           <div>
             <div id="accesoEmail" class="nc-access-email"></div>
+            <div id="accesoPerfil" class="nc-hint"></div>
             <div class="nc-hint">Acceso activo · Para cambiar la contraseña usá <a href="usuarios.html" style="color:#c9a84c;">Admin → Usuarios</a>.</div>
           </div>
         </div>
         <div id="accesoNuevo">
-          <div class="nc-field">
-            <label class="admin-label">Contraseña temporal</label>
-            <input type="password" id="accesoPass" class="admin-input" placeholder="Mínimo 6 caracteres" />
-            <div class="nc-hint">Solo completá este campo si el usuario todavía no existe en el sistema.</div>
+          <div class="nc-grid">
+            <div class="nc-field">
+              <label class="admin-label">Nombre y apellido</label>
+              <input type="text" id="titularNombre" class="admin-input" maxlength="160" placeholder="Solo si el usuario es nuevo" />
+            </div>
+            <div class="nc-field">
+              <label class="admin-label">DNI</label>
+              <input type="text" id="titularDni" class="admin-input" inputmode="numeric" maxlength="12" placeholder="Solo números" />
+            </div>
+            <div class="nc-field nc-field-full">
+              <label class="admin-label">Contraseña temporal</label>
+              <input type="password" id="accesoPass" class="admin-input" placeholder="Mínimo 6 caracteres" />
+              <div class="nc-hint">Nombre, DNI y contraseña son obligatorios únicamente si el email todavía no existe en Usuarios.</div>
+            </div>
           </div>
         </div>
         <input type="hidden" id="userId" value="" />
@@ -599,6 +621,11 @@ let _canalId            = editId || null
 let _proyectos          = []
 let _destinosEditables  = []
 let _referenciasPorId   = new Map()
+let _rubros             = []
+let _esLegacyPasivoSinRubro = false
+let _usuarioAsignadoOriginal = null
+let _emailCanalOriginal = null
+let _colaboradorEmailOriginal = null
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -825,12 +852,29 @@ function actualizarSeccionReferencias() {
   document.getElementById('refProyectoLabel').textContent = activo ? 'Proyecto' : 'Destino'
 }
 
+function actualizarEstadoTitular() {
+  const sinTitular = document.getElementById('sinTitular').checked
+  const tieneUsuario = Boolean(document.getElementById('userId').value)
+  document.getElementById('emailTitularWrap').style.display = sinTitular ? 'none' : ''
+  document.getElementById('accesoExistente').style.display = !sinTitular && tieneUsuario ? '' : 'none'
+  document.getElementById('accesoNuevo').style.display = !sinTitular && !tieneUsuario ? '' : 'none'
+}
+
+document.getElementById('sinTitular').addEventListener('change', actualizarEstadoTitular)
+document.getElementById('titularDni').addEventListener('input', event => {
+  event.target.value = event.target.value.replace(/\D/g, '')
+})
+
 // ── Tipo change ───────────────────────────────────────────
 window.onTipoChange = function() {
   const tipo   = document.getElementById('tipo').value
   const activo = esActivo(tipo)
 
   document.getElementById('seccionDestino').style.display  = activo ? 'none' : ''
+  document.getElementById('rubroWrap').style.display = activo ? 'none' : ''
+  document.getElementById('rubroHint').textContent = _esLegacyPasivoSinRubro
+    ? 'Canal heredado sin rubro: podés guardar otros cambios, pero conviene completarlo para la futura segmentación.'
+    : 'Obligatorio para nuevos canales pasivos.'
   // Acceso externo siempre visible — cualquier canal puede tener colaborador
 
   const hints = {
@@ -973,6 +1017,24 @@ async function restaurarDestinoCanalYReferencias(canalId, canalAntes, referencia
   return canalError || referenciaError
 }
 
+// ── Rubros administrables ─────────────────────────────────
+async function cargarRubros() {
+  const { data, error } = await supabase
+    .from('rubros')
+    .select('id, etiqueta, activo')
+    .eq('activo', true)
+    .order('etiqueta')
+  const selector = document.getElementById('rubroId')
+  if (error) {
+    selector.innerHTML = '<option value="">No se pudieron cargar los rubros</option>'
+    console.error('No se pudieron cargar los rubros:', error.message)
+    return
+  }
+  _rubros = data || []
+  selector.innerHTML = '<option value="">— Seleccioná un rubro —</option>' +
+    _rubros.map(r => `<option value="${esc(r.id)}">${esc(r.etiqueta)}</option>`).join('')
+}
+
 // ── Cargar destinos disponibles (proyectos + propiedades) ─
 async function cargarDestinos() {
   // Proyectos: intentamos con slug (disponible después de correr el SQL de slugs)
@@ -1079,6 +1141,7 @@ async function cargarDestinos() {
 
   actualizarDestinoPreview()
 }
+const rubrosListos = cargarRubros()
 const destinosListos = cargarDestinos()
 
 // ── REFERENCIAS ───────────────────────────────────────────
@@ -1526,6 +1589,10 @@ if (editId) {
   const { data: c } = await supabase.from('canales').select('*').eq('id', editId).single()
   if (c) {
     _canalId = c.id
+    _usuarioAsignadoOriginal = c.user_id || null
+    _emailCanalOriginal = c.email || null
+    _colaboradorEmailOriginal = c.colaborador_email || null
+    _esLegacyPasivoSinRubro = !esActivo(c.tipo) && !c.rubro_id
     document.getElementById('nombre').value   = c.nombre   || ''
     document.getElementById('saveBarNombre').textContent = c.nombre || 'Editar canal'
     document.getElementById('codigo').value   = c.codigo   || ''
@@ -1540,6 +1607,8 @@ if (editId) {
       document.getElementById('coords').value = `${c.latitud}, ${c.longitud}`
     }
     document.getElementById('slugPreview').textContent = c.codigo || '—'
+    await rubrosListos
+    document.getElementById('rubroId').value = c.rubro_id || ''
 
     // Congelar campo código — el QR físico es permanente y no puede modificarse
     const _codigoInput = document.getElementById('codigo')
@@ -1554,12 +1623,21 @@ if (editId) {
       document.getElementById('accesoExistente').style.display = ''
       document.getElementById('accesoNuevo').style.display = 'none'
       // Buscar email del usuario
-      const { data: usuarios } = await supabase.rpc('admin_listar_usuarios')
+      const { data: usuarios } = await supabase.rpc('admin_listar_usuarios_2f')
       const u = usuarios?.find(x => x.id === c.user_id)
       document.getElementById('accesoEmail').textContent = u ? u.email : c.user_id
+      if (u?.email) document.getElementById('email').value = u.email
+      document.getElementById('accesoPerfil').textContent = u?.nombre_completo && u?.dni
+        ? `${u.nombre_completo} · DNI ${u.dni}`
+        : 'Perfil de titular incompleto: completalo desde Admin → Usuarios.'
+      document.getElementById('email').readOnly = true
+      document.getElementById('email').title = 'El email de acceso se cambia desde Admin → Usuarios'
+    } else {
+      document.getElementById('sinTitular').checked = true
     }
 
     onTipoChange()
+    actualizarEstadoTitular()
 
     if (!esActivo(c.tipo)) {
       await destinosListos
@@ -1585,6 +1663,7 @@ if (editId) {
   }
 } else {
   onTipoChange()
+  actualizarEstadoTitular()
 }
 
 // ── Guardar canal ─────────────────────────────────────────
@@ -1603,74 +1682,15 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const activo_v  = esActivo(tipo)
   const tipoAcceso = activo_v ? 'activo' : 'pasivo'
   const destino   = activo_v ? '/' : getDestinoUrl()
+  const rubroId = activo_v ? null : (document.getElementById('rubroId').value || null)
 
-  // Datos de acceso externo — usa el mismo email de Contacto y notificaciones
-  const emailAcceso = document.getElementById('email').value.trim()
-  const passAcceso  = document.getElementById('accesoPass').value
-
-  if (!emailAcceso) {
-    alert('El email del colaborador es obligatorio para crear o editar un canal.')
+  if (!activo_v && !rubroId && (!_canalId || !_esLegacyPasivoSinRubro)) {
+    alert('Elegí el rubro comercial antes de guardar este canal pasivo.')
     return
   }
 
-  if (passAcceso && passAcceso.length < 6) {
-    alert('La contraseña temporal debe tener al menos 6 caracteres.')
-    return
-  }
-
-  let userId = null
-
-  // El email es la identidad del colaborador: siempre se resuelve antes de guardar.
-  const { data: todosUsuarios, error: usuariosError } = await supabase.rpc('admin_listar_usuarios')
-  if (usuariosError) {
-    alert('No se pudo verificar el usuario colaborador: ' + usuariosError.message)
-    return
-  }
-
-  const usuarioExistente = todosUsuarios?.find(u =>
-    String(u.email || '').trim().toLowerCase() === emailAcceso.toLowerCase()
-  ) || null
-
-  if (usuarioExistente && usuarioExistente.rol !== 'colaborador') {
-    alert(`El email ${emailAcceso} ya pertenece a un usuario con rol "${usuarioExistente.rol || 'sin rol'}". Cambiá su rol a colaborador desde Usuarios antes de asignarlo al canal.`)
-    return
-  }
-
-  if (usuarioExistente) {
-    userId = usuarioExistente.id
-  } else {
-    if (!passAcceso) {
-      alert(`No existe ningún usuario con el email ${emailAcceso}. Crealo primero desde Admin > Usuarios, o ingresá una contraseña temporal para crearlo ahora.`)
-      return
-    }
-
-    const { data: altaData, error: altaError } = await supabase.functions.invoke(
-      'admin-crear-usuario',
-      {
-        body: {
-          email: emailAcceso,
-          password: passAcceso,
-          rol: 'colaborador',
-          tipo_acceso: tipoAcceso,
-          // El destino del canal no otorga permisos de desarrollador.
-          proyecto_slug: null,
-        },
-      }
-    )
-
-    if (altaError || !altaData?.user_id) {
-      const detalle = altaData?.error || await mensajeErrorFuncion(
-        altaError,
-        'el servicio no devolvió el identificador del usuario.'
-      )
-      alert('No se pudo crear el usuario colaborador: ' + detalle)
-      return
-    }
-
-    userId = altaData.user_id
-  }
-
-  // Coordenadas: acepta el formato que copia Google Maps ("lat, lng")
+  // Validar primero todos los datos locales. Así no se crea una cuenta Auth si
+  // el canal todavía tiene un error de formulario.
   let latitud = null, longitud = null
   const coordsTxt = document.getElementById('coords').value.trim()
   if (coordsTxt) {
@@ -1679,12 +1699,119 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     else { alert('Las coordenadas no tienen formato válido. Ejemplo: -40.1572, -71.3534'); return }
   }
 
-  let colorIndexNuevo=null
-  if(!_canalId){try{colorIndexNuevo=await siguienteColorIndex()}catch(e){alert('No se pudo asignar una identidad de color al canal: '+e.message);return}}
+  let colorIndexNuevo = null
+  if (!_canalId) {
+    try {
+      colorIndexNuevo = await siguienteColorIndex()
+    } catch (error) {
+      alert('No se pudo asignar una identidad de color al canal: ' + error.message)
+      return
+    }
+  }
+
+  const sinTitular = document.getElementById('sinTitular').checked
+  const emailAcceso = document.getElementById('email').value.trim()
+  const passAcceso  = document.getElementById('accesoPass').value
+  const titularNombre = document.getElementById('titularNombre').value.trim().replace(/\s+/g, ' ')
+  const titularDni = document.getElementById('titularDni').value.replace(/\D/g, '')
+
+  if (!sinTitular && !emailAcceso) {
+    alert('Ingresá el email de acceso del titular o marcá que el canal no tiene titular.')
+    return
+  }
+
+  if (!sinTitular && passAcceso && passAcceso.length < 6) {
+    alert('La contraseña temporal debe tener al menos 6 caracteres.')
+    return
+  }
+
+  if (sinTitular && _usuarioAsignadoOriginal && !confirm('Este canal tiene un titular asignado. ¿Querés quitar esa vinculación y guardarlo sin titular?')) return
+
+  let userId = null
+  let usuarioCreadoEnEsteGuardado = false
+
+  if (!sinTitular) {
+    // El email es la credencial del titular: siempre se resuelve antes de guardar.
+    const { data: todosUsuarios, error: usuariosError } = await supabase.rpc('admin_listar_usuarios_2f')
+    if (usuariosError) {
+      alert('No se pudo verificar el usuario titular: ' + usuariosError.message)
+      return
+    }
+
+    const usuarioExistente = todosUsuarios?.find(u =>
+      String(u.email || '').trim().toLowerCase() === emailAcceso.toLowerCase()
+    ) || null
+
+    if (usuarioExistente && usuarioExistente.rol !== 'colaborador') {
+      alert(`El email ${emailAcceso} ya pertenece a un usuario con rol "${usuarioExistente.rol || 'sin rol'}". Cambiá su rol a colaborador desde Usuarios antes de asignarlo al canal.`)
+      return
+    }
+
+    if (usuarioExistente) {
+      const yaEstabaAsignado = _usuarioAsignadoOriginal === usuarioExistente.id
+      if ((!usuarioExistente.nombre_completo || !usuarioExistente.dni) && !yaEstabaAsignado) {
+        alert(`El usuario ${emailAcceso} tiene el perfil de titular incompleto. Completá nombre y DNI desde Admin > Usuarios antes de asignarlo.`)
+        return
+      }
+      userId = usuarioExistente.id
+    } else {
+      if (!passAcceso) {
+        alert(`No existe ningún usuario con el email ${emailAcceso}. Crealo primero desde Admin > Usuarios, o completá nombre, DNI y contraseña temporal para crearlo ahora.`)
+        return
+      }
+      if (titularNombre.length < 2 || titularNombre.length > 160) {
+        alert('Completá el nombre y apellido del nuevo titular.')
+        return
+      }
+      if (!/^\d{6,12}$/.test(titularDni)) {
+        alert('El DNI del nuevo titular debe tener entre 6 y 12 números.')
+        return
+      }
+
+      const { data: altaData, error: altaError } = await supabase.functions.invoke(
+        'admin-crear-usuario',
+        {
+          body: {
+            nombre: titularNombre,
+            dni: titularDni,
+            email: emailAcceso,
+            password: passAcceso,
+            rol: 'colaborador',
+            tipo_acceso: tipoAcceso,
+            // El destino del canal no otorga permisos de desarrollador.
+            proyecto_slug: null,
+          },
+        }
+      )
+
+      if (altaError || !altaData?.user_id) {
+        const detalle = altaData?.error || await mensajeErrorFuncion(
+          altaError,
+          'el servicio no devolvió el identificador del usuario.'
+        )
+        alert('No se pudo crear el usuario titular: ' + detalle)
+        return
+      }
+
+      userId = altaData.user_id
+      usuarioCreadoEnEsteGuardado = true
+    }
+  }
+
+  async function compensarAltaUsuario() {
+    if (!usuarioCreadoEnEsteGuardado || !userId) return ''
+    const { error: cleanupError } = await supabase.rpc('admin_eliminar_usuario', { p_user_id: userId })
+    return cleanupError
+      ? ` La cuenta nueva no pudo revertirse: ${cleanupError.message}`
+      : ' La cuenta nueva fue revertida.'
+  }
+
+  const preservarEmailLegacy = sinTitular && _canalId && !_usuarioAsignadoOriginal
   const payload = {
     nombre, codigo, tipo,
     activo:   document.getElementById('activo').checked,
-    email:    document.getElementById('email').value.trim()    || null,
+    email:    sinTitular ? (preservarEmailLegacy ? _emailCanalOriginal : null) : emailAcceso,
+    colaborador_email: sinTitular ? (preservarEmailLegacy ? _colaboradorEmailOriginal : null) : emailAcceso,
     telefono: document.getElementById('telefono').value.trim() || null,
     notas:    document.getElementById('notas').value.trim()    || null,
     ciudad:    document.getElementById('ciudad').value.trim()   || null,
@@ -1692,6 +1819,7 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     latitud, longitud,
     destino,
     user_id:  userId,
+    rubro_id: rubroId,
   }
   if(!_canalId)payload.color_index=colorIndexNuevo
 
@@ -1706,9 +1834,10 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
       supabase.from('referencias').select('id, destino').eq('canal_id', _canalId),
     ])
     if (canalPrevioError || refsPreviasError) {
+      const compensacion = await compensarAltaUsuario()
       alert(
         'No se pudo congelar el estado previo del canal. No se guardó ningún cambio: ' +
-        (canalPrevioError?.message || refsPreviasError?.message)
+        (canalPrevioError?.message || refsPreviasError?.message) + compensacion
       )
       return
     }
@@ -1724,7 +1853,8 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
 
   if (error) {
-    alert('Error al guardar: ' + error.message)
+    const compensacion = await compensarAltaUsuario()
+    alert('Error al guardar: ' + error.message + compensacion)
     return
   }
 
@@ -1745,10 +1875,24 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
 
   // Reflejar la vinculación confirmada en el formulario.
-  document.getElementById('userId').value = userId
-  document.getElementById('accesoExistente').style.display = ''
-  document.getElementById('accesoNuevo').style.display = 'none'
-  document.getElementById('accesoEmail').textContent = emailAcceso
+  document.getElementById('userId').value = userId || ''
+  document.getElementById('sinTitular').checked = !userId
+  if (userId) {
+    document.getElementById('email').readOnly = true
+    document.getElementById('accesoEmail').textContent = emailAcceso
+    document.getElementById('accesoPerfil').textContent = titularNombre && titularDni
+      ? `${titularNombre} · DNI ${titularDni}`
+      : 'Perfil administrado desde Admin → Usuarios.'
+  } else {
+    document.getElementById('email').readOnly = false
+    document.getElementById('email').title = ''
+    if (_usuarioAsignadoOriginal) document.getElementById('email').value = ''
+  }
+  actualizarEstadoTitular()
+  _usuarioAsignadoOriginal = userId || null
+  _emailCanalOriginal = payload.email
+  _colaboradorEmailOriginal = payload.colaborador_email
+  if (rubroId) _esLegacyPasivoSinRubro = false
 
   // Para canales pasivos: leer la principal creada por la base y sincronizar el destino común.
   if (!activo_v) {

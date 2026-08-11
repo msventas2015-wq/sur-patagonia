@@ -169,6 +169,19 @@
     .modal-acciones .btn-cancel:hover { border-color: #555; }
     .modal-err { font-size: .72rem; color: #e07070; margin-top: .5rem; display: none; }
     .modal-err.visible { display: block; }
+    .perfil-nombre { font-size: .8rem; font-weight: 600; color: var(--blanco); }
+    .perfil-dni { margin-top: .2rem; font-size: .68rem; color: var(--gris-claro); }
+    .perfil-faltante {
+      display: inline-block; padding: .18rem .55rem; border-radius: 999px;
+      border: 1px solid rgba(224,112,112,.3); background: rgba(224,112,112,.08);
+      color: #e07070; font-size: .58rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .modal-aviso {
+      margin: 0 0 1rem; padding: .75rem .85rem; border-radius: 8px;
+      border: 1px solid rgba(201,168,76,.28); background: rgba(201,168,76,.06);
+      color: #d9c57f; font-size: .72rem; line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -274,6 +287,17 @@
 
       <div class="form-row">
         <div class="f-group">
+          <label>Nombre y apellido *</label>
+          <input type="text" id="uNombre" class="admin-input" maxlength="160" placeholder="Nombre completo" />
+        </div>
+        <div class="f-group">
+          <label>DNI *</label>
+          <input type="text" id="uDni" class="admin-input" inputmode="numeric" maxlength="12" placeholder="Solo números" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="f-group">
           <label>Email *</label>
           <input type="email" id="uEmail" class="admin-input" placeholder="usuario@email.com" />
         </div>
@@ -334,16 +358,17 @@
         <table class="tabla-admin tabla-usuarios" style="width:100%;">
           <thead>
             <tr>
+              <th>Titular</th>
               <th>Email</th>
               <th>Rol</th>
               <th>Tipo acceso</th>
-              <th>Canal asignado</th>
+              <th>Canales asignados</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody id="tbodyUsuarios">
-            <tr><td colspan="6"><div class="empty-state">Cargando usuarios…</div></td></tr>
+            <tr><td colspan="7"><div class="empty-state">Cargando usuarios…</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -373,6 +398,49 @@
   </div>
 </div>
 
+<!-- ── MODAL EDITAR PERFIL PRIVADO ── -->
+<div class="modal-overlay" id="modalPerfil">
+  <div class="modal-box">
+    <div class="modal-titulo">Editar titular</div>
+    <div class="modal-sub" id="modalPerfilSub">—</div>
+    <div class="modal-grupo">
+      <label>Nombre y apellido</label>
+      <input type="text" id="modalPerfilNombre" class="admin-input" maxlength="160" />
+    </div>
+    <div class="modal-grupo">
+      <label>DNI</label>
+      <input type="text" id="modalPerfilDni" class="admin-input" inputmode="numeric" maxlength="12" />
+    </div>
+    <div class="modal-err" id="modalPerfilErr"></div>
+    <div class="modal-acciones">
+      <button class="btn-cancel" onclick="cerrarModalPerfil()">Cancelar</button>
+      <button class="btn-primary" id="btnModalPerfilGuardar" onclick="guardarPerfil()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL CAMBIAR CREDENCIAL DE EMAIL ── -->
+<div class="modal-overlay" id="modalEmail">
+  <div class="modal-box">
+    <div class="modal-titulo">Cambiar email de acceso</div>
+    <div class="modal-sub" id="modalEmailSub">—</div>
+    <div class="modal-aviso">Este cambio modifica la credencial con la que la persona inicia sesión. No es un dato de contacto. Confirmá el email nuevo antes de continuar.</div>
+    <div class="modal-grupo">
+      <label>Email nuevo</label>
+      <input type="email" id="modalEmailNuevo" class="admin-input" autocomplete="off" />
+    </div>
+    <div class="modal-grupo">
+      <label>Repetir email nuevo</label>
+      <input type="email" id="modalEmailConfirmacion" class="admin-input" autocomplete="off" />
+    </div>
+    <div class="modal-err" id="modalEmailErr"></div>
+    <div class="modal-acciones">
+      <button class="btn-cancel" onclick="cerrarModalEmail()">Cancelar</button>
+      <button class="btn-primary" id="btnModalEmailGuardar" onclick="guardarEmail()">Cambiar credencial</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { supabase } from '../js/config.js'
 
@@ -389,6 +457,7 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
 
 // ── Helpers ───────────────────────────────────────────────
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+let _usuariosAdmin = []
 
 // ── Proyectos (para asignar a desarrolladores) ────────────
 let _proyectos = []
@@ -422,19 +491,23 @@ onRolChange()
 // ── Cargar lista de usuarios ──────────────────────────────
 async function cargarUsuarios() {
   const [{ data: usuarios, error }, { data: canales }, { data: proyectosData }] = await Promise.all([
-    supabase.rpc('admin_listar_usuarios'),
+    supabase.rpc('admin_listar_usuarios_2f'),
     supabase.from('canales').select('id, nombre, codigo, user_id').not('user_id', 'is', null),
     supabase.from('proyectos').select('id, nombre, slug').order('nombre'),
   ])
   if (proyectosData) _proyectos = proyectosData
+  _usuariosAdmin = usuarios || []
 
   const tbody = document.getElementById('tbodyUsuarios')
-  if (error) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error: ${esc(error.message)}</div></td></tr>`; return }
-  if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
+  if (error) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Error: ${esc(error.message)}</div></td></tr>`; return }
+  if (!usuarios?.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">No hay usuarios aún.</div></td></tr>`; return }
 
-  // mapa userId → canal
-  const canalDeUser = {}
-  ;(canales || []).forEach(c => { canalDeUser[c.user_id] = c })
+  // Un titular puede administrar más de un canal.
+  const canalesDeUser = {}
+  ;(canales || []).forEach(c => {
+    if (!canalesDeUser[c.user_id]) canalesDeUser[c.user_id] = []
+    canalesDeUser[c.user_id].push(c)
+  })
 
   const myId = session.user.id
 
@@ -442,7 +515,7 @@ async function cargarUsuarios() {
     const rolActual  = u.rol || ''
     const esColab    = rolActual === 'colaborador'
     const tipoAcceso = u.tipo_acceso || 'pasivo'
-    const canal      = canalDeUser[u.id]
+    const canalesUsuario = canalesDeUser[u.id] || []
 
     const proyectoSlug = u.proyecto_slug || ''
     const proyectoOpts = _proyectos.map(p =>
@@ -465,12 +538,20 @@ async function cargarUsuarios() {
       </select>` : ''}
     ` : `<span style="color:var(--gris-claro);font-size:.75rem;">—</span>`
 
-    const canalHtml = canal
-      ? `<a href="nuevo-canal.html?id=${esc(canal.id)}" style="font-size:.75rem;color:var(--accent);text-decoration:none;" title="${esc(canal.codigo)}">${esc(canal.nombre)}</a>`
+    const canalesHtml = canalesUsuario.length
+      ? `<div class="canal-chips">${canalesUsuario.map(canal =>
+          `<a class="canal-chip" href="nuevo-canal.html?id=${esc(canal.id)}" title="${esc(canal.codigo)}" style="text-decoration:none;">${esc(canal.nombre)}</a>`
+        ).join('')}</div>`
       : `<span style="font-size:.75rem;color:var(--gris-claro);">—</span>`
+
+    const perfilCompleto = Boolean(u.nombre_completo && u.dni)
+    const perfilHtml = perfilCompleto
+      ? `<div class="perfil-nombre">${esc(u.nombre_completo)}</div><div class="perfil-dni">DNI ${esc(u.dni)}</div>`
+      : '<span class="perfil-faltante">Perfil incompleto</span>'
 
     return `
     <tr>
+      <td>${perfilHtml}</td>
       <td>${esc(u.email)}${u.id === myId ? ' <span style="font-size:.65rem;color:var(--dorado);">(vos)</span>' : ''}</td>
       <td>
         <select class="admin-input" style="padding:.3rem .5rem;font-size:.75rem;width:auto;"
@@ -482,12 +563,14 @@ async function cargarUsuarios() {
         </select>
       </td>
       <td>${accesoHtml}</td>
-      <td>${canalHtml}</td>
+      <td>${canalesHtml}</td>
       <td>
         <span class="estado-dot ${u.desactivado ? 'inactivo' : 'activo'}"></span>
         <span style="font-size:.75rem;color:var(--gris-claro);">${u.desactivado ? 'Inactivo' : 'Activo'}</span>
       </td>
       <td>
+        <button class="btn-tbl" onclick="abrirModalPerfil('${esc(u.id)}')">Editar titular</button>
+        <button class="btn-tbl" onclick="abrirModalEmail('${esc(u.id)}')">Cambiar email</button>
         <button class="btn-tbl" onclick="abrirModalPass('${esc(u.id)}', '${esc(u.email)}')">Cambiar contraseña</button>
         <button class="btn-tbl ${u.desactivado ? '' : 'danger'}" onclick="toggleUsuario('${esc(u.id)}', ${u.desactivado})">
           ${u.desactivado ? 'Activar' : 'Desactivar'}
@@ -501,6 +584,8 @@ cargarUsuarios()
 
 // ── Crear usuario ─────────────────────────────────────────
 document.getElementById('btnCrear').addEventListener('click', async () => {
+  const nombre  = document.getElementById('uNombre').value.trim().replace(/\s+/g, ' ')
+  const dni     = document.getElementById('uDni').value.replace(/\D/g, '')
   const email   = document.getElementById('uEmail').value.trim()
   const rol     = document.getElementById('uRol').value
   const pass    = document.getElementById('uPassword').value
@@ -509,6 +594,8 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
 
   mostrar('', '')
 
+  if (nombre.length < 2) { mostrar('Completá el nombre y apellido del titular.', 'err'); return }
+  if (!/^\d{6,12}$/.test(dni)) { mostrar('El DNI debe tener entre 6 y 12 números.', 'err'); return }
   if (!email || !pass) { mostrar('Completá email y contraseña.', 'err'); return }
   if (pass.length < 6) { mostrar('La contraseña debe tener al menos 6 caracteres.', 'err'); return }
   if (pass !== pass2)  { mostrar('Las contraseñas no coinciden.', 'err'); return }
@@ -528,16 +615,14 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
   btn.disabled    = true
   btn.textContent = 'Creando…'
 
-  // La Edge Function desplegada todavía no admite "propietario". Para no
-  // publicar otra función en esta compuerta, esa cuenta nace como pasiva y se
-  // promueve inmediatamente mediante la RPC admin protegida.
-  const tipoAlta = tipoAcceso === 'propietario' ? 'pasivo' : tipoAcceso
   const { data, error } = await supabase.functions.invoke('admin-crear-usuario', {
     body: {
+      nombre,
+      dni,
       email,
       password: pass,
       rol,
-      tipo_acceso: tipoAlta,
+      tipo_acceso: tipoAcceso,
       proyecto_slug: proyectoSlug,
     },
   })
@@ -559,26 +644,6 @@ document.getElementById('btnCrear').addEventListener('click', async () => {
     mostrar('Error: el servicio no devolvió el identificador del usuario creado.', 'err')
     btn.disabled = false; btn.textContent = 'Crear usuario'
     return
-  }
-
-  if (rol === 'colaborador' && tipoAcceso === 'propietario') {
-    const { error: tipoError } = await supabase.rpc(
-      'admin_set_tipo_acceso',
-      { p_user_id: userId, p_tipo: 'propietario' }
-    )
-    if (tipoError) {
-      const { error: cleanupError } = await supabase.rpc(
-        'admin_eliminar_usuario',
-        { p_user_id: userId }
-      )
-      const limpieza = cleanupError
-        ? ` La cuenta temporal no pudo eliminarse: ${cleanupError.message}`
-        : ' La cuenta temporal fue eliminada.'
-      mostrar(`Error al habilitar el panel de propietario: ${tipoError.message}.${limpieza}`, 'err')
-      btn.disabled = false
-      btn.textContent = 'Crear usuario'
-      return
-    }
   }
 
   const esDesarrollador = rol === 'colaborador' && document.getElementById('uTipoAcceso')?.value === 'desarrollador'
@@ -633,7 +698,6 @@ window.eliminarUsuario = async (id, email) => {
   }
   alert(`✓ Usuario ${email} eliminado.`)
   cargarUsuarios()
-  cargarCanales()
 }
 
 // ── Toggle activo ─────────────────────────────────────────
@@ -664,6 +728,129 @@ window.cambiarProyectoSlug = async (userId, slug) => {
   if (!slug) return
   const { error } = await supabase.rpc('admin_set_proyecto_slug', { p_user_id: userId, p_slug: slug })
   if (error) alert('Error al asignar proyecto: ' + error.message)
+}
+
+// ── Modal editar titular ──────────────────────────────────
+let _perfilUserId = null
+
+window.abrirModalPerfil = userId => {
+  const usuario = _usuariosAdmin.find(u => u.id === userId)
+  if (!usuario) { alert('El usuario ya no está en la lista. Recargá la página.'); return }
+  _perfilUserId = userId
+  document.getElementById('modalPerfilSub').textContent = usuario.email
+  document.getElementById('modalPerfilNombre').value = usuario.nombre_completo || ''
+  document.getElementById('modalPerfilDni').value = usuario.dni || ''
+  const errEl = document.getElementById('modalPerfilErr')
+  errEl.textContent = ''; errEl.classList.remove('visible')
+  document.getElementById('modalPerfil').classList.add('visible')
+  setTimeout(() => document.getElementById('modalPerfilNombre').focus(), 80)
+}
+
+window.cerrarModalPerfil = () => {
+  document.getElementById('modalPerfil').classList.remove('visible')
+  _perfilUserId = null
+}
+
+window.guardarPerfil = async () => {
+  const nombre = document.getElementById('modalPerfilNombre').value.trim().replace(/\s+/g, ' ')
+  const dni = document.getElementById('modalPerfilDni').value.replace(/\D/g, '')
+  const errEl = document.getElementById('modalPerfilErr')
+  const btn = document.getElementById('btnModalPerfilGuardar')
+  errEl.textContent = ''; errEl.classList.remove('visible')
+
+  if (nombre.length < 2 || nombre.length > 160) {
+    errEl.textContent = 'El nombre debe tener entre 2 y 160 caracteres.'; errEl.classList.add('visible'); return
+  }
+  if (!/^\d{6,12}$/.test(dni)) {
+    errEl.textContent = 'El DNI debe tener entre 6 y 12 números.'; errEl.classList.add('visible'); return
+  }
+
+  btn.disabled = true; btn.textContent = 'Guardando…'
+  const { error } = await supabase.rpc('admin_guardar_usuario_perfil_2f', {
+    p_user_id: _perfilUserId,
+    p_nombre: nombre,
+    p_dni: dni,
+  })
+  btn.disabled = false; btn.textContent = 'Guardar'
+  if (error) {
+    errEl.textContent = error.code === '23505' ? 'Ese DNI ya pertenece a otro titular.' : error.message
+    errEl.classList.add('visible')
+    return
+  }
+  cerrarModalPerfil()
+  cargarUsuarios()
+}
+
+// ── Modal cambiar email de acceso ─────────────────────────
+let _emailUserId = null
+let _emailActual = ''
+
+window.abrirModalEmail = userId => {
+  const usuario = _usuariosAdmin.find(u => u.id === userId)
+  if (!usuario) { alert('El usuario ya no está en la lista. Recargá la página.'); return }
+  _emailUserId = userId
+  _emailActual = usuario.email
+  document.getElementById('modalEmailSub').textContent = `Credencial actual: ${usuario.email}`
+  document.getElementById('modalEmailNuevo').value = ''
+  document.getElementById('modalEmailConfirmacion').value = ''
+  const errEl = document.getElementById('modalEmailErr')
+  errEl.textContent = ''; errEl.classList.remove('visible')
+  document.getElementById('modalEmail').classList.add('visible')
+  setTimeout(() => document.getElementById('modalEmailNuevo').focus(), 80)
+}
+
+window.cerrarModalEmail = () => {
+  document.getElementById('modalEmail').classList.remove('visible')
+  _emailUserId = null
+  _emailActual = ''
+}
+
+async function detalleErrorFuncion(error, fallback) {
+  if (error?.context) {
+    try {
+      const contexto = error.context.clone ? error.context.clone() : error.context
+      const payload = await contexto.json()
+      if (payload?.error) return payload.error
+    } catch (_) {}
+  }
+  return error?.message || fallback
+}
+
+window.guardarEmail = async () => {
+  const nuevo = document.getElementById('modalEmailNuevo').value.trim().toLowerCase()
+  const confirmacion = document.getElementById('modalEmailConfirmacion').value.trim().toLowerCase()
+  const errEl = document.getElementById('modalEmailErr')
+  const btn = document.getElementById('btnModalEmailGuardar')
+  errEl.textContent = ''; errEl.classList.remove('visible')
+
+  if (!nuevo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevo)) {
+    errEl.textContent = 'Ingresá un email válido.'; errEl.classList.add('visible'); return
+  }
+  if (nuevo !== confirmacion) {
+    errEl.textContent = 'Los emails no coinciden.'; errEl.classList.add('visible'); return
+  }
+  if (nuevo === _emailActual.toLowerCase()) {
+    errEl.textContent = 'El email nuevo es igual al actual.'; errEl.classList.add('visible'); return
+  }
+  if (!confirm(`¿Cambiar la credencial de acceso de ${_emailActual} a ${nuevo}?`)) return
+
+  btn.disabled = true; btn.textContent = 'Cambiando…'
+  const { data, error } = await supabase.functions.invoke('admin-actualizar-email', {
+    body: {
+      userId: _emailUserId,
+      newEmail: nuevo,
+      expectedCurrentEmail: _emailActual,
+    },
+  })
+  btn.disabled = false; btn.textContent = 'Cambiar credencial'
+  if (error || !data?.ok) {
+    errEl.textContent = data?.error || await detalleErrorFuncion(error, 'No se pudo cambiar la credencial.')
+    errEl.classList.add('visible')
+    return
+  }
+  cerrarModalEmail()
+  alert('Email de acceso actualizado correctamente.')
+  cargarUsuarios()
 }
 
 // ── Modal cambiar contraseña ──────────────────────────────
@@ -722,13 +909,23 @@ window.ejecutarCambioPass = async () => {
   alert('✓ Contraseña cambiada correctamente.')
 }
 
-// Cerrar modal con Escape
-document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModalPass() })
-// Cerrar al click en overlay
+// Cerrar modales con Escape o al hacer click en el fondo.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return
+  cerrarModalPass()
+  cerrarModalPerfil()
+  cerrarModalEmail()
+})
 document.getElementById('modalPass').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModalPass() })
+document.getElementById('modalPerfil').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModalPerfil() })
+document.getElementById('modalEmail').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModalEmail() })
+document.getElementById('uDni').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '') })
+document.getElementById('modalPerfilDni').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '') })
 
 // ── Helpers ───────────────────────────────────────────────
 function limpiarForm() {
+  document.getElementById('uNombre').value    = ''
+  document.getElementById('uDni').value       = ''
   document.getElementById('uEmail').value     = ''
   document.getElementById('uPassword').value  = ''
   document.getElementById('uPassword2').value = ''
