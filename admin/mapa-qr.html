@@ -647,7 +647,19 @@
       font-weight:900;
       margin-bottom:.55rem;
     }
-    .mobile-list { display:flex; flex-wrap:wrap; gap:.45rem; }
+    .mobile-list {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+      gap:.55rem;
+    }
+    .mobile-callout {
+      width:100%;
+      max-width:none;
+      text-align:left;
+      cursor:pointer;
+    }
+    .mobile-callout::after { display:none; }
+    .mobile-callout.inactive { opacity:.52; }
 
     .generator {
       margin-bottom:1rem;
@@ -1022,7 +1034,7 @@
         </div>
         <div class="map-wrap" id="mapWrap"></div>
         <div class="mobile-band" id="mobileBand">
-          <div class="mobile-title">En circulación</div>
+          <div class="mobile-title">Puntos móviles — fuera del local</div>
           <div class="mobile-list" id="mobileList"></div>
         </div>
       </div>
@@ -1060,7 +1072,8 @@ const state = {
   drawingId: null,
   drawingPlanta: 1,
   drag: null,
-  migrationMissing: false
+  migrationMissing: false,
+  mobilityMigrationMissing: false
 }
 
 const $ = sel => document.querySelector(sel)
@@ -1069,7 +1082,9 @@ const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 const clamp = (v, min = 0, max = 1) => Math.max(min, Math.min(max, Number(v) || 0))
 const pct = v => `${(clamp(v) * 100).toFixed(4)}%`
 const hace30 = () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-const isMobilePoint = ref => String(ref.punto_tipo || '').toLowerCase() === 'movil'
+const isFixedPoint = ref => ref.punto_movilidad === 'fijo'
+const isMobilePoint = ref => ref.punto_movilidad === 'movil'
+const isUnclassifiedPoint = ref => !isFixedPoint(ref) && !isMobilePoint(ref)
 
 function hexToRgba(hex, alpha = 1) {
   const h = String(hex || '').replace('#','')
@@ -1079,9 +1094,9 @@ function hexToRgba(hex, alpha = 1) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
 }
 
-function missingColumn(error) {
+function missingColumn(error, column) {
   const msg = String(error?.message || '').toLowerCase()
-  return msg.includes('mapa_base') || msg.includes('mapa_config') || msg.includes('column')
+  return msg.includes(String(column || '').toLowerCase())
 }
 
 function safeJson(value) {
@@ -1151,7 +1166,7 @@ function metricLabel(value) {
 }
 
 function bestRefId() {
-  const activos = state.refs.filter(r => r.activo !== false && !isMobilePoint(r))
+  const activos = state.refs.filter(r => r.activo !== false)
   let best = null
   let bestValue = 0
   activos.forEach(r => {
@@ -1217,15 +1232,15 @@ async function cargarCanales() {
   let res = await supabase
     .from('canales')
     .select('id,codigo,nombre,tipo,ciudad,provincia,activo,mapa_base')
-    .eq('tipo', 'punto_venta')
+    .not('tipo', 'in', '(inmobiliaria,particular)')
     .order('nombre')
 
-  if (res.error && missingColumn(res.error)) {
+  if (res.error && missingColumn(res.error, 'mapa_base')) {
     state.migrationMissing = true
     res = await supabase
       .from('canales')
       .select('id,codigo,nombre,tipo,ciudad,provincia,activo')
-      .eq('tipo', 'punto_venta')
+      .not('tipo', 'in', '(inmobiliaria,particular)')
       .order('nombre')
   }
   if (res.error) throw res.error
@@ -1240,6 +1255,7 @@ async function cargarCanales() {
 
 async function cargarCanalSeleccionado() {
   const id = $('#canalSelect').value
+  state.mobilityMigrationMissing = false
   state.canal = state.canales.find(c => String(c.id) === String(id)) || null
   state.refs = []
   state.stats = new Map()
@@ -1251,23 +1267,28 @@ async function cargarCanalSeleccionado() {
 
   let refsRes = await supabase
     .from('referencias')
-    .select('id,codigo,nombre,activo,punto_tipo,punto_ubicacion,punto_orden,mapa_config')
+    .select('id,codigo,nombre,activo,punto_tipo,punto_movilidad,punto_ubicacion,punto_orden,mapa_config')
     .eq('canal_id', state.canal.id)
     .order('punto_orden', { ascending:true, nullsFirst:false })
 
-  if (refsRes.error && missingColumn(refsRes.error)) {
+  if (refsRes.error && missingColumn(refsRes.error, 'punto_movilidad')) {
+    state.mobilityMigrationMissing = true
+    throw new Error('Falta aplicar la migración 2I de QR fijos y móviles. El mapa se detuvo para no ubicar puntos incorrectamente.')
+  }
+  if (refsRes.error && missingColumn(refsRes.error, 'mapa_config')) {
     state.migrationMissing = true
     refsRes = await supabase
       .from('referencias')
-      .select('id,codigo,nombre,activo,punto_tipo,punto_ubicacion,punto_orden')
+      .select('id,codigo,nombre,activo,punto_tipo,punto_movilidad,punto_ubicacion,punto_orden')
       .eq('canal_id', state.canal.id)
       .order('punto_orden', { ascending:true, nullsFirst:false })
   }
   if (refsRes.error) throw refsRes.error
 
   state.refs = ordenarRefs(refsRes.data || [])
-  const visibles = state.refs.filter(r => !isMobilePoint(r))
+  const visibles = state.refs.filter(isFixedPoint)
   state.refs.forEach((ref, index) => {
+    if (!isFixedPoint(ref)) return
     const planta = mapaBaseActual().plantas === 2 && index % 5 === 4 ? 2 : 1
     const visibleIndex = Math.max(0, visibles.findIndex(r => r.id === ref.id))
     state.configs.set(ref.id, clampConfig(ref.mapa_config || presetConfig(visibleIndex, visibles.length, planta)))
@@ -1275,7 +1296,7 @@ async function cargarCanalSeleccionado() {
 
   syncGenerator()
   await cargarMetricas()
-  state.selectedId = state.refs.find(r => !isMobilePoint(r))?.id || state.refs[0]?.id || null
+  state.selectedId = state.refs.find(isFixedPoint)?.id || state.refs.find(isMobilePoint)?.id || state.refs[0]?.id || null
   renderAll()
 }
 
@@ -1335,7 +1356,7 @@ function fixtureMarkup(base, planta) {
 }
 
 function refsPorPlanta(planta) {
-  return state.refs.filter(ref => !isMobilePoint(ref) && (state.configs.get(ref.id)?.planta || 1) === planta)
+  return state.refs.filter(ref => isFixedPoint(ref) && (state.configs.get(ref.id)?.planta || 1) === planta)
 }
 
 function renderCallouts(refs, side) {
@@ -1430,13 +1451,13 @@ function renderMap() {
   state.activePlanta = Math.max(1, Math.min(base.plantas, Number(state.activePlanta) || 1))
   $('#generator').classList.toggle('show', true)
   $('#mapCopy').textContent = state.canal
-    ? `${state.refs.length} puntos QR · color estable por punto · rendimiento por intensidad, callout y estrella.`
+    ? `${state.refs.filter(isFixedPoint).length} fijos en el plano · ${state.refs.filter(isMobilePoint).length} móviles fuera del local · ${state.refs.filter(isUnclassifiedPoint).length} sin clasificar · todos suman en el canal.`
     : 'Seleccioná un canal pasivo para cargar sus puntos QR.'
   $('#mapWrap').innerHTML = `${renderFloorTabs(base)}${renderFloor(state.activePlanta, base)}`
   if (!hasV2 && state.canal) {
     $('#migrationAlert').classList.add('show')
     $('#migrationAlert').innerHTML = 'Este canal todavía no tiene <code>mapa_base</code> v2. Guardá el generador paramétrico para fijar la lámina.'
-  } else if (!state.migrationMissing) {
+  } else if (!state.migrationMissing && !state.mobilityMigrationMissing && !state.refs.some(isUnclassifiedPoint)) {
     $('#migrationAlert').classList.remove('show')
     $('#migrationAlert').innerHTML = ''
   }
@@ -1451,12 +1472,20 @@ function renderMap() {
 
 function renderMobileBand() {
   const moviles = state.refs.filter(isMobilePoint)
+  const best = bestRefId()
   $('#mobileBand').classList.toggle('show', moviles.length > 0)
-  $('#mobileList').innerHTML = moviles.map((r, i) => {
+  $('#mobileList').innerHTML = moviles.map(r => {
     const color = colorPunto(r, state.refs.findIndex(ref => ref.id === r.id))
-    return `<button type="button" class="point-row" style="display:inline-flex;--bc:${color}" data-id="${esc(r.id)}"><span class="point-dot"></span><span class="point-name">${esc(r.nombre || r.codigo)}</span><span class="point-metric">${metricLabel(metricValue(r))}</span></button>`
+    const stats = state.stats.get(r.codigo) || { clics:0, consultas:0 }
+    const conv = stats.clics ? (stats.consultas / stats.clics) * 100 : 0
+    return `
+      <button type="button" class="callout mobile-callout${r.activo === false ? ' inactive' : ''}" style="--bc:${color}" data-id="${esc(r.id)}">
+        <span class="callout-title">${r.id === best ? '<span class="callout-star">★ Nº1</span>' : ''}${esc(r.nombre || r.codigo)}</span>
+        <span class="callout-sub">${stats.clics} clics · ${stats.consultas} consultas · ${conv.toFixed(1)}% · ${metricLabel(metricValue(r))}</span>
+      </button>
+    `
   }).join('')
-  $$('#mobileList .point-row').forEach(btn => btn.addEventListener('click', () => selectPoint(btn.dataset.id)))
+  $$('#mobileList .mobile-callout').forEach(btn => btn.addEventListener('click', () => selectPoint(btn.dataset.id)))
 }
 
 function renderPointList() {
@@ -1469,12 +1498,17 @@ function renderPointList() {
     const color = colorPunto(ref, index)
     const value = metricValue(ref)
     const cfg = state.configs.get(ref.id)
+    const ubicacion = isMobilePoint(ref)
+      ? 'en circulación'
+      : isFixedPoint(ref)
+        ? `planta ${cfg?.planta || 1}`
+        : 'sin clasificar'
     return `
       <button class="point-row${state.selectedId === ref.id ? ' selected' : ''}${ref.activo === false ? ' inactive' : ''}" data-id="${esc(ref.id)}" type="button" style="--bc:${color}">
         <span class="point-dot"></span>
         <span>
           <span class="point-name">${ref.id === best ? '★ ' : ''}${esc(ref.nombre || ref.codigo)}</span>
-          <span class="point-sub">${esc(ref.codigo)} · ${esc(ref.punto_tipo || 'punto')}${isMobilePoint(ref) ? ' · en circulación' : ` · planta ${cfg?.planta || 1}`}</span>
+          <span class="point-sub">${esc(ref.codigo)} · ${esc(ref.punto_tipo || 'punto')} · ${ubicacion}</span>
         </span>
         <span class="point-metric">${metricLabel(value)}</span>
       </button>
@@ -1490,7 +1524,11 @@ function renderEditor() {
     return
   }
   if (isMobilePoint(ref)) {
-    $('#editorContent').innerHTML = '<div class="empty-state">Este punto es móvil. No se dibuja dentro del local; se muestra en la banda “EN CIRCULACIÓN”.</div>'
+    $('#editorContent').innerHTML = '<div class="empty-state">Este punto es móvil. No se dibuja dentro del local; se muestra en “Puntos móviles — fuera del local”.</div>'
+    return
+  }
+  if (!isFixedPoint(ref)) {
+    $('#editorContent').innerHTML = '<div class="empty-state">Este punto todavía no está clasificado como fijo o móvil. Corregilo desde Canales antes de ubicarlo en el mapa.</div>'
     return
   }
   const base = mapaBaseActual()
@@ -1524,7 +1562,7 @@ function renderEditor() {
   })
   $('#btnDraw').addEventListener('click', () => startDrawing(ref.id))
   $('#btnPreset').addEventListener('click', () => {
-    const visibles = state.refs.filter(r => !isMobilePoint(r))
+    const visibles = state.refs.filter(isFixedPoint)
     const index = Math.max(0, visibles.findIndex(r => r.id === ref.id))
     state.configs.set(ref.id, presetConfig(index, visibles.length, Number($('#editorPlanta')?.value || cfg.planta || 1)))
     renderAll()
@@ -1538,9 +1576,16 @@ function renderEditor() {
 
 function renderMigrationAlert() {
   const alert = $('#migrationAlert')
-  if (state.migrationMissing) {
+  if (state.mobilityMigrationMissing) {
+    alert.classList.add('show')
+    alert.innerHTML = 'Migración 2I pendiente: el mapa se detuvo para no confundir puntos fijos con móviles.'
+  } else if (state.migrationMissing) {
     alert.classList.add('show')
     alert.innerHTML = 'Migración pendiente detectada: la página puede leer con fallback, pero guardar requiere <code>canales.mapa_base</code> y <code>referencias.mapa_config</code>.'
+  } else if (state.refs.some(isUnclassifiedPoint)) {
+    const cantidad = state.refs.filter(isUnclassifiedPoint).length
+    alert.classList.add('show')
+    alert.innerHTML = `${cantidad} punto${cantidad === 1 ? '' : 's'} sin clasificar quedó fuera del plano. Definí fijo o móvil desde Canales.`
   } else if (!alert.innerHTML.includes('mapa_base')) {
     alert.classList.remove('show')
     alert.innerHTML = ''
@@ -1688,7 +1733,7 @@ async function guardarPunto(id) {
     return
   }
   const ref = state.refs.find(r => String(r.id) === String(id))
-  if (!ref || isMobilePoint(ref)) return
+  if (!ref || !isFixedPoint(ref)) return
   const nombreActual = String(ref.nombre || ref.codigo || '').trim()
   const nombre = String($('#editorNombrePunto')?.value ?? nombreActual).trim()
   if (!nombre) {

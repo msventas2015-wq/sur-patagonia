@@ -510,21 +510,23 @@
           <div class="nc-empty">Guardá el canal para empezar a agregar referencias.</div>
         </div>
         <div class="nc-ref-add" id="refAddForm" style="display:none;">
+          <div class="nc-field punto-field" id="refPuntoMovilidadWrap">
+            <label class="admin-label">Ubicación del QR</label>
+            <select id="refPuntoMovilidad" class="admin-input">
+              <option value="">— Elegí fijo o móvil —</option>
+              <option value="fijo">Fijo · queda en el local</option>
+              <option value="movil">Móvil · circula fuera del local</option>
+            </select>
+          </div>
           <div class="nc-field punto-field" id="refPuntoTipoWrap">
             <label class="admin-label">Tipo de punto</label>
-            <select id="refPuntoTipo" class="admin-input">
-              <option value="mostrador">Mostrador</option>
-              <option value="entrada">Entrada</option>
-              <option value="vidriera">Vidriera</option>
-              <option value="recepción">Recepción</option>
-              <option value="caja">Caja</option>
-              <option value="flyer">Flyer</option>
-              <option value="banner">Banner</option>
-              <option value="vestidor">Vestidor</option>
-              <option value="pared">Pared interna</option>
-              <option value="externo">Externo</option>
-              <option value="personalizado">Personalizado</option>
+            <select id="refPuntoTipo" class="admin-input" disabled>
+              <option value="">— Primero elegí fijo o móvil —</option>
             </select>
+          </div>
+          <div class="nc-field punto-field is-hidden" id="refPuntoTipoCustomWrap">
+            <label class="admin-label">Tipo personalizado</label>
+            <input type="text" id="refPuntoTipoCustom" class="admin-input" maxlength="60" placeholder="Ej: exhibidor, credencial…" />
           </div>
           <div class="nc-field punto-field" id="refPuntoUbicacionWrap">
             <label class="admin-label">Ubicación / descripción</label>
@@ -639,24 +641,113 @@ async function mensajeErrorFuncion(error, fallback) {
 // Escape HTML para prevenir XSS al renderizar datos
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 
+const PUNTO_TIPO_CUSTOM = '__personalizado__'
+const PUNTO_TIPOS_POR_MOVILIDAD = {
+  fijo: [
+    ['mostrador', 'Mostrador'],
+    ['vidriera', 'Vidriera'],
+    ['calco', 'Calco'],
+    ['puerta', 'Puerta'],
+    ['caja', 'Caja'],
+  ],
+  movil: [
+    ['tarjeta personal', 'Tarjeta personal'],
+    ['flyer', 'Flyer'],
+    ['vaso', 'Vaso'],
+    ['folleto', 'Folleto'],
+  ],
+}
 const PUNTO_TIPOS = [
   ['principal', 'Principal'],
-  ['mostrador', 'Mostrador'],
+  ...PUNTO_TIPOS_POR_MOVILIDAD.fijo,
+  ...PUNTO_TIPOS_POR_MOVILIDAD.movil,
   ['entrada', 'Entrada'],
-  ['vidriera', 'Vidriera'],
   ['recepción', 'Recepción'],
-  ['caja', 'Caja'],
-  ['flyer', 'Flyer'],
   ['banner', 'Banner'],
   ['vestidor', 'Vestidor'],
   ['pared', 'Pared interna'],
   ['externo', 'Externo'],
-  ['personalizado', 'Personalizado'],
 ]
 const MAX_REF_CODE_LENGTH = 72
 
 function puntoTipoLabel(tipo) {
-  return (PUNTO_TIPOS.find(([v]) => v === tipo)?.[1]) || 'Punto QR'
+  return (PUNTO_TIPOS.find(([v]) => v === tipo)?.[1]) || String(tipo || 'Punto QR')
+}
+
+function puntoMovilidadLabel(movilidad) {
+  return movilidad === 'movil' ? 'Móvil' : movilidad === 'fijo' ? 'Fijo' : ''
+}
+
+function puntoTiposDe(movilidad) {
+  return PUNTO_TIPOS_POR_MOVILIDAD[movilidad] || []
+}
+
+function opcionesTipoPunto(movilidad, actual = '') {
+  const tipos = puntoTiposDe(movilidad)
+  const esPredefinido = tipos.some(([value]) => value === actual)
+  const customActual = actual && actual !== 'principal' && !esPredefinido ? actual : ''
+  return {
+    html: [
+      '<option value="">— Elegí qué tipo de punto es —</option>',
+      ...tipos.map(([value, label]) => `<option value="${esc(value)}" ${value === actual ? 'selected' : ''}>${esc(label)}</option>`),
+      `<option value="${PUNTO_TIPO_CUSTOM}" ${customActual ? 'selected' : ''}>Escribir uno propio…</option>`,
+    ].join(''),
+    customActual,
+  }
+}
+
+function resolverTipoPunto(selectId, customId) {
+  const seleccionado = document.getElementById(selectId)?.value || ''
+  if (seleccionado !== PUNTO_TIPO_CUSTOM) return seleccionado
+  return document.getElementById(customId)?.value.trim().replace(/\s+/g, ' ') || ''
+}
+
+function errorTipoPunto(tipo) {
+  if (!tipo) return 'Elegí qué tipo de punto es o escribí uno propio.'
+  if (tipo.length > 60) return 'El tipo personalizado puede tener hasta 60 caracteres.'
+  if (['principal','fijo','movil','móvil'].includes(tipo.toLowerCase())) {
+    return 'Ese texto está reservado. Elegí fijo/móvil arriba y describí acá qué soporte es.'
+  }
+  return ''
+}
+
+function toggleTipoCustom(selectId, wrapId) {
+  const custom = document.getElementById(selectId)?.value === PUNTO_TIPO_CUSTOM
+  document.getElementById(wrapId)?.classList.toggle('is-hidden', !custom)
+}
+
+function actualizarTipoPuntoNuevo() {
+  const movilidad = document.getElementById('refPuntoMovilidad')?.value || ''
+  const select = document.getElementById('refPuntoTipo')
+  if (!select) return
+  select.disabled = !movilidad
+  select.innerHTML = movilidad
+    ? opcionesTipoPunto(movilidad).html
+    : '<option value="">— Primero elegí fijo o móvil —</option>'
+  document.getElementById('refPuntoTipoCustom').value = ''
+  toggleTipoCustom('refPuntoTipo', 'refPuntoTipoCustomWrap')
+}
+
+document.getElementById('refPuntoMovilidad')?.addEventListener('change', actualizarTipoPuntoNuevo)
+document.getElementById('refPuntoTipo')?.addEventListener('change', () => {
+  toggleTipoCustom('refPuntoTipo', 'refPuntoTipoCustomWrap')
+})
+
+window.actualizarTipoPuntoEdit = id => {
+  const movilidad = document.getElementById(`edit-punto-movilidad-${id}`)?.value || ''
+  const select = document.getElementById(`edit-punto-tipo-${id}`)
+  if (!select || select.dataset.principal === 'true') return
+  select.innerHTML = movilidad
+    ? opcionesTipoPunto(movilidad).html
+    : '<option value="">— Primero elegí fijo o móvil —</option>'
+  select.disabled = !movilidad
+  const custom = document.getElementById(`edit-punto-tipo-custom-${id}`)
+  if (custom) custom.value = ''
+  toggleTipoCustom(`edit-punto-tipo-${id}`, `edit-punto-tipo-custom-wrap-${id}`)
+}
+
+window.toggleTipoPuntoEdit = id => {
+  toggleTipoCustom(`edit-punto-tipo-${id}`, `edit-punto-tipo-custom-wrap-${id}`)
 }
 
 function escapeRegExp(str) {
@@ -1045,7 +1136,10 @@ async function cargarReferencias() {
     const scans = scansPorCodigo[r.codigo] || 0
     const activo = r.activo !== false
     const puntoTipo = r.punto_tipo || (r.codigo === document.getElementById('codigo').value ? 'principal' : null)
+    const puntoMovilidad = r.punto_movilidad || ''
     const puntoUbicacion = r.punto_ubicacion || ''
+    const esPrincipal = puntoTipo === 'principal'
+    const opcionesTipo = opcionesTipoPunto(puntoMovilidad, puntoTipo)
     const linkQr = `${BASE_URL}/r/${r.codigo}`
     return `
     <div class="slot-card${activo ? '' : ' inactivo'}" id="slot-${r.id}">
@@ -1054,6 +1148,7 @@ async function cargarReferencias() {
           <div class="slot-eyebrow">${esc(r.codigo)}</div>
           <div class="slot-nombre">${esc(r.nombre)}</div>
           <div class="slot-meta-line">
+            ${puntoMovilidad ? `<span class="slot-meta-pill">${esc(puntoMovilidadLabel(puntoMovilidad))}</span>` : ''}
             ${puntoTipo ? `<span class="slot-meta-pill">${esc(puntoTipoLabel(puntoTipo))}</span>` : ''}
             ${puntoUbicacion ? `<span class="slot-meta-desc">${esc(puntoUbicacion)}</span>` : ''}
           </div>
@@ -1075,10 +1170,18 @@ async function cargarReferencias() {
       </div>
       <div class="slot-edit-form" id="edit-form-${r.id}">
         <input class="admin-input" id="edit-nombre-${r.id}" value="${esc(r.nombre)}" placeholder="Nombre del punto / referencia" />
-        <select class="admin-input edit-punto-tipo" id="edit-punto-tipo-${r.id}">
-          ${PUNTO_TIPOS.map(([value, label]) => `<option value="${esc(value)}" ${value === puntoTipo ? 'selected' : ''}>${esc(label)}</option>`).join('')}
+        <select class="admin-input ${canalActivo ? 'is-hidden' : ''}" id="edit-punto-movilidad-${r.id}" onchange="actualizarTipoPuntoEdit('${r.id}')">
+          <option value="">— Elegí fijo o móvil —</option>
+          <option value="fijo" ${puntoMovilidad === 'fijo' ? 'selected' : ''}>Fijo · queda en el local</option>
+          <option value="movil" ${puntoMovilidad === 'movil' ? 'selected' : ''}>Móvil · circula fuera del local</option>
         </select>
-        <input class="admin-input edit-punto-ubicacion" id="edit-punto-ubicacion-${r.id}" value="${esc(puntoUbicacion)}" placeholder="Ubicación / descripción" />
+        <select class="admin-input edit-punto-tipo ${canalActivo ? 'is-hidden' : ''}" id="edit-punto-tipo-${r.id}" data-principal="${esPrincipal}" onchange="toggleTipoPuntoEdit('${r.id}')" ${esPrincipal || !puntoMovilidad ? 'disabled' : ''}>
+          ${esPrincipal ? '<option value="principal" selected>Principal</option>' : opcionesTipo.html}
+        </select>
+        <div class="${canalActivo || esPrincipal || !opcionesTipo.customActual ? 'is-hidden' : ''}" id="edit-punto-tipo-custom-wrap-${r.id}">
+          <input class="admin-input" id="edit-punto-tipo-custom-${r.id}" value="${esc(opcionesTipo.customActual)}" maxlength="60" placeholder="Tipo personalizado" />
+        </div>
+        <input class="admin-input edit-punto-ubicacion ${canalActivo ? 'is-hidden' : ''}" id="edit-punto-ubicacion-${r.id}" value="${esc(puntoUbicacion)}" placeholder="Ubicación / descripción" />
         <select class="admin-input ${canalActivo ? '' : 'is-hidden'}" id="edit-sel-${r.id}">
           <option value="">Seleccioná nuevo destino…</option>
         </select>
@@ -1126,14 +1229,19 @@ window.guardarDestinoRef = async (id) => {
   }
   const sel = document.getElementById(`edit-sel-${id}`)
   const nombre = document.getElementById(`edit-nombre-${id}`)?.value.trim()
-  const punto_tipo = document.getElementById(`edit-punto-tipo-${id}`)?.value || null
-  const punto_ubicacion = document.getElementById(`edit-punto-ubicacion-${id}`)?.value.trim() || null
   const canalActivo = esActivo(document.getElementById('tipo').value)
   if (!nombre) { alert('Poné un nombre para el punto.'); return }
-  let payload = {
-    nombre,
-    punto_tipo,
-    punto_ubicacion,
+  let payload = { nombre }
+  if (!canalActivo) {
+    const punto_movilidad = document.getElementById(`edit-punto-movilidad-${id}`)?.value || ''
+    const punto_tipo = original.punto_tipo === 'principal'
+      ? 'principal'
+      : resolverTipoPunto(`edit-punto-tipo-${id}`, `edit-punto-tipo-custom-${id}`)
+    const punto_ubicacion = document.getElementById(`edit-punto-ubicacion-${id}`)?.value.trim() || null
+    if (!punto_movilidad) { alert('Elegí si el QR es fijo o móvil.'); return }
+    const tipoError = original.punto_tipo === 'principal' ? '' : errorTipoPunto(punto_tipo)
+    if (tipoError) { alert(tipoError); return }
+    payload = { ...payload, punto_movilidad, punto_tipo, punto_ubicacion }
   }
   let propiedadId = original.propiedad_id
   if (canalActivo) {
@@ -1152,6 +1260,7 @@ window.guardarDestinoRef = async (id) => {
     const restaurarPayload = {
       nombre: original.nombre,
       punto_tipo: original.punto_tipo,
+      punto_movilidad: original.punto_movilidad,
       punto_ubicacion: original.punto_ubicacion,
       destino: original.destino,
       proyecto_slug: original.proyecto_slug,
@@ -1188,8 +1297,12 @@ window.agregarReferencia = async function() {
   const propiedadId = canalActivo
     ? propiedadIdDeDestino(destinoData)
     : propiedadIdDestinoPasivo()
-  const punto_tipo = canalActivo ? null : (document.getElementById('refPuntoTipo').value || 'personalizado')
+  const punto_movilidad = canalActivo ? null : (document.getElementById('refPuntoMovilidad').value || '')
+  const punto_tipo = canalActivo ? null : resolverTipoPunto('refPuntoTipo', 'refPuntoTipoCustom')
   const punto_ubicacion = canalActivo ? null : (document.getElementById('refPuntoUbicacion').value.trim() || null)
+  if (!canalActivo && !punto_movilidad) { alert('Elegí si el QR es fijo o móvil.'); return }
+  const tipoError = canalActivo ? '' : errorTipoPunto(punto_tipo)
+  if (tipoError) { alert(tipoError); return }
 
   // Código de slot permanente con anti-colisión global.
   const [{ data: refsCanal, error: refsCanalError }, { data: refsTodas, error: refsTodasError }, { data: canalesCodigos, error: canalesCodigosError }] = await Promise.all([
@@ -1231,6 +1344,7 @@ window.agregarReferencia = async function() {
     proyecto_slug,
     destino,
     activo: true,
+    punto_movilidad,
     punto_tipo,
     punto_ubicacion,
     punto_orden,
@@ -1261,6 +1375,8 @@ window.agregarReferencia = async function() {
   document.getElementById('refProyecto').value = ''
   document.getElementById('refNombre').value   = ''
   document.getElementById('refPuntoUbicacion').value = ''
+  document.getElementById('refPuntoMovilidad').value = ''
+  actualizarTipoPuntoNuevo()
   cargarReferencias()
 }
 
