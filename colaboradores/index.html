@@ -2166,34 +2166,96 @@
         const url = `${location.origin}/r/${slot.codigo}`
         try {
           await QRCode.toCanvas(canvas, url, {
-            width: canvas.width || 70, margin: 1,
+            width: canvas.width || 70, margin: 1, errorCorrectionLevel: 'H',
             color: { dark: '#000000', light: '#ffffff' }
           })
         } catch (e) { console.warn('QR error', slot.codigo, e) }
       }
     }
 
-    async function descargarQR(canvasId, codigo) {
-      const canvas = document.getElementById(canvasId)
-      if (!canvas) return
-      const SIZE = 1024
-      const offscreen = document.createElement('canvas')
-      offscreen.width = SIZE
-      offscreen.height = SIZE
-      const url = `${location.origin}/r/${codigo}`
-      try {
-        await QRCode.toCanvas(offscreen, url, {
-          width: SIZE, margin: 4,
-          color: { dark: '#000000', light: '#ffffff' }
-        })
-      } catch (e) {
-        console.error('[descargarQR] Error generando QR de alta resolución:', e)
-        return
+    const QR_DOWNLOAD_SIZE = 4000
+    const QR_DOWNLOAD_FALLBACK_SIZE = 1024
+    let qrDownloadEnCurso = false
+
+    function canvasTieneQR(canvas) {
+      if (!canvas || canvas.width < 1 || canvas.height < 1) return false
+      const muestra = document.createElement('canvas')
+      muestra.width = 64
+      muestra.height = 64
+      const ctx = muestra.getContext('2d', { willReadFrequently: true })
+      if (!ctx) return false
+      ctx.drawImage(canvas, 0, 0, muestra.width, muestra.height)
+      const pixeles = ctx.getImageData(0, 0, muestra.width, muestra.height).data
+      let oscuros = 0
+      let claros = 0
+      for (let i = 0; i < pixeles.length; i += 4) {
+        if (pixeles[i + 3] < 200) continue
+        const luminancia = 0.2126 * pixeles[i] + 0.7152 * pixeles[i + 1] + 0.0722 * pixeles[i + 2]
+        if (luminancia < 80) oscuros++
+        if (luminancia > 220) claros++
       }
-      const a = document.createElement('a')
-      a.download = `qr-${codigo}.png`
-      a.href = offscreen.toDataURL('image/png')
-      a.click()
+      return oscuros >= 16 && claros >= 16
+    }
+
+    function canvasABlobPng(canvas) {
+      if (typeof canvas.toBlob !== 'function') return Promise.reject(new Error('Canvas sin soporte para PNG Blob'))
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(blob => {
+          if (blob && blob.size >= 100) resolve(blob)
+          else reject(new Error('PNG vacío o inválido'))
+        }, 'image/png')
+      })
+    }
+
+    async function generarPngQR(url, size, color) {
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      await QRCode.toCanvas(canvas, url, {
+        width: size, margin: 4, errorCorrectionLevel: 'H', color
+      })
+      if (canvas.width !== size || canvas.height !== size || !canvasTieneQR(canvas)) {
+        throw new Error(`Canvas QR ${size}×${size} vacío o incompleto`)
+      }
+      return canvasABlobPng(canvas)
+    }
+
+    async function descargarPngQR(url, nombreArchivo, color) {
+      if (qrDownloadEnCurso) return
+      qrDownloadEnCurso = true
+      try {
+        let blob
+        try {
+          blob = await generarPngQR(url, QR_DOWNLOAD_SIZE, color)
+        } catch (error4000) {
+          console.warn('[QR] Falló la generación 4000×4000; se intenta 1024×1024:', error4000)
+          try {
+            blob = await generarPngQR(url, QR_DOWNLOAD_FALLBACK_SIZE, color)
+          } catch (error1024) {
+            console.error('[QR] No se generó un PNG válido:', error1024)
+            alert('No se pudo generar un QR válido. No se descargó ningún archivo.')
+            return
+          }
+          alert('Tu dispositivo no pudo generar el QR en 4000 × 4000. Se descargará una versión segura de 1024 × 1024.')
+        }
+
+        const blobUrl = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.download = nombreArchivo
+        a.href = blobUrl
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+      } finally {
+        qrDownloadEnCurso = false
+      }
+    }
+
+    async function descargarQR(canvasId, codigo) {
+      if (!document.getElementById(canvasId)) return
+      const url = `${location.origin}/r/${codigo}`
+      await descargarPngQR(url, `qr-${codigo}.png`, { dark: '#000000', light: '#ffffff' })
     }
     window.descargarQR = descargarQR
 
@@ -2203,23 +2265,8 @@
 
     async function descargarQRPasivo(codigo) {
       if (!codigo || typeof QRCode === 'undefined') return
-      const offscreen = document.createElement('canvas')
-      offscreen.width = 230
-      offscreen.height = 230
       const url = linkQrCanonico(codigo)
-      try {
-        await QRCode.toCanvas(offscreen, url, {
-          width: 230, margin: 2,
-          color: { dark: '#1a1a1a', light: '#ffffff' }
-        })
-      } catch (e) {
-        console.error('[descargarQRPasivo] Error generando QR canónico:', e)
-        return
-      }
-      const a = document.createElement('a')
-      a.download = `qr-${codigo}.png`
-      a.href = offscreen.toDataURL('image/png')
-      a.click()
+      await descargarPngQR(url, `qr-${codigo}.png`, { dark: '#1a1a1a', light: '#ffffff' })
     }
     window.descargarQRPasivo = descargarQRPasivo
 
@@ -2339,7 +2386,7 @@
         if (!canvas) continue
         try {
           await QRCode.toCanvas(canvas, linkQrCanonico(canal.codigo), {
-            width:112, margin:1, color:{ dark:'#111111', light:'#ffffff' }
+            width:112, margin:1, errorCorrectionLevel:'H', color:{ dark:'#111111', light:'#ffffff' }
           })
         } catch (e) { console.warn('[Punto B] QR no generado:', canal.codigo, e) }
       }
@@ -2544,7 +2591,7 @@
         if (heroQrCanvas && heroQrCodigo && typeof QRCode !== 'undefined') {
           const qrUrl = linkQrCanonico(heroQrCodigo)
           QRCode.toCanvas(heroQrCanvas, qrUrl, {
-            width: 72, margin: 1,
+            width: 72, margin: 1, errorCorrectionLevel: 'H',
             color: { dark: '#111111', light: '#ffffff' }
           }).catch(e => console.warn('QR hero error', e))
         }
