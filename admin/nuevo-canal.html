@@ -151,12 +151,14 @@
     .slot-badge {
       display: inline-flex; align-items: center; gap: .35rem;
       font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
-      padding: .2rem .6rem; border-radius: 999px; border: 1px solid;
+      padding: .28rem .7rem; border-radius: 8px; border: 1px solid;
       cursor: pointer; transition: all .18s; font-family: inherit; background: none;
     }
     .slot-badge::before { content: '●'; font-size: .5rem; }
     .slot-badge.activo  { color: #50c878; border-color: rgba(80,200,120,.3); background: rgba(80,200,120,.08); }
     .slot-badge.inactivo{ color: #aaa; border-color: rgba(255,255,255,.12); }
+    .slot-badge:hover { border-color: rgba(201,168,76,.45); color: #e8c96a; }
+    .slot-badge:disabled { opacity: .55; cursor: wait; }
 
     .slot-btn {
       background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
@@ -1223,9 +1225,11 @@ async function cargarReferencias() {
         </div>
       </div>
       <div class="slot-actions">
-        <button class="slot-badge ${activo ? 'activo' : 'inactivo'}"
-          onclick="toggleRefActivo('${r.id}', ${activo})">
-          ${activo ? 'Activo' : 'Inactivo'}
+        <button type="button" class="slot-badge ${activo ? 'activo' : 'inactivo'}"
+          onclick="toggleRefActivo('${r.id}', this)"
+          aria-label="${activo ? 'Desactivar' : 'Reactivar'} el QR ${esc(r.codigo)}"
+          title="${activo ? 'Desactivar este QR' : 'Reactivar este QR'}">
+          ${activo ? 'Desactivar QR' : 'Reactivar QR'}
         </button>
         <button class="slot-btn" onclick="verQR('${r.codigo}','${encodeURIComponent(r.nombre)}','${encodeURIComponent(r.destino || '/')}')">QR / Link</button>
         <button class="slot-btn" onclick="copiarTextoDirecto('${linkQr}', this)">Copiar link</button>
@@ -1452,9 +1456,40 @@ window.eliminarReferencia = async (id, codigo) => {
   cargarReferencias()
 }
 
-window.toggleRefActivo = async (id, actual) => {
-  await supabase.from('referencias').update({ activo: !actual }).eq('id', id)
-  cargarReferencias()
+window.toggleRefActivo = async (id, boton) => {
+  const referencia = _referenciasPorId.get(id)
+  if (!referencia) {
+    alert('No se pudo identificar el QR. Se recargará la lista sin cambiar ningún estado.')
+    await cargarReferencias()
+    return
+  }
+
+  const actual = referencia.activo !== false
+  if (actual) {
+    const ok = confirm(
+      `⚠️ DESACTIVAR QR IMPRESO\n\nEl código "${referencia.codigo}" no se borrará ni podrá reciclarse. Quedará desactivado y dejará de funcionar para cualquier persona que lo escanee.\n\n¿Confirmás desactivarlo?`
+    )
+    if (!ok) return
+  }
+
+  if (boton) boton.disabled = true
+  const nuevoEstado = !actual
+  const { data, error } = await supabase
+    .from('referencias')
+    .update({ activo: nuevoEstado })
+    .eq('id', id)
+    .select('id, activo')
+    .single()
+
+  if (error || data?.activo !== nuevoEstado) {
+    const accion = nuevoEstado ? 'reactivar' : 'desactivar'
+    const detalle = error?.message ? `\n\nDetalle: ${error.message}` : ''
+    alert(`No se pudo ${accion} el QR. El código conserva su estado anterior.${detalle}`)
+    await cargarReferencias()
+    return
+  }
+
+  await cargarReferencias()
 }
 
 // ── Modal QR ──────────────────────────────────────────────
