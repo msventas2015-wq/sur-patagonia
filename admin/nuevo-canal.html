@@ -401,13 +401,13 @@
           </div>
           <div class="nc-field nc-field-full">
             <label class="admin-label">Código único</label>
-            <input type="text" id="codigo" class="admin-input" placeholder="Se genera automáticamente" maxlength="72" />
+            <input type="text" id="codigo" class="admin-input" placeholder="Se genera automáticamente" maxlength="72" autocomplete="off" />
             <div class="nc-code-preview">Código: <span id="slugPreview">—</span></div>
           </div>
           <div class="nc-field nc-field-full nc-field-email" id="emailTitularWrap">
-            <label class="admin-label">Email de acceso del titular *</label>
-            <input type="email" id="email" class="admin-input" placeholder="titular@ejemplo.com" />
-            <div class="nc-hint">Es la credencial de acceso. Para modificarla después, usá Admin → Usuarios.</div>
+            <label class="admin-label">Email del titular</label>
+            <input type="email" id="email" class="admin-input" placeholder="Se completa al elegir un colaborador" readonly />
+            <div class="nc-hint">Se toma del usuario preexistente seleccionado. El alta y los cambios de acceso se hacen únicamente en Admin → Usuarios.</div>
           </div>
           <div class="nc-field nc-field-full">
             <label class="admin-label">Teléfono / WhatsApp</label>
@@ -432,7 +432,6 @@
             <select id="tipoDestino" class="admin-input" onchange="actualizarDestinoPreview()">
               <option value="home">Home del sitio</option>
               <option value="proyecto">Proyecto o propiedad específica</option>
-              <option value="custom">URL personalizada</option>
             </select>
           </div>
           <div class="nc-field" id="destinoProyectoWrap">
@@ -440,10 +439,6 @@
             <select id="destinoProyecto" class="admin-input" onchange="actualizarDestinoPreview()">
               <option value="">Cargando proyectos…</option>
             </select>
-          </div>
-          <div class="nc-field" id="destinoCustomWrap" style="display:none;">
-            <label class="admin-label">URL personalizada</label>
-            <input type="text" id="destinoCustom" class="admin-input" placeholder="Ej: /propiedades" oninput="actualizarDestinoPreview()" />
           </div>
           <div class="nc-field nc-field-full nc-hint" id="destinoPreview">Todos los QRs llevarán a: <strong id="publicHostPreview"></strong></div>
         </div>
@@ -504,20 +499,12 @@
           </div>
         </div>
         <div id="accesoNuevo">
-          <div class="nc-grid">
-            <div class="nc-field">
-              <label class="admin-label">Nombre y apellido</label>
-              <input type="text" id="titularNombre" class="admin-input" maxlength="160" placeholder="Solo si el usuario es nuevo" />
-            </div>
-            <div class="nc-field">
-              <label class="admin-label">DNI</label>
-              <input type="text" id="titularDni" class="admin-input" inputmode="numeric" maxlength="12" placeholder="Solo números" />
-            </div>
-            <div class="nc-field nc-field-full">
-              <label class="admin-label">Contraseña temporal</label>
-              <input type="password" id="accesoPass" class="admin-input" placeholder="Mínimo 6 caracteres" />
-              <div class="nc-hint">Nombre, DNI y contraseña son obligatorios únicamente si el email todavía no existe en Usuarios.</div>
-            </div>
+          <div class="nc-field">
+            <label class="admin-label">Colaborador preexistente *</label>
+            <select id="titularUsuario" class="admin-input">
+              <option value="">Cargando colaboradores…</option>
+            </select>
+            <div class="nc-hint">E2 sólo vincula una cuenta ya creada con rol colaborador. Si no aparece, creala o corregila primero desde <a href="usuarios.html" style="color:#c9a84c;">Admin → Usuarios</a>.</div>
           </div>
         </div>
         <input type="hidden" id="userId" value="" />
@@ -624,15 +611,234 @@ let _proyectos          = []
 let _destinosEditables  = []
 let _referenciasPorId   = new Map()
 let _rubros             = []
+let _usuariosTitulares  = []
 let _esLegacyPasivoSinRubro = false
 let _usuarioAsignadoOriginal = null
 let _emailCanalOriginal = null
 let _colaboradorEmailOriginal = null
+let codigoFuente = ''
 
 // ── Auth ──────────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
 if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+
+const E2_VERSION = 'E2-v6.2'
+const E2_PENDING_KEY = 'sp:e2:nuevo-canal:pendiente:v6.2'
+
+function e2Canonico(valor) {
+  if (Array.isArray(valor)) return valor.map(e2Canonico)
+  if (valor && typeof valor === 'object') {
+    return Object.keys(valor).sort().reduce((salida, clave) => {
+      salida[clave] = e2Canonico(valor[clave])
+      return salida
+    }, {})
+  }
+  return valor
+}
+
+function e2FirmaIntencion(operacion, payload) {
+  const { request_id: _requestId, confirmaciones: _confirmaciones, ...intencion } = payload || {}
+  return JSON.stringify(e2Canonico({ operacion, payload: intencion }))
+}
+
+function e2LeerPendiente() {
+  const raw = sessionStorage.getItem(E2_PENDING_KEY)
+  if (!raw) return null
+  let pendiente
+  try {
+    pendiente = JSON.parse(raw)
+  } catch (_) {
+    throw new Error('E2_ESTADO_LOCAL_CORRUPTO: cerrá esta pestaña y volvé a abrir el formulario antes de guardar.')
+  }
+  if (!pendiente?.request_id || !pendiente?.operacion || !pendiente?.payload) {
+    throw new Error('E2_ESTADO_LOCAL_INCOMPLETO: cerrá esta pestaña y volvé a abrir el formulario antes de guardar.')
+  }
+  return pendiente
+}
+
+function e2GuardarPendiente(pendiente) {
+  // Persistir es parte del contrato: si sessionStorage falla, no se llama al RPC.
+  const serializado = JSON.stringify(pendiente)
+  sessionStorage.setItem(E2_PENDING_KEY, serializado)
+  if (sessionStorage.getItem(E2_PENDING_KEY) !== serializado) {
+    throw new Error('E2_REQUEST_ID_NO_PERSISTIDO')
+  }
+}
+
+function e2LimpiarPendiente(requestId = null) {
+  const pendiente = e2LeerPendiente()
+  if (!pendiente || requestId === null || pendiente.request_id === requestId) {
+    sessionStorage.removeItem(E2_PENDING_KEY)
+  }
+}
+
+function e2ErrorConfirmaAbortada(error) {
+  const codigo = String(error?.code || '')
+  return Boolean(codigo) && !/^PGRST00[0-3]$/.test(codigo)
+}
+
+function e2MensajeError(error) {
+  return [error?.message, error?.details, error?.hint].filter(Boolean).join(' · ') || 'Error E2 sin detalle.'
+}
+
+async function e2Preparar(operacion, payload) {
+  const { data, error } = await supabase.rpc('admin_e2_preparar', {
+    p_operacion: operacion,
+    p_payload: payload,
+  })
+  if (error) throw error
+  return data
+}
+
+async function ejecutarOperacionE2(operacion, payloadSinRequest, confirmarPreview = null) {
+  const firmaNueva = e2FirmaIntencion(operacion, payloadSinRequest)
+  let pendiente = e2LeerPendiente()
+  let preparacion = null
+
+  // Resolver primero una respuesta perdida. Nunca se crea otro request_id mientras
+  // el resultado del anterior pueda haber quedado confirmado en PostgreSQL.
+  if (pendiente) {
+    const pendienteCoincide = pendiente.operacion === operacion &&
+      e2FirmaIntencion(pendiente.operacion, pendiente.payload) === firmaNueva
+    try {
+      preparacion = await e2Preparar(pendiente.operacion, pendiente.payload)
+    } catch (error) {
+      if (e2ErrorConfirmaAbortada(error)) e2LimpiarPendiente(pendiente.request_id)
+      throw error
+    }
+    if (preparacion?.request_id !== pendiente.request_id ||
+        !['preparada', 'aplicada'].includes(preparacion?.estado)) {
+      throw new Error('E2_PREPARACION_RESPUESTA_INVALIDA')
+    }
+    if (preparacion?.estado === 'aplicada') {
+      e2LimpiarPendiente(pendiente.request_id)
+      return {
+        ...preparacion,
+        recuperada: true,
+        solo_recuperacion: !pendienteCoincide,
+        operacion_recuperada: pendiente.operacion,
+      }
+    }
+    if (!pendienteCoincide) {
+      // PREPARE no cambió el grafo. Una intención nueva recibe un UUID nuevo.
+      e2LimpiarPendiente(pendiente.request_id)
+      pendiente = null
+      preparacion = null
+    }
+  }
+
+  if (!pendiente) {
+    const requestId = crypto.randomUUID()
+    const payload = { ...payloadSinRequest, request_id: requestId }
+    pendiente = {
+      request_id: requestId,
+      operacion,
+      payload,
+      etapa: 'antes_de_prepare',
+      creado_at: new Date().toISOString(),
+    }
+    // Obligatoriamente antes del primer fetch de la operación E2.
+    e2GuardarPendiente(pendiente)
+    try {
+      preparacion = await e2Preparar(operacion, payload)
+    } catch (error) {
+      if (e2ErrorConfirmaAbortada(error)) e2LimpiarPendiente(requestId)
+      throw error
+    }
+  }
+
+  if (preparacion?.request_id !== pendiente.request_id || preparacion?.operacion !== pendiente.operacion ||
+      !/^[0-9a-f]{64}$/.test(String(preparacion?.before_sha256 || '')) || preparacion?.estado !== 'preparada') {
+    throw new Error('E2_PREPARACION_RESPUESTA_INVALIDA')
+  }
+
+  let confirmaciones = {}
+  if (confirmarPreview) {
+    confirmaciones = await confirmarPreview(preparacion)
+    if (confirmaciones === null) {
+      e2LimpiarPendiente(pendiente.request_id)
+      return { cancelada: true }
+    }
+  }
+
+  const payloadAplicar = Object.keys(confirmaciones).length
+    ? { ...pendiente.payload, confirmaciones }
+    : pendiente.payload
+  e2GuardarPendiente({
+    ...pendiente,
+    etapa: 'antes_de_apply',
+    expected_sha256: preparacion.before_sha256,
+  })
+
+  const { data, error } = await supabase.rpc('admin_e2_aplicar', {
+    p_request_id: pendiente.request_id,
+    p_operacion: pendiente.operacion,
+    p_expected_sha256: preparacion.before_sha256,
+    p_payload: payloadAplicar,
+  })
+  if (error) {
+    // Con código PostgreSQL sabemos que la transacción abortó. Ante error de red
+    // se conserva el request_id: el próximo intento pregunta antes de repetir.
+    if (e2ErrorConfirmaAbortada(error)) e2LimpiarPendiente(pendiente.request_id)
+    throw error
+  }
+  if (data?.request_id !== pendiente.request_id || data?.estado !== 'aplicada' ||
+      !/^[0-9a-f]{64}$/.test(String(data?.after_sha256 || ''))) {
+    const respuestaIncierta = new Error('E2_APPLY_RESPUESTA_INVALIDA: la operación puede haberse aplicado; reintentá la misma intención.')
+    respuestaIncierta.e2Transitorio = true
+    throw respuestaIncierta
+  }
+  e2LimpiarPendiente(pendiente.request_id)
+  return data
+}
+
+function confirmarCambioActividad(preview) {
+  const canal = preview?.canal
+  if (!canal?.requiere_confirmar_todos) return {}
+  if (canal.aplicable === false) {
+    const codigos = (canal.referencias_invalidas || []).map(r => r.codigo).filter(Boolean).join(', ')
+    alert(`No se puede reactivar el canal porque hay destinos inválidos${codigos ? `: ${codigos}` : '.'}`)
+    return null
+  }
+
+  const cantidad = Number(canal.referencias || 0)
+  const accion = canal.activo_solicitado ? 'activar' : 'desactivar'
+  const confirmaTodos = confirm(
+    `Se van a ${accion} ${cantidad}/${cantidad} QR del canal en una sola operación. No habrá activación parcial.\n\n¿Confirmás?`
+  )
+  if (!confirmaTodos) return null
+
+  const confirmaciones = { todos_los_qr: true }
+  if (canal.requiere_confirmar_destino_comun) {
+    const destino = canal.destino_comun_solicitado
+    const confirmaDestino = confirm(
+      `Canal pasivo: todos sus QR, incluidos los que estaban inactivos, quedarán alineados al destino exacto:\n\n${destino}\n\n¿Confirmás el destino común?`
+    )
+    if (!confirmaDestino) return null
+    confirmaciones.destino_comun = true
+  }
+  return confirmaciones
+}
+
+async function exigirCapacidadE2() {
+  const { data, error } = await supabase.rpc('admin_e2_capacidad')
+  if (error) throw error
+  if (data?.version !== E2_VERSION || data?.schema_generation !== 'v6-object-names' ||
+      data?.enforcement !== true || data?.release_registrado !== true || !data?.activado_at) {
+    throw new Error('E2_CAPACIDAD_NO_ACTIVA')
+  }
+  return data
+}
+
+try {
+  await exigirCapacidadE2()
+} catch (error) {
+  document.getElementById('btnGuardar').disabled = true
+  document.querySelectorAll('#refAddForm button, .slot-actions button').forEach(button => { button.disabled = true })
+  alert('El editor quedó bloqueado porque la capacidad E2 no está activa y verificada. No se realizó ninguna escritura.\n\n' + e2MensajeError(error))
+  throw error
+}
 
 document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault()
@@ -654,18 +860,6 @@ function esActivo(tipo) {
 
 function colorLab(hex){const rgb=hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4),f=x=>x>.008856?Math.cbrt(x):7.787*x+16/116,x=(rgb[0]*.4124+rgb[1]*.3576+rgb[2]*.1805)/.95047,y=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722,z=(rgb[0]*.0193+rgb[1]*.1192+rgb[2]*.9505)/1.08883;return[116*f(y)-16,500*(f(x)-f(y)),200*(f(y)-f(z))]}
 async function siguienteColorIndex(){const paleta=window.SPCanalColors?.PALETA_CANALES||[];if(!paleta.length)throw new Error('Paleta canónica de canales no disponible');const {data,error}=await supabase.from('canales').select('color_index');if(error)throw error;const usados=new Set((data||[]).map(x=>Number(x.color_index)).filter(Number.isInteger)),labs=paleta.map(colorLab),dist=(a,b)=>Math.sqrt(a.reduce((n,v,i)=>n+(v-b[i])**2,0));const libres=paleta.map((_,i)=>i).filter(i=>!usados.has(i));if(!libres.length)throw new Error('No quedan colores de canal disponibles');return libres.reduce((mejor,i)=>{const minimo=[...usados].reduce((m,j)=>Math.min(m,dist(labs[i],labs[j])),Infinity);return minimo>mejor.dist?{i,dist:minimo}:mejor},{i:libres[0],dist:-1}).i}
-
-async function mensajeErrorFuncion(error, fallback) {
-  if (error?.context) {
-    try {
-      const payload = await error.context.json()
-      if (payload?.error) return payload.error
-    } catch (_) {
-      // Un error de red/relay puede no tener un body JSON consumible.
-    }
-  }
-  return error?.message || fallback
-}
 
 // Escape HTML para prevenir XSS al renderizar datos
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
@@ -790,42 +984,37 @@ function recortarSlugRef(slug, max) {
   return limpio.slice(0, max).replace(/-+$/g, '') || limpio.slice(0, max)
 }
 
-function armarCodigoPuntoBase(codigoCanal, nombre, puntoTipo) {
-  const canal = toSlug(codigoCanal || '')
-  const slugPunto = toSlug(nombre || puntoTipo || 'punto') || 'punto'
-  if (!canal) return ''
-  const directo = `${canal}-${slugPunto}`
-  if (directo.length <= MAX_REF_CODE_LENGTH) return directo
+const CODIGO_PUNTO_OPACO_ALFABETO = '23456789abcdefghjkmnpqrstuvwxyz'
+const CODIGO_PUNTO_OPACO_LARGO = 6
+const CODIGO_PUNTO_OPACO_REINTENTOS = 64
 
-  const maxPunto = MAX_REF_CODE_LENGTH - canal.length - 1
-  if (maxPunto >= 4) return `${canal}-${recortarSlugRef(slugPunto, maxPunto)}`
-
-  const puntoCorto = recortarSlugRef(slugPunto, Math.min(slugPunto.length, 16))
-  const maxCanal = MAX_REF_CODE_LENGTH - puntoCorto.length - 1
-  if (maxCanal < 8) return ''
-  return `${recortarSlugRef(canal, maxCanal)}-${puntoCorto}`
+function armarCodigoPuntoBase() {
+  // Sólo CSPRNG: ningún dato del canal, nombre, tipo o ubicación participa.
+  if (typeof globalThis.crypto?.getRandomValues !== 'function') return ''
+  const limiteSinSesgo = 256 - (256 % CODIGO_PUNTO_OPACO_ALFABETO.length)
+  let codigo = ''
+  let lotes = 0
+  while (codigo.length < CODIGO_PUNTO_OPACO_LARGO && lotes < 16) {
+    lotes++
+    const bytes = new Uint8Array((CODIGO_PUNTO_OPACO_LARGO - codigo.length) * 2)
+    globalThis.crypto.getRandomValues(bytes)
+    for (const byte of bytes) {
+      if (byte >= limiteSinSesgo) continue
+      codigo += CODIGO_PUNTO_OPACO_ALFABETO[byte % CODIGO_PUNTO_OPACO_ALFABETO.length]
+      if (codigo.length === CODIGO_PUNTO_OPACO_LARGO) break
+    }
+  }
+  return codigo.length === CODIGO_PUNTO_OPACO_LARGO ? codigo : ''
 }
 
-function codigoConSufijoSeguro(codigoBase, sufijo = '') {
-  const suf = sufijo ? `-${sufijo}` : ''
-  const maxBase = MAX_REF_CODE_LENGTH - suf.length
-  const base = recortarSlugRef(codigoBase, maxBase)
-  if (!base) return ''
-  return `${base}${suf}`
-}
-
-function proximoCodigoPunto(codigoCanal, puntoTipo, ubicacion, nombre, codigosOcupados = []) {
-  // punto_ubicacion es descripción/metadata: no se usa para generar códigos QR físicos.
-  const candidatoBase = armarCodigoPuntoBase(codigoCanal, nombre, puntoTipo)
-  if (!candidatoBase) return ''
+function proximoCodigoPunto(codigosOcupados = []) {
   const usados = codigosOcupados instanceof Set
     ? codigosOcupados
     : new Set((codigosOcupados || []).map(c => String(c || '').trim()).filter(Boolean))
-  const candidatoInicial = codigoConSufijoSeguro(candidatoBase)
-  if (!usados.has(candidatoInicial)) return candidatoInicial
-  for (let i = 2; i < 1000; i++) {
-    const candidato = codigoConSufijoSeguro(candidatoBase, i)
-    if (candidato && !usados.has(candidato)) return candidato
+  for (let intento = 0; intento < CODIGO_PUNTO_OPACO_REINTENTOS; intento++) {
+    const candidato = armarCodigoPuntoBase()
+    if (!candidato) return ''
+    if (!usados.has(candidato)) return candidato
   }
   return ''
 }
@@ -856,16 +1045,49 @@ function actualizarSeccionReferencias() {
 
 function actualizarEstadoTitular() {
   const sinTitular = document.getElementById('sinTitular').checked
-  const tieneUsuario = Boolean(document.getElementById('userId').value)
+  const selector = document.getElementById('titularUsuario')
+  const userId = sinTitular ? '' : selector.value
+  const usuario = _usuariosTitulares.find(u => u.id === userId) || null
+  document.getElementById('userId').value = userId
+  document.getElementById('email').value = usuario?.email || (sinTitular ? '' : document.getElementById('email').value)
+  selector.disabled = sinTitular
   document.getElementById('emailTitularWrap').style.display = sinTitular ? 'none' : ''
-  document.getElementById('accesoExistente').style.display = !sinTitular && tieneUsuario ? '' : 'none'
-  document.getElementById('accesoNuevo').style.display = !sinTitular && !tieneUsuario ? '' : 'none'
+  document.getElementById('accesoExistente').style.display = !sinTitular && usuario ? '' : 'none'
+  document.getElementById('accesoNuevo').style.display = sinTitular ? 'none' : ''
+  if (usuario) {
+    document.getElementById('accesoEmail').textContent = usuario.email || usuario.id
+    document.getElementById('accesoPerfil').textContent = usuario.nombre_completo && usuario.dni
+      ? `${usuario.nombre_completo} · DNI ${usuario.dni}`
+      : 'Perfil administrado desde Admin → Usuarios.'
+  }
 }
 
 document.getElementById('sinTitular').addEventListener('change', actualizarEstadoTitular)
-document.getElementById('titularDni').addEventListener('input', event => {
-  event.target.value = event.target.value.replace(/\D/g, '')
-})
+document.getElementById('titularUsuario').addEventListener('change', actualizarEstadoTitular)
+
+function renderSelectorTitulares(valorActual = '') {
+  const selector = document.getElementById('titularUsuario')
+  const permitidos = _usuariosTitulares.filter(u => u.rol === 'colaborador' || u.id === valorActual)
+  selector.innerHTML = '<option value="">— Elegí un colaborador preexistente —</option>' +
+    permitidos.map(u => {
+      const legacy = u.rol === 'colaborador' ? '' : ' · titular actual heredado'
+      const perfil = u.nombre_completo ? ` · ${u.nombre_completo}` : ''
+      return `<option value="${esc(u.id)}">${esc(u.email || u.id)}${esc(perfil)}${esc(legacy)}</option>`
+    }).join('')
+  selector.value = valorActual || ''
+  actualizarEstadoTitular()
+}
+
+async function cargarUsuariosTitulares() {
+  const { data, error } = await supabase.rpc('admin_listar_usuarios_2f')
+  if (error) {
+    document.getElementById('titularUsuario').innerHTML = '<option value="">No se pudieron cargar colaboradores</option>'
+    throw new Error(`No se pudieron cargar los colaboradores preexistentes: ${error.message}`)
+  }
+  _usuariosTitulares = Array.isArray(data) ? data : []
+  renderSelectorTitulares(_usuarioAsignadoOriginal || '')
+  return _usuariosTitulares
+}
 
 // ── Tipo change ───────────────────────────────────────────
 window.onTipoChange = function() {
@@ -899,6 +1121,7 @@ document.getElementById('nombre').addEventListener('input', function() {
   document.getElementById('saveBarNombre').textContent = this.value.trim() || 'Nuevo canal'
   if (!editId) {
     const slug = recortarSlugRef(toSlug(this.value), MAX_REF_CODE_LENGTH)
+    codigoFuente = slug
     document.getElementById('codigo').value        = slug
     document.getElementById('slugPreview').textContent = slug || '—'
   }
@@ -912,111 +1135,20 @@ document.getElementById('codigo').addEventListener('input', function() {
 window.actualizarDestinoPreview = function() {
   const tipo = document.getElementById('tipoDestino').value
   document.getElementById('destinoProyectoWrap').style.display = tipo === 'proyecto' ? '' : 'none'
-  document.getElementById('destinoCustomWrap').style.display   = tipo === 'custom'   ? '' : 'none'
   const dest = getDestinoUrl()
-  document.getElementById('destinoPreview').innerHTML =
-    `El QR principal llevará a: <strong>${PUBLIC_HOST}${dest}</strong>`
+  const preview = document.getElementById('destinoPreview')
+  const strong = document.createElement('strong')
+  strong.textContent = dest === null ? '— seleccioná un destino —' : `${PUBLIC_HOST}${dest}`
+  preview.replaceChildren(document.createTextNode('El QR principal llevará a: '), strong)
 }
 
 function getDestinoUrl() {
   const tipo = document.getElementById('tipoDestino').value
   if (tipo === 'proyecto') {
-    // el valor ya es la URL completa (ej: /aldea-los-huemules o /propiedades/casa-bariloche)
-    const dest = document.getElementById('destinoProyecto').value
-    return dest || '/'
+    // El valor viene del catálogo cerrado. Vacío es error: nunca se reescribe a '/'.
+    return document.getElementById('destinoProyecto').value || null
   }
-  if (tipo === 'custom') return document.getElementById('destinoCustom').value || '/'
-  return '/'
-}
-
-function getProyectoSlugDestino(destino) {
-  const normalizar = valor => {
-    try {
-      const url = new URL(valor || '/', BASE_URL)
-      const path = url.pathname.replace(/\/+$/, '') || '/'
-      return `${path}${url.search}`
-    } catch {
-      return null
-    }
-  }
-
-  const destinoNormalizado = normalizar(destino)
-  const item = _proyectos.find(p => normalizar(p.destino) === destinoNormalizado)
-  return item?.slug || null
-}
-
-function propiedadIdDeDestino(data) {
-  return data?.tipo === 'propiedad' && data.id ? data.id : null
-}
-
-function propiedadIdDestinoPasivo() {
-  if (document.getElementById('tipoDestino').value !== 'proyecto') return null
-  const option = document.getElementById('destinoProyecto').selectedOptions[0]
-  return option?.dataset.tipo === 'propiedad'
-    ? (option.dataset.destinoId || null)
-    : null
-}
-
-async function sincronizarReferenciaPropiedad(referenciaId, propiedadId) {
-  if (propiedadId) {
-    return supabase
-      .from('referencia_propiedad')
-      .upsert(
-        { referencia_id: referenciaId, propiedad_id: propiedadId },
-        { onConflict: 'referencia_id' }
-      )
-  }
-  return supabase
-    .from('referencia_propiedad')
-    .delete()
-    .eq('referencia_id', referenciaId)
-}
-
-async function sincronizarReferenciasPropiedad(referenciaIds, propiedadId) {
-  if (!referenciaIds.length) return { error: null }
-  if (propiedadId) {
-    return supabase
-      .from('referencia_propiedad')
-      .upsert(
-        referenciaIds.map(referenciaId => ({
-          referencia_id: referenciaId,
-          propiedad_id: propiedadId,
-        })),
-        { onConflict: 'referencia_id' }
-      )
-  }
-  return supabase
-    .from('referencia_propiedad')
-    .delete()
-    .in('referencia_id', referenciaIds)
-}
-
-async function restaurarDestinoCanalYReferencias(canalId, canalAntes, referenciasAntes) {
-  const destinoAnterior = canalAntes?.destino || '/'
-  const canalRollback = canalAntes
-    ? { tipo: canalAntes.tipo, destino: destinoAnterior }
-    : { destino: '/' }
-  const { error: canalError } = await supabase
-    .from('canales')
-    .update(canalRollback)
-    .eq('id', canalId)
-
-  const restauraciones = referenciasAntes.length
-    ? referenciasAntes.map(ref =>
-        supabase
-          .from('referencias')
-          .update({ destino: ref.destino || '/' })
-          .eq('id', ref.id)
-      )
-    : [
-        supabase
-          .from('referencias')
-          .update({ destino: '/' })
-          .eq('canal_id', canalId),
-      ]
-  const resultados = await Promise.all(restauraciones)
-  const referenciaError = resultados.find(resultado => resultado.error)?.error || null
-  return canalError || referenciaError
+  return tipo === 'home' ? '/' : null
 }
 
 // ── Rubros administrables ─────────────────────────────────
@@ -1039,27 +1171,34 @@ async function cargarRubros() {
 
 // ── Cargar destinos disponibles (proyectos + propiedades) ─
 async function cargarDestinos() {
-  // Proyectos: intentamos con slug (disponible después de correr el SQL de slugs)
-  // Si la columna no existe aún, caemos al select sin slug y lo derivamos del título
-  let dproy = null
-  const resConSlug = await supabase.from('proyectos').select('id, nombre, slug').eq('estado', 'activo').order('nombre')
-  if (!resConSlug.error) {
-    dproy = resConSlug.data
-  } else {
-    const resSinSlug = await supabase.from('proyectos').select('id, nombre').eq('estado', 'activo').order('nombre')
-    dproy = resSinSlug.data
-  }
+  const { data: dproy, error: proyectosError } = await supabase
+    .from('proyectos')
+    .select('id, nombre, slug')
+    .eq('estado', 'activo')
+    .order('nombre')
+  if (proyectosError) throw proyectosError
 
-  const { data: dprop } = await supabase.from('propiedades').select('id, titulo, slug').eq('activa', true).order('titulo')
+  const { data: dprop, error: propiedadesError } = await supabase
+    .from('propiedades')
+    .select('id, titulo, slug')
+    .eq('activa', true)
+    .order('titulo')
+  if (propiedadesError) throw propiedadesError
+
+  const proyectoSinSlug = (dproy || []).find(p => !p.slug)
+  const propiedadSinSlug = (dprop || []).find(p => !p.slug)
+  if (proyectoSinSlug || propiedadSinSlug) {
+    throw new Error('E2_CATALOGO_ACTIVO_SIN_SLUG: no se derivó ni corrigió ningún destino en el navegador.')
+  }
 
   const proyectos = (dproy || []).map(p => ({
     tipo:    'proyecto',
     id:      p.id,
     nombre:  p.nombre,
-    slug:    p.slug || toSlug(p.nombre),
+    slug:    p.slug,
     // Destino = la MINIWEB del proyecto (/{slug}), con su personalización completa.
     // NO usar /proyecto-mini.html: es otro template, sin el tema avanzado.
-    destino: `/${p.slug || toSlug(p.nombre)}`,
+    destino: `/${p.slug}`,
   }))
 
   const propiedades = (dprop || []).map(p => ({
@@ -1145,6 +1284,14 @@ async function cargarDestinos() {
 }
 const rubrosListos = cargarRubros()
 const destinosListos = cargarDestinos()
+const usuariosTitularesListos = cargarUsuariosTitulares()
+try {
+  await Promise.all([destinosListos, usuariosTitularesListos])
+} catch (error) {
+  document.getElementById('btnGuardar').disabled = true
+  alert('No se pudieron cargar los catálogos cerrados requeridos. No se habilitó ninguna escritura.\n\n' + e2MensajeError(error))
+  throw error
+}
 
 // ── REFERENCIAS ───────────────────────────────────────────
 async function cargarReferencias() {
@@ -1225,12 +1372,17 @@ async function cargarReferencias() {
         </div>
       </div>
       <div class="slot-actions">
+        ${esPrincipal ? `
+        <button type="button" class="slot-badge ${activo ? 'activo' : 'inactivo'}" disabled
+          title="La referencia principal cambia de estado junto con todo el canal">
+          ${activo ? 'Activo por canal' : 'Inactivo por canal'}
+        </button>` : `
         <button type="button" class="slot-badge ${activo ? 'activo' : 'inactivo'}"
           onclick="toggleRefActivo('${r.id}', this)"
           aria-label="${activo ? 'Desactivar' : 'Reactivar'} el QR ${esc(r.codigo)}"
           title="${activo ? 'Desactivar este QR' : 'Reactivar este QR'}">
           ${activo ? 'Desactivar QR' : 'Reactivar QR'}
-        </button>
+        </button>`}
         <button class="slot-btn" onclick="verQR('${r.codigo}','${encodeURIComponent(r.nombre)}','${encodeURIComponent(r.destino || '/')}')">QR / Link</button>
         <button class="slot-btn" onclick="copiarTextoDirecto('${linkQr}', this)">Copiar link</button>
         <button class="slot-btn" onclick="abrirEditarDestino('${r.id}')">${canalActivo ? 'Editar destino' : 'Editar punto'}</button>
@@ -1261,6 +1413,7 @@ async function cargarReferencias() {
   referencias.forEach(r => {
     const sel = document.getElementById(`edit-sel-${r.id}`)
     if (!sel) return
+    let destinoSeleccionado = false
     _destinosEditables.forEach(p => {
       const o = document.createElement('option')
       o.value = JSON.stringify(p)
@@ -1273,9 +1426,21 @@ async function cargarReferencias() {
         p.tipo !== 'propiedad' &&
         !r.propiedad_id &&
         p.destino === r.destino
-      if (esPropiedadVinculada || esOtroDestino) o.selected = true
+      if (esPropiedadVinculada || esOtroDestino) {
+        o.selected = true
+        destinoSeleccionado = true
+      }
       sel.appendChild(o)
     })
+    if (canalActivo && !destinoSeleccionado && typeof r.destino === 'string' && r.destino) {
+      // Conserva exactamente mini-proyectos, targets archivados u otros destinos
+      // válidos heredados que el catálogo activo no ofrece para una selección nueva.
+      const actual = document.createElement('option')
+      actual.value = JSON.stringify({ tipo: 'actual', nombre: 'Destino actual', destino: r.destino })
+      actual.textContent = `Destino actual (fuera del catálogo): ${r.destino}`
+      actual.selected = true
+      sel.appendChild(actual)
+    }
   })
 }
 
@@ -1310,49 +1475,32 @@ window.guardarDestinoRef = async (id) => {
     if (tipoError) { alert(tipoError); return }
     payload = { ...payload, punto_movilidad, punto_tipo, punto_ubicacion }
   }
-  let propiedadId = original.propiedad_id
   if (canalActivo) {
     if (!sel?.value) { alert('Seleccioná un destino.'); return }
     const destinoData = JSON.parse(sel.value)
-    const { tipo, slug, destino } = destinoData
-    payload.destino = destino
-    payload.proyecto_slug = (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
-    propiedadId = propiedadIdDeDestino(destinoData)
+    payload.destino = destinoData.destino
   }
-  const { error } = await supabase.from('referencias').update(payload).eq('id', id)
-  if (error) { alert('Error al guardar: ' + error.message); return }
-
-  const { error: relacionError } = await sincronizarReferenciaPropiedad(id, propiedadId)
-  if (relacionError) {
-    const restaurarPayload = {
-      nombre: original.nombre,
-      punto_tipo: original.punto_tipo,
-      punto_movilidad: original.punto_movilidad,
-      punto_ubicacion: original.punto_ubicacion,
-      destino: original.destino,
-      proyecto_slug: original.proyecto_slug,
+  try {
+    const resultado = await ejecutarOperacionE2('referencia_guardar', {
+      referencia_id: id,
+      referencia: payload,
+    })
+    if (resultado?.cancelada) return
+    if (resultado?.solo_recuperacion) {
+      alert('Se confirmó una operación E2 anterior cuya respuesta se había perdido. Revisá el punto recargado antes de volver a editar.')
+      await cargarReferencias()
+      return
     }
-    const [
-      { error: restaurarRefError },
-      { error: restaurarRelacionError },
-    ] = await Promise.all([
-      supabase.from('referencias').update(restaurarPayload).eq('id', id),
-      sincronizarReferenciaPropiedad(id, original.propiedad_id),
-    ])
-    const compensacion = restaurarRefError || restaurarRelacionError
-      ? ' La compensación también falló; no sigas editando y revisá esta referencia.'
-      : ' El cambio fue revertido.'
-    alert('No se pudo guardar la relación con la propiedad: ' + relacionError.message + compensacion)
-    await cargarReferencias()
+  } catch (error) {
+    alert('No se pudo guardar el punto. No se realizó ningún cambio parcial.\n\n' + e2MensajeError(error))
     return
   }
-  cargarReferencias()
+  await cargarReferencias()
 }
 
 window.agregarReferencia = async function() {
   const selVal = document.getElementById('refProyecto').value
   const nombre = document.getElementById('refNombre').value.trim()
-  const codigoCanal = document.getElementById('codigo').value
   const canalActivo = esActivo(document.getElementById('tipo').value)
   if (!nombre) { alert('Poné un nombre para el punto.'); return }
   if (canalActivo && !selVal) { alert('Seleccioná un destino y poné un nombre.'); return }
@@ -1360,10 +1508,11 @@ window.agregarReferencia = async function() {
   const destinoData = canalActivo
     ? JSON.parse(selVal)
     : { tipo: 'general', slug: null, destino: getDestinoUrl() }
-  const { tipo, slug, destino } = destinoData
-  const propiedadId = canalActivo
-    ? propiedadIdDeDestino(destinoData)
-    : propiedadIdDestinoPasivo()
+  const { destino } = destinoData
+  if (!canalActivo && destino === null) {
+    alert('Seleccioná el destino común exacto antes de crear el QR.')
+    return
+  }
   const punto_movilidad = canalActivo ? null : (document.getElementById('refPuntoMovilidad').value || '')
   const punto_tipo = canalActivo ? null : resolverTipoPunto('refPuntoTipo', 'refPuntoTipoCustom')
   const punto_ubicacion = canalActivo ? null : (document.getElementById('refPuntoUbicacion').value.trim() || null)
@@ -1371,7 +1520,8 @@ window.agregarReferencia = async function() {
   const tipoError = canalActivo ? '' : errorTipoPunto(punto_tipo)
   if (tipoError) { alert(tipoError); return }
 
-  // Código de slot permanente con anti-colisión global.
+  // Código opaco permanente con anti-colisión global. El tipo, nombre,
+  // ubicación y canal siguen como metadata y jamás entran al identificador.
   const [{ data: refsCanal, error: refsCanalError }, { data: refsTodas, error: refsTodasError }, { data: canalesCodigos, error: canalesCodigosError }] = await Promise.all([
     supabase.from('referencias').select('codigo, punto_orden').eq('canal_id', _canalId),
     supabase.from('referencias').select('codigo'),
@@ -1385,57 +1535,38 @@ window.agregarReferencia = async function() {
     ...(refsTodas || []).map(r => String(r.codigo || '').trim()).filter(Boolean),
     ...(canalesCodigos || []).map(c => String(c.codigo || '').trim()).filter(Boolean),
   ])
-  let codigo
-  if (canalActivo) {
-    let slotNum = 1
-    do {
-      codigo = codigoConSufijoSeguro(codigoCanal, String(slotNum).padStart(2, '0'))
-      slotNum++
-    } while (codigo && codigosOcupados.has(codigo) && slotNum < 1000)
-  } else {
-    codigo = proximoCodigoPunto(codigoCanal, punto_tipo, punto_ubicacion, nombre, codigosOcupados)
-  }
+  const codigo = proximoCodigoPunto(codigosOcupados)
   // Guarda global única antes del INSERT: nada entra a referencias fuera de rango.
   if (!codigo || codigo.length > MAX_REF_CODE_LENGTH || !/^[a-z0-9-]{2,80}$/.test(codigo)) {
-    alert(`No se pudo generar un código QR seguro. Usá un nombre o código más corto. Máximo interno: ${MAX_REF_CODE_LENGTH} caracteres.`)
+    alert('No se pudo generar un código QR opaco y único. Recargá los datos e intentá nuevamente.')
     return
   }
 
-  const proyecto_slug = canalActivo && (tipo === 'proyecto' || tipo === 'propiedad') ? slug : null
   const punto_orden = canalActivo ? null : Math.max(0, ...(refsCanal || []).map(r => Number(r.punto_orden) || 0)) + 1
 
-  const { data: referenciaCreada, error } = await supabase.from('referencias').insert({
-    canal_id: _canalId,
-    nombre,
-    codigo,
-    proyecto_slug,
-    destino,
-    activo: true,
-    punto_movilidad,
-    punto_tipo,
-    punto_ubicacion,
-    punto_orden,
-  }).select('id').single()
-
-  if (error) {
-    const ayuda = error.code === '23505' ? ' Revisá el código, nombre o ubicación del punto.' : ''
-    alert('No se pudo guardar el punto QR: ' + error.message + ayuda)
-    return
-  }
-
-  const { error: relacionError } = await sincronizarReferenciaPropiedad(
-    referenciaCreada.id,
-    propiedadId
-  )
-  if (relacionError) {
-    const { error: cleanupError } = await supabase
-      .from('referencias')
-      .delete()
-      .eq('id', referenciaCreada.id)
-    const limpieza = cleanupError
-      ? ' El punto nuevo tampoco pudo eliminarse; frená y revisalo antes de emitir el QR.'
-      : ' El punto nuevo fue eliminado y el código no se emitió.'
-    alert('No se pudo guardar la relación con la propiedad: ' + relacionError.message + limpieza)
+  try {
+    const resultado = await ejecutarOperacionE2('referencia_crear', {
+      canal_id: _canalId,
+      referencia: {
+        nombre,
+        codigo,
+        destino,
+        activo: true,
+        punto_tipo,
+        punto_ubicacion,
+        punto_orden,
+        punto_movilidad,
+      },
+    })
+    if (resultado?.cancelada) return
+    if (resultado?.solo_recuperacion) {
+      alert('Se confirmó un alta E2 anterior cuya respuesta se había perdido. La lista se recargará antes de crear otro QR.')
+      await cargarReferencias()
+      return
+    }
+  } catch (error) {
+    const ayuda = error?.code === '23505' ? '\n\nOtro alta ocupó el código opaco al mismo tiempo. Reintentá para generar uno nuevo.' : ''
+    alert('No se pudo guardar el punto QR. No se emitió ningún código parcial.\n\n' + e2MensajeError(error) + ayuda)
     return
   }
 
@@ -1452,8 +1583,19 @@ window.eliminarReferencia = async (id, codigo) => {
     `⚠️ ATENCIÓN\n\nEl QR físico "${codigo}" no se va a borrar: se va a desactivar para que no se recicle un código impreso.\n\n¿Confirmás desactivarlo?`
   )
   if (!ok) return
-  await supabase.from('referencias').update({ activo: false }).eq('id', id)
-  cargarReferencias()
+  try {
+    const resultado = await ejecutarOperacionE2('referencia_actividad', {
+      referencia_id: id,
+      activo: false,
+    })
+    if (resultado?.cancelada) return
+    if (resultado?.solo_recuperacion) {
+      alert('Se confirmó una operación E2 anterior. Revisá el estado recargado antes de continuar.')
+    }
+    await cargarReferencias()
+  } catch (error) {
+    alert('No se pudo desactivar el QR. Conserva su estado anterior.\n\n' + e2MensajeError(error))
+  }
 }
 
 window.toggleRefActivo = async (id, boton) => {
@@ -1474,17 +1616,18 @@ window.toggleRefActivo = async (id, boton) => {
 
   if (boton) boton.disabled = true
   const nuevoEstado = !actual
-  const { data, error } = await supabase
-    .from('referencias')
-    .update({ activo: nuevoEstado })
-    .eq('id', id)
-    .select('id, activo')
-    .single()
-
-  if (error || data?.activo !== nuevoEstado) {
+  try {
+    const resultado = await ejecutarOperacionE2('referencia_actividad', {
+      referencia_id: id,
+      activo: nuevoEstado,
+    })
+    if (resultado?.cancelada) return
+    if (resultado?.solo_recuperacion) {
+      alert('Se confirmó una operación E2 anterior. Revisá el estado recargado antes de continuar.')
+    }
+  } catch (error) {
     const accion = nuevoEstado ? 'reactivar' : 'desactivar'
-    const detalle = error?.message ? `\n\nDetalle: ${error.message}` : ''
-    alert(`No se pudo ${accion} el QR. El código conserva su estado anterior.${detalle}`)
+    alert(`No se pudo ${accion} el QR. El código conserva su estado anterior.\n\n${e2MensajeError(error)}`)
     await cargarReferencias()
     return
   }
@@ -1630,7 +1773,8 @@ if (editId) {
     _esLegacyPasivoSinRubro = !esActivo(c.tipo) && !c.rubro_id
     document.getElementById('nombre').value   = c.nombre   || ''
     document.getElementById('saveBarNombre').textContent = c.nombre || 'Editar canal'
-    document.getElementById('codigo').value   = c.codigo   || ''
+    codigoFuente = c.codigo
+    document.getElementById('codigo').value   = codigoFuente
     document.getElementById('tipo').value     = c.tipo     || 'particular'
     document.getElementById('activo').checked = c.activo   ?? true
     document.getElementById('email').value    = c.email    || ''
@@ -1652,14 +1796,14 @@ if (editId) {
     _codigoInput.style.cursor  = 'not-allowed'
     _codigoInput.title = 'El código del QR es permanente y no puede modificarse'
 
-    // Si ya tiene usuario asignado, mostrar info de solo lectura
+    // La cuenta se administra por separado. Este formulario sólo selecciona
+    // un UUID preexistente; E2 revalida rol, baja y baneo al preparar y aplicar.
+    await usuariosTitularesListos
+    renderSelectorTitulares(c.user_id || '')
     if (c.user_id) {
       document.getElementById('userId').value = c.user_id
-      document.getElementById('accesoExistente').style.display = ''
-      document.getElementById('accesoNuevo').style.display = 'none'
-      // Buscar email del usuario
-      const { data: usuarios } = await supabase.rpc('admin_listar_usuarios_2f')
-      const u = usuarios?.find(x => x.id === c.user_id)
+      document.getElementById('titularUsuario').value = c.user_id
+      const u = _usuariosTitulares.find(x => x.id === c.user_id)
       document.getElementById('accesoEmail').textContent = u ? u.email : c.user_id
       if (u?.email) document.getElementById('email').value = u.email
       document.getElementById('accesoPerfil').textContent = u?.nombre_completo && u?.dni
@@ -1676,7 +1820,12 @@ if (editId) {
 
     if (!esActivo(c.tipo)) {
       await destinosListos
-      const dest = c.destino || '/'
+      const dest = c.destino
+      if (typeof dest !== 'string' || !dest) {
+        document.getElementById('btnGuardar').disabled = true
+        alert('El canal tiene un destino vacío o inválido. E2 bloqueó la edición para no reemplazarlo silenciosamente.')
+        throw new Error('E2_DESTINO_ACTUAL_INVALIDO')
+      }
       const selector = document.getElementById('destinoProyecto')
       const estaListado = [...selector.options].some(o => o.value === dest)
       if (dest === '/') document.getElementById('tipoDestino').value = 'home'
@@ -1684,8 +1833,14 @@ if (editId) {
         document.getElementById('tipoDestino').value = 'proyecto'
         selector.value = dest
       } else {
-        document.getElementById('tipoDestino').value = 'custom'
-        document.getElementById('destinoCustom').value = dest
+        // Preserva literalmente un destino heredado no ofrecido por el catálogo.
+        // El servidor lo valida; el navegador nunca lo corrige ni lo normaliza.
+        const actual = document.createElement('option')
+        actual.value = dest
+        actual.textContent = `Destino actual (fuera del catálogo): ${dest}`
+        actual.selected = true
+        selector.prepend(actual)
+        document.getElementById('tipoDestino').value = 'proyecto'
       }
       actualizarDestinoPreview()
       actualizarSeccionReferencias()
@@ -1704,7 +1859,19 @@ if (editId) {
 // ── Guardar canal ─────────────────────────────────────────
 document.getElementById('btnGuardar').addEventListener('click', async () => {
   const nombre = document.getElementById('nombre').value.trim()
-  const codigo = document.getElementById('codigo').value.trim()
+  const codigoInput = document.getElementById('codigo')
+  const visible = codigoInput.value.trim()
+  if (visible !== codigoFuente) {
+    const usarVisible = confirm(`El código generado era "${codigoFuente}". En el campo quedó "${visible}" (pudo cambiarlo el navegador). ¿Usar "${visible}"?`)
+    if (usarVisible) {
+      codigoFuente = visible
+    } else {
+      codigoInput.value = codigoFuente
+      document.getElementById('slugPreview').textContent = codigoFuente || '—'
+      return
+    }
+  }
+  const codigo = codigoFuente
   if (!nombre || !codigo) { alert('El nombre y el código son obligatorios.'); return }
   // Guarda global: el código del canal es también su referencia principal (/r/{codigo})
   // y prefijo de los slots. Límite interno 72 (regex del sistema admite hasta 80).
@@ -1715,17 +1882,21 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
 
   const tipo      = document.getElementById('tipo').value
   const activo_v  = esActivo(tipo)
-  const tipoAcceso = activo_v ? 'activo' : 'pasivo'
   const destino   = activo_v ? '/' : getDestinoUrl()
   const rubroId = activo_v ? null : (document.getElementById('rubroId').value || null)
+
+  if (!activo_v && destino === null) {
+    alert('Seleccioná el destino común exacto. El sistema no lo reemplazará por la página principal.')
+    return
+  }
 
   if (!activo_v && !rubroId && (!_canalId || !_esLegacyPasivoSinRubro)) {
     alert('Elegí el rubro comercial antes de guardar este canal pasivo.')
     return
   }
 
-  // Validar primero todos los datos locales. Así no se crea una cuenta Auth si
-  // el canal todavía tiene un error de formulario.
+  // Validar primero todos los datos locales. Este submit nunca crea cuentas
+  // Auth: sólo vincula NULL o un colaborador preexistente.
   let latitud = null, longitud = null
   const coordsTxt = document.getElementById('coords').value.trim()
   if (coordsTxt) {
@@ -1745,108 +1916,36 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
 
   const sinTitular = document.getElementById('sinTitular').checked
-  const emailAcceso = document.getElementById('email').value.trim()
-  const passAcceso  = document.getElementById('accesoPass').value
-  const titularNombre = document.getElementById('titularNombre').value.trim().replace(/\s+/g, ' ')
-  const titularDni = document.getElementById('titularDni').value.replace(/\D/g, '')
-
-  if (!sinTitular && !emailAcceso) {
-    alert('Ingresá el email de acceso del titular o marcá que el canal no tiene titular.')
-    return
-  }
-
-  if (!sinTitular && passAcceso && passAcceso.length < 6) {
-    alert('La contraseña temporal debe tener al menos 6 caracteres.')
-    return
-  }
-
   if (sinTitular && _usuarioAsignadoOriginal && !confirm('Este canal tiene un titular asignado. ¿Querés quitar esa vinculación y guardarlo sin titular?')) return
 
-  let userId = null
-  let usuarioCreadoEnEsteGuardado = false
-
-  if (!sinTitular) {
-    // El email es la credencial del titular: siempre se resuelve antes de guardar.
-    const { data: todosUsuarios, error: usuariosError } = await supabase.rpc('admin_listar_usuarios_2f')
-    if (usuariosError) {
-      alert('No se pudo verificar el usuario titular: ' + usuariosError.message)
-      return
-    }
-
-    const usuarioExistente = todosUsuarios?.find(u =>
-      String(u.email || '').trim().toLowerCase() === emailAcceso.toLowerCase()
-    ) || null
-
-    if (usuarioExistente && usuarioExistente.rol !== 'colaborador') {
-      alert(`El email ${emailAcceso} ya pertenece a un usuario con rol "${usuarioExistente.rol || 'sin rol'}". Cambiá su rol a colaborador desde Usuarios antes de asignarlo al canal.`)
-      return
-    }
-
-    if (usuarioExistente) {
-      const yaEstabaAsignado = _usuarioAsignadoOriginal === usuarioExistente.id
-      if ((!usuarioExistente.nombre_completo || !usuarioExistente.dni) && !yaEstabaAsignado) {
-        alert(`El usuario ${emailAcceso} tiene el perfil de titular incompleto. Completá nombre y DNI desde Admin > Usuarios antes de asignarlo.`)
-        return
-      }
-      userId = usuarioExistente.id
-    } else {
-      if (!passAcceso) {
-        alert(`No existe ningún usuario con el email ${emailAcceso}. Crealo primero desde Admin > Usuarios, o completá nombre, DNI y contraseña temporal para crearlo ahora.`)
-        return
-      }
-      if (titularNombre.length < 2 || titularNombre.length > 160) {
-        alert('Completá el nombre y apellido del nuevo titular.')
-        return
-      }
-      if (!/^\d{6,12}$/.test(titularDni)) {
-        alert('El DNI del nuevo titular debe tener entre 6 y 12 números.')
-        return
-      }
-
-      const { data: altaData, error: altaError } = await supabase.functions.invoke(
-        'admin-crear-usuario',
-        {
-          body: {
-            nombre: titularNombre,
-            dni: titularDni,
-            email: emailAcceso,
-            password: passAcceso,
-            rol: 'colaborador',
-            tipo_acceso: tipoAcceso,
-            // El destino del canal no otorga permisos de desarrollador.
-            proyecto_slug: null,
-          },
-        }
-      )
-
-      if (altaError || !altaData?.user_id) {
-        const detalle = altaData?.error || await mensajeErrorFuncion(
-          altaError,
-          'el servicio no devolvió el identificador del usuario.'
-        )
-        alert('No se pudo crear el usuario titular: ' + detalle)
-        return
-      }
-
-      userId = altaData.user_id
-      usuarioCreadoEnEsteGuardado = true
-    }
+  const userId = sinTitular ? null : (document.getElementById('titularUsuario').value || null)
+  const usuarioExistente = userId ? _usuariosTitulares.find(u => u.id === userId) : null
+  if (!sinTitular && !usuarioExistente) {
+    alert('Elegí un colaborador preexistente o marcá que el canal no tiene titular.')
+    return
   }
-
-  async function compensarAltaUsuario() {
-    if (!usuarioCreadoEnEsteGuardado || !userId) return ''
-    const { error: cleanupError } = await supabase.rpc('admin_eliminar_usuario', { p_user_id: userId })
-    return cleanupError
-      ? ` La cuenta nueva no pudo revertirse: ${cleanupError.message}`
-      : ' La cuenta nueva fue revertida.'
+  if (usuarioExistente && usuarioExistente.id !== _usuarioAsignadoOriginal && usuarioExistente.rol !== 'colaborador') {
+    alert('El titular nuevo debe tener rol colaborador. Corregilo primero desde Admin → Usuarios.')
+    return
   }
+  const emailAcceso = usuarioExistente?.email || null
 
+  // Email y colaborador_email son datos del canal, no una copia reactiva de
+  // Auth. Editar otro campo nunca los reescribe silenciosamente: sólo cambian
+  // cuando la intención cambia explícitamente el titular (o en un alta).
+  const titularSinCambio = Boolean(_canalId) && userId === _usuarioAsignadoOriginal
   const preservarEmailLegacy = sinTitular && _canalId && !_usuarioAsignadoOriginal
+  const emailCanal = titularSinCambio
+    ? _emailCanalOriginal
+    : (sinTitular ? (preservarEmailLegacy ? _emailCanalOriginal : null) : emailAcceso)
+  const colaboradorEmailCanal = titularSinCambio
+    ? _colaboradorEmailOriginal
+    : (sinTitular ? (preservarEmailLegacy ? _colaboradorEmailOriginal : null) : emailAcceso)
   const payload = {
     nombre, codigo, tipo,
     activo:   document.getElementById('activo').checked,
-    email:    sinTitular ? (preservarEmailLegacy ? _emailCanalOriginal : null) : emailAcceso,
-    colaborador_email: sinTitular ? (preservarEmailLegacy ? _colaboradorEmailOriginal : null) : emailAcceso,
+    email:    emailCanal,
+    colaborador_email: colaboradorEmailCanal,
     telefono: document.getElementById('telefono').value.trim() || null,
     notas:    document.getElementById('notas').value.trim()    || null,
     ciudad:    document.getElementById('ciudad').value.trim()   || null,
@@ -1858,42 +1957,40 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   }
   if(!_canalId)payload.color_index=colorIndexNuevo
 
-  let canalAntes = null
-  let referenciasAntes = []
-  if (_canalId) {
-    const [
-      { data: canalPrevio, error: canalPrevioError },
-      { data: refsPrevias, error: refsPreviasError },
-    ] = await Promise.all([
-      supabase.from('canales').select('tipo, destino').eq('id', _canalId).single(),
-      supabase.from('referencias').select('id, destino').eq('canal_id', _canalId),
-    ])
-    if (canalPrevioError || refsPreviasError) {
-      const compensacion = await compensarAltaUsuario()
-      alert(
-        'No se pudo congelar el estado previo del canal. No se guardó ningún cambio: ' +
-        (canalPrevioError?.message || refsPreviasError?.message) + compensacion
-      )
-      return
+  const operacionCanal = _canalId ? 'canal_guardar' : 'canal_crear'
+  const intencionCanal = _canalId
+    ? { canal_id: _canalId, canal: payload }
+    : { canal: payload }
+  let resultadoCanal
+  try {
+    resultadoCanal = await ejecutarOperacionE2(
+      operacionCanal,
+      intencionCanal,
+      confirmarCambioActividad
+    )
+  } catch (error) {
+    alert(
+      'No se pudo guardar el canal. E2 no confirmó ningún cambio parcial.\n\n' +
+      e2MensajeError(error)
+    )
+    return
+  }
+  if (resultadoCanal?.cancelada) return
+  if (resultadoCanal?.solo_recuperacion) {
+    if (resultadoCanal.canal_id) {
+      _canalId = resultadoCanal.canal_id
+      history.replaceState({}, '', `?id=${_canalId}`)
     }
-    canalAntes = canalPrevio
-    referenciasAntes = refsPrevias || []
-  }
-
-  let data, error
-  if (_canalId) {
-    ;({ data, error } = await supabase.from('canales').update(payload).eq('id', _canalId).select().single())
-  } else {
-    ;({ data, error } = await supabase.from('canales').insert(payload).select().single())
-  }
-
-  if (error) {
-    const compensacion = await compensarAltaUsuario()
-    alert('Error al guardar: ' + error.message + compensacion)
+    alert('Se confirmó una operación E2 anterior cuya respuesta se había perdido. La pantalla se recargará para mostrar el estado real antes de otro cambio.')
+    window.location.reload()
     return
   }
 
-  _canalId = data.id
+  _canalId = resultadoCanal?.canal_id
+  if (!_canalId) {
+    alert('E2 confirmó la operación pero no devolvió el identificador del canal. La pantalla no continuará sin verificarlo.')
+    return
+  }
 
   // M1 crea y sincroniza la principal dentro de la transacción del canal.
   // La UI solo confirma el guardado después de releer esa invariante.
@@ -1915,12 +2012,12 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   if (userId) {
     document.getElementById('email').readOnly = true
     document.getElementById('accesoEmail').textContent = emailAcceso
-    document.getElementById('accesoPerfil').textContent = titularNombre && titularDni
-      ? `${titularNombre} · DNI ${titularDni}`
+    document.getElementById('accesoPerfil').textContent = usuarioExistente?.nombre_completo && usuarioExistente?.dni
+      ? `${usuarioExistente.nombre_completo} · DNI ${usuarioExistente.dni}`
       : 'Perfil administrado desde Admin → Usuarios.'
   } else {
-    document.getElementById('email').readOnly = false
-    document.getElementById('email').title = ''
+    document.getElementById('email').readOnly = true
+    document.getElementById('email').title = 'El email de acceso se administra desde Admin → Usuarios'
     if (_usuarioAsignadoOriginal) document.getElementById('email').value = ''
   }
   actualizarEstadoTitular()
@@ -1929,7 +2026,8 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   _colaboradorEmailOriginal = payload.colaborador_email
   if (rubroId) _esLegacyPasivoSinRubro = false
 
-  // Para canales pasivos: leer la principal creada por la base y sincronizar el destino común.
+  // E2 ya confirmó canal, principal, relaciones e historial en una transacción.
+  // La UI sólo relee y comprueba el resultado; no ejecuta compensaciones.
   if (!activo_v) {
     const { data: refsExistentes, error: refConsultaError } = await supabase
       .from('referencias')
@@ -1942,64 +2040,22 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
       return
     }
 
-    let destinoError = null
-    let refPrincipal = refsExistentes?.find(r => r.punto_tipo === 'principal') || null
+    const refPrincipal = refsExistentes?.find(r => r.punto_tipo === 'principal') || null
     if (!refPrincipal) {
       alert('Canal guardado, pero la base no devolvió la principal del canal — revisar guardas.')
       return
     }
-
-    // El destino es común a todos los puntos QR del canal pasivo.
-    // Actualizar solo destino; nombre/código/tipo/ubicación/actividad se preservan.
-    ;({ error: destinoError } = await supabase.from('referencias').update({
-      destino,
-    }).eq('canal_id', _canalId))
-    if (!destinoError) refPrincipal = { ...refPrincipal, destino }
-
-    if (destinoError) {
-      alert('Canal guardado, pero no se pudieron sincronizar sus puntos QR: ' + destinoError.message)
-      return
-    }
-
-    const { error: relacionError } = await sincronizarReferenciasPropiedad(
-      (refsExistentes || []).map(r => r.id),
-      propiedadIdDestinoPasivo()
-    )
-    if (relacionError) {
-      const compensacionError = await restaurarDestinoCanalYReferencias(
-        _canalId,
-        canalAntes,
-        referenciasAntes
-      )
-      const compensacion = compensacionError
-        ? ' La compensación también falló; frená y revisá el canal antes de usar sus QRs.'
-        : ' El destino anterior fue restaurado; podés corregir el problema y reintentar.'
-      alert('No se pudo sincronizar la relación de sus puntos con la propiedad: ' + relacionError.message + compensacion)
+    const divergente = (refsExistentes || []).find(r => r.destino !== destino)
+    if (divergente) {
+      alert(`E2 respondió correctamente, pero la relectura detectó un destino divergente en ${divergente.codigo}. Frená y auditá antes de usar los QR.`)
       return
     }
 
     actualizarSeccionReferencias()
     await cargarReferencias()
     const codigoQR = refPrincipal?.codigo || codigo
-    verQR(codigoQR, encodeURIComponent(refPrincipal?.nombre || nombre), encodeURIComponent(refPrincipal?.destino || destino))
+    verQR(codigoQR, encodeURIComponent(refPrincipal?.nombre || nombre), encodeURIComponent(refPrincipal?.destino))
   } else {
-    const { error: relacionPrincipalError } = await sincronizarReferenciaPropiedad(
-      principalGuardada.id,
-      null
-    )
-    if (relacionPrincipalError) {
-      const compensacionError = await restaurarDestinoCanalYReferencias(
-        _canalId,
-        canalAntes,
-        referenciasAntes
-      )
-      const compensacion = compensacionError
-        ? ' La compensación también falló; frená y revisá el canal.'
-        : ' El destino anterior fue restaurado.'
-      alert('No se pudo limpiar la relación de la referencia principal: ' + relacionPrincipalError.message + compensacion)
-      return
-    }
-
     // Canal activo: mostrar sección de referencias
     actualizarSeccionReferencias()
     cargarReferencias()
