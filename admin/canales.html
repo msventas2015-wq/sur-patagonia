@@ -442,6 +442,10 @@ let _canales = []
 let _statsCanales = {}
 let _colabsCanales = []
 let _rubrosCanales = []
+let _e2CapacidadActiva = false
+const _actividadCanalEnCurso = new Set()
+const E2_OPERACION_CANAL_ACTIVIDAD = 'canal_actividad'
+const E2_PENDIENTE_PREFIJO = 'surpatagonia:e2:v6.2:canal_actividad:'
 const _filtrosCanales = {
   provincia: '',
   ciudad: '',
@@ -459,6 +463,120 @@ document.getElementById('btnLogout').addEventListener('click', async e => {
   e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
 })
 
+function errorRpc(error, fallback = 'Error de comunicación con E2') {
+  if (error instanceof Error) return error
+  const normalizado = new Error(error?.message || fallback)
+  if (error && typeof error === 'object') Object.assign(normalizado, error)
+  return normalizado
+}
+
+function esErrorTransitorio(error) {
+  const codigo = String(error?.code || '')
+  const estado = Number(error?.status || error?.context?.status || 0)
+  return error instanceof TypeError
+    || estado >= 500
+    || ['PGRST000', 'PGRST001', 'PGRST002', 'PGRST003'].includes(codigo)
+    || /fetch|network|conexi[oó]n|timeout|tiempo de espera/i.test(String(error?.message || ''))
+}
+
+async function rpcE2ConReintento(nombre, parametros) {
+  let ultimoError
+  for (let intento = 0; intento < 2; intento++) {
+    try {
+      const { data, error } = await supabase.rpc(nombre, parametros)
+      if (!error) return data
+      ultimoError = errorRpc(error)
+    } catch (error) {
+      ultimoError = errorRpc(error)
+    }
+    if (!esErrorTransitorio(ultimoError) || intento === 1) break
+    await new Promise(resolve => setTimeout(resolve, 350))
+  }
+  ultimoError.e2Transitorio = esErrorTransitorio(ultimoError)
+  throw ultimoError
+}
+
+async function exigirCapacidadE2() {
+  const data = await rpcE2ConReintento('admin_e2_capacidad', {})
+  const capacidad = Array.isArray(data) ? data[0] : data
+  if (!capacidad || capacidad.version !== 'E2-v6.2'
+      || capacidad.schema_generation !== 'v6-object-names'
+      || capacidad.enforcement !== true
+      || capacidad.release_registrado !== true
+      || !capacidad.activado_at) {
+    throw new Error('E2_CAPACIDAD_NO_ACTIVA')
+  }
+  return capacidad
+}
+
+function claveActividadPendiente(canalId, activo) {
+  return `${E2_PENDIENTE_PREFIJO}${canalId}:${activo ? '1' : '0'}`
+}
+
+function borrarActividadPendiente(canalId, activo) {
+  try { localStorage.removeItem(claveActividadPendiente(canalId, activo)) } catch (_) {}
+}
+
+function obtenerPayloadActividad(canal, activo) {
+  const clave = claveActividadPendiente(canal.id, activo)
+  const destinoComun = activo && !esActivo(canal.tipo) ? (canal.destino ?? null) : null
+  let guardado = null
+  try {
+    guardado = JSON.parse(localStorage.getItem(clave) || 'null')
+  } catch (_) {
+    try { localStorage.removeItem(clave) } catch (_) {}
+  }
+
+  const payloadGuardado = guardado?.payload
+  if (guardado?.operacion === E2_OPERACION_CANAL_ACTIVIDAD
+      && payloadGuardado?.canal_id === canal.id
+      && payloadGuardado?.activo === activo
+      && Object.prototype.hasOwnProperty.call(payloadGuardado, 'destino_comun')
+      && payloadGuardado.destino_comun === destinoComun
+      && typeof payloadGuardado.request_id === 'string') {
+    return payloadGuardado
+  }
+
+  if (!globalThis.crypto?.randomUUID) throw new Error('E2_UUID_SEGURO_NO_DISPONIBLE')
+  const payload = {
+    request_id: globalThis.crypto.randomUUID(),
+    canal_id: canal.id,
+    activo,
+    destino_comun: destinoComun
+  }
+  const registro = JSON.stringify({
+    version: 1,
+    operacion: E2_OPERACION_CANAL_ACTIVIDAD,
+    creado_at: new Date().toISOString(),
+    payload
+  })
+  try {
+    localStorage.setItem(clave, registro)
+    if (localStorage.getItem(clave) !== registro) throw new Error('E2_REQUEST_ID_NO_PERSISTIDO')
+  } catch (_) {
+    throw new Error('E2_REQUEST_ID_NO_PERSISTIDO')
+  }
+  return payload
+}
+
+function depurarActividadesYaAplicadas(canales) {
+  canales.forEach(canal => borrarActividadPendiente(canal.id, Boolean(canal.activo)))
+}
+
+function validarResultadoActividad(resultado, payload, totalQr) {
+  if (!resultado || resultado.request_id !== payload.request_id
+      || resultado.estado !== 'aplicada'
+      || resultado.canal_id !== payload.canal_id
+      || resultado.activo !== payload.activo
+      || Number(resultado.referencias) !== totalQr
+      || !/^[0-9a-f]{64}$/.test(String(resultado.after_sha256 || ''))) {
+    const error = new Error('E2_APPLY_RESPUESTA_INVALIDA: la operación puede haberse aplicado; reintentá la misma intención.')
+    error.e2Transitorio = true
+    throw error
+  }
+  return resultado
+}
+
 function renderRubros() {
   const lista = document.getElementById('listaRubros')
   if (!lista) return
@@ -470,6 +588,7 @@ function renderRubros() {
 
 document.getElementById('formNuevoRubro')?.addEventListener('submit', async event => {
   event.preventDefault()
+  if (!_e2CapacidadActiva) { alert('E2 no está activo. No se realizará ninguna escritura.'); return }
   const input = document.getElementById('nuevoRubroEtiqueta')
   const msg = document.getElementById('rubrosMsg')
   const btn = event.currentTarget.querySelector('button[type="submit"]')
@@ -595,6 +714,7 @@ async function cargarCanales() {
   _canales = canales
   _statsCanales = stats
   _colabsCanales = colabs
+  depurarActividadesYaAplicadas(canales)
   renderFiltroOpcionesCanales()
   renderCanalesGrid()
 }
@@ -756,49 +876,123 @@ function initFiltrosCanales() {
 // ── Archivar canal ────────────────────────────────────────
 // Regla de negocio: los códigos impresos NO se borran ni se reciclan.
 // Se desactivan el canal y todos sus puntos QR; visitas y consultas quedan intactas.
-window.eliminarCanal = async id => {
-  const nombre = _canales.find(c => c.id === id)?.nombre || 'este canal'
-  if (!confirm(`¿Archivar el canal "${nombre}" y desactivar todos sus puntos QR?\n\nLos códigos impresos se conservan (no se reciclan) pero dejan de estar activos. Las consultas y visitas registradas NO se borran.`)) return
-  // Orden M1: el trigger archiva la principal junto con el canal.
-  const { error } = await supabase.from('canales').update({ activo: false }).eq('id', id)
-  if (error) { alert('Error al archivar: ' + error.message); return }
-  // Completar todos los puntos, incluidos los legacy con punto_tipo NULL.
-  // La escritura es idempotente: la principal ya quedó inactiva por el trigger.
-  const { error: errRefs } = await supabase.from('referencias').update({ activo: false }).eq('canal_id', id)
-  if (errRefs) { alert('Canal archivado, pero falló la desactivación de puntos: ' + errRefs.message); return }
-
-  const [canalCheck, principalCheck, refsActivasCheck] = await Promise.all([
-    supabase.from('canales').select('activo').eq('id', id).maybeSingle(),
-    supabase.from('referencias').select('activo').eq('canal_id', id).eq('punto_tipo', 'principal').maybeSingle(),
-    supabase.from('referencias').select('id', { count: 'exact', head: true }).eq('canal_id', id).eq('activo', true),
-  ])
-  const checkError = canalCheck.error || principalCheck.error || refsActivasCheck.error
-  if (checkError) { alert('Canal archivado, pero no se pudo verificar el estado final: ' + checkError.message); return }
-  if (canalCheck.data?.activo !== false || principalCheck.data?.activo !== false || (refsActivasCheck.count || 0) !== 0) {
-    alert('Atención: el archivado quedó incompleto — revisar guardas antes de continuar.')
+async function ejecutarActividadCanal(id, activoSolicitado, modo = 'estado') {
+  if (!_e2CapacidadActiva) { alert('E2 no está activo. No se realizará ninguna escritura.'); return }
+  if (_actividadCanalEnCurso.has(id)) return
+  const canal = _canales.find(c => c.id === id)
+  if (!canal) { alert('El canal ya no está en la lista. Recargá la página.'); return }
+  if (Boolean(canal.activo) === activoSolicitado) {
+    borrarActividadPendiente(id, activoSolicitado)
+    await cargarCanales()
     return
   }
-  cargarCanales()
+
+  _actividadCanalEnCurso.add(id)
+  let payload
+  let fase = 'prepare'
+  try {
+    // Se persiste y verifica el request_id antes del primer fetch. Un reintento
+    // reutiliza exactamente la misma intención.
+    payload = obtenerPayloadActividad(canal, activoSolicitado)
+    const preview = await rpcE2ConReintento('admin_e2_preparar', {
+      p_operacion: E2_OPERACION_CANAL_ACTIVIDAD,
+      p_payload: payload
+    })
+
+    if (preview?.estado === 'aplicada') {
+      const totalRecuperado = Number(preview.referencias)
+      if (!Number.isInteger(totalRecuperado) || totalRecuperado < 1) {
+        const error = new Error('E2_RECUPERACION_RESPUESTA_INVALIDA')
+        error.e2Transitorio = true
+        throw error
+      }
+      validarResultadoActividad(preview, payload, totalRecuperado)
+      borrarActividadPendiente(id, activoSolicitado)
+      await cargarCanales()
+      return
+    }
+
+    const vistaCanal = preview?.canal
+    const totalQr = Number(vistaCanal?.referencias)
+    const reactivacionPasiva = activoSolicitado && !esActivo(canal.tipo)
+    if (!vistaCanal || vistaCanal.id !== id || vistaCanal.activo_solicitado !== activoSolicitado
+        || vistaCanal.cambia_actividad !== true || vistaCanal.requiere_confirmar_todos !== true
+        || Boolean(vistaCanal.requiere_confirmar_destino_comun) !== reactivacionPasiva
+        || !Number.isInteger(totalQr) || totalQr < 1
+        || typeof preview.before_sha256 !== 'string' || preview.before_sha256.length !== 64) {
+      throw new Error('E2_PREVIEW_ACTIVIDAD_INCOMPLETO')
+    }
+    if (vistaCanal.aplicable === false) {
+      const detalle = Array.isArray(vistaCanal.referencias_invalidas)
+        ? vistaCanal.referencias_invalidas.map(r => `${r.codigo || r.id}: ${r.error || 'destino inválido'}`).join('\n')
+        : 'Hay destinos inválidos.'
+      throw new Error(`E2_DESTINOS_NO_APLICABLES\n${detalle}`)
+    }
+
+    const accion = activoSolicitado ? 'activar' : (modo === 'archivar' ? 'archivar' : 'desactivar')
+    const aclaracionArchivo = modo === 'archivar'
+      ? '\n\nLos códigos impresos se conservan y las consultas y visitas registradas no se borran.'
+      : ''
+    if (!confirm(`¿Confirmás ${accion} el canal "${canal.nombre}"?\n\n${activoSolicitado ? 'Se activarán' : 'Se desactivarán'} ${totalQr}/${totalQr} QR.${aclaracionArchivo}`)) {
+      borrarActividadPendiente(id, activoSolicitado)
+      return
+    }
+
+    if (reactivacionPasiva) {
+      const destinoPreview = vistaCanal.destino_comun_solicitado
+      if (typeof destinoPreview !== 'string' || destinoPreview !== payload.destino_comun) {
+        throw new Error('E2_DESTINO_COMUN_PREVIEW_NO_COINCIDE')
+      }
+      if (!confirm(`Confirmá el destino común del canal pasivo:\n\n${destinoPreview}\n\nSe alinearán y activarán los ${totalQr}/${totalQr} QR, incluidos los que estaban inactivos.`)) {
+        borrarActividadPendiente(id, activoSolicitado)
+        return
+      }
+    }
+
+    fase = 'apply'
+    const payloadApply = {
+      ...payload,
+      confirmaciones: {
+        todos_los_qr: true,
+        destino_comun: reactivacionPasiva
+      }
+    }
+    const resultado = await rpcE2ConReintento('admin_e2_aplicar', {
+      p_request_id: payload.request_id,
+      p_operacion: E2_OPERACION_CANAL_ACTIVIDAD,
+      p_expected_sha256: preview.before_sha256,
+      p_payload: payloadApply
+    })
+    validarResultadoActividad(resultado, payload, totalQr)
+    borrarActividadPendiente(id, activoSolicitado)
+    await cargarCanales()
+  } catch (errorOriginal) {
+    const error = errorRpc(errorOriginal)
+    if (!error.e2Transitorio) borrarActividadPendiente(id, activoSolicitado)
+    if (error.e2Transitorio) {
+      alert(fase === 'apply'
+        ? 'No se pudo confirmar la respuesta final. La operación puede haberse aplicado. Volvé a intentar el mismo cambio: se reutilizará el request_id y no se duplicará.'
+        : 'No se pudo completar la preparación por un problema de conexión. Volvé a intentar: se reutilizará el mismo request_id.')
+    } else {
+      alert('No se cambió el estado del canal: ' + error.message)
+      if (/E2_ESTADO_CAMBIO_DESDE_PREPARACION/.test(error.message)) await cargarCanales()
+    }
+  } finally {
+    _actividadCanalEnCurso.delete(id)
+  }
 }
+
+window.eliminarCanal = async id => ejecutarActividadCanal(id, false, 'archivar')
 
 // ── Toggle activo ─────────────────────────────────────────
 window.toggleActivo = async (id, actual) => {
-  if (!confirm(actual ? '¿Desactivar este canal?' : '¿Activar este canal?')) return
-  const esperado = !actual
-  const { error } = await supabase.from('canales').update({ activo: esperado }).eq('id', id)
-  if (error) { alert('No se pudo cambiar el estado: ' + error.message); return }
-  // La base sincroniza la principal; los puntos secundarios no se reactivan solos.
-  const [canalCheck, principalCheck] = await Promise.all([
-    supabase.from('canales').select('activo').eq('id', id).maybeSingle(),
-    supabase.from('referencias').select('activo').eq('canal_id', id).eq('punto_tipo', 'principal').maybeSingle(),
-  ])
-  const checkError = canalCheck.error || principalCheck.error
-  if (checkError) { alert('Estado cambiado, pero no se pudo verificar la principal: ' + checkError.message); return }
-  if (canalCheck.data?.activo !== esperado || principalCheck.data?.activo !== esperado) {
-    alert('Atención: canal y referencia principal no quedaron sincronizados — revisar guardas.')
+  const canal = _canales.find(c => c.id === id)
+  if (!canal || Boolean(canal.activo) !== Boolean(actual)) {
+    alert('El estado del canal cambió. Se recargará la lista antes de continuar.')
+    await cargarCanales()
     return
   }
-  cargarCanales()
+  await ejecutarActividadCanal(id, !Boolean(actual), 'estado')
 }
 
 // ── Modal QR ──────────────────────────────────────────────
@@ -914,8 +1108,19 @@ window.copiarLink = (id) => {
     .then(() => { el.style.color = '#50c878'; setTimeout(() => { el.style.color = '' }, 1500) })
 }
 
-initFiltrosCanales()
-cargarCanales()
+try {
+  await exigirCapacidadE2()
+  _e2CapacidadActiva = true
+  initFiltrosCanales()
+  await cargarCanales()
+} catch (errorOriginal) {
+  _e2CapacidadActiva = false
+  const error = errorRpc(errorOriginal)
+  console.error('[E2] Capacidad requerida no disponible:', error)
+  document.getElementById('gridCanales').textContent = 'E2 no está disponible. No se habilitaron operaciones sobre canales.'
+  document.getElementById('canalesFiltroResumen').textContent = 'Operaciones bloqueadas de forma segura'
+  alert('E2 no está disponible. La pantalla queda bloqueada para evitar escrituras parciales.')
+}
 </script>
 </body>
 </html>
