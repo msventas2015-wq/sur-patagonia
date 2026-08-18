@@ -193,6 +193,32 @@
     .btn-generar-pdf:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-generar-pdf svg { width: 15px; height: 15px; }
 
+    /* Llave única: con o sin colores e imágenes (apto imprimir) */
+    .gpdf-llave {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--card-border);
+      cursor: pointer;
+    }
+    .gpdf-llave input[type="checkbox"] {
+      accent-color: var(--dorado);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .gpdf-llave-txt { font-size: 0.85rem; color: var(--blanco); }
+    .gpdf-llave-sub {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--gris-claro);
+      margin-top: 0.15rem;
+      line-height: 1.5;
+    }
+
     .gpdf-empty {
       color: var(--gris-claro);
       font-size: 0.85rem;
@@ -400,7 +426,7 @@
                 <textarea id="cot-financiacion" rows="3" class="gpdf-select" style="max-width:100%;resize:vertical;font-family:inherit;" placeholder="Ej: 30% de entrada + 24 cuotas en pesos ajustadas por ICL..."></textarea>
               </div>
               <div class="gpdf-select-wrap" style="margin-bottom:0;">
-                <label>Nota interna de cotización</label>
+                <label>Nota para el cliente — sale impresa en el PDF</label>
                 <textarea id="cot-nota" rows="3" class="gpdf-select" style="max-width:100%;resize:vertical;font-family:inherit;" placeholder="Condiciones especiales, descuentos, observaciones..."></textarea>
               </div>
             </div>
@@ -437,6 +463,13 @@
         </div>
 
       </div><!-- /contenido-proyecto -->
+
+      <label class="gpdf-llave" for="modo-imprimible-proyecto">
+        <input type="checkbox" id="modo-imprimible-proyecto">
+        <span class="gpdf-llave-txt">Apto para imprimir
+          <span class="gpdf-llave-sub">Sale sin fotos ni colores, solo tinta. El logo, los QR y todos los datos se mantienen.</span>
+        </span>
+      </label>
 
       <div class="gpdf-acciones">
         <button class="btn-generar-pdf" id="btn-gen-proyecto" onclick="generarPDFProyecto()" disabled>
@@ -508,6 +541,13 @@
 
       </div><!-- /contenido-propiedad -->
 
+      <label class="gpdf-llave" for="modo-imprimible-propiedad">
+        <input type="checkbox" id="modo-imprimible-propiedad">
+        <span class="gpdf-llave-txt">Apto para imprimir
+          <span class="gpdf-llave-sub">Sale sin fotos ni colores, solo tinta. El logo, los QR y todos los datos se mantienen.</span>
+        </span>
+      </label>
+
       <div class="gpdf-acciones">
         <button class="btn-generar-pdf" id="btn-gen-propiedad" onclick="generarPDFPropiedad()" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg>
@@ -521,6 +561,7 @@
   </main>
 </div>
 
+<script src="../js/gpdf-fuentes.js?v=1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module">
@@ -625,7 +666,7 @@ function advertenciasProyecto(p, sec = null, extras = {}) {
   const fotos = fotosProyecto(p)
   const svcsLabels = serviciosProyecto(p)
   const finTexto = extras.financiacion || p?.financiacion
-  if ((!sec || sec.portada) && !(p?.foto_atmosfera || p?.foto_portada)) warnings.push('Sin foto de portada — la portada saldrá oscura')
+  if ((!sec || sec.portada) && !(p?.foto_atmosfera || p?.foto_portada)) warnings.push('Sin foto de portada — el PDF sale sin imagen de encabezado')
   if (fotos.length < 2) warnings.push('Sin galería')
   if ((!sec || sec.descripcion) && !p?.descripcion) warnings.push('Sin descripción')
   if ((!sec || sec.servicios) && !svcsLabels.length) warnings.push('Sin servicios')
@@ -915,6 +956,176 @@ async function coverImg(base64, pxW, pxH) {
 // ══════════════════════════════════════════════════════════════════════════
 // GENERAR PDF — PROYECTO
 // ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+// DISEÑO V4.3 — blanco minimalista, apto imprimir · aprobado por Mariano 18-ago-2026
+// Brief: docs/briefs/BRIEF-REDISENO-GENERADOR-PDF-V43-2026-08-18.md
+// Una sola llave: con imágenes y color (digital) / sin imágenes, solo tinta (imprimible).
+// Fondo blanco SIEMPRE · logo de marca en todas las páginas · datos de la martillera al cierre.
+// ══════════════════════════════════════════════════════════════════════════
+
+const GPDF = {
+  W: 210, H: 297, M: 20,
+  TINTA:  [26, 26, 26],
+  GRIS:   [122, 118, 112],
+  LIN:    [206, 202, 195],
+  TEXTO:  [64, 61, 56],
+  DORADO: [176, 142, 60],          // dorado de marca, apagado para impresión
+  LOGO:   '../assets/logos/logo-vertical-negro.png',
+  LEGAL_NOMBRE: 'Mariana Ayelén García · Martillera y Corredora Pública',
+  LEGAL_MAT:    'Mat. 271-RP-18 · F°350 T°II · El Bolsón, Río Negro, Argentina',
+  LEGAL_NOTA:   'Documento informativo. Los precios y condiciones pueden variar sin previo aviso; la operación se perfecciona por escrito.',
+  RED_TITULO:   'Conocé más de la red de Sur Patagonian',
+  RED_BAJADA:   'Propiedades, comercios adheridos, beneficios exclusivos.',
+  RED_CTA:      '¿Tenés una propiedad o un comercio para sumar? Sé parte: surpatagonian.com',
+}
+
+let _logoCache = null
+
+// Recorta el aire transparente del PNG y lo baja a JPEG sobre blanco:
+// así el margen lo controla el diseño y no el archivo, y el PDF no se infla.
+function gpdfLogoLimpio(base64) {
+  return new Promise(resolve => {
+    const img = new Image()
+    img.onload = () => {
+      const t = document.createElement('canvas')
+      t.width = img.naturalWidth; t.height = img.naturalHeight
+      const tx = t.getContext('2d'); tx.drawImage(img, 0, 0)
+      let x0 = t.width, y0 = t.height, x1 = 0, y1 = 0
+      try {
+        const d = tx.getImageData(0, 0, t.width, t.height).data
+        for (let yy = 0; yy < t.height; yy++) for (let xx = 0; xx < t.width; xx++) {
+          if (d[(yy * t.width + xx) * 4 + 3] > 16) {
+            if (xx < x0) x0 = xx; if (xx > x1) x1 = xx
+            if (yy < y0) y0 = yy; if (yy > y1) y1 = yy
+          }
+        }
+      } catch (e) { /* si el canvas queda tainted, se usa la imagen entera */ }
+      if (x1 <= x0 || y1 <= y0) { x0 = 0; y0 = 0; x1 = t.width - 1; y1 = t.height - 1 }
+      const bw = x1 - x0 + 1, bh = y1 - y0 + 1
+      const esc = Math.min(1, 1000 / bw)
+      const c = document.createElement('canvas')
+      c.width = Math.round(bw * esc); c.height = Math.round(bh * esc)
+      const x = c.getContext('2d')
+      x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height)
+      x.drawImage(img, x0, y0, bw, bh, 0, 0, c.width, c.height)
+      resolve({ uri: c.toDataURL('image/jpeg', 0.92), ratio: c.height / c.width })
+    }
+    img.onerror = () => resolve(null)
+    img.src = base64
+  })
+}
+
+async function gpdfLogo(warnings) {
+  if (_logoCache) return _logoCache
+  try {
+    const crudo = await fetchImageAsBase64(GPDF.LOGO, 'logo de marca', warnings)
+    _logoCache = await gpdfLogoLimpio(crudo)
+  } catch (e) { _logoCache = null }
+  return _logoCache
+}
+
+// Caja de dibujo: agrupa fuentes, tracking bien alineado, filetes y el pie.
+function gpdfDoc(jsPDF, modoImprimible) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const F = window.GPDF_FUENTES
+  if (F) {
+    doc.addFileToVFS('Corm-SB.ttf', F.cormSB); doc.addFont('Corm-SB.ttf', 'Cormorant', 'bold')
+    doc.addFileToVFS('Mont-R.ttf',  F.montR);  doc.addFont('Mont-R.ttf',  'Sans', 'normal')
+    doc.addFileToVFS('Mont-SB.ttf', F.montSB); doc.addFont('Mont-SB.ttf', 'Sans', 'bold')
+  }
+  const tieneFuentes = !!F
+  const { W, H, M } = GPDF
+  const acento = modoImprimible ? GPDF.TINTA : GPDF.DORADO
+
+  const api = {
+    doc, W, H, M, acento, conFotos: !modoImprimible,
+    // Cormorant solo para títulos y nombre del cliente; si faltara el archivo, cae en times.
+    titulo: (tam) => { doc.setFont(tieneFuentes ? 'Cormorant' : 'times', 'bold'); doc.setFontSize(tam) },
+    sans:   (tam, negrita) => { doc.setFont(tieneFuentes ? 'Sans' : 'helvetica', negrita ? 'bold' : 'normal'); doc.setFontSize(tam) },
+    tinta:  (c) => doc.setTextColor(...(c || GPDF.TINTA)),
+    // jsPDF no compensa el espaciado entre letras al centrar/alinear: se calcula a mano.
+    tracked: (tx, ancla, y, cs, al) => {
+      doc.setCharSpace(0)
+      const w = doc.getTextWidth(tx) + cs * Math.max(0, tx.length - 1)
+      const x = al === 'center' ? ancla - w / 2 : al === 'right' ? ancla - w : ancla
+      doc.setCharSpace(cs); doc.text(tx, x, y); doc.setCharSpace(0)
+    },
+    rotulo: (tx, x, y, al) => { doc.setTextColor(...GPDF.GRIS); api.sans(5.8, true); api.tracked(tx, x, y, 1.2, al || 'left') },
+    filete: (y, fuerte) => {
+      doc.setDrawColor(...(fuerte ? GPDF.TINTA : GPDF.LIN))
+      doc.setLineWidth(fuerte ? 0.4 : 0.2)
+      doc.line(M, y, W - M, y)
+    },
+    pie: () => {
+      for (let pg = 1; pg <= doc.getNumberOfPages(); pg++) {
+        doc.setPage(pg)
+        doc.setDrawColor(...GPDF.LIN); doc.setLineWidth(0.2); doc.line(M, H - 20, W - M, H - 20)
+        doc.setTextColor(...GPDF.GRIS); api.sans(5.8)
+        doc.text('SUR PATAGONIAN · PROPIEDADES', M, H - 14)
+        doc.text(PUBLIC_HOST, W - M, H - 14, { align: 'right' })
+      }
+    },
+    // Bloque legal de la martillera — cierra siempre la última página.
+    legal: () => {
+      doc.setPage(doc.getNumberOfPages())
+      const y = H - 42
+      api.filete(y, true)
+      doc.setTextColor(...GPDF.TINTA); api.sans(6.6, true)
+      doc.text(GPDF.LEGAL_NOMBRE, W / 2, y + 6.5, { align: 'center' })
+      doc.setTextColor(...GPDF.GRIS); api.sans(6)
+      doc.text(GPDF.LEGAL_MAT, W / 2, y + 11.5, { align: 'center' })
+      api.sans(5.4)
+      doc.text(GPDF.LEGAL_NOTA, W / 2, y + 16, { align: 'center' })
+    },
+  }
+  return api
+}
+
+// Encabezado de marca: el logo capta el margen superior y queda aislado.
+function gpdfEncabezado(g, logo, ancho, arriba) {
+  const { doc, W } = g
+  if (logo) {
+    doc.addImage(logo.uri, 'JPEG', W / 2 - ancho / 2, arriba, ancho, ancho * logo.ratio)
+    return arriba + ancho * logo.ratio
+  }
+  g.tinta(); g.sans(11, true)
+  g.tracked('SUR PATAGONIAN', W / 2, arriba + 8, 2.6, 'center')
+  doc.setTextColor(...GPDF.GRIS); g.sans(6)
+  g.tracked('PROPIEDADES', W / 2, arriba + 13, 2.2, 'center')
+  return arriba + 15
+}
+
+// Bloque de la red: QR izquierda + texto + QR derecha. Va en los dos modos.
+async function gpdfBloqueRed(g, urlContenido, warnings) {
+  const { doc, W, M } = g
+  const qsz = 19, ALTO = 32
+  // Si no entra sobre el bloque legal, va a una página nueva: nunca se pisa con el contenido.
+  let qy = g._yRed || 0
+  if (qy + ALTO > g.H - 42) { doc.addPage(); qy = 30 }
+  const qx1 = M + 8, qx2 = W - M - 8 - qsz
+  const qA = await qrBase64(urlContenido, 150, warnings, 'contenido')
+  const qB = await qrBase64(SITE, 150, warnings, 'red')
+  if (qA) {
+    doc.addImage(qA, 'PNG', qx1, qy, qsz, qsz)
+    doc.setTextColor(...GPDF.GRIS); g.sans(5.4)
+    g.tracked('VER ONLINE', qx1 + qsz / 2, qy + qsz + 4.5, 0.6, 'center')
+  }
+  if (qB) {
+    doc.addImage(qB, 'PNG', qx2, qy, qsz, qsz)
+    doc.setTextColor(...GPDF.GRIS); g.sans(5.4)
+    g.tracked('CONSULTANOS', qx2 + qsz / 2, qy + qsz + 4.5, 0.6, 'center')
+  }
+  doc.setTextColor(...GPDF.TINTA); g.sans(8, true)
+  doc.text(GPDF.RED_TITULO, W / 2, qy + 6, { align: 'center' })
+  doc.setTextColor(...GPDF.GRIS); g.sans(6.6)
+  doc.text(GPDF.RED_BAJADA, W / 2, qy + 10.5, { align: 'center' })
+  doc.setTextColor(...GPDF.TINTA); g.sans(6.6, true)
+  doc.text(GPDF.RED_CTA, W / 2, qy + 15.5, { align: 'center' })
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// GENERAR PDF — PROYECTO
+// ══════════════════════════════════════════════════════════════════════════
 window.generarPDFProyecto = async function() {
   if (!proyectoActual) return
   const btn = document.getElementById('btn-gen-proyecto')
@@ -924,8 +1135,9 @@ window.generarPDFProyecto = async function() {
 
   try {
     const { jsPDF } = window.jspdf
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    const W = 210, H = 297
+    const imprimible = document.getElementById('modo-imprimible-proyecto').checked
+    const g = gpdfDoc(jsPDF, imprimible)
+    const { doc, W, H, M } = g
     const p = proyectoActual
     const warnings = []
     const idsSeleccionados = new Set(Array.from(document.querySelectorAll('.lote-check:checked')).map(c => c.dataset.id))
@@ -958,267 +1170,207 @@ window.generarPDFProyecto = async function() {
       fechaStr = `${parseInt(dd)} de ${meses[parseInt(mm)-1]} de ${yy}`
     }
 
-    const BG = [245, 240, 232]
-    const SURFACE = [235, 229, 218]
-    const DARK = [28, 25, 20]
-    const MUTED = [130, 122, 108]
-    const GOLD = [201, 168, 76]
-    const WHITE = [255, 255, 255]
+    const plata = n => (n == null || n === '') ? '—'
+      : 'USD ' + String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
     const svcsLabels = serviciosProyecto(p)
     const fotos = fotosProyecto(p)
-    const f = c => doc.setFillColor(c[0], c[1], c[2])
-    const d = c => doc.setDrawColor(c[0], c[1], c[2])
-    const t = c => doc.setTextColor(c[0], c[1], c[2])
-    const sp = n => doc.setCharSpace(n)
-    const bg = () => { f(BG); doc.rect(0, 0, W, H, 'F') }
-    const precioUsd = n => n ? `USD ${Number(n).toLocaleString('es-AR')}` : '—'
-    const fitText = (txt, width, max = 4) => doc.splitTextToSize(String(txt || ''), width).slice(0, max)
-    const linea = y => { d([65,60,52]); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); return y + 7 }
-    const secHeaderMin = (texto, y) => {
-      t(DARK); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); sp(0.2)
-      doc.text(texto, 14, y); sp(0)
-      y += 3
-      d([65,60,52]); doc.setLineWidth(0.3); doc.line(14, y, W-14, y)
-      return y + 5
-    }
-    const measureImage = base64 => new Promise(resolve => {
-      const img = new Image()
-      img.onload = () => resolve({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 })
-      img.onerror = () => resolve({ w: 1, h: 1 })
-      img.src = base64
-    })
-    const footer = () => {
-      for (let pg = 1; pg <= doc.getNumberOfPages(); pg++) {
-        doc.setPage(pg)
-        d(MUTED); doc.setLineWidth(0.3); doc.line(14, H-14, W-14, H-14)
-        t(DARK); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.14)
-        doc.text('SUR PATAGONIAN', 14, H-7); sp(0)
-        t(MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7)
-        doc.text(PUBLIC_HOST, W-14, H-7, { align: 'right' })
-      }
-    }
+    const logo = await gpdfLogo(warnings)
 
-    bg()
-    const heroH = 105
-    const fotoUrl = p.foto_atmosfera || p.foto_portada
-    let fotoRaw = null
-    if (fotoUrl) {
-      try { fotoRaw = await fetchImageAsBase64(fotoUrl, 'foto de portada', warnings) } catch(e) {}
-    }
-    if (fotoRaw) {
-      const fotoFit = await coverImg(fotoRaw, Math.round(W * 4), Math.round(heroH * 4))
-      doc.addImage(fotoFit || fotoRaw, 'JPEG', 0, 0, W, heroH, '', 'FAST')
-    } else {
-      f(DARK); doc.rect(0, 0, W, heroH, 'F')
-    }
-    const gtCanvas = document.createElement('canvas'); gtCanvas.width = 8; gtCanvas.height = 240
-    const gtCtx = gtCanvas.getContext('2d')
-    const gtGrad = gtCtx.createLinearGradient(0, 0, 0, 240)
-    gtGrad.addColorStop(0, 'rgba(5,3,1,0.72)'); gtGrad.addColorStop(1, 'rgba(5,3,1,0)')
-    gtCtx.fillStyle = gtGrad; gtCtx.fillRect(0, 0, 8, 240)
-    doc.addImage(gtCanvas.toDataURL(), 'PNG', 0, 0, W, 60)
-    const gbCanvas = document.createElement('canvas'); gbCanvas.width = 8; gbCanvas.height = 180
-    const gbCtx = gbCanvas.getContext('2d')
-    const gbGrad = gbCtx.createLinearGradient(0, 0, 0, 180)
-    gbGrad.addColorStop(0, 'rgba(5,3,1,0)'); gbGrad.addColorStop(1, 'rgba(5,3,1,0.90)')
-    gbCtx.fillStyle = gbGrad; gbCtx.fillRect(0, 0, 8, 180)
-    doc.addImage(gbCanvas.toDataURL(), 'PNG', 0, heroH-45, W, 45)
+    // ─── PÁGINA 1 ───
+    let y = gpdfEncabezado(g, logo, 70, 16) + 13
+    doc.setDrawColor(...GPDF.LIN); doc.setLineWidth(0.25); doc.line(W/2 - 14, y, W/2 + 14, y)
+    y += 13 + 6.3
 
-    try {
-      const logoVB64 = await fetchImageAsBase64('../assets/logos/logo-vertical-blanco.png', 'logo vertical blanco', warnings)
-      const logoDims = await measureImage(logoVB64)
-      const logoW = 36
-      const logoH = logoW * (logoDims.h / logoDims.w)
-      doc.addImage(logoVB64, 'PNG', W/2 - logoW/2, 12, logoW, logoH)
-    } catch(e) {
-      t(WHITE); doc.setFont('helvetica', 'bold'); doc.setFontSize(10); sp(0.32)
-      doc.text('SUR PATAGONIAN', W/2, 18, { align: 'center' }); sp(0)
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.28)
-      doc.text('PROPIEDADES', W/2, 24, { align: 'center' }); sp(0)
+    g.tinta(); g.titulo(24)
+    doc.text(p.nombre || 'Proyecto', W/2, y, { align: 'center' }); y += 7.5
+    if (p.tagline) {
+      doc.setTextColor(...GPDF.GRIS); g.sans(7.4)
+      doc.text(p.tagline, W/2, y, { align: 'center' }); y += 6
     }
-    const locLabel = [p.ciudad, (p.provincia || '').replace(/_/g, ' ')].filter(Boolean).join(' · ').toUpperCase()
-    t(WHITE); doc.setFont('times', 'italic'); doc.setFontSize(28); sp(0)
-    doc.text(p.nombre || 'Proyecto', 12, heroH - 14)
-    if (locLabel) {
-      t([230,230,226]); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); sp(0.22)
-      doc.text(locLabel, 12, heroH - 6); sp(0)
+    const loc = [p.ciudad, (p.provincia || '').replace(/_/g, ' ')].filter(Boolean).join(' · ')
+    if (loc) {
+      doc.setTextColor(...GPDF.GRIS); g.sans(6)
+      g.tracked((loc + ' · PATAGONIA ARGENTINA').toUpperCase(), W/2, y, 1.6, 'center')
     }
-
-    let y = heroH + 8
-    t(MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.14)
-    doc.text('COTIZACIÓN PARA', 14, y)
-    doc.text('FECHA', W-14, y, { align: 'right' }); sp(0)
-    y += 5
-    t(DARK); doc.setFont('times', 'normal'); doc.setFontSize(11)
-    doc.text(cotCliente || '—', 14, y)
-    doc.text(fechaStr || '—', W-14, y, { align: 'right' })
-    y += 5
-    d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y)
     y += 8
 
-    if (sec.lotes && lotesSel.length) {
-      y = secHeaderMin(lotesSel.length === 1 ? 'LOTE COTIZADO' : `${lotesSel.length} LOTES COTIZADOS`, y)
-      if (lotesSel.length === 1) {
-        const l = lotesSel[0]
-        const cW = (W - 28) / 3
-        const precioLote = cotPrecio ? precioUsd(cotPrecio) : precioUsd(l.precio_usd)
-        ;[['N° DE LOTE', String(l.numero ?? '—'), 13], ['SUPERFICIE', l.superficie_m2 ? l.superficie_m2 + ' m²' : '—', 13], ['PRECIO', precioLote, 16]].forEach((item, i) => {
-          const ix = 14 + i * cW
-          t(MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.1)
-          doc.text(item[0], ix, y); sp(0)
-          t(DARK); doc.setFont('times', 'normal'); doc.setFontSize(item[2])
-          doc.text(item[1], ix, y + 6)
-        })
-        y += 12
-        if (l.frente_agua) {
-          t([90,125,94]); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5)
-          doc.text('Frente al agua', 14, y); y += 5
-        }
-      } else {
-        f(DARK); doc.rect(14, y, W-28, 7, 'F')
-        t(WHITE); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.1)
-        doc.text('N°', 18, y+5); doc.text('SUPERFICIE', 40, y+5); doc.text('PRECIO USD', 90, y+5); doc.text('FRENTE AGUA', 140, y+5); doc.text('ESTADO', 175, y+5); sp(0)
-        y += 7
-        lotesSel.slice(0, 12).forEach((l, i) => {
-          if (i % 2 === 0) { f(SURFACE); doc.rect(14, y, W-28, 7, 'F') }
-          const px = cotPrecio ? precioUsd(cotPrecio) : precioUsd(l.precio_usd)
-          t(DARK); doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
-          doc.text(String(l.numero ?? i + 1), 18, y+5)
-          doc.text(l.superficie_m2 ? l.superficie_m2 + ' m²' : '—', 40, y+5)
-          doc.text(px, 90, y+5)
-          doc.text(l.frente_agua ? 'Sí' : 'No', 140, y+5)
-          doc.text(l.estado || '—', 175, y+5)
-          y += 7
-        })
+    if (sec.portada && g.conFotos) {
+      const fotoUrl = p.foto_atmosfera || p.foto_portada
+      let ok = false
+      if (fotoUrl) {
+        try {
+          const raw = await fetchImageAsBase64(fotoUrl, 'foto de portada', warnings)
+          const fit = await coverImg(raw, Math.round((W-2*M) * 4), 42 * 4)
+          doc.addImage(fit || raw, 'JPEG', M, y, W-2*M, 42, '', 'FAST')
+          ok = true
+        } catch (e) { /* sin foto: se salta el bloque, no se dibuja caja vacía */ }
       }
-      y = linea(y + 3)
+      y += ok ? 42 + 10 : 4
+    } else { y += 4 }
+
+    g.filete(y, true); y += 10
+    g.rotulo('COTIZACIÓN PREPARADA PARA', M, y)
+    g.rotulo('FECHA', W-M, y, 'right')
+    y += 6
+    g.tinta(); g.titulo(14)
+    doc.text(cotCliente || '—', M, y)
+    g.sans(8.2)
+    doc.text(fechaStr || '—', W-M, y, { align: 'right' })
+    y += 13
+
+    if (sec.lotes && lotesSel.length) {
+      g.rotulo(lotesSel.length === 1 ? 'LOTE COTIZADO' : `${lotesSel.length} LOTES COTIZADOS`, M, y); y += 6
+      const cols = [M, M+28, M+66, M+112, M+150]
+      doc.setTextColor(...GPDF.GRIS); g.sans(5.6, true)
+      ;['LOTE','SUPERFICIE','PRECIO','OBSERVACIÓN','ESTADO'].forEach((h,i) => g.tracked(h, cols[i], y, 0.7, 'left'))
+      y += 2.4; g.filete(y, true); y += 6.6
+      lotesSel.slice(0, 14).forEach(l => {
+        if (y > H - 60) { doc.addPage(); y = 24 }
+        g.tinta(); g.sans(8)
+        doc.text(String(l.numero ?? '—'), cols[0], y)
+        g.sans(7.6)
+        doc.text(l.superficie_m2 ? l.superficie_m2 + ' m²' : '—', cols[1], y)
+        doc.text(cotPrecio ? plata(cotPrecio) : plata(l.precio_usd), cols[2], y)
+        if (l.frente_agua) {
+          doc.setFillColor(...g.acento); doc.circle(cols[3]+1, y-1.1, 0.75, 'F')
+          g.tinta(); doc.text('Frente al agua', cols[3]+3.4, y)
+        } else { doc.setTextColor(...GPDF.GRIS); doc.text('—', cols[3], y) }
+        doc.setTextColor(...GPDF.GRIS); doc.text(l.estado || '—', cols[4], y)
+        y += 8.2
+      })
+      if (lotesSel.length > 14) {
+        doc.setTextColor(...GPDF.GRIS); g.sans(6.6)
+        doc.text(`+ ${lotesSel.length - 14} lotes más — consultanos por el detalle completo.`, M, y); y += 6
+      }
+      y -= 2.6; g.filete(y, true); y += 13
     }
 
-    if (sec.comercial || sec.financiacion) {
-      y = secHeaderMin('CONDICIONES', y)
-      const precioMostrar = cotPrecio ? precioUsd(cotPrecio) : precioUsd(p.precio_desde)
-      if (precioMostrar !== '—') {
-        t(MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.1)
-        doc.text('PRECIO ACORDADO', 14, y); sp(0)
-        t(DARK); doc.setFont('times', 'normal'); doc.setFontSize(12)
-        doc.text(precioMostrar, 14, y + 5)
-        y += 10
+    if (sec.comercial) {
+      // D3: el rótulo dice la verdad — precio acordado solo si lo escribió el asesor.
+      const acordado = !!cotPrecio
+      const valor = acordado ? cotPrecio : p.precio_desde
+      if (valor) {
+        g.rotulo(acordado ? 'PRECIO ACORDADO' : 'PRECIO DE LISTA DESDE', M, y); y += 7
+        g.tinta(); g.sans(15, true)
+        doc.text(plata(valor), M, y)
+        y += 12
       }
+    }
+
+    if (sec.financiacion) {
       const finTexto = cotFinanciacion || p.financiacion
       if (finTexto) {
-        t(MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.1)
-        doc.text('FINANCIACIÓN', 14, y); sp(0)
-        y += 5
-        t(DARK); doc.setFont('times', 'normal'); doc.setFontSize(10.5)
-        const finL = fitText(finTexto, W-28, 5)
-        doc.text(finL, 14, y)
-        y += finL.length * 5.5 + 4
+        g.rotulo('FINANCIACIÓN', M, y); y += 6
+        g.tinta(); g.sans(8.2)
+        const fin = doc.splitTextToSize(finTexto, W-2*M).slice(0, 4)
+        doc.text(fin, M, y, { lineHeightFactor: 1.5 })
+        y += fin.length * 4.4 + 10
       }
-      y = linea(y + 2)
     }
 
     if (sec.nota && cotNota) {
-      y = secHeaderMin('NOTA DEL ASESOR', y)
-      const ntL = fitText(cotNota, W-32, 4)
-      d(GOLD); doc.setLineWidth(1.5); doc.line(14, y-2, 14, y + 5.5 * ntL.length)
-      t(DARK); doc.setFont('times', 'italic'); doc.setFontSize(10.5)
-      doc.text(ntL, 18, y+3)
+      g.rotulo('NOTA DEL ASESOR', M, y); y += 6
+      g.tinta(); g.sans(8.2)
+      doc.text(doc.splitTextToSize(cotNota, W-2*M).slice(0, 4), M, y, { lineHeightFactor: 1.5 })
     }
 
+    // ─── PÁGINA 2 ───
     doc.addPage()
-    bg()
-    let y2 = 14
-    try {
-      const picosB64 = await fetchImageAsBase64('../assets/logos/picos-negro.png', 'picos marca', warnings)
-      const picosW = 8
-      doc.addImage(picosB64, 'PNG', W/2 - picosW/2, y2, picosW, picosW)
-    } catch(e) {}
-    y2 += 11
-    t(DARK); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); sp(0.3)
-    doc.text('SUR PATAGONIAN · PROPIEDADES', W/2, y2, { align: 'center' }); sp(0)
-    y2 += 4
-    d(GOLD); doc.setLineWidth(0.3); doc.line(14, y2, W-14, y2)
-    y2 += 8
+    let y2 = gpdfEncabezado(g, logo, 44, 14) + 8
+    g.filete(y2, true); y2 += 11
 
-    y2 = secHeaderMin('EL DESARROLLO', y2)
-    const statsArr = []
-    if (p.hectareas_total) statsArr.push([p.hectareas_total + ' ha', 'SUPERFICIE TOTAL'])
-    if (p.cantidad_lotes) statsArr.push([String(p.cantidad_lotes), 'LOTES TOTALES'])
+    // D1: la descripción ahora SÍ sale (antes el checkbox no hacía nada).
+    if (sec.descripcion && p.descripcion) {
+      g.tinta(); g.sans(8, true)
+      g.tracked('EL DESARROLLO:', M, y2, 1.2, 'left'); y2 += 7
+      doc.setTextColor(...GPDF.TEXTO); g.sans(8.2)
+      const desc = doc.splitTextToSize(String(p.descripcion).replace(/\n+/g, ' '), W-2*M).slice(0, 5)
+      doc.text(desc, M, y2, { lineHeightFactor: 1.55 })
+      y2 += desc.length * 4.6 + 9
+    }
+
     const nDisp = lotesActuales.filter(l => l.estado === 'disponible').length
-    if (nDisp) statsArr.push([String(nDisp), 'DISPONIBLES'])
-    if (p.tipo_propiedad) statsArr.push([p.tipo_propiedad, 'TIPO'])
-    if (statsArr.length) {
-      const cw = (W - 28) / statsArr.length
-      statsArr.forEach((st, i) => {
-        const cx = 14 + cw * i + cw / 2
-        t(DARK); doc.setFont('times', 'bold'); doc.setFontSize(13); sp(0)
-        doc.text(st[0], cx, y2 + 6, { align: 'center' })
-        t(MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.1)
-        doc.text(st[1], cx, y2 + 11, { align: 'center' }); sp(0)
+    const stats = []
+    if (p.hectareas_total) stats.push([p.hectareas_total + ' ha', 'SUPERFICIE'])
+    if (p.cantidad_lotes) stats.push([String(p.cantidad_lotes), 'LOTES'])
+    if (nDisp) stats.push([String(nDisp), 'DISPONIBLES'])
+    if (p.distancia_km) stats.push([p.distancia_km + ' km', 'DEL CENTRO'])
+    if (stats.length) {
+      const cw = (W-2*M) / stats.length
+      stats.forEach((s, i) => {
+        const cx = M + cw*i + cw/2
+        g.tinta(); g.sans(11.5, true)
+        doc.text(String(s[0]), cx, y2+3, { align: 'center' })
+        doc.setTextColor(...GPDF.GRIS); g.sans(5.4)
+        g.tracked(s[1], cx, y2+8.2, 1, 'center')
+        if (i) { doc.setDrawColor(...GPDF.LIN); doc.setLineWidth(0.2); doc.line(M+cw*i, y2-2, M+cw*i, y2+9) }
       })
-      y2 += 17
-    }
-    y2 = linea(y2)
-
-    if (svcsLabels.length) {
-      y2 = secHeaderMin('SERVICIOS E INFRAESTRUCTURA', y2)
-      t(DARK); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); sp(0)
-      const svcText = svcsLabels.map(s => '· ' + s).join('   ')
-      const svcL = fitText(svcText, W-28, 4)
-      doc.text(svcL, 14, y2)
-      y2 += svcL.length * 5.5 + 4
-      y2 = linea(y2)
+      y2 += 20
     }
 
-    if (fotos.length >= 1) {
-      y2 = secHeaderMin('GALERÍA DEL DESARROLLO', y2)
-      const nFotos = Math.min(fotos.length, 4)
-      const gap = 3
-      const fW = (W - 28 - gap) / 2
-      const fH = 38
-      for (let i = 0; i < nFotos; i++) {
-        const col = i % 2, row = Math.floor(i / 2)
-        const ix = 14 + col * (fW + gap), iy = y2 + row * (fH + gap)
+    // D1: los datos técnicos también estaban muertos.
+    if (sec.datos) {
+      // Sin repetir lo que ya muestran las métricas grandes de arriba.
+      const yaArriba = stats.map(s => String(s[1]).toLowerCase())
+      const dt = datosTecnicosProyecto(p).filter(it => {
+        const k = String(it[0]).toLowerCase()
+        if (yaArriba.includes('superficie') && k.includes('superficie total')) return false
+        if (yaArriba.includes('lotes') && k.includes('lotes totales')) return false
+        if (yaArriba.includes('del centro') && k.includes('distancia')) return false
+        return true
+      })
+      if (dt.length) {
+        g.rotulo('FICHA TÉCNICA', M, y2); y2 += 7
+        dt.slice(0, 8).forEach((it, i) => {
+          const col = i % 2, ix = M + col * ((W-2*M)/2 + 4), iy = y2 + Math.floor(i/2) * 12.5
+          doc.setTextColor(...GPDF.GRIS); g.sans(5.3)
+          g.tracked(String(it[0]).toUpperCase(), ix, iy, 0.7, 'left')
+          g.tinta(); g.sans(8.4)
+          doc.text(doc.splitTextToSize(String(it[1]), (W-2*M)/2 - 6)[0] || '—', ix, iy+5)
+        })
+        y2 += Math.ceil(Math.min(dt.length, 8) / 2) * 12.5 + 5
+      }
+    }
+
+    if (sec.servicios && svcsLabels.length) {
+      g.rotulo('SERVICIOS', M, y2); y2 += 6.5
+      g.tinta(); g.sans(8.4)
+      const svc = doc.splitTextToSize(svcsLabels.join('      ·      '), W-2*M).slice(0, 2)
+      doc.text(svc, M, y2, { lineHeightFactor: 1.5 })
+      y2 += svc.length * 4.6 + 7
+    }
+
+    if (g.conFotos && fotos.length) {
+      // La galería usa el espacio que sobra: 4, 2 o ninguna foto.
+      // Así el bloque de red y el legal entran siempre en esta misma página.
+      const gW = (W-2*M-4)/2, gH = 27
+      const libre = (H - 42 - 34) - (y2 + 5)
+      const filas = libre >= (gH+4)*2 ? 2 : libre >= gH+4 ? 1 : 0
+      const n = Math.min(fotos.length, filas * 2)
+      if (n) {
+      g.rotulo('GALERÍA', M, y2); y2 += 5
+      for (let i = 0; i < n; i++) {
+        const ix = M + (i%2)*(gW+4), iy = y2 + Math.floor(i/2)*(gH+4)
         try {
           const raw = await fetchImageAsBase64(fotos[i], `foto ${i+1}`, warnings)
-          const fit = await coverImg(raw, Math.round(fW * 4), Math.round(fH * 4))
-          doc.addImage(fit || raw, 'JPEG', ix, iy, fW, fH, '', 'FAST')
-        } catch(e) {
-          f(SURFACE); doc.rect(ix, iy, fW, fH, 'F')
-        }
+          const fit = await coverImg(raw, Math.round(gW*4), Math.round(gH*4))
+          doc.addImage(fit || raw, 'JPEG', ix, iy, gW, gH, '', 'FAST')
+        } catch (e) { /* foto que no carga: se deja el hueco en blanco, sin caja gris */ }
       }
-      y2 += fH * Math.ceil(nFotos / 2) + (Math.ceil(nFotos / 2) - 1) * gap + 4
-      y2 = linea(y2)
-    }
+      y2 += Math.ceil(n/2) * (gH+4) + 10
+      }
+    } else { y2 += 4 }
 
     if (sec.qr) {
-      const qrY = Math.max(y2 + 6, H - 50)
-      const qrSz = 24
-      const qrProy = await qrBase64(`${SITE}/${p.slug || ''}`, 150, warnings, 'proyecto')
-      if (qrProy) {
-        const qrX = 30
-        doc.addImage(qrProy, 'PNG', qrX, qrY, qrSz, qrSz)
-        t(MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.14)
-        doc.text('VER PROYECTO', qrX + qrSz / 2, qrY + qrSz + 4, { align: 'center' }); sp(0)
-        doc.setFontSize(5.2)
-        doc.text('SIN SEGUIMIENTO', qrX + qrSz / 2, qrY - 2, { align: 'center' })
-      }
-      const waNum = String(p.contacto_whatsapp || '').replace(/\D/g, '')
-      const waTarget = waNum ? `https://wa.me/${waNum}` : SITE
-      const qrWa = await qrBase64(waTarget, 150, warnings, 'consultanos')
-      if (qrWa) {
-        const qrX = W - 30 - qrSz
-        doc.addImage(qrWa, 'PNG', qrX, qrY, qrSz, qrSz)
-        t(MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); sp(0.14)
-        doc.text('CONSULTANOS', qrX + qrSz / 2, qrY + qrSz + 4, { align: 'center' }); sp(0)
-        doc.setFontSize(5.2)
-        doc.text('SIN SEGUIMIENTO', qrX + qrSz / 2, qrY - 2, { align: 'center' })
-      }
+      g._yRed = y2 + 2
+      await gpdfBloqueRed(g, `${SITE}/${p.slug || ''}`, warnings)
     }
 
-    footer()
+    g.legal()
+    g.pie()
+
     const slug = (p.nombre || 'proyecto').toLowerCase().replace(/\s+/g, '-')
-    doc.save(`ficha-${slug}.pdf`)
+    doc.save(`ficha-${slug}${imprimible ? '-imprimible' : ''}.pdf`)
     info.textContent = warnings.length
       ? `✓ PDF generado — ${warnings.length} advertencias: ${warnings.join(', ')}`
       : '✓ PDF generado'
@@ -1241,11 +1393,11 @@ window.generarPDFPropiedad = async function() {
 
   try {
     const { jsPDF } = window.jspdf
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    const W = 210, H = 297
+    const imprimible = document.getElementById('modo-imprimible-propiedad').checked
+    const g = gpdfDoc(jsPDF, imprimible)
+    const { doc, W, H, M } = g
     const p = propiedadActual
     const warnings = []
-
     const sec = {
       foto:        document.getElementById('psec-foto').checked,
       descripcion: document.getElementById('psec-descripcion').checked,
@@ -1254,153 +1406,110 @@ window.generarPDFPropiedad = async function() {
       ubicacion:   document.getElementById('psec-ubicacion').checked,
       contacto:    document.getElementById('psec-contacto').checked,
     }
-    advertenciasPropiedad(p, sec).forEach(w => {
-      if (!warnings.includes(w)) warnings.push(w)
-    })
+    advertenciasPropiedad(p, sec).forEach(w => { if (!warnings.includes(w)) warnings.push(w) })
 
-    const BG      = [245, 240, 232]
-    const SURFACE = [235, 229, 218]
-    const DARK    = [28,  25,  20]
-    const MUTED   = [130, 122, 108]
-    const WHITE   = [255, 255, 255]
-    const GOLD    = [201, 168, 76]
+    const plata = n => (n == null || n === '') ? '—'
+      : `${p.moneda || 'USD'} ` + String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    const imagenes = (p.imagenes || []).filter(Boolean)
+    const logo = await gpdfLogo(warnings)
 
-    const f  = c => doc.setFillColor(c[0], c[1], c[2])
-    const d  = c => doc.setDrawColor(c[0], c[1], c[2])
-    const t  = c => doc.setTextColor(c[0], c[1], c[2])
-    const sp = n => doc.setCharSpace(n)
-    const gs = o => { try { doc.setGState(new doc.GState({ opacity: o })) } catch(e){} }
-    const checkPage = y => y > H-40 ? nuevaPagina(doc, BG) : y
+    // ─── PÁGINA ÚNICA ───
+    let y = gpdfEncabezado(g, logo, 70, 16) + 13
+    doc.setDrawColor(...GPDF.LIN); doc.setLineWidth(0.25); doc.line(W/2 - 14, y, W/2 + 14, y)
+    y += 13 + 6.3
 
-    f(BG); doc.rect(0, 0, W, H, 'F')
+    g.tinta(); g.titulo(24)
+    doc.text(doc.splitTextToSize(p.titulo || 'Propiedad', W-2*M)[0], W/2, y, { align: 'center' }); y += 7.5
+    const sub = [p.tipo, p.operacion].filter(Boolean).join(' · ')
+    if (sub) {
+      doc.setTextColor(...GPDF.GRIS); g.sans(7.4)
+      doc.text(sub.charAt(0).toUpperCase() + sub.slice(1), W/2, y, { align: 'center' }); y += 6
+    }
+    const loc = [p.ciudad, p.provincia].filter(Boolean).join(' · ')
+    if (loc) {
+      doc.setTextColor(...GPDF.GRIS); g.sans(6)
+      g.tracked(loc.toUpperCase(), W/2, y, 1.6, 'center')
+    }
+    y += 8
 
-    // Header
-    const hH = 26
-    f(SURFACE); doc.rect(0, 0, W, hH, 'F')
-    try {
-      const logo = await fetchImageAsBase64('../assets/logos/picos-negro.png', 'picos de marca', warnings)
-      gs(0.68); doc.addImage(logo, 'PNG', 11, 3, 18, 18); gs(1)
-    } catch(e) {}
-    t(GOLD); doc.setFont('helvetica','bold'); doc.setFontSize(11); sp(3.5)
-    doc.text('SUR PATAGONIAN', 33, 11); sp(0)
-    t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.8); sp(1.8)
-    doc.text('DESARROLLO INMOBILIARIO', 33, 16.5); sp(0)
-    t([150,142,128]); doc.setFontSize(4.5); sp(1.2)
-    doc.text('FICHA DE PROPIEDAD', 33, 21); sp(0)
-    d(GOLD); doc.setLineWidth(0.4); doc.line(0, hH, W, hH)
-
-    let y = hH
-
-    // Foto principal
-    if (sec.foto && p.imagenes?.[0]) {
-      const heroH = 72
+    if (sec.foto && g.conFotos && imagenes[0]) {
       try {
-        const img = await fetchImageAsBase64(p.imagenes[0], 'foto principal', warnings)
-        doc.addImage(img, 'JPEG', 0, y, W, heroH)
-      } catch(e) { f([35,30,22]); doc.rect(0, y, W, heroH, 'F') }
-      const ov = document.createElement('canvas'); ov.width=1; ov.height=1
-      const oc = ov.getContext('2d'); oc.fillStyle='rgba(8,5,2,0.42)'; oc.fillRect(0,0,1,1)
-      doc.addImage(ov.toDataURL(), 'PNG', 0, y, W, heroH)
-      t(WHITE); doc.setFont('times','italic'); doc.setFontSize(26); sp(0)
-      doc.text(p.titulo || 'Propiedad', 14, y + heroH - 20)
-      const sub = [p.tipo, p.ciudad].filter(Boolean).join(' · ')
-      if (sub) {
-        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(6); sp(2)
-        doc.text(sub.toUpperCase(), 14, y + heroH - 10); sp(0)
-      }
-      y += heroH + 8
-    } else {
-      y += 8
-      t(DARK); doc.setFont('times','italic'); doc.setFontSize(22)
-      doc.text(p.titulo || 'Propiedad', 14, y)
-      y += 12
-    }
+        const raw = await fetchImageAsBase64(imagenes[0], 'foto principal', warnings)
+        const fit = await coverImg(raw, Math.round((W-2*M)*4), 42*4)
+        doc.addImage(fit || raw, 'JPEG', M, y, W-2*M, 42, '', 'FAST')
+        y += 42 + 10
+      } catch (e) { y += 4 }
+    } else { y += 4 }
 
-    // Precio
+    g.filete(y, true); y += 10
+
     if (sec.precio && p.precio) {
-      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
-      doc.text('PRECIO', 14, y); sp(0); y += 6
-      t(DARK); doc.setFont('times','normal'); doc.setFontSize(16)
-      doc.text(`${p.moneda || 'USD'} ${Number(p.precio).toLocaleString()}`, 14, y)
-      if (p.operacion) {
-        t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(6); sp(1)
-        doc.text(p.operacion.toUpperCase(), 80, y); sp(0)
-      }
-      y += 10
-      d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+      g.rotulo('PRECIO', M, y)
+      g.rotulo('OPERACIÓN', W-M, y, 'right')
+      y += 7
+      g.tinta(); g.sans(15, true)
+      doc.text(plata(p.precio), M, y)
+      g.sans(8.2)
+      doc.text((p.operacion || '—').toUpperCase(), W-M, y, { align: 'right' })
+      y += 13
     }
 
-    // Descripción
+    const TOPE = H - 42 - 34
+    // Si un bloque no entra, abre página nueva: no se recorta información ni se superpone nada.
+    const asegurar = alto => { if (y + alto > TOPE) { doc.addPage(); y = 26 } }
+
     if (sec.descripcion && p.descripcion) {
-      t(MUTED); doc.setFont('times','italic'); doc.setFontSize(8.5)
-      const lines = doc.splitTextToSize(p.descripcion, W - 28)
-      doc.text(lines.slice(0,5), 14, y)
-      y += lines.slice(0,5).length * 5 + 6
-      d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+      const desc = doc.splitTextToSize(String(p.descripcion).replace(/\n+/g, ' '), W-2*M).slice(0, 10)
+      asegurar(6 + desc.length * 4.6)
+      g.rotulo('LA PROPIEDAD', M, y); y += 6
+      doc.setTextColor(...GPDF.TEXTO); g.sans(8.2)
+      doc.text(desc, M, y, { lineHeightFactor: 1.55 })
+      y += desc.length * 4.6 + 10
     }
 
-    // Datos técnicos
     if (sec.datos) {
-      const items = datosTecnicosPropiedad(p)
-
-      if (items.length) {
-        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
-        doc.text('DATOS TÉCNICOS', 14, y); sp(0); y += 7
-        const colW = (W - 28) / 2
-        let rowY = y
-        items.forEach((item, i) => {
-          const col = i % 2
-          if (col === 0) rowY = i === 0 ? checkPage(rowY) : checkPage(rowY + 10)
-          const ix = 14 + col * (colW + 4)
-          const iy = rowY
-          t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
-          doc.text(item[0].toUpperCase(), ix, iy); sp(0)
-          t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
-          doc.text(String(item[1]), ix, iy + 5)
+      const dt = datosTecnicosPropiedad(p).slice(0, 8)
+      if (dt.length) {
+        asegurar(7 + Math.ceil(dt.length / 2) * 12.5)
+        g.rotulo('FICHA TÉCNICA', M, y); y += 7
+        dt.slice(0, 8).forEach((it, i) => {
+          const col = i % 2, ix = M + col * ((W-2*M)/2 + 4), iy = y + Math.floor(i/2) * 12.5
+          doc.setTextColor(...GPDF.GRIS); g.sans(5.3)
+          g.tracked(String(it[0]).toUpperCase(), ix, iy, 0.7, 'left')
+          g.tinta(); g.sans(8.4)
+          doc.text(String(it[1]), ix, iy+5)
         })
-        y = rowY + 10 + 6
-        d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+        y += Math.ceil(Math.min(dt.length, 8) / 2) * 12.5 + 6
       }
     }
 
-    // Ubicación
     if (sec.ubicacion) {
-      const loc = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
-      if (loc) {
-        t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
-        doc.text('UBICACIÓN', 14, y); sp(0); y += 6
-        t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
-        doc.text(loc, 14, y); y += 10
-        d(GOLD); doc.setLineWidth(0.3); doc.line(14, y, W-14, y); y += 6
+      const dir = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
+      if (dir) {
+        asegurar(17)
+        g.rotulo('UBICACIÓN', M, y); y += 6
+        g.tinta(); g.sans(8.4)
+        doc.text(dir, M, y); y += 11
       }
     }
 
-    // Contacto
     if (sec.contacto) {
-      t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
-      doc.text('CONTACTO', 14, y); sp(0); y += 7
-      t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(1)
-      doc.text('ASESOR', 14, y); sp(0)
-      t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
-      doc.text('Sur Patagonian · Propiedades', 14, y + 5)
-      y += 12
+      // El cierre se apoya abajo si el contenido de esta página ya terminó.
+      g._yRed = Math.max(y + 6, TOPE)
+      await gpdfBloqueRed(g, `${SITE}/propiedad/${p.slug || ''}`, warnings)
     }
 
-    // Footer
-    f(DARK); doc.rect(0, H-14, W, 14, 'F')
-    t(GOLD); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2)
-    doc.text('SUR PATAGONIAN · DESARROLLO INMOBILIARIO', 14, H-6); sp(0)
-    t(MUTED); doc.setFontSize(5)
-    doc.text(SITE, W-14, H-6, { align: 'right' })
+    g.legal()
+    g.pie()
 
-    const nombre = (p.titulo || 'propiedad').toLowerCase().replace(/\s+/g,'-')
-    doc.save(`ficha-${nombre}.pdf`)
+    const nombre = (p.titulo || 'propiedad').toLowerCase().replace(/\s+/g, '-')
+    doc.save(`ficha-${nombre}${imprimible ? '-imprimible' : ''}.pdf`)
     info.textContent = warnings.length
       ? `✓ PDF generado — ${warnings.length} advertencias: ${warnings.join(', ')}`
       : '✓ PDF generado'
   } catch(err) {
     console.error(err)
-    info.textContent = 'Error al generar PDF'
+    info.textContent = 'Error: ' + err.message
   }
   btn.disabled = false
 }
