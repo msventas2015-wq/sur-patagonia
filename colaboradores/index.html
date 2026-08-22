@@ -37,6 +37,8 @@
       --blanco: #f5f3f0;
       --rojo: #e05c5c;
     }
+    /* Desplegable nativo: sin esto el popup del SO queda blanco con texto claro. */
+    select option, select optgroup { background-color: var(--card); color: var(--blanco); }
     body {
       background: var(--bg);
       color: var(--blanco);
@@ -1817,6 +1819,24 @@
     })
     // Pre-warm de colores en orden alfabético → asignación determinística e independiente del orden de render
     ;[...misSlots].sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(s => colorDeSlot(s.codigo))
+
+    // ── UNA LINEA POR COMERCIO (canal), NUNCA por punto QR ──────────────
+    // Los puntos QR son segmentacion interna de administracion y no se
+    // exponen al aliado. Cada comercio suma las visitas de todos sus puntos.
+    const comerciosDelAliado = canales.map(c => {
+      const refs = misSlots.filter(s => s.canal_id === c.id && s.activo !== false)
+      const principal = refs.find(r => r.punto_tipo === 'principal') || refs[0]
+      return {
+        codigo: c.codigo,
+        nombre: c.nombre,
+        codigos: new Set([c.codigo, ...refs.map(r => r.codigo)]),
+        // Color canonico del canal (paleta aprobada). Fallback al color de slot.
+        color: (window.SPCanalColors && window.SPCanalColors.colorCanalDesdeIndex
+                 ? window.SPCanalColors.colorCanalDesdeIndex(c.color_index)
+                 : null) || colorDeSlot(principal ? principal.codigo : c.codigo)
+      }
+    })
+
     const slotCodigos  = misSlots.map(s => s.codigo)
     const derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
     const [rScansPorSlot, rProyImgs, rPropAll] = await Promise.all([
@@ -3806,13 +3826,12 @@
         // ── Líneas individuales por slot (modo Hoy, por bucket de 15min) ──
         const slotLinesHoy = []
         if (multiSlot) {
-          misSlots.filter(s => s.activo !== false).forEach(slot => {
-            const visSlot = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo && inHoy(v.created_at))
+          comerciosDelAliado.forEach(com => {
+            const visCom = visitas.filter(v => esEntrada(v) && com.codigos.has(v.canal_ref) && inHoy(v.created_at))
             const arr = new Array(numBuckets).fill(0)
-            visSlot.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
+            visCom.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
             if (arr.some(x => x > 0)) {
-              const proy = proyImgs[slot.proyecto_slug]
-              slotLinesHoy.push({ codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr })
+              slotLinesHoy.push({ codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr })
             }
           })
         }
@@ -3958,14 +3977,13 @@
           const _recorte = _buckets.length - labelsEvol.length
           const _buckAlin = _recorte > 0 ? _buckets.slice(_recorte) : _buckets
           // 5. Construir series con los buckets alineados (todos los slots activos)
-          slotsDedup.filter(s => s.activo !== false).forEach(slot => {
-            const visSlot = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo)
+          comerciosDelAliado.forEach(com => {
+            const visCom = visitas.filter(v => esEntrada(v) && com.codigos.has(v.canal_ref))
             const arr = _buckAlin.map(({ bIni, bFin }) =>
-              visSlot.filter(v => { const d = new Date(v.created_at); return d >= bIni && d < bFin }).length
+              visCom.filter(v => { const d = new Date(v.created_at); return d >= bIni && d < bFin }).length
             )
             if (arr.some(x => x > 0)) {
-              const proy = proyImgs[slot.proyecto_slug]
-              slotLinesPeriodo.push({ codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr })
+              slotLinesPeriodo.push({ codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr })
             }
           })
         }
@@ -4494,10 +4512,9 @@
       const labels = dias.map(d => d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}))
       const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
       const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
-      const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
-        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
-        const proy = proyImgs[slot.proyecto_slug]
-        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
+      const slotLines = comerciosDelAliado.map(com => {
+        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&com.codigos.has(v.canal_ref)&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        return { codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr }
       }).filter(ln => ln.data.some(x=>x>0))
 
       const ctxAct = document.getElementById('pvPanelAct30')?.getContext('2d')
@@ -4621,10 +4638,9 @@
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
       const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
       const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
-      const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
-        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
-        const proy = proyImgs[slot.proyecto_slug]
-        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
+      const slotLines = comerciosDelAliado.map(com => {
+        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&com.codigos.has(v.canal_ref)&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        return { codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr }
       }).filter(ln => ln.data.some(x=>x>0))
       const totalScans = dataScans.reduce((s,v)=>s+v,0)
       const hayDatos = totalScans > 0 || dataCons.reduce((s,v)=>s+v,0) > 0
@@ -4928,7 +4944,9 @@
     function renderContactosActivo_pv(contactos) {
       const nombreSlot = {}
       ;(misSlots || []).forEach(s => {
-        nombreSlot[s.codigo] = proyImgs[s.proyecto_slug]?.nombre || s.nombre || s.codigo
+        // El aliado ve el nombre del COMERCIO, nunca el del punto QR (interno).
+        const _canalDelSlot = canales.find(c => c.id === s.canal_id)
+        nombreSlot[s.codigo] = _canalDelSlot ? _canalDelSlot.nombre : s.codigo
       })
       canales.forEach(c => { if (!nombreSlot[c.codigo]) nombreSlot[c.codigo] = c.nombre })
 
