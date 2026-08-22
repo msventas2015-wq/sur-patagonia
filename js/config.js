@@ -122,7 +122,7 @@ export function getRef() {
 
 // Devuelve cómo llegó el referido: 'qr', 'link', o null si no hay ref vigente.
 export function getRefVia() {
-  return leerRefUrl()?.via || leerRefGuardado()?.via || null
+  return leerRefUrl()?.via || null
 }
 
 function paginaActual() {
