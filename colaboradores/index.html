@@ -1305,6 +1305,7 @@
   }
 
   const esc  = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  const esEntrada = v => v.canal_via === 'qr' || v.canal_via === 'link'
   const fmt  = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
   const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
   const ESTADO_LABEL_PASIVO = { nueva:'Sin avance', contactado:'Contactado', visita:'En visita', oferta:'Oferta', cerrado:'Cerrada', descartado:'Descartado' }
@@ -1703,7 +1704,7 @@
 
     const [rVisitas, rVisitas30, rContactos, rCampanas, rMensajes, rMisSlots] = await Promise.all([
       supabase.from('visitas').select('created_at, canal_via, canal_ref').in('canal_ref', codigosRef),
-      supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigosRef).gte('created_at', hace30),
+      supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigosRef).in('canal_via', ['qr','link']).gte('created_at', hace30),
       supabase.from('contactos').select('*').in('canal_ref', codigosRef).order('created_at', { ascending: false }),
       supabase.from('campanas_canales')
         .select('canal_id, campanas(nombre, url_destino, activa, fecha_inicio, fecha_fin)')
@@ -1820,7 +1821,7 @@
     const derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
     const [rScansPorSlot, rProyImgs, rPropAll] = await Promise.all([
       slotCodigos.length
-        ? supabase.from('visitas').select('canal_ref').in('canal_ref', slotCodigos).gte('created_at', hace30)
+        ? supabase.from('visitas').select('canal_ref,canal_via,created_at').in('canal_ref', slotCodigos).in('canal_via', ['qr','link']).gte('created_at', hace30)
         : Promise.resolve({ data: [] }),
       derivedSlugs.length
         ? supabase.from('proyectos').select('slug, nombre, foto_portada').in('slug', derivedSlugs)
@@ -2075,7 +2076,7 @@
 
       return true
     })
-    const totalScans = visitas.length
+    const totalScans = visitas.filter(esEntrada).length
     const conv       = totalScans > 0 ? ((contactos.filter(c => c.origen !== 'manual').length / totalScans) * 100).toFixed(1) : 0
 
     // Campaña activa por canal
@@ -2285,7 +2286,7 @@
     const renderCards = () => canales.map(c => {
       // Todos los codigos (referencia o canal directo) que pertenecen a este canal
       const misCodigos = new Set([c.codigo, ...(misRefs || []).filter(r => r.canal_id === c.id).map(r => r.codigo)])
-      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref)).length
+      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref) && esEntrada(v)).length
       const cContacts = contactos.filter(x => misCodigos.has(x.canal_ref)).length
       const estado    = !c.activo ? 'inactivo' : campanaActiva[c.id] ? 'campana' : 'activo'
       const estadoLabel = estado === 'inactivo' ? 'QR inactivo'
@@ -2312,7 +2313,7 @@
     const datosComercioPasivo = canal => {
       const referenciasCanal = (misSlots || []).filter(r => r.canal_id === canal.id)
       const codigosCanal = new Set([canal.codigo, ...referenciasCanal.map(r => r.codigo)])
-      const visitasCanal = visitas.filter(v => codigosCanal.has(v.canal_ref))
+      const visitasCanal = visitas.filter(v => codigosCanal.has(v.canal_ref) && esEntrada(v))
       const contactosCanal = contactos.filter(c => codigosCanal.has(c.canal_ref))
       const principal = referenciasCanal.find(r => r.codigo === canal.codigo && r.punto_tipo === 'principal')
         || referenciasCanal.find(r => r.activo !== false)
@@ -2718,9 +2719,9 @@
     function metricasPasivo(contactos) {
       const corte30 = new Date(Date.now() - 30 * 86400000)
       const corte60 = new Date(Date.now() - 60 * 86400000)
-      const v30 = visitas.filter(v => new Date(v.created_at) >= corte30).length
+      const v30 = visitas.filter(v => esEntrada(v) && new Date(v.created_at) >= corte30).length
       const c30 = contactos.filter(c => new Date(c.created_at) >= corte30).length
-      const vAnt = visitas.filter(v => { const d = new Date(v.created_at); return d >= corte60 && d < corte30 }).length
+      const vAnt = visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= corte60 && d < corte30 }).length
       const cAnt = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 }).length
       const c30Web = contactos.filter(c => new Date(c.created_at) >= corte30 && c.origen !== 'manual').length
       const cAntWeb = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 && c.origen !== 'manual' }).length
@@ -2802,7 +2803,7 @@
     }
 
     function renderFunnelCRM(contactos) {
-      const totalInteracciones = visitas.length
+      const totalInteracciones = visitas.filter(esEntrada).length
       const contactosFunnel = contactos.filter(c => c.estado !== 'descartado')
       const totalConsultas = contactosFunnel.length
       const totalDescartadas = contactos.filter(c => c.estado === 'descartado').length
@@ -3572,7 +3573,7 @@
         const bloqueIni = new Date(cursor)
         const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
         labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
-        dataScans.push(visitas.filter(v => { const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataScans.push(visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
         dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
       }
       // Arrancar desde el primer día con actividad real
@@ -3600,7 +3601,7 @@
         const bloqueIni = new Date(cursor)
         const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
         labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
-        dataScans.push(visitas.filter(v => { const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataScans.push(visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
         dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
       }
       const firstIdx = dataScans.findIndex((v, i) => v > 0 || dataConsultas[i] > 0)
@@ -3806,7 +3807,7 @@
         const slotLinesHoy = []
         if (multiSlot) {
           misSlots.filter(s => s.activo !== false).forEach(slot => {
-            const visSlot = visitas.filter(v => v.canal_ref === slot.codigo && inHoy(v.created_at))
+            const visSlot = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo && inHoy(v.created_at))
             const arr = new Array(numBuckets).fill(0)
             visSlot.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
             if (arr.some(x => x > 0)) {
@@ -3875,7 +3876,7 @@
         // Contadores en vivo
         const refrescarContadores = () => {
           const hoy=new Date(); hoy.setHours(0,0,0,0)
-          setText('pvLiveScans4', visitas.filter(v=>new Date(v.created_at)>=hoy).length)
+          setText('pvLiveScans4', visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoy).length)
           setText('pvLiveConsultas4', contactos.filter(v=>new Date(v.created_at)>=hoy).length)
         }
         refrescarContadores()
@@ -3958,7 +3959,7 @@
           const _buckAlin = _recorte > 0 ? _buckets.slice(_recorte) : _buckets
           // 5. Construir series con los buckets alineados (todos los slots activos)
           slotsDedup.filter(s => s.activo !== false).forEach(slot => {
-            const visSlot = visitas.filter(v => v.canal_ref === slot.codigo)
+            const visSlot = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo)
             const arr = _buckAlin.map(({ bIni, bFin }) =>
               visSlot.filter(v => { const d = new Date(v.created_at); return d >= bIni && d < bFin }).length
             )
@@ -4050,7 +4051,7 @@
       const d0 = new Date(desde); d0.setHours(0,0,0,0)
       const d1 = new Date(hasta); d1.setHours(23,59,59,999)
 
-      const vP  = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
+      const vP  = visitas.filter(v  => { if (!esEntrada(v)) return false; const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
       const qrP = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 && v.canal_via==='qr' }).length
       const cP  = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 }).length
       const cWebP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && c.origen !== 'manual' }).length
@@ -4119,7 +4120,7 @@
       const en  = t => { const d = new Date(t); return d >= d0 && d <= d1 }
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
       misSlots.filter(s => s.activo !== false).forEach(slot => {
-        const vSlot = visitas.filter(v => v.canal_ref === slot.codigo && en(v.created_at))
+        const vSlot = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo && en(v.created_at))
         const int   = vSlot.length
         const qrN   = vSlot.filter(v => v.canal_via === 'qr').length
         const lnkN  = int - qrN
@@ -4360,7 +4361,7 @@
         if (_slotCharts[slot.id]) { try { _slotCharts[slot.id].destroy() } catch(e){} ; _slotCharts[slot.id] = null }
         const colorHex = colorDeSlot(slot.codigo)
         const rgba = (a) => colorHex.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)).join(',')+`,${a}`
-        const slotVis  = visitas.filter(v => v.canal_ref === slot.codigo)
+        const slotVis  = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo)
         const slotCons = contactos.filter(c => c.canal_ref === slot.codigo)
         // HOY → contar por hora; multiday → contar por día
         let data, dataCons
@@ -4491,10 +4492,10 @@
       const mes0 = new Date(hoy0 - 30*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
       const labels = dias.map(d => d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}))
-      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
+      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
       const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
       const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
-        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
         const proy = proyImgs[slot.proyecto_slug]
         return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
       }).filter(ln => ln.data.some(x=>x>0))
@@ -4537,7 +4538,7 @@
       }
 
       // ── Panel 2: Conversión · últimos 30 días ──
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
       const ctxConv = document.getElementById('pvPanelConv30')?.getContext('2d')
       if (ctxConv && convDiaria.some(x=>x>0)) {
         _pvPanelConv = new Chart(ctxConv, {
@@ -4618,10 +4619,10 @@
       const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
       const mes0 = new Date(hoy0 - 30*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
-      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
+      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
       const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
       const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
-        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
         const proy = proyImgs[slot.proyecto_slug]
         return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
       }).filter(ln => ln.data.some(x=>x>0))
@@ -4647,10 +4648,10 @@
       const mes0 = new Date(hoy0 - 30*86400000)
       const prev0 = new Date(hoy0 - 60*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
-      const v30 = visitas.filter(v=>new Date(v.created_at)>=mes0).length
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const v30 = visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=mes0).length
       const c30 = contactos.filter(c=>new Date(c.created_at)>=mes0 && c.origen !== 'manual').length
-      const vAnt = visitas.filter(v=>{const d=new Date(v.created_at);return d>=prev0&&d<mes0}).length
+      const vAnt = visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=prev0&&d<mes0}).length
       const cAnt = contactos.filter(c=>{const d=new Date(c.created_at);return d>=prev0&&d<mes0&&c.origen!=='manual'}).length
       const conv30 = v30 > 0 ? Number((c30/v30*100).toFixed(1)) : 0
       const convAnt = vAnt > 0 ? Number((cAnt/vAnt*100).toFixed(1)) : null
@@ -4680,7 +4681,7 @@
     // Panel 3 — Origen de las interacciones
     function panelOrigenInteracciones() {
       const qr = visitas.filter(v => v.canal_via === 'qr').length
-      const link = visitas.filter(v => v.canal_via !== 'qr').length
+      const link = visitas.filter(v => v.canal_via === 'link').length
       const total = qr + link
       const items = [
         { key:'qr', label:'QR físico', color:'#50c878', n: qr },
