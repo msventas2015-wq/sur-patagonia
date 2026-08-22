@@ -9,6 +9,35 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; }
+    /* ── Organizador de imagenes · arrastrar para ordenar · la 1a es portada ── */
+    .upload-preview {
+      cursor:grab;
+      border:1px solid var(--card-border); border-radius:8px; overflow:hidden;
+      background:var(--negro-2); transition:transform .15s ease, box-shadow .15s ease;
+    }
+    .upload-preview:active { cursor:grabbing; }
+    .upload-preview.up-dragging { opacity:.4; }
+    .upload-preview.up-over { box-shadow:0 0 0 2px var(--dorado); transform:translateY(-2px); }
+    .upload-preview img { pointer-events:none; }
+    .upload-preview .up-badge {
+      position:absolute; left:0; right:0; bottom:0; display:none;
+      background:var(--dorado); color:var(--negro); text-transform:uppercase;
+      font-size:.46rem; font-weight:700; letter-spacing:.06em; text-align:center; padding:1px 0;
+    }
+    .upload-preview:first-child .up-badge { display:block; }
+    .upload-preview .up-mover {
+      position:absolute; left:0; right:0; top:0; display:flex;
+      justify-content:space-between; opacity:0; transition:opacity .15s ease;
+    }
+    .upload-preview:hover .up-mover { opacity:1; }
+    .upload-preview .up-mover button {
+      width:18px; height:18px; border:none; cursor:pointer; font-size:.55rem; line-height:1;
+      background:rgba(9,9,9,.72); color:var(--blanco);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .upload-preview .up-mover button:hover:not(:disabled) { background:var(--dorado); color:var(--negro); }
+    .upload-preview .up-mover button:disabled { opacity:.25; cursor:default; }
+    .up-ayuda { font-size:.66rem; color:var(--gris-claro); margin-top:.6rem; }
     .admin-main { font-family:'Inter',system-ui,sans-serif; }
     /* Secciones de formulario */
     .admin-main > form > div[style],
@@ -737,10 +766,99 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     }
   }
 
+  // ── Organizador de imagenes ─────────────────────────────────────────
+  // El DOM es la fuente de verdad del orden. imagenes[0] = portada.
+  function tilesActuales() {
+    return [...document.querySelectorAll('#uploadPreviews .upload-preview')]
+  }
+
+  function refrescarOrden() {
+    const tiles = tilesActuales()
+    tiles.forEach((tile, i) => {
+      const prev = tile.querySelector('[data-mov="prev"]')
+      const next = tile.querySelector('[data-mov="next"]')
+      if (prev) prev.disabled = i === 0
+      if (next) next.disabled = i === tiles.length - 1
+    })
+    const cont = document.getElementById('uploadPreviews')
+    if (!cont) return
+    let ayuda = document.getElementById('upAyuda')
+    if (tiles.length > 1) {
+      if (!ayuda) {
+        ayuda = document.createElement('div')
+        ayuda.id = 'upAyuda'
+        ayuda.className = 'up-ayuda'
+        ayuda.textContent = 'Arrastra las imagenes para ordenarlas. La primera es la portada.'
+        cont.parentNode.insertBefore(ayuda, cont.nextSibling)
+      }
+      ayuda.style.display = ''
+    } else if (ayuda) {
+      ayuda.style.display = 'none'
+    }
+  }
+
+  let tileArrastrado = null
+
+  function montarTile(div) {
+    div.setAttribute('draggable', 'true')
+
+    const mover = document.createElement('div')
+    mover.className = 'up-mover'
+    mover.innerHTML =
+      '<button type="button" data-mov="prev" title="Mover a la izquierda">&#9664;</button>' +
+      '<button type="button" data-mov="next" title="Mover a la derecha">&#9654;</button>'
+    div.appendChild(mover)
+
+    const badge = document.createElement('div')
+    badge.className = 'up-badge'
+    badge.textContent = 'Portada'
+    div.appendChild(badge)
+
+    mover.querySelector('[data-mov="prev"]').addEventListener('click', ev => {
+      ev.preventDefault()
+      const ant = div.previousElementSibling
+      if (ant && ant.classList.contains('upload-preview')) { div.parentNode.insertBefore(div, ant); refrescarOrden() }
+    })
+    mover.querySelector('[data-mov="next"]').addEventListener('click', ev => {
+      ev.preventDefault()
+      const sig = div.nextElementSibling
+      if (sig && sig.classList.contains('upload-preview')) { div.parentNode.insertBefore(sig, div); refrescarOrden() }
+    })
+
+    div.addEventListener('dragstart', ev => {
+      tileArrastrado = div
+      div.classList.add('up-dragging')
+      try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', '') } catch (e) {}
+    })
+    div.addEventListener('dragend', () => {
+      tileArrastrado = null
+      div.classList.remove('up-dragging')
+      tilesActuales().forEach(x => x.classList.remove('up-over'))
+      refrescarOrden()
+    })
+    div.addEventListener('dragover', ev => {
+      if (!tileArrastrado || tileArrastrado === div) return
+      ev.preventDefault()
+      div.classList.add('up-over')
+    })
+    div.addEventListener('dragleave', () => div.classList.remove('up-over'))
+    div.addEventListener('drop', ev => {
+      ev.preventDefault()
+      div.classList.remove('up-over')
+      if (!tileArrastrado || tileArrastrado === div) return
+      const tiles = tilesActuales()
+      if (tiles.indexOf(tileArrastrado) < tiles.indexOf(div)) div.parentNode.insertBefore(tileArrastrado, div.nextSibling)
+      else div.parentNode.insertBefore(tileArrastrado, div)
+      refrescarOrden()
+    })
+  }
+
   function agregarPreview(src, archivo) {
     const previews = document.getElementById('uploadPreviews')
     const div = document.createElement('div')
     div.className = 'upload-preview'
+    div.dataset.kind = 'file'
+    div._archivo = archivo
     div.innerHTML = `
       <img src="${src}" alt="preview" />
       <button type="button" class="upload-preview-del">×</button>`
@@ -748,8 +866,11 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
       // Eliminar por referencia directa al objeto, no por índice
       archivosSeleccionados = archivosSeleccionados.filter(a => a !== archivo)
       div.remove()
+      refrescarOrden()
     })
+    montarTile(div)
     previews.appendChild(div)
+    refrescarOrden()
   }
 
   // ── Upload foto 360 ───────────────────────────────────────────
@@ -856,15 +977,20 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
       imagenesExistentes.forEach((url, i) => {
         const div = document.createElement('div')
         div.className = 'upload-preview'
+        div.dataset.kind = 'url'
+        div.dataset.url = url
         div.innerHTML = `
           <img src="${url}" alt="img ${i}" />
           <button type="button" class="upload-preview-del" data-url="${url}">×</button>`
         div.querySelector('.upload-preview-del').addEventListener('click', () => {
           imagenesExistentes = imagenesExistentes.filter(u => u !== url)
           div.remove()
+          refrescarOrden()
         })
+        montarTile(div)
         previews.appendChild(div)
       })
+      refrescarOrden()
     }
   }
 
@@ -905,13 +1031,16 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     btn.disabled = true
 
     try {
-      // Subir imágenes normales
-      const urlsNuevas = []
-      for (const archivo of archivosSeleccionados) {
-        const url = await subirImagen(archivo, 'propiedades')
-        urlsNuevas.push(url)
+      // Subir imágenes respetando el ORDEN del organizador.
+      // La primera del array es la portada en todo el sistema.
+      const todasImagenes = []
+      for (const tile of tilesActuales()) {
+        if (tile.dataset.kind === 'url') {
+          if (tile.dataset.url) todasImagenes.push(tile.dataset.url)
+        } else if (tile._archivo) {
+          todasImagenes.push(await subirImagen(tile._archivo, 'propiedades'))
+        }
       }
-      const todasImagenes = [...imagenesExistentes, ...urlsNuevas]
 
       // Subir foto 360 si hay una nueva
       let tour360Url = tour360ExistenteUrl || null
