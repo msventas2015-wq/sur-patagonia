@@ -375,6 +375,7 @@ import { supabase } from '../js/config.js'
 
 const $ = id => document.getElementById(id)
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+const esEntrada = v => v.canal_via === 'qr' || v.canal_via === 'link'
 const dia = d => new Date(d).toISOString().slice(0, 10)
 const CANAL_COLORS = window.SPCanalColors || {}
 const colorCanalDesdeIndex = CANAL_COLORS.colorCanalDesdeIndex || (() => '#8a8a82')
@@ -445,7 +446,7 @@ async function cargar() {
   }
   $('k30Sub').textContent = `vs ${lPrev.length} en los 30 días previos`
   $('kNuevas').textContent = rNuevas.count ?? 0
-  const vCan30 = v30.filter(v => v.canal_ref)
+  const vCan30 = v30.filter(v => v.canal_ref && esEntrada(v))
   $('kVia').textContent = vCan30.length
   const qrClicks30 = vCan30.filter(v => v.canal_via === 'qr').length
   const linkClicks30 = vCan30.length - qrClicks30
@@ -653,7 +654,7 @@ async function cargar() {
   const leadsPorCanal  = {}
   canalesActivos.forEach(c => { clicksPorCanal[c.nombre] = 0; leadsPorCanal[c.nombre] = 0 })
 
-  v30.filter(v => v.canal_ref).forEach(v => {
+  v30.filter(v => v.canal_ref && esEntrada(v)).forEach(v => {
     const nombre = canalRefDeVisita(v)
     if (nombre && clicksPorCanal[nombre] !== undefined) clicksPorCanal[nombre]++
   })

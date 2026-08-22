@@ -863,6 +863,7 @@ async function siguienteColorIndex(){const paleta=window.SPCanalColors?.PALETA_C
 
 // Escape HTML para prevenir XSS al renderizar datos
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+const esEntrada = v => v.canal_via === 'qr' || v.canal_via === 'link'
 
 const PUNTO_TIPO_CUSTOM = '__personalizado__'
 const PUNTO_TIPOS_POR_MOVILIDAD = {
@@ -1335,11 +1336,12 @@ async function cargarReferencias() {
   const hace30 = new Date(Date.now() - 30 * 86400000).toISOString()
   const { data: visitas30 } = await supabase
     .from('visitas')
-    .select('canal_ref')
+    .select('canal_ref,canal_via,created_at')
     .in('canal_ref', referencias.map(r => r.codigo))
+    
     .gte('created_at', hace30)
   const scansPorCodigo = {}
-  ;(visitas30 || []).forEach(v => {
+  ;(visitas30 || []).filter(esEntrada).forEach(v => {
     scansPorCodigo[v.canal_ref] = (scansPorCodigo[v.canal_ref] || 0) + 1
   })
   const canalActivo = esActivo(document.getElementById('tipo').value)

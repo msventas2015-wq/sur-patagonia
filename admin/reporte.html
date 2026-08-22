@@ -191,6 +191,7 @@
   const supabase = createClient(SUPA_URL, SUPA_KEY)
 
   const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  const esEntrada = v => v.canal_via === 'qr' || v.canal_via === 'link'
   const fmt = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : 'Sin fecha'
 
   const params  = new URLSearchParams(location.search)
@@ -223,7 +224,7 @@
     const codigos = (canales || []).map(c => c.codigo).filter(Boolean)
 
     // Scans y leads filtrados por fechas de campaña
-    let qVisitas = supabase.from('visitas').select('canal_ref', { count: 'exact', head: false }).in('canal_ref', codigos)
+    let qVisitas = supabase.from('visitas').select('canal_ref,canal_via,created_at', { count: 'exact', head: false }).in('canal_ref', codigos).in('canal_via', ['qr','link'])
     let qLeads   = supabase.from('contactos').select('canal_ref', { count: 'exact', head: false }).in('canal_ref', codigos).eq('origen', 'web')
     if (camp.fecha_inicio) { qVisitas = qVisitas.gte('created_at', camp.fecha_inicio); qLeads = qLeads.gte('created_at', camp.fecha_inicio) }
     if (camp.fecha_fin)    { qVisitas = qVisitas.lte('created_at', camp.fecha_fin);    qLeads = qLeads.lte('created_at', camp.fecha_fin) }
@@ -231,7 +232,7 @@
     const [rVisitas, rLeads, rVisitasDetalle, rLeadsDetalle] = await Promise.all([
       qVisitas,
       qLeads,
-      supabase.from('visitas').select('canal_ref').in('canal_ref', codigos).limit(10000),
+      supabase.from('visitas').select('canal_ref,canal_via,created_at').in('canal_ref', codigos).limit(10000),
       supabase.from('contactos').select('canal_ref').in('canal_ref', codigos).eq('origen', 'web').limit(5000),
     ])
 
@@ -239,7 +240,7 @@
     const scansPorCodigo = {}
     const leadsPorCodigo = {}
     codigos.forEach(c => { scansPorCodigo[c] = 0; leadsPorCodigo[c] = 0 })
-    ;(rVisitasDetalle.data || []).forEach(v => { if (scansPorCodigo[v.canal_ref] !== undefined) scansPorCodigo[v.canal_ref]++ })
+    ;(rVisitasDetalle.data || []).filter(esEntrada).forEach(v => { if (scansPorCodigo[v.canal_ref] !== undefined) scansPorCodigo[v.canal_ref]++ })
     ;(rLeadsDetalle.data  || []).forEach(l => { if (leadsPorCodigo[l.canal_ref] !== undefined) leadsPorCodigo[l.canal_ref]++ })
 
     const totalScans = Object.values(scansPorCodigo).reduce((a,b)=>a+b,0)

@@ -1079,6 +1079,7 @@ const state = {
 const $ = sel => document.querySelector(sel)
 const $$ = sel => [...document.querySelectorAll(sel)]
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+const esEntrada = v => v.canal_via === 'qr' || v.canal_via === 'link'
 const clamp = (v, min = 0, max = 1) => Math.max(min, Math.min(max, Number(v) || 0))
 const pct = v => `${(clamp(v) * 100).toFixed(4)}%`
 const hace30 = () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -1305,7 +1306,7 @@ async function cargarMetricas() {
   if (!codigos.length) return
   const desde = hace30()
   const [visitasRes, contactosRes] = await Promise.all([
-    supabase.from('visitas').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).limit(50000),
+    supabase.from('visitas').select('canal_ref,created_at,canal_via').in('canal_ref', codigos).gte('created_at', desde).limit(50000),
     supabase.from('contactos').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).eq('origen', 'web').eq('canal_via', 'qr').limit(10000),
   ])
   if (visitasRes.error) throw visitasRes.error
@@ -1313,6 +1314,7 @@ async function cargarMetricas() {
 
   codigos.forEach(codigo => state.stats.set(codigo, { clics:0, consultas:0 }))
   ;(visitasRes.data || []).forEach(v => {
+    if (!esEntrada(v)) return
     const row = state.stats.get(v.canal_ref) || { clics:0, consultas:0 }
     row.clics++
     state.stats.set(v.canal_ref, row)

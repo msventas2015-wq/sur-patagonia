@@ -434,6 +434,7 @@ const TIPO_LABEL = {
   punto_venta: 'Punto de venta', 'campaña': 'Campaña', evento: 'Evento'
 }
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+const esEntrada = v => v.canal_via === 'qr' || v.canal_via === 'link'
 function construirLinkDirecto(destino, codigo) {
   return `${BASE_URL}/r/${codigo}?via=link`
 }
@@ -678,9 +679,11 @@ async function cargarCanales() {
   visitas.forEach(v => {
     const cid = canalIdPorRef(v.canal_ref)
     if (cid && stats[cid]) {
-      stats[cid].clicks++
-      if (v.canal_via === 'qr') stats[cid].clicksQr++
-      else stats[cid].clicksLink++
+      if (esEntrada(v)) {
+        stats[cid].clicks++
+        if (v.canal_via === 'qr') stats[cid].clicksQr++
+        else stats[cid].clicksLink++
+      }
       if (!stats[cid].ultimo || v.created_at > stats[cid].ultimo) stats[cid].ultimo = v.created_at
     }
   })
@@ -700,9 +703,11 @@ async function cargarCanales() {
   document.getElementById('kRefs').textContent       = refs.filter(r => r.activo).length
   const sinRubro = canales.filter(c => !esActivo(c.tipo) && !c.rubro_id).length
   document.getElementById('kSinRubro').textContent   = sinRubro
-  document.getElementById('kClicks').textContent     = visitas.length
-  const clicksQr = visitas.filter(v => v.canal_via === 'qr').length
-  document.getElementById('kClicksSub').textContent  = `${clicksQr} por QR · ${visitas.length - clicksQr} por link`
+  const entradas = visitas.filter(esEntrada)
+  const clicksQr = entradas.filter(v => v.canal_via === 'qr').length
+  const clicksLink = entradas.length - clicksQr
+  document.getElementById('kClicks').textContent     = entradas.length
+  document.getElementById('kClicksSub').textContent  = `${clicksQr} por QR · ${clicksLink} por link`
   document.getElementById('kLeads').textContent      = leads.length
   const mes = new Date(); mes.setDate(mes.getDate() - 30)
   const leadsMes = leads.filter(l => new Date(l.created_at) >= mes).length
