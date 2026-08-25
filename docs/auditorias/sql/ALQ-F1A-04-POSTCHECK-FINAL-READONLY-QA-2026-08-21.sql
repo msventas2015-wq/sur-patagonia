@@ -17,11 +17,15 @@ declare
   v_called boolean;
   v_qr_sha text;
 begin
+  -- Señal OPERATIVA, no frontera de seguridad: application_name es falsificable con SET.
+  -- La frontera real es private.qa_marca_descartable, ausente en producción (sello Cloud 2026-08-21).
+  -- 'mgmt-api' lo asigna Supabase al canal MCP y puede cambiar; si cambia, esta guarda vuelve a frenar.
+  -- Antes se esperaba 'Supavisor', heredado del runner F0 por psql/pooler.
   if current_setting('transaction_read_only') is distinct from 'on'
      or current_database() is distinct from 'postgres'
      or session_user is distinct from 'postgres'
      or current_user is distinct from 'postgres'
-     or current_setting('application_name',true) is distinct from 'Supavisor'
+     or current_setting('application_name',true) is distinct from 'mgmt-api'
      or current_setting('server_version_num')::integer<>170006
      or (select count(*) from private.qa_marca_descartable)<>1
      or (select count(*) from private.qa_marca_descartable

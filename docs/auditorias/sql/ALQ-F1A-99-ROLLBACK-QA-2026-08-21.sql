@@ -61,11 +61,15 @@ declare
     'alq_transaccion_caja.cuenta_validada_activa_at:timestamptz']::text[];
   v_observed_columns text[];
 begin
+  -- Señal OPERATIVA, no frontera de seguridad: application_name es falsificable con SET.
+  -- La frontera real es private.qa_marca_descartable, ausente en producción (sello Cloud 2026-08-21).
+  -- 'mgmt-api' lo asigna Supabase al canal MCP y puede cambiar; si cambia, esta guarda vuelve a frenar.
+  -- Antes se esperaba 'Supavisor', heredado del runner F0 por psql/pooler.
   if current_database() is distinct from 'postgres'
      or current_user is distinct from 'postgres'
      or session_user is distinct from 'postgres'
      or current_setting('server_version_num') is distinct from '170006'
-     or current_setting('application_name') is distinct from 'Supavisor'
+     or current_setting('application_name',true) is distinct from 'mgmt-api'
      or (select count(*) from private.qa_marca_descartable m
          where m.singleton and m.project_ref='rsjwqmpseknvydistgfr')<>1
      or (select coalesce(array_agg(etapa order by etapa),array[]::text[])
