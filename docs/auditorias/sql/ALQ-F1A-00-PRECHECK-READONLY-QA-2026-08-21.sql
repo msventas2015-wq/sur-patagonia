@@ -106,8 +106,9 @@ begin
   select encode(extensions.digest(convert_to(coalesce(jsonb_agg(
     jsonb_build_array(codigo,destino_resuelto,activo) order by codigo),
     '[]'::jsonb)::text,'UTF8'),'sha256'),'hex') into v_qr_sha from resuelto;
-  if (select count(*) from public.referencias)<>115
-     or v_qr_sha<>'9db8d6cf2fb22511af5f6b1374d0d4f460f6177eae61ef52599f2fbce7410d35' then
+  -- Baseline QR de QA reconciliado read-only el 2026-08-25; no proviene de producción.
+  if (select count(*) from public.referencias)<>117
+     or v_qr_sha<>'df0919b2477e1c010bc2bd62ae5c2e199c0ed950aea2a794ed075e71294a92ce' then
     raise exception using errcode='P0001',message='ALQ_F1A_PRE_QR_DERIVADO';
   end if;
 

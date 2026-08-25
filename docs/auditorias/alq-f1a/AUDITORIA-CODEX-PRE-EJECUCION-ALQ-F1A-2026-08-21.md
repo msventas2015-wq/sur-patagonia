@@ -84,3 +84,23 @@ Antes del cierre se verificó la ausencia de:
 
 El paquete queda `CONSTRUIDO_NO_EJECUTADO` y apto para el control independiente de Cloud. Esta
 conclusión no afirma instalación en QA, no autoriza ejecución y no adelanta el espejo `<V>`.
+
+## 8 · Addendum de reconciliación QR · 25-ago-2026
+
+El PRE publicado frenó correctamente, antes del armado y del `apply_migration`, porque el baseline
+QR 115/`9db8d6cf…` provenía de producción y había sido trasladado indebidamente a las guardas de QA.
+La instrucción de §7.4 de medir de nuevo el destino vivo no se había cumplido para este único corte.
+
+Una medición canónica `READ ONLY` mediante el conector project-scoped de QA confirmó:
+
+- base `postgres`, usuario `postgres`, `application_name=mgmt-api`, PostgreSQL `170006` y marca QA;
+- 117 referencias y cero referencias sin canal;
+- huella de resolución QA
+  `df0919b2477e1c010bc2bd62ae5c2e199c0ed950aea2a794ed075e71294a92ce`;
+- `max(created_at)=2026-08-16T03:57:24.354352Z` y
+  `max(updated_at)=2026-08-16T04:36:23.577138Z`, ambos anteriores al sello del 21-ago.
+
+Por lo tanto no hubo deriva QR posterior al sello ni mutación causada por F1-A. Se corrigen juntos
+el PRE `00` y el postcheck final `04`, conservando la guarda como prueba de aislamiento. El source
+forward `d05e853b…` no cambia. Este addendum no autoriza ejecución: exige nuevo lock, publicación,
+recibo Cloud y autorización de Mariano antes de repetir el PRE desde el bloque 1.

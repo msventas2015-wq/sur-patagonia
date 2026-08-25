@@ -79,7 +79,9 @@ Se sella como mínimo:
 - 12 transacciones de caja, siete custodiadas, cero transferencias y una cuenta activa;
 - 46 filas de migraciones y ausencia del nombre F1-A;
 - secuencias, SHAs de funciones/triggers/constraints/ACL y cero violaciones financieras;
-- huella QR de 115 destinos, sólo como prueba de no deriva.
+- baseline QR de QA reconciliado read-only el 2026-08-25: 117 referencias, cero sin canal y huella
+  `df0919b2477e1c010bc2bd62ae5c2e199c0ed950aea2a794ed075e71294a92ce`, sólo como prueba de no
+  deriva. El anterior 115/`9db8d6cf…` pertenecía a producción y no es autoridad para QA.
 
 Cualquier diferencia no reconciliada produce `STOP_DERIVA_BASELINE`.
 
