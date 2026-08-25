@@ -1945,6 +1945,7 @@
       const ds = new Array(numBuckets).fill(0)
       const dc = new Array(numBuckets).fill(0)
       visitas.forEach(v => {
+        if (!esEntrada(v)) return
         const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
         const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) ds[idx]++
       })
@@ -1952,14 +1953,14 @@
         const t = new Date(c.created_at).getTime(); if (t < fromMs || t >= toMs) return
         const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) dc[idx]++
       })
-      const slotData = (typeof misSlots !== 'undefined' ? misSlots : []).map(slot => {
+      const slotData = (typeof comerciosDelAliado !== 'undefined' ? comerciosDelAliado : []).map(com => {
         const arr = new Array(numBuckets).fill(0)
         visitas.forEach(v => {
-          if (v.canal_ref !== slot.codigo) return
+          if (!esEntrada(v) || !com.codigos.has(v.canal_ref)) return
           const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
           const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) arr[idx]++
         })
-        return { codigo: slot.codigo, data: arr }
+        return { codigo: com.codigo, data: arr }
       })
       return { labels: newLbls, dataScans: ds, dataCons: dc, slotData }
     }
@@ -1972,7 +1973,10 @@
       _pvChart4.data.labels = labels
       if (_pvChart4.data.datasets[0]) _pvChart4.data.datasets[0].data = dataScans
       if (_pvChart4.data.datasets[1]) _pvChart4.data.datasets[1].data = dataCons
-      slotData.forEach((sd,i) => { const dst=_pvChart4.data.datasets[2+i]; if (dst) dst.data=sd.data })
+      slotData.forEach(sd => {
+        const dst = _pvChart4.data.datasets.find(dataset => dataset._slotCodigo === sd.codigo)
+        if (dst) dst.data = sd.data
+      })
       delete _pvChart4.options.scales.x.min; delete _pvChart4.options.scales.x.max
       const _cap = labels // captura para closures de callback
       if (_pvChart4.options.scales?.x?.ticks) {
@@ -2776,7 +2780,7 @@
 
     function renderActividadReciente(contactos, limite = 8) {
       const eventos = [
-        ...visitas.map(v => ({ fecha:v.created_at, tipo:v.canal_via === 'qr' ? 'qr' : 'link', texto:v.canal_via === 'qr' ? 'Clic desde QR físico' : 'Clic desde enlace digital' })),
+        ...visitas.filter(esEntrada).map(v => ({ fecha:v.created_at, tipo:v.canal_via === 'qr' ? 'qr' : 'link', texto:v.canal_via === 'qr' ? 'Clic desde QR físico' : 'Clic desde enlace digital' })),
         ...contactos.map(c => ({ fecha:c.created_at, tipo:'lead', texto:'Nueva consulta generada' })),
       ].filter(e => e.fecha).sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, limite)
 
@@ -3478,7 +3482,7 @@
             return `<tr>
               <td style="width:10px">${(c.estado || 'nueva') === 'nueva' ? '<div class="pv-dot-nueva"></div>' : ''}</td>
               <td class="pv-fecha">${fmt(c.created_at)}</td>
-              <td><span class="pv-via ${c.origen === 'manual' ? '' : (c.canal_via === 'qr' ? 'qr' : 'link')}" ${c.origen === 'manual' ? 'style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${c.origen === 'manual' ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen === 'manual' ? 'Manual' : (c.canal_via === 'qr' ? 'QR físico' : 'Enlace')}</span></td>
+              <td><span class="pv-via ${c.origen === 'manual' ? '' : (c.canal_via === 'qr' ? 'qr' : c.canal_via === 'link' ? 'link' : '')}" ${(c.origen === 'manual' || (c.canal_via !== 'qr' && c.canal_via !== 'link')) ? 'style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${(c.origen === 'manual' || (c.canal_via !== 'qr' && c.canal_via !== 'link')) ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen === 'manual' ? 'Manual' : (c.canal_via === 'qr' ? 'QR físico' : c.canal_via === 'link' ? 'Enlace' : 'Directo')}</span></td>
               <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL_PASIVO[c.estado]||'Sin avance')}</span></td>
             </tr>`
           }).join('')
@@ -3507,9 +3511,10 @@
     }
 
     function renderPasivo(contactos, filasTraza = [], canal = null) {
-      const qrTotal = contactos.filter(c => c.canal_via === 'qr').length
+      const qrTotal = contactos.filter(c => c.origen !== 'manual' && c.canal_via === 'qr').length
       const manualTotal = contactos.filter(c => c.origen === 'manual').length
-      const linkTotal = contactos.length - qrTotal - manualTotal
+      const linkTotal = contactos.filter(c => c.origen !== 'manual' && c.canal_via === 'link').length
+      const directoTotal = contactos.filter(c => c.origen !== 'manual' && c.canal_via !== 'qr' && c.canal_via !== 'link').length
 
       return `
         <div class="pv-sec">
@@ -3557,6 +3562,7 @@
           <div class="pv-chart-origin-chips">
             <span class="pv-origin-chip" style="--oc:#50c878"><span class="dot"></span>QR físico · ${qrTotal.toLocaleString('es-AR')}</span>
             <span class="pv-origin-chip" style="--oc:#6495ed"><span class="dot"></span>Enlace digital · ${linkTotal.toLocaleString('es-AR')}</span>
+            ${directoTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Directo · ${directoTotal.toLocaleString('es-AR')}</span>` : ''}
             ${manualTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Manual · ${manualTotal.toLocaleString('es-AR')}</span>` : ''}
           </div>
         </div>
@@ -3803,6 +3809,7 @@
         const bucketCons  = new Array(numBuckets).fill(0)
         const inHoy = (iso) => { const d=new Date(iso); return d>=hoyB0&&d<=ahoraMin }
         visitas.forEach(v => {
+          if (!esEntrada(v)) return
           if (!inHoy(v.created_at)) return
           const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes()
           const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketScans[b]++
@@ -4043,11 +4050,11 @@
       })
 
       const semAll=(()=>{ const d=7; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
-        visitas.forEach(v=>{ if(!enRango(v.created_at,sem0,new Date())) return; const i=Math.floor((new Date(v.created_at)-sem0)/86400000); if(i>=0&&i<d) oS[i]++ })
+        visitas.forEach(v=>{ if(!esEntrada(v)||!enRango(v.created_at,sem0,new Date())) return; const i=Math.floor((new Date(v.created_at)-sem0)/86400000); if(i>=0&&i<d) oS[i]++ })
         contactos.forEach(c=>{ if(!enRango(c.created_at,sem0,new Date())) return; const i=Math.floor((new Date(c.created_at)-sem0)/86400000); if(i>=0&&i<d) oC[i]++ })
         let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
       const mesAll=(()=>{ const d=30; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
-        visitas.forEach(v=>{ if(!enRango(v.created_at,mes0,new Date())) return; const i=Math.floor((new Date(v.created_at)-mes0)/86400000); if(i>=0&&i<d) oS[i]++ })
+        visitas.forEach(v=>{ if(!esEntrada(v)||!enRango(v.created_at,mes0,new Date())) return; const i=Math.floor((new Date(v.created_at)-mes0)/86400000); if(i>=0&&i<d) oS[i]++ })
         contactos.forEach(c=>{ if(!enRango(c.created_at,mes0,new Date())) return; const i=Math.floor((new Date(c.created_at)-mes0)/86400000); if(i>=0&&i<d) oC[i]++ })
         let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
 
@@ -4961,7 +4968,7 @@
             </td>
             <td style="font-size:.7rem;color:rgba(255,255,255,.55);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
             <td><span style="font-family:monospace;font-size:.65rem;color:#c9a84c;">${esc(nombreSlot[c.canal_ref] || c.canal_ref || '—')}</span></td>
-            <td><span class="pv-via ${c.origen==='manual' ? '' : (c.canal_via==='qr'?'qr':'link')}"${c.origen==='manual' ? ' style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${c.origen==='manual' ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen==='manual'?'Manual':(c.canal_via==='qr'?'QR':'Link')}</span></td>
+            <td><span class="pv-via ${c.origen==='manual' ? '' : (c.canal_via==='qr'?'qr':c.canal_via==='link'?'link':'')}"${(c.origen==='manual'||(c.canal_via!=='qr'&&c.canal_via!=='link')) ? ' style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${(c.origen==='manual'||(c.canal_via!=='qr'&&c.canal_via!=='link')) ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen==='manual'?'Manual':(c.canal_via==='qr'?'QR':c.canal_via==='link'?'Link':'Directo')}</span></td>
             <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
           </tr>`).join('')
         : '<tr><td colspan="7"><div class="pv-empty"><div class="pv-empty-mark"></div>Aún no hay consultas generadas desde tus slots.</div></td></tr>'
@@ -5027,7 +5034,7 @@
           </td>
           <td style="font-size:.72rem;color:var(--gris);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
           <td style="font-size:.7rem;color:var(--gris);">${esc(nombreCanal[c.canal_ref] || c.canal_ref || '—')}</td>
-          <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr':''}">${c.canal_via === 'qr' ? '⬛ QR' : '🔗 Link'}</span></td>
+          <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr':''}">${c.canal_via === 'qr' ? '⬛ QR' : c.canal_via === 'link' ? '🔗 Link' : '● Directo'}</span></td>
           <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
         </tr>`).join('')
 
