@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <!-- ============================================================================
-  SUR PATAGONIA · ALQUILERES — Panel ADMIN · v2 OPERATIVO · QA
+  SUR PATAGONIAN REAL ESTATE · ALQUILERES — Panel ADMIN · QA
   Cloud 17-ago-2026 · Gobernanza visual: APLICA (canon gobernanza-visual.md)
   · Tokens §2 · Inter §3 · Glass T1 §4 · KPI firmado §5 · sin serif en admin
   · Lee QA vía vistas public.alq_v_* (security_invoker → RLS real del usuario)
   · OPERA vía RPC canónico public.alq_admin_preparar/aplicar (firma + ledger):
-    registrar cobro (+imputación) · emitir cargo · nota crédito/débito ·
-    responder / resolver comunicados. Nada toca el sistema QR.
+    generar mes normal · confirmar pago con comprobante · crédito por excedente ·
+    honorario mensual abierto · emitir cargo · nota crédito/débito. Nada toca QR.
   Ubicación: admin/alquileres-admin-qa.html (NO SUBIR A GITHUB).
 ============================================================================ -->
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Alquileres · Admin · QA — Sur Patagonia</title>
+<title>Alquileres · Admin · QA — Sur Patagonian Real Estate</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -40,6 +40,7 @@ header{position:sticky;top:0;z-index:40;background:rgba(9,9,9,.96);backdrop-filt
   border-bottom:1px solid var(--card-border);padding:.85rem 2rem;display:flex;align-items:center;gap:1rem}
 .h-brand{font-weight:800;font-size:.8rem;letter-spacing:.18em;text-transform:uppercase}
 .h-brand em{font-style:normal;color:var(--accent)}
+.h-brand span{font-size:.54rem;color:var(--txt-soft);letter-spacing:.12em;margin-left:.35rem}
 .h-mod{font-size:.6rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(245,243,240,.42);
   border:1px solid var(--card-border);border-radius:99px;padding:.28rem .7rem}
 .h-qa{font-size:.6rem;font-weight:700;letter-spacing:.14em;color:var(--ambar);border:1px solid rgba(232,201,106,.35);
@@ -188,7 +189,7 @@ select.f option{background:#141414}
 
 <div id="vApp" style="display:none">
 <header>
-  <div class="h-brand">SUR <em>PATAGONIA</em></div>
+  <div class="h-brand">SUR <em>PATAGONIAN</em><span>REAL ESTATE</span></div>
   <div class="h-mod">Alquileres · Admin</div>
   <div class="h-qa">QA</div>
   <div class="h-user" id="hUser"></div>
@@ -196,7 +197,7 @@ select.f option{background:#141414}
 </header>
 <main class="admin-main">
   <h1 class="p-title">Alquileres</h1>
-  <div class="p-sub">Administración de propiedades · motor V1 en QA</div>
+  <div class="p-sub">Sur Patagonian Real Estate · administración de alquileres</div>
 
   <div class="kpis" id="kpis"></div>
 
@@ -236,7 +237,7 @@ select.f option{background:#141414}
   <div class="sec-t">Comunicados</div>
   <div class="card" id="coms"><div class="empty">—</div></div>
 
-  <div class="foot">QA · v2 operativa · motor V1 + fix F7/F3/F9/F10 · Cloud 17-ago-2026 · el sistema QR no se toca</div>
+  <div class="foot">Sur Patagonian Real Estate · QA · administración de alquileres</div>
 </main>
 </div>
 
@@ -258,6 +259,7 @@ const fmt=n=>'$'+Number(n||0).toLocaleString('es-AR',{maximumFractionDigits:0});
 const fdate=s=>s?new Date(s).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
 const esc=s=>(s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hoy=()=>new Date().toISOString().slice(0,10);
+const mesActual=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,7)};
 let D={},filtro='todas',propAbierta=null,tabAbierta='Cargos';
 const _hoy=new Date();let mesRef={y:_hoy.getFullYear(),m:_hoy.getMonth()};let calYear=_hoy.getFullYear();
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -512,17 +514,21 @@ async function start(){
 }
 async function cargar(){
   const v=n=>sb.from(n).select('*');
-  const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,cta,scta,sfac,tit]=await Promise.all([
+  const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,cta,scta,sfac,tit,
+    doc,mesgen,pago,credito,periodo]=await Promise.all([
     v('alq_v_propiedad'),v('alq_v_contrato'),v('alq_v_contrato_version'),v('alq_v_parte'),
     v('alq_v_cargo'),v('alq_v_nota'),v('alq_v_transaccion_caja'),v('alq_v_aplicacion'),
     v('alq_v_rendicion'),v('alq_v_rendicion_linea'),v('alq_v_comunicado'),v('alq_v_comunicado_mensaje'),
     v('alq_v_mandato_version'),v('alq_v_cuenta_custodia'),v('alq_v_servicio_cuenta'),v('alq_v_servicio_factura'),
-    v('alq_v_titularidad')]);
-  const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,cta,scta,sfac,tit].find(r=>r.error);
+    v('alq_v_titularidad'),v('alq_v_documento'),v('alq_v_mes_generado'),v('alq_v_pago_confirmado'),
+    v('alq_v_credito'),v('alq_v_periodo')]);
+  const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,cta,scta,sfac,tit,
+    doc,mesgen,pago,credito,periodo].find(r=>r.error);
   if(err){$('props').innerHTML='<div class="empty">Error leyendo QA: '+esc(err.error.message)+'</div>';return}
   D={prop:prop.data,con:con.data,ver:ver.data,parte:parte.data,cargo:cargo.data,nota:nota.data,
      tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data,mv:mv.data,cta:cta.data,
-     scta:scta.data,sfac:sfac.data,tit:tit.data};
+     scta:scta.data,sfac:sfac.data,tit:tit.data,doc:doc.data,mesgen:mesgen.data,
+     pago:pago.data,credito:credito.data,periodo:periodo.data};
   D.pname=Object.fromEntries(D.parte.map(p=>[p.id,p.nombre]));
   render();
   if(propAbierta&&$('ov').classList.contains('on'))abrir(propAbierta,tabAbierta);
@@ -619,10 +625,11 @@ async function resolver(cid){
   catch(e){m.textContent=e.message;m.className='op-msg op-err'}
 }
 function estadoCargo(c){
-  const saldo=Number(c.saldo_pendiente),vence=new Date(c.vence_at),ahora=new Date();
+  const saldo=Number(c.saldo_pendiente),monto=Number(c.monto),vence=new Date(c.vence_at),ahora=new Date();
   if(saldo<=0)return{t:'Pagado',c:'var(--verde)'};
+  if(saldo<monto)return{t:vence<ahora?'Parcial · vencido':'Parcial',c:vence<ahora?'var(--rojo)':'var(--azul)'};
   if(vence<ahora)return{t:'Vencido',c:'var(--rojo)'};
-  return{t:'Pendiente',c:'var(--ambar)'};
+  return{t:'Impago',c:'var(--ambar)'};
 }
 function shortUnit(pr){if(!pr)return'?';const p=pr.direccion.split('·');return (p.length>1?p[p.length-1]:pr.direccion).trim().slice(0,7)}
 function renderAgenda(){
@@ -724,9 +731,10 @@ function tab(pid,t){
       <div id="calDet" style="margin-top:1.3rem"></div>`;
   }else if(t==='Cargos'){
     const cs=D.cargo.filter(c=>c.propiedad_id===pid);
-    h=cs.length?`<table><tr><th>Concepto</th><th>Deudor</th><th>Vence</th><th class="num">Monto</th><th class="num">Saldo</th></tr>`+
-      cs.map(c=>`<tr><td>${esc(c.concepto)}</td><td>${esc(D.pname[c.deudor_parte_id]||'—')}</td><td>${fdate(c.vence_at)}</td>
-      <td class="num">${fmt(c.monto)}</td><td class="num ${Number(c.saldo_pendiente)>0?'neg':'pos'}">${fmt(c.saldo_pendiente)}</td></tr>`).join('')+'</table>'
+    h=cs.length?`<table><tr><th>Concepto</th><th>Deudor</th><th>Vence</th><th class="num">Monto</th><th class="num">Saldo</th><th>Estado</th></tr>`+
+      cs.map(c=>{const e=estadoCargo(c);return `<tr><td>${esc(c.concepto)}</td><td>${esc(D.pname[c.deudor_parte_id]||'—')}</td><td>${fdate(c.vence_at)}</td>
+      <td class="num">${fmt(c.monto)}</td><td class="num ${Number(c.saldo_pendiente)>0?'neg':'pos'}">${fmt(c.saldo_pendiente)}</td>
+      <td><span class="tag" style="--tc:${e.c}">${e.t}</span></td></tr>`}).join('')+'</table>'
       :'<div class="empty">Sin cargos.</div>';
   }else if(t==='Contratos'){
     const cs=D.con.filter(c=>c.propiedad_id===pid).sort((a,b)=>new Date(a.inicio)-new Date(b.inicio));
@@ -785,25 +793,50 @@ function tab(pid,t){
         <div class="op-msg" id="msgFac"></div></div>
     </div>`;
   }else{ /* OPERAR */
+    const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+    const titular=D.tit.find(x=>x.propiedad_id===pid);
     const cs=D.cargo.filter(c=>c.propiedad_id===pid&&Number(c.saldo_pendiente)>0)
       .sort((a,b)=>new Date(a.vence_at)-new Date(b.vence_at));
     const partesOpts=D.parte.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+    const creditos=cvig?D.credito.filter(c=>c.contrato_id===cvig.id&&Number(c.saldo_pendiente)>0):[];
+    const creditoTotal=creditos.reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+    const meses=cvig?D.mesgen.filter(x=>x.contrato_id===cvig.id)
+      .sort((a,b)=>String(b.mes).localeCompare(String(a.mes))):[];
+    const mesBase=cvig&&String(cvig.inicio||'').slice(0,7)>mesActual()
+      ?String(cvig.inicio).slice(0,7):mesActual();
     h=`
-    <div class="sec-t" style="margin-top:.2rem">Registrar cobro (entra plata y se imputa a los cargos elegidos)</div>
+    <div class="sec-t" style="margin-top:.2rem">Generar mes normal</div>
+    <div class="f-grid">
+      <div><span class="f-l">Mes</span><input class="f" id="opMes" type="month" value="${mesBase}"/></div>
+      <div><span class="f-l">Expensas del mes</span><input class="f" id="opExpensas" type="number" min="0" step="1" value="0"/></div>
+      <div class="f-full" style="font-size:.68rem;color:var(--txt-soft)">
+        El alquiler sale del contrato. El honorario mensual sale del mandato (8 % en Ñancos) y queda como deuda del propietario hasta que lo pague.
+        ${creditoTotal>0?` Hay ${fmt(creditoTotal)} de crédito del inquilino: se aplicará automáticamente.`:''}
+      </div>
+      <div class="f-full"><button class="btn" id="btnMes">Generar alquiler, expensas y honorario</button>
+        <div class="op-msg" id="msgMes"></div></div>
+    </div>
+    ${meses.length?`<table style="margin-top:1rem"><tr><th>Mes</th><th class="num">Alquiler</th><th class="num">Expensas</th><th class="num">Honorario</th><th class="num">Crédito usado</th></tr>${meses.slice(0,6).map(x=>`<tr><td>${esc(String(x.mes).slice(0,7))}</td><td class="num">${fmt(x.alquiler_monto)}</td><td class="num">${fmt(x.expensas_monto)}</td><td class="num">${fmt(x.honorario_monto)}</td><td class="num">${fmt(x.credito_aplicado)}</td></tr>`).join('')}</table>`:''}
+    <div class="sec-t">Confirmar pago con comprobante</div>
     <div class="f-grid">
       <div class="f-full"><span class="f-l">Cargos a imputar (en orden de vencimiento)</span>
-        <div class="ck-list">${cs.length?cs.map(c=>`<label class="ck"><input type="checkbox" checked data-ck="${c.id}"/>
-          ${esc(c.concepto)} · vence ${fdate(c.vence_at)} · saldo ${fmt(c.saldo_pendiente)}</label>`).join('')
+        <div class="ck-list">${cs.length?cs.map(c=>{const tenantDefault=!!(cvig&&titular&&
+            c.deudor_parte_id===cvig.inquilino_parte_id&&c.acreedor_parte_id===titular.parte_id);
+          return `<label class="ck"><input type="checkbox" ${tenantDefault?'checked':''} data-ck="${c.id}"/>
+          ${esc(c.concepto)} · ${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}
+          · vence ${fdate(c.vence_at)} · saldo ${fmt(c.saldo_pendiente)}</label>`}).join('')
           :'<div class="empty">No hay cargos con saldo en esta propiedad.</div>'}</div></div>
-      <div class="f-full"><span class="f-l">¿Por dónde entró la plata?</span><select class="f" id="opDestino">
-        <option value="directo" selected>Directo al dueño — no pasó por la administración (solo se registra)</option>
-        <option value="custodiada">Entró a la administración (efectivo en oficina o cuenta admin) — después se rinde al dueño</option></select></div>
       <div><span class="f-l">Monto cobrado</span><input class="f" id="opMonto" type="number" min="1" step="1"/></div>
-      <div><span class="f-l">Quién paga</span><select class="f" id="opPagador">${partesOpts}</select></div>
       <div><span class="f-l">Fecha</span><input class="f" id="opFecha" type="date" value="${hoy()}"/></div>
       <div><span class="f-l">Medio</span><select class="f" id="opMedio">
-        <option>transferencia</option><option>efectivo</option><option>deposito</option></select></div>
-      <div class="f-full"><button class="btn" id="btnCobro">Registrar cobro</button>
+        <option value="transferencia_directa_al_propietario">Transferencia directa al propietario</option>
+        <option value="efectivo">Efectivo directo</option><option value="otro">Otro</option></select></div>
+      <div><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="opComprobante" type="file" accept="application/pdf,image/*"/></div>
+      <div class="f-full" style="font-size:.68rem;color:var(--txt-soft)">
+        Se registra el pago directo entre las partes. Si el monto supera la deuda elegida, la diferencia queda como crédito para el mes siguiente.
+        La confirmación la hace la administración; el propietario no confirma.
+      </div>
+      <div class="f-full"><button class="btn" id="btnCobro">Confirmar pago</button>
         <div class="op-msg" id="msgCobro"></div></div>
     </div>
     <div class="sec-t">Emitir cargo</div>
@@ -847,49 +880,102 @@ function tab(pid,t){
     $('faHasta').value=d2.toISOString().slice(0,10);
   }
   if(t==='Operar'){
+    $('btnMes').onclick=()=>opMesNormal(pid);
     $('btnCobro').onclick=()=>opCobro(pid);
     $('btnCargo').onclick=()=>opCargo(pid);
     $('btnNota').onclick=()=>opNota(pid);
-    const inq=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
-    if(inq)$('opPagador').value=inq.inquilino_parte_id;
+    const recalcular=()=>{
+      const total=[...document.querySelectorAll('[data-ck]')].filter(x=>x.checked)
+        .reduce((s,x)=>{const c=D.cargo.find(y=>y.id===x.dataset.ck);return s+Number(c&&c.saldo_pendiente||0)},0);
+      if(total>0)$('opMonto').value=String(total);
+    };
+    document.querySelectorAll('[data-ck]').forEach(x=>x.onchange=recalcular);
+    recalcular();
   }
+}
+async function opMesNormal(pid){
+  const m=$('msgMes');m.className='op-msg';m.textContent='';
+  const mes=$('opMes').value,expensas=Number($('opExpensas').value||0);
+  const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+  if(!cvig){m.textContent='No hay un contrato vigente para generar el mes.';m.className='op-msg op-err';return}
+  if(!/^\d{4}-\d{2}$/.test(mes)||expensas<0){m.textContent='Revisá el mes y las expensas.';m.className='op-msg op-err';return}
+  try{
+    $('btnMes').disabled=true;m.textContent='Generando el mes…';
+    const r=await rpc('mes_normal_generar',{propiedad_id:pid,contrato_id:cvig.id,
+      mes:mes+'-01',expensas_monto:String(expensas)});
+    toast((r&&r.replay?'Mes ya generado':'Mes generado')+' · alquiler '+fmt(r.alquiler_monto)+
+      ' · honorario '+fmt(r.honorario_monto)+(Number(r.credito_aplicado)>0?' · crédito usado '+fmt(r.credito_aplicado):''));
+    await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnMes');if(b)b.disabled=false}
+}
+async function shaArchivo(file){
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
+    .map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function documentoComprobante(pid,file){
+  if(!file||file.size<=0)throw new Error('Adjuntá el comprobante del pago.');
+  const sha=await shaArchivo(file);
+  let doc=(D.doc||[]).find(d=>d.propiedad_id===pid&&d.sha256===sha&&d.tipo==='comprobante_pago');
+  if(doc)return doc;
+  const porSha=await sb.from('alq_v_documento').select('*').eq('propiedad_id',pid)
+    .eq('sha256',sha).eq('tipo','comprobante_pago').limit(1);
+  if(porSha.error)throw new Error('Buscando el comprobante: '+porSha.error.message);
+  if(porSha.data&&porSha.data[0])return porSha.data[0];
+  const nombre=String(file.name||'comprobante').toLowerCase();
+  const encontrada=(nombre.match(/\.([a-z0-9]{1,8})$/)||[])[1];
+  const ext=(encontrada||((file.type||'').includes('pdf')?'pdf':'bin'));
+  const path='comprobantes-pago/'+pid+'/'+sha+'.'+ext;
+  const subida=await sb.storage.from('alq-docs').upload(path,file,{upsert:false,
+    contentType:file.type||'application/octet-stream'});
+  if(subida.error){
+    const previa=await sb.storage.from('alq-docs').download(path);
+    if(previa.error)throw new Error('Guardando comprobante: '+subida.error.message);
+    const shaPrevia=await shaArchivo(previa.data);
+    if(shaPrevia!==sha)throw new Error('El archivo existente no coincide con el comprobante.');
+  }
+  try{
+    const r=await rpc('documento_registrar',{tipo:'comprobante_pago',path,sha256:sha,
+      mime:file.type||'application/octet-stream',bytes:String(file.size),propiedad_id:pid,audiencia:'admin'});
+    if(r&&r.id)return {id:r.id,path,sha256:sha,propiedad_id:pid,tipo:'comprobante_pago'};
+  }catch(e){
+    const carrera=await sb.from('alq_v_documento').select('*').eq('path',path).limit(1);
+    if(carrera.data&&carrera.data[0]&&carrera.data[0].sha256===sha)return carrera.data[0];
+    throw e;
+  }
+  const q=await sb.from('alq_v_documento').select('*').eq('path',path).limit(1);
+  if(q.error||!q.data||!q.data[0])throw new Error('El comprobante se guardó pero no pude verificar su registro.');
+  return q.data[0];
 }
 async function opCobro(pid){
   const m=$('msgCobro');m.className='op-msg';m.textContent='';
   const monto=Number($('opMonto').value);
   const sel=[...document.querySelectorAll('[data-ck]')].filter(x=>x.checked).map(x=>x.dataset.ck);
+  const file=$('opComprobante').files&&$('opComprobante').files[0];
   if(!monto||monto<=0){m.textContent='Poné el monto.';m.className='op-msg op-err';return}
   if(!sel.length){m.textContent='Elegí al menos un cargo.';m.className='op-msg op-err';return}
-  const cargos=sel.map(id=>D.cargo.find(c=>c.id===id)).sort((a,b)=>new Date(a.vence_at)-new Date(b.vence_at));
-  const directo=$('opDestino').value==='directo';
-  const cuenta=D.cta.find(c=>c.moneda==='ARS')||D.cta[0];
-  if(!directo&&!cuenta){m.textContent='No hay cuenta de custodia.';m.className='op-msg op-err';return}
-  const beneficiario=cargos[0].acreedor_parte_id;
+  if(!file){m.textContent='Adjuntá el comprobante del pago.';m.className='op-msg op-err';return}
+  const cargos=sel.map(id=>D.cargo.find(c=>c.id===id)).filter(Boolean)
+    .sort((a,b)=>new Date(a.vence_at)-new Date(b.vence_at));
+  const primero=cargos[0];
+  if(cargos.some(c=>c.deudor_parte_id!==primero.deudor_parte_id||
+      c.acreedor_parte_id!==primero.acreedor_parte_id||c.moneda!==primero.moneda||
+      c.contrato_id!==primero.contrato_id)){
+    m.textContent='Los cargos elegidos deben corresponder al mismo contrato, pagador, beneficiario y moneda.';
+    m.className='op-msg op-err';return;
+  }
+  const cvig=D.con.find(c=>c.id===primero.contrato_id&&c.propiedad_id===pid&&
+    ['vigente','continuacion_legal'].includes(c.estado));
+  if(!cvig){m.textContent='No encontré el contrato vigente de esos cargos.';m.className='op-msg op-err';return}
   try{
-    $('btnCobro').disabled=true;
-    const pt={direccion:'entrada',ambito:directo?'externa_informativa':'custodiada',
-      contraparte_parte_id:$('opPagador').value,beneficiario_parte_id:beneficiario,
-      moneda:'ARS',monto:String(monto),
-      fecha:$('opFecha').value+'T12:00:00Z',medio:$('opMedio').value,estado:'confirmada'};
-    if(!directo)pt.cuenta_custodia_id=cuenta.id;
-    const res=await rpc('transaccion_registrar',pt);
-    let txid=res&&res.id;
-    if(!txid){
-      const q=await sb.from('alq_v_transaccion_caja').select('id').eq('monto',monto)
-        .eq('direccion','entrada').order('creada_at',{ascending:false}).limit(1);
-      txid=q.data&&q.data[0]&&q.data[0].id;
-    }
-    if(!txid)throw new Error('La transacción entró pero no pude ubicarla para imputar. Refrescá.');
-    let resto=monto;
-    for(const c of cargos){
-      if(resto<=0)break;
-      const imp=Math.min(resto,Number(c.saldo_pendiente));
-      if(imp<=0)continue;
-      await rpc('aplicacion_asignar',{transaccion_id:txid,cargo_id:c.id,
-        importe_origen:String(imp),moneda_origen:'ARS',importe_destino:String(imp),moneda_destino:'ARS'});
-      resto-=imp;
-    }
-    toast('Cobro registrado'+(resto>0?' · quedaron '+fmt(resto)+' sin imputar':''));
+    $('btnCobro').disabled=true;m.textContent='Guardando comprobante y confirmando…';
+    const doc=await documentoComprobante(pid,file);
+    const r=await rpc('pago_comprobante_confirmar',{propiedad_id:pid,contrato_id:cvig.id,
+      documento_id:doc.id,cargo_ids:cargos.map(c=>c.id),monto:String(monto),
+      fecha:$('opFecha').value+'T12:00:00Z',medio:$('opMedio').value});
+    toast((r&&r.replay?'Pago ya confirmado':'Pago confirmado')+' · aplicado '+fmt(r.monto_aplicado)+
+      (Number(r.monto_credito)>0?' · crédito '+fmt(r.monto_credito):''));
     await cargar();
   }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
   finally{const b=$('btnCobro');if(b)b.disabled=false}
