@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<!-- ============================================================================
+  SUR PATAGONIA · MI PROPIEDAD — Panel del PROPIETARIO · v1 · QA
+  Cloud 17-ago-2026 · Gobernanza visual: APLICA (canon gobernanza-visual.md)
+  · Contexto nuevo "propietario" (no canonizado aún): usa tokens/base del canon y
+    el accent de marca como primario — decisión a ratificar en gobernanza.
+  · Lee vía vistas public.alq_v_* con security_invoker: la RLS decide TODO —
+    el dueño ve solo sus propiedades (verificado: extraño = 0 filas).
+  · Únicas acciones: abrir consulta / responder (wrappers canónicos alq_prop_*).
+    NO ve rentabilidad. NO opera dinero. El inquilino NO tiene acceso a esto.
+  Ubicación: admin/alquileres-propietario-qa.html (NO SUBIR A GITHUB).
+============================================================================ -->
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mi Propiedad · QA — Sur Patagonia</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#090909; --card-border:rgba(255,255,255,.07); --sep:rgba(255,255,255,.07);
+  --accent:#d76f3f; --blanco:#f5f3f0; --gris:#888; --txt-soft:rgba(245,243,240,.5);
+  --verde:#50c878; --rojo:#e05c5c; --azul:#7aaeff; --ambar:#e8c96a; --activo:#52d68c;
+  --glass-t1:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);
+  --glass-t2:linear-gradient(160deg,rgba(255,255,255,.042) 0%,rgba(255,255,255,.012) 100%);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--blanco);font-family:'Inter',sans-serif;min-height:100vh}
+.pp-main h1,.pp-main h2,.pp-main h3{font-family:'Inter',sans-serif}
+.sp-bg-brand{position:fixed;bottom:6vh;left:0;right:0;height:65vh;
+  background:url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52%/cover no-repeat;
+  filter:grayscale(1) brightness(.75);opacity:.11;pointer-events:none;z-index:9;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%)}
+header{position:sticky;top:0;z-index:40;background:rgba(9,9,9,.96);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--card-border);padding:.85rem 2rem;display:flex;align-items:center;gap:1rem}
+.h-brand{font-weight:800;font-size:.8rem;letter-spacing:.18em;text-transform:uppercase}
+.h-brand em{font-style:normal;color:var(--accent)}
+.h-mod{font-size:.6rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(245,243,240,.42);
+  border:1px solid var(--card-border);border-radius:99px;padding:.28rem .7rem}
+.h-user{margin-left:auto;font-size:.66rem;color:var(--txt-soft)}
+.h-out{background:none;border:1px solid var(--card-border);color:var(--txt-soft);border-radius:8px;
+  padding:.35rem .8rem;font-size:.62rem;font-family:inherit;cursor:pointer}
+.pp-main{position:relative;z-index:10;max-width:1080px;margin:0 auto;padding:2.4rem 2rem 5rem}
+.p-title{font-weight:800;font-size:clamp(1.8rem,5vw,2.7rem);text-transform:uppercase;letter-spacing:-.03em;
+  background:linear-gradient(120deg,#fff,rgba(255,255,255,.55));-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent;line-height:1.05}
+.p-sub{margin-top:.4rem;font-size:.66rem;color:rgba(245,243,240,.42);letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+.sec-t{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--gris);margin:2.6rem 0 1rem}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;margin-top:2rem}
+.kpi{background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,.02) 100%);
+  border:1px solid rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:1.4rem 1.6rem;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:2px;border-radius:99px;
+  background:var(--c,var(--accent));opacity:.75}
+.kpi-num{font-size:2.45rem;font-weight:300;line-height:1;
+  background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,transparent));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.kpi-lbl{margin-top:.35rem;font-size:.58rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:.12em;color:rgba(245,243,240,.42)}
+.kpi-sub{margin-top:.2rem;font-size:.6rem;color:rgba(245,243,240,.3)}
+.card{background:var(--glass-t1);border:1px solid rgba(255,255,255,.07);
+  border-top:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.4rem 1.6rem;
+  backdrop-filter:blur(4px);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.props{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;margin-top:.4rem;background:var(--dc,var(--gris))}
+.prop-top{display:flex;align-items:flex-start;gap:.7rem}
+.prop-dir{font-weight:700;font-size:1.05rem}
+.prop-city{font-size:.62rem;color:rgba(245,243,240,.45);letter-spacing:.08em;text-transform:uppercase;margin-top:.15rem}
+.prop-grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem 1rem;margin-top:1rem}
+.pg-l{font-size:.55rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(245,243,240,.42)}
+.pg-v{font-size:.8rem;margin-top:.15rem;color:rgba(245,243,240,.85)}
+table{width:100%;border-collapse:collapse;font-size:.72rem}
+th{font-size:.55rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(245,243,240,.42);text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--sep)}
+td{padding:.5rem .6rem;border-bottom:1px solid var(--sep);color:rgba(245,243,240,.67)}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.pos{color:var(--verde)} .neg{color:var(--rojo)}
+.tag{display:inline-block;font-size:.56rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  padding:.14rem .5rem;border-radius:99px;border:1px solid var(--tc,var(--gris));color:var(--tc,var(--gris))}
+.empty{font-size:.72rem;color:rgba(245,243,240,.28);padding:1rem 0}
+.hilo{display:flex;flex-direction:column;gap:.6rem}
+.msg{border-left:2px solid var(--mc,var(--gris));padding:.5rem .8rem;background:var(--glass-t2);border-radius:0 10px 10px 0}
+.msg-a{font-size:.55rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(245,243,240,.42)}
+.msg-t{font-size:.76rem;margin-top:.25rem;color:rgba(245,243,240,.8)}
+.f-l{font-size:.55rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(245,243,240,.42);
+  display:block;margin-bottom:.3rem}
+input.f,select.f,textarea.f{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--card-border);
+  border-radius:10px;color:var(--blanco);font-family:inherit;font-size:.78rem;padding:.6rem .8rem;outline:none}
+select.f option{background:#141414}
+.btn{background:linear-gradient(135deg,rgba(215,111,63,.9),rgba(215,111,63,.7));border:none;border-radius:10px;
+  color:#16100c;font-family:inherit;font-weight:700;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:.6rem 1.2rem;cursor:pointer}
+.btn:disabled{opacity:.45}
+.op-msg{font-size:.68rem;margin-top:.6rem;min-height:1em}
+.op-err{color:var(--rojo)}
+.com-ops{display:flex;gap:.5rem;margin-top:.7rem;align-items:flex-start}
+.com-ops textarea{flex:1;min-height:38px;resize:vertical}
+.nueva{display:grid;gap:.8rem;margin-top:.6rem}
+.toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%);z-index:99;
+  background:linear-gradient(160deg,rgba(20,20,20,.98),rgba(12,12,12,.98));
+  border:1px solid rgba(80,200,120,.4);border-radius:12px;padding:.7rem 1.3rem;
+  font-size:.7rem;color:var(--verde);display:none}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;position:relative;z-index:10}
+.login{width:min(380px,100%);text-align:center}
+.login .card{padding:2.2rem 2rem}
+.l-brand{font-weight:800;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;margin-bottom:.4rem}
+.l-brand em{font-style:normal;color:var(--accent)}
+.l-mod{font-size:.58rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(245,243,240,.42);margin-bottom:1.6rem}
+.login input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--card-border);border-radius:10px;
+  color:var(--blanco);font-family:inherit;font-size:.8rem;padding:.7rem .9rem;margin-bottom:.7rem;outline:none}
+.login .btn{width:100%;padding:.75rem;font-size:.72rem}
+.l-err{font-size:.66rem;color:var(--rojo);margin-top:.8rem;min-height:1em}
+.l-qa{margin-top:1.1rem;font-size:.56rem;color:rgba(245,243,240,.3);letter-spacing:.1em;text-transform:uppercase}
+.foot{margin-top:3.5rem;font-size:.56rem;color:rgba(245,243,240,.28);letter-spacing:.1em;text-transform:uppercase;text-align:center}
+.loading{padding:4rem 0;text-align:center;font-size:.7rem;color:rgba(245,243,240,.42);letter-spacing:.14em;text-transform:uppercase}
+@media(max-width:640px){.pp-main{padding:1.6rem 1rem 4rem}header{padding:.8rem 1rem}}
+</style>
+</head>
+<body>
+<div class="sp-bg-brand"></div>
+
+<div id="vLogin" class="login-wrap">
+  <div class="login">
+    <div class="card">
+      <div class="l-brand">SUR <em>PATAGONIA</em></div>
+      <div class="l-mod">Mi Propiedad · Panel del Propietario</div>
+      <input id="inMail" type="email" placeholder="Email" autocomplete="username"/>
+      <input id="inPass" type="password" placeholder="Contraseña" autocomplete="current-password"/>
+      <button class="btn" id="btnLogin">Entrar</button>
+      <div class="l-err" id="loginErr"></div>
+      <div class="l-qa">Entorno QA · v1</div>
+    </div>
+  </div>
+</div>
+
+<div id="vApp" style="display:none">
+<header>
+  <div class="h-brand">SUR <em>PATAGONIA</em></div>
+  <div class="h-mod">Mi Propiedad</div>
+  <div class="h-user" id="hUser"></div>
+  <button class="h-out" id="btnOut">Salir</button>
+</header>
+<main class="pp-main">
+  <h1 class="p-title">Mi Propiedad</h1>
+  <div class="p-sub">Tu administración, transparente y al día</div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="sec-t">Tus propiedades</div>
+  <div class="props" id="props"><div class="loading">Cargando…</div></div>
+
+  <div class="sec-t">Tus rendiciones — qué se cobró, qué se gastó, qué te giramos</div>
+  <div class="card" id="rends"><div class="empty">—</div></div>
+
+  <div class="sec-t">Conversaciones con la administración</div>
+  <div class="card" id="coms"><div class="empty">—</div></div>
+
+  <div class="sec-t">Abrir una consulta nueva</div>
+  <div class="card">
+    <div class="nueva">
+      <div><span class="f-l">Propiedad</span><select class="f" id="ncProp"></select></div>
+      <div><span class="f-l">Tu consulta</span><textarea class="f" id="ncTexto" placeholder="Contanos qué necesitás…"></textarea></div>
+      <div><button class="btn" id="btnNueva">Enviar consulta</button><div class="op-msg" id="msgNueva"></div></div>
+    </div>
+  </div>
+
+  <div class="foot">QA · v1 · Sur Patagonia · Administración de Alquileres</div>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL='https://rsjwqmpseknvydistgfr.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzandxbXBzZWtudnlkaXN0Z2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NDE1OTEsImV4cCI6MjEwMjMxNzU5MX0.X31f3AGUg0Oi01daBktS9ltfcp3ID6uZFJd7tGIlUKg';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+const $=id=>document.getElementById(id);
+const fmt=n=>'$'+Number(n||0).toLocaleString('es-AR',{maximumFractionDigits:0});
+const fdate=s=>s?new Date(s).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+const esc=s=>(s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let D={};
+function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';
+  setTimeout(()=>el.style.display='none',3200)}
+
+async function login(){
+  $('loginErr').textContent='';
+  const {error}=await sb.auth.signInWithPassword({email:$('inMail').value.trim(),password:$('inPass').value});
+  if(error){$('loginErr').textContent='No pudimos entrar: '+error.message;return}
+  start();
+}
+async function start(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)return;
+  $('vLogin').style.display='none';$('vApp').style.display='block';
+  $('hUser').textContent=session.user.email;
+  await cargar();
+}
+async function cargar(){
+  const v=n=>sb.from(n).select('*');
+  const [prop,con,ver,parte,cargo,tx,apl,rend,rlin,com,cmsg]=await Promise.all([
+    v('alq_v_propiedad'),v('alq_v_contrato'),v('alq_v_contrato_version'),v('alq_v_parte'),
+    v('alq_v_cargo'),v('alq_v_transaccion_caja'),v('alq_v_aplicacion'),
+    v('alq_v_rendicion'),v('alq_v_rendicion_linea'),v('alq_v_comunicado'),v('alq_v_comunicado_mensaje')]);
+  const err=[prop,con,ver,parte,cargo,tx,apl,rend,rlin,com,cmsg].find(r=>r.error);
+  if(err){$('props').innerHTML='<div class="empty">Error: '+esc(err.error.message)+'</div>';return}
+  D={prop:prop.data,con:con.data,ver:ver.data,parte:parte.data,cargo:cargo.data,
+     tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data};
+  D.pname=Object.fromEntries(D.parte.map(p=>[p.id,p.nombre]));
+  render();
+}
+function render(){
+  if(!D.prop.length){
+    $('props').innerHTML='<div class="empty">Tu usuario no tiene propiedades vinculadas todavía. Hablá con la administración.</div>';
+    $('kpis').innerHTML='';return;
+  }
+  const deudaInq=D.cargo.filter(c=>{
+    const con=D.con.find(x=>x.id===c.contrato_id);
+    return con&&c.deudor_parte_id===con.inquilino_parte_id;
+  }).reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+  const girado=D.apl.filter(a=>a.rendicion_id).reduce((s,a)=>s+Number(a.importe_destino),0);
+  const gastos=D.cargo.filter(c=>{
+    const con=D.con.find(x=>x.id===c.contrato_id);
+    return !con||c.deudor_parte_id!==con.inquilino_parte_id;
+  }).reduce((s,c)=>s+Number(c.monto),0);
+  $('kpis').innerHTML=[
+    ['--accent',D.prop.length,'Propiedades','a tu nombre'],
+    ['var(--azul)',fmt(girado),'Te giramos','vía rendición'],
+    ['var(--rojo)',fmt(deudaInq),'Debe el inquilino','saldos pendientes'],
+    ['var(--ambar)',fmt(gastos),'Gastos a tu cargo','reparaciones · honorarios'],
+  ].map(([c,n,l,s])=>`<div class="kpi" style="--c:${c}"><div class="kpi-num">${n}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`).join('');
+  $('props').innerHTML=D.prop.map(p=>{
+    const cvig=D.con.find(c=>c.propiedad_id===p.id&&['vigente','continuacion_legal'].includes(c.estado));
+    const cult=cvig||D.con.filter(c=>c.propiedad_id===p.id).sort((a,b)=>new Date(b.inicio)-new Date(a.inicio))[0];
+    const vv=cult?D.ver.filter(x=>x.contrato_id===cult.id).sort((a,b)=>b.vigencia.localeCompare(a.vigencia))[0]:null;
+    const d=D.cargo.filter(c=>c.propiedad_id===p.id&&(()=>{const con=D.con.find(x=>x.id===c.contrato_id);
+      return con&&c.deudor_parte_id===con.inquilino_parte_id})()).reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+    const e=d<=0?{c:'var(--verde)',t:'Inquilino al día'}:{c:'var(--ambar)',t:'Inquilino con saldo'};
+    return `<div class="card">
+      <div class="prop-top"><div class="dot" style="--dc:${e.c}"></div>
+        <div><div class="prop-dir">${esc(p.direccion)}</div>
+        <div class="prop-city">${esc(p.ciudad||'')} · ${e.t}</div></div></div>
+      <div class="prop-grid">
+        <div><div class="pg-l">Inquilino</div><div class="pg-v">${esc(cult?D.pname[cult.inquilino_parte_id]||'—':'—')}</div></div>
+        <div><div class="pg-l">Contrato</div><div class="pg-v">${cult?esc(cult.estado.replace('_',' ')):'—'}</div></div>
+        <div><div class="pg-l">Alquiler</div><div class="pg-v">${vv?fmt(vv.monto)+' '+vv.moneda:'—'}</div></div>
+        <div><div class="pg-l">Saldo del inquilino</div><div class="pg-v" style="color:${d>0?'var(--ambar)':'var(--verde)'}">${fmt(d)}</div></div>
+      </div></div>`;
+  }).join('');
+  $('ncProp').innerHTML=D.prop.map(p=>`<option value="${p.id}">${esc(p.direccion)}</option>`).join('');
+  $('rends').innerHTML=D.rend.length?D.rend.map(r=>{
+    const g=D.apl.filter(a=>a.rendicion_id===r.id).reduce((s,a)=>s+Number(a.importe_destino),0);
+    const lin=D.rlin.filter(l=>l.rendicion_id===r.id);
+    const pr=D.prop.find(p=>p.id===r.propiedad_id);
+    return `<div style="margin-bottom:.4rem"><b style="font-size:.9rem">${esc(pr?pr.direccion:'')}</b>
+      <span class="tag" style="--tc:var(--azul);margin-left:.5rem">${esc(r.estado)}</span></div>
+      <table><tr><th>Concepto</th><th>Detalle</th><th class="num">Monto</th></tr>`+
+      lin.map(l=>`<tr><td>${esc({cobro:'Cobro',honorario:'Honorarios',gasto_duenio:'Gasto',retencion:'Retención',aporte:'Aporte',credito:'Crédito'}[l.categoria]||l.categoria)}</td>
+        <td>${esc(l.snapshot?.detalle||'')}</td>
+        <td class="num ${l.signo>0?'pos':'neg'}">${l.signo>0?'+':'−'}${fmt(l.monto)}</td></tr>`).join('')+
+      `<tr><td colspan="2" style="font-weight:700;color:var(--blanco)">Tu saldo del período</td>
+       <td class="num" style="font-weight:700;color:var(--blanco)">${fmt(r.saldo_final)}</td></tr>
+       <tr><td colspan="2">Girado a tu cuenta</td><td class="num pos">${fmt(g)}</td></tr></table>`;
+  }).join('<div style="height:1.4rem"></div>'):'<div class="empty">Todavía no hay rendiciones.</div>';
+  $('coms').innerHTML=D.com.length?D.com.map(c=>{
+    const pr=D.prop.find(p=>p.id===c.propiedad_id);
+    const msgs=D.cmsg.filter(m=>m.comunicado_id===c.id).sort((a,b)=>new Date(a.creado_at)-new Date(b.creado_at));
+    const abierto=c.estado==='abierto';
+    return `<div style="margin-bottom:.6rem"><b style="font-size:.85rem">${esc(pr?pr.direccion:'')}</b>
+      <span class="tag" style="--tc:${abierto?'var(--ambar)':'var(--verde)'};margin-left:.5rem">${abierto?'abierta':'resuelta'}</span></div>
+      <div class="hilo">`+msgs.map(m=>`<div class="msg" style="--mc:${m.autor_tipo==='admin'?'var(--accent)':'var(--azul)'}">
+        <div class="msg-a">${m.autor_tipo==='admin'?'Administración':'Vos'}</div><div class="msg-t">${esc(m.texto)}</div></div>`).join('')+`</div>`+
+      (abierto?`<div class="com-ops">
+        <textarea class="f" id="resp-${c.id}" placeholder="Responder…"></textarea>
+        <button class="btn" onclick="responder('${c.id}')">Responder</button>
+      </div><div class="op-msg" id="commsg-${c.id}"></div>`:'');
+  }).join('<div style="height:1.6rem"></div>'):'<div class="empty">Sin conversaciones todavía. Abrí tu primera consulta abajo.</div>';
+}
+async function responder(cid){
+  const t=$('resp-'+cid).value.trim();const m=$('commsg-'+cid);
+  if(!t){m.textContent='Escribí la respuesta.';m.className='op-msg op-err';return}
+  const {error}=await sb.rpc('alq_prop_responder_consulta',{p_comunicado:cid,p_texto:t});
+  if(error){m.textContent=error.message;m.className='op-msg op-err';return}
+  toast('Respuesta enviada');await cargar();
+}
+$('btnNueva').onclick=async()=>{
+  const m=$('msgNueva');m.className='op-msg';m.textContent='';
+  const t=$('ncTexto').value.trim();
+  if(!t){m.textContent='Escribí tu consulta.';m.className='op-msg op-err';return}
+  $('btnNueva').disabled=true;
+  const {error}=await sb.rpc('alq_prop_abrir_consulta',{p_propiedad:$('ncProp').value,p_texto:t,p_adjunto:null});
+  $('btnNueva').disabled=false;
+  if(error){m.textContent=error.message;m.className='op-msg op-err';return}
+  $('ncTexto').value='';toast('Consulta enviada a la administración');await cargar();
+};
+$('btnLogin').onclick=login;
+$('inPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+$('btnOut').onclick=async()=>{await sb.auth.signOut();location.reload()};
+start();
+</script>
+</body>
+</html>

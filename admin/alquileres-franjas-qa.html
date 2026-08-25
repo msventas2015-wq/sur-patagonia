@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alquileres · Franjas · QA</title>
+<!--
+  admin/alquileres-franjas-qa.html
+  Cloud · 17-ago-2026 · Gobernanza visual: APLICA (canon gobernanza-visual.md v02)
+  ENTORNO: SOLO QA (rsjwqmpseknvydistgfr). NO usa js/config.js — ese apunta a PRODUCCIÓN.
+  Diseño aprobado por Mariano el 17-ago (maqueta v5). Lee de alq_v_* por PostgREST.
+  Escritura: solo por alq_admin_preparar/aplicar. Esta pantalla hoy es READ-ONLY.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="../js/alq-lector-facturas.js?v=4"></script>
+<script src="../js/alq-html-seguro.js?v=1"></script>
+<style>
+:root{
+  --bg:#090909;--card-border:rgba(255,255,255,.07);--card-radius:14px;
+  --accent:#d76f3f;--dorado:#c9a84c;--gris:#888;--blanco:#f5f3f0;
+  --txt-soft:rgba(245,243,240,.5);--via-directo:#8a8a82;
+  --glass-t1:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);
+  /* PALETA v2 — aprobada por Mariano 17-ago (noche). TODOS los HEX salen de la
+     paleta 100 de gobernanza (js/paleta-canales.js), índice entre corchetes.
+     Jerarquía: identidad apagada que acompaña · ESTADO en chips sólidos que dominan. */
+  --k-alquiler:#1e5fa0;      /* [3]  azul pizarra */
+  --k-electricidad:#26b8a8;  /* [59] turquesa energía */
+  --k-gas:#0f6e80;           /* [45] petróleo — la llama de gas es azul */
+  --k-agua:#7fb3d5;          /* [61] celeste claro */
+  --k-internet:#6f7fe8;      /* [68] índigo señal */
+  --k-expensas:#1f8473;      /* [38] verde profundo */
+  --k-municipal:#7a8a3e;     /* [49] oliva discreto */
+  --k-otros:#8a8a82;         /* canon §7.1 neutro */
+  --e-ok:#3bbf88;            /* canon conversión: pagado */
+  --e-venc:#c81e3c;          /* [86] chip VENCIDO (el #e05c5c del canon queda solo para errores de sistema) */
+  --e-mora:#7a1f2e;          /* [22] chip EN MORA */
+  --e-mora-txt:#c94869;      /* [17] texto/KPI de mora sobre fondo oscuro */
+  --e-sin:#f0956a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);font-family:'Inter',system-ui,sans-serif;color:var(--blanco);
+  padding:2rem 1.4rem 4rem;-webkit-font-smoothing:antialiased}
+.sp-bg-brand{position:fixed;bottom:6vh;left:0;right:0;height:65vh;
+  background:radial-gradient(ellipse 130% 90% at 50% 60%,rgba(255,255,255,.07),transparent 68%);
+  filter:grayscale(1) brightness(.75);opacity:.62;pointer-events:none;z-index:9;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%)}
+.wrap{max-width:1520px;margin:0 auto;position:relative;z-index:10}
+.kicker{font-weight:600;font-size:.58rem;text-transform:uppercase;letter-spacing:.18em;
+  color:rgba(255,255,255,.42);margin-bottom:.5rem}
+.p-title{font-weight:800;font-size:clamp(2rem,5vw,3rem);text-transform:uppercase;
+  letter-spacing:-.03em;line-height:1;background:linear-gradient(120deg,#fff,rgba(255,255,255,.55));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sec-title{font-weight:700;font-size:.6rem;text-transform:uppercase;letter-spacing:.14em;color:var(--gris)}
+.sub{font-size:.67rem;color:rgba(245,243,240,.42)}
+.t1{background:var(--glass-t1);border:1px solid rgba(255,255,255,.07);
+  border-top:1px solid rgba(255,255,255,.12);border-radius:var(--card-radius);
+  padding:1.3rem 1.4rem;backdrop-filter:blur(4px);box-shadow:0 4px 14px rgba(0,0,0,.18);margin-bottom:.9rem}
+.btn{border-radius:8px;cursor:pointer;font-family:inherit;transition:all .18s;
+  font-size:.63rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  padding:.42rem .95rem;border:1px solid rgba(215,111,63,.28);
+  background:linear-gradient(135deg,rgba(215,111,63,.15),rgba(215,111,63,.05));color:#e89a6f}
+.btn:hover{border-color:rgba(215,111,63,.45);box-shadow:0 0 12px rgba(215,111,63,.2)}
+.btn.mini{width:28px;height:28px;padding:0;font-size:.8rem}
+.sp-input{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:6px;padding:.6rem .8rem;color:var(--blanco);font-family:inherit;
+  font-size:.8rem;width:100%}
+.sp-input:focus{outline:none;border-color:rgba(201,168,76,.25)}
+/* login */
+#login{max-width:380px;margin:14vh auto 0}
+#login .t1{padding:2rem 1.8rem}
+#login label{font-size:.55rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;
+  color:rgba(255,255,255,.42);display:block;margin:.9rem 0 .35rem}
+#msg{font-size:.7rem;margin-top:.8rem;color:#e05c5c;min-height:1rem}
+#app{display:none}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.9rem}
+.kpi{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+  border:1px solid rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:1.4rem 1.6rem;position:relative;overflow:hidden;
+  backdrop-filter:blur(4px);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.kpi::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:2px;
+  border-radius:99px;background:var(--c,var(--accent));opacity:.75}
+.kpi-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;
+  color:rgba(255,255,255,.42);font-weight:600;margin-bottom:.55rem}
+.kpi-valor{font-size:2.45rem;font-weight:300;line-height:1;
+  background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,transparent));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.kpi-sub{font-size:.65rem;color:var(--gris);line-height:1.45;margin-top:.5rem}
+/* registro */
+.registro{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}
+.rc{display:flex;align-items:center;gap:.5rem;padding:.42rem .8rem .42rem .5rem;border-radius:8px;
+  border:1px solid color-mix(in srgb,var(--k) 28%,transparent);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--k) 15%,transparent),color-mix(in srgb,var(--k) 5%,transparent))}
+.rc i{width:5px;height:24px;border-radius:2px;flex:none;background:var(--k)}
+.rc .n{font-size:.66rem;font-weight:700;color:var(--blanco)}
+.rc .h{font-size:.53rem;color:rgba(245,243,240,.4);font-family:ui-monospace,monospace;margin-top:2px}
+/* barra mes */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.85rem;flex-wrap:wrap}
+.nav{display:flex;align-items:center;gap:.8rem}
+.nav h2{font-size:1.35rem;font-weight:700;letter-spacing:-.01em;min-width:170px}
+/* diagrama */
+.scroll{overflow-x:auto}
+.gantt{min-width:1220px}
+.row{display:grid;grid-template-columns:200px repeat(var(--nd,31),1fr);align-items:stretch}
+.head .d{font-size:.55rem;font-weight:600;text-align:center;padding:.3rem 0 .5rem;
+  color:rgba(255,255,255,.32);border-left:1px solid rgba(255,255,255,.05)}
+.head .d.wk{background:rgba(255,255,255,.022)}
+.head .d.hoy{color:#0d0d0d;font-weight:800;border-radius:5px 5px 0 0;
+  background:linear-gradient(180deg,rgba(215,111,63,.9),rgba(215,111,63,.55))}
+.head .d small{display:block;font-size:.45rem;letter-spacing:.06em;opacity:.6;margin-top:1px}
+.head .lbl{font-size:.55rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;
+  color:rgba(255,255,255,.32);display:flex;align-items:flex-end;padding:0 0 .55rem .2rem}
+.uhead{background:rgba(255,255,255,.028);border-top:1px solid rgba(255,255,255,.09);
+  padding:.55rem .6rem;cursor:pointer;display:flex;align-items:center;gap:.5rem}
+.uhead:hover{background:rgba(215,111,63,.07)}
+.caret{font-size:.55rem;color:rgba(245,243,240,.4);transition:transform .15s}
+.u.cerrada .caret{transform:rotate(-90deg)}
+.uname{font-size:.76rem;font-weight:700;letter-spacing:-.01em}
+.udeb{font-size:.59rem;margin-top:.12rem;font-weight:600;display:block}
+.uspan{background:rgba(255,255,255,.028);border-top:1px solid rgba(255,255,255,.09);
+  grid-column:2/-1;position:relative;display:flex;align-items:center;gap:.32rem;padding:.4rem}
+.mini{font:700 .53rem 'Inter',sans-serif;letter-spacing:.12em;text-transform:uppercase;
+  padding:.24rem .62rem;border-radius:8px;position:relative;z-index:3;
+  border:1px solid color-mix(in srgb,var(--m) 28%,transparent);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--m) 15%,transparent),color-mix(in srgb,var(--m) 5%,transparent));
+  color:var(--m)}
+.klbl{font-size:.61rem;font-weight:600;color:rgba(245,243,240,.55);
+  padding:.32rem .2rem .32rem 1.6rem;display:flex;align-items:center;gap:.45rem;
+  background:rgba(255,255,255,.012)}
+.kdot{width:4px;height:14px;border-radius:2px;flex:none;background:var(--k)}
+.knro{font-size:.5rem;color:rgba(245,243,240,.26);margin-left:auto;padding-right:.4rem;font-weight:500}
+.track{grid-column:2/-1;position:relative;height:30px;border-top:1px solid rgba(255,255,255,.03);
+  background:repeating-linear-gradient(to right,rgba(255,255,255,.05) 0 1px,transparent 1px calc(100%/var(--nd,31)))}
+.franja{position:absolute;top:6px;bottom:6px;border-radius:6px;display:flex;align-items:center;gap:.4rem;
+  padding:0 .5rem;font:700 .53rem 'Inter',sans-serif;letter-spacing:.05em;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;cursor:pointer;z-index:2;color:var(--blanco);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--k) 58%,transparent),color-mix(in srgb,var(--k) 26%,transparent));
+  border:1px solid color-mix(in srgb,var(--k) 80%,transparent);box-shadow:0 2px 8px rgba(0,0,0,.25);transition:all .18s}
+.franja:hover{box-shadow:0 0 14px color-mix(in srgb,var(--k) 36%,transparent)}
+.f-pend{opacity:.62}
+.f-venc{border-color:var(--e-venc)}
+.f-mora{border-color:var(--e-mora)}
+.stchip{flex:none;display:inline-flex;align-items:center;font:800 .5rem 'Inter';letter-spacing:.09em;
+  padding:.14rem .42rem;border-radius:4px;color:#f5f3f0}
+.stchip.v{background:var(--e-venc)}
+.stchip.m{background:var(--e-mora);color:#f0c9d6}
+.f-sin{background:transparent;border-style:dashed;border-color:color-mix(in srgb,var(--k) 42%,transparent);
+  color:color-mix(in srgb,var(--k) 68%,white);box-shadow:none;opacity:.85}
+.f-prox{background:linear-gradient(90deg,color-mix(in srgb,var(--k) 16%,transparent),color-mix(in srgb,var(--k) 7%,transparent));
+  border-style:dashed;border-color:color-mix(in srgb,var(--k) 55%,transparent);
+  color:color-mix(in srgb,var(--k) 78%,white);box-shadow:none}
+.hoyline{position:absolute;top:0;bottom:0;width:2px;z-index:5;pointer-events:none;
+  background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent) 45%,transparent));
+  box-shadow:0 0 8px color-mix(in srgb,var(--accent) 55%,transparent)}
+.u.cerrada .lane-row{display:none}
+/* bandeja */
+.fila{display:flex;align-items:center;gap:.8rem;padding:.6rem .8rem;border-radius:9px;
+  border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.015);margin-bottom:.45rem}
+.ftxt{flex:1;min-width:0;font-size:.75rem}
+.ftxt small{display:block;font-size:.62rem;color:rgba(245,243,240,.42);margin-top:.12rem}
+.empty{color:rgba(255,255,255,.28);font-size:.75rem;padding:.5rem 0}
+.warn{border:1px solid rgba(240,149,106,.28);
+  background:linear-gradient(135deg,rgba(240,149,106,.13),rgba(240,149,106,.04));
+  border-radius:8px;padding:.7rem .95rem;font-size:.71rem;line-height:1.55;
+  color:rgba(245,243,240,.78);margin-top:.8rem}
+.warn b{color:var(--e-sin);font-weight:600}
+.okbox{border:1px solid rgba(59,191,136,.3);
+  background:linear-gradient(135deg,rgba(59,191,136,.13),rgba(59,191,136,.04));
+  border-radius:8px;padding:.6rem .9rem;font-size:.71rem;line-height:1.55;
+  color:rgba(245,243,240,.8);margin-top:.6rem}
+.okbox b{color:var(--e-ok);font-weight:600}
+.lectura:empty{display:none}
+.lectura{margin-top:.7rem}
+.lec-grid{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.dato{font-size:.68rem;color:rgba(245,243,240,.62);padding:.24rem .7rem;border-radius:8px;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+.dato b{color:var(--blanco);font-weight:700}
+.formfila[hidden]{display:none}
+.formfila{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.8rem;align-items:flex-end}
+.formfila label{font-size:.55rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;
+  color:rgba(255,255,255,.42);display:flex;flex-direction:column;gap:.3rem}
+.formfila label:first-child{flex:1;min-width:280px}
+.formfila .sp-input{font-size:.75rem;padding:.45rem .6rem}
+.formfila select.sp-input{min-width:280px}
+.formfila input[type=number]{width:130px}
+.formfila input[type=date]{width:160px}
+.fila{align-items:flex-start}
+.fila .mini{margin-top:.15rem}
+code{font-family:ui-monospace,monospace;font-size:.66rem;background:rgba(255,255,255,.06);
+  padding:.08rem .28rem;border-radius:4px;color:#e8c96a}
+/* leyenda de lectura */
+.leytit{font-size:.54rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);margin-right:.3rem}
+.lg{display:inline-flex;align-items:center;gap:.42rem;font-size:.6rem;color:rgba(255,255,255,.45)}
+.lgb{width:46px;height:18px;border-radius:6px;flex:none;display:inline-block}
+.row2{display:grid;grid-template-columns:200px repeat(12,1fr);gap:4px;align-items:stretch}
+.ac{border-radius:7px;min-height:36px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;font-size:.74rem;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.05);
+  background:rgba(255,255,255,.012);color:rgba(255,255,255,.26);transition:border-color .15s}
+.ac small{font-size:.5rem;font-weight:600;opacity:.85}
+.ac:hover{border-color:rgba(255,255,255,.24)}
+.ac-ok{color:var(--e-ok);background:color-mix(in srgb,var(--e-ok) 10%,transparent);border-color:color-mix(in srgb,var(--e-ok) 30%,transparent)}
+.ac-pend{color:rgba(245,243,240,.6);background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.14)}
+.ac-venc{color:var(--e-venc);background:color-mix(in srgb,var(--e-venc) 12%,transparent);border-color:color-mix(in srgb,var(--e-venc) 45%,transparent)}
+.ac-mora{color:var(--e-mora-txt);background:color-mix(in srgb,var(--e-mora) 22%,transparent);border-color:var(--e-mora)}
+.anio-btn{margin-left:auto;flex:none;font-size:.55rem;padding:.3rem .65rem}
+</style>
+</head>
+<body>
+<div class="sp-bg-brand"></div>
+
+<!-- ══ LOGIN ══ -->
+<div id="login">
+  <div class="kicker" style="text-align:center">Sur Patagonia · Alquileres · QA</div>
+  <div class="t1">
+    <div class="sec-title" style="margin-bottom:.4rem">Entrar</div>
+    <div class="sub">Banco de pruebas · <code style="font-size:.62rem">rsjwqmpseknvydistgfr</code></div>
+    <label>Email</label>
+    <input class="sp-input" id="em" type="email" autocomplete="username" placeholder="msventas2015@gmail.com">
+    <label>Contraseña</label>
+    <input class="sp-input" id="pw" type="password" autocomplete="current-password">
+    <button class="btn" id="bLogin" style="width:100%;margin-top:1.1rem;padding:.6rem">Entrar</button>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app"><div class="wrap">
+  <div class="kicker">Sur Patagonia · Alquileres · Banco de pruebas QA · <b style="color:#e89a6f">BUILD 9</b> · 17-ago · paleta v2</div>
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem">
+    <h1 class="p-title">Alquileres</h1>
+    <button class="btn" id="bOut">Salir</button>
+  </div>
+
+  <section class="t1">
+    <div class="sec-title" style="margin-bottom:1rem">Arrastre — deuda de meses anteriores</div>
+    <div class="kpi-grid" id="kpis"></div>
+  </section>
+
+  <section class="t1">
+    <div class="sec-title">Registro de color por tipo de servicio</div>
+    <div class="registro" id="registro"></div>
+  </section>
+
+  <div class="bar">
+    <div class="nav">
+      <button class="btn mini" id="bPrev">‹</button>
+      <h2 id="mesTit">—</h2>
+      <button class="btn mini" id="bNext">›</button>
+      <span class="sub" id="mesSub"></span>
+    </div>
+  </div>
+
+  <section class="t1 scroll"><div class="gantt" id="gantt"></div></section>
+
+  <section class="t1" style="padding:.9rem 1.4rem">
+    <div style="display:flex;gap:.9rem;flex-wrap:wrap;align-items:center">
+      <span class="leytit">Cómo leer</span>
+      <span class="lg"><i class="lgb franja" style="position:relative;--k:var(--k-electricidad)"></i>Pagado</span>
+      <span class="lg"><i class="lgb franja f-pend" style="position:relative;--k:var(--k-electricidad)"></i>Pendiente</span>
+      <span class="lg"><i class="lgb franja f-venc" style="position:relative;--k:var(--k-electricidad)"><span class="stchip v" style="font-size:.42rem;padding:.08rem .3rem">✕</span></i>Vencido — chip rojo con la palabra</span>
+      <span class="lg"><i class="lgb franja f-mora" style="position:relative;--k:var(--k-alquiler)"><span class="stchip m" style="font-size:.42rem;padding:.08rem .3rem">▪</span></i>En mora — chip bordó, solo alquiler</span>
+      <span class="lg"><i class="lgb franja f-prox" style="position:relative;--k:var(--k-electricidad)"></i><b>Punteada con ✓ y monto</b>&nbsp;= YA está cargada, pero se paga otro mes — el número te adelanta cuánto y cuándo</span>
+      <span class="lg"><i class="lgb franja f-sin" style="position:relative;--k:var(--k-electricidad)"></i><b>Punteada vacía</b>&nbsp;= falta la factura: no sabemos cuánto va a venir</span>
+      <span class="lg"><i class="pago" style="position:relative;transform:none"></i>Día en que se pagó</span>
+      <span class="lg"><i style="width:2px;height:15px;display:inline-block;background:var(--accent);box-shadow:0 0 8px var(--accent)"></i>Hoy</span>
+    </div>
+  </section>
+
+  <section class="t1">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.9rem">
+      <span class="sec-title" style="color:var(--accent)">▸ Bandeja del robot — facturas que llegaron al mail</span>
+      <button class="btn" id="bCasilla">Revisar casilla</button>
+    </div>
+    <div id="bandeja"></div>
+    <div id="robotMsg" class="sub" style="margin-top:.6rem"></div>
+  </section>
+</div></div>
+
+<script>
+const SB_URL='https://rsjwqmpseknvydistgfr.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzandxbXBzZWtudnlkaXN0Z2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NDE1OTEsImV4cCI6MjEwMjMxNzU5MX0.X31f3AGUg0Oi01daBktS9ltfcp3ID6uZFJd7tGIlUKg';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+
+/* F1-A: contrato v2 acotado; cualquier operación fuera de la allowlist conserva v1. */
+const ALQ_F1A_V2_OPERACIONES=new Set(Object.freeze([
+  'nota_emitir','credito_consumir','transferencia_interna','deposito_evento_registrar',
+  'deposito_liquidar_y_devolver','reversa_con_reapertura','cargo_manual_emitir','pago_multimoneda'
+]));
+const ALQ_F1A_V2_REFERENCIA=Object.freeze({
+  nota_emitir:'nota_ref',credito_consumir:'consumo_ref',transferencia_interna:'transferencia_ref',
+  deposito_evento_registrar:'evento_ref',deposito_liquidar_y_devolver:'liquidacion_ref',
+  reversa_con_reapertura:'reversa_ref',cargo_manual_emitir:'cargo_fuente_ref',
+  pago_multimoneda:'pago_fuente_ref'
+});
+const ALQ_F1A_V2_STORAGE='alq:f1a:v2:';
+const ALQ_F1A_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const ALQ_F1A_V2_EN_VUELO=new Map();
+
+function alqF1aJsonCanonico(valor){
+  if(Array.isArray(valor))return '['+valor.map(v=>alqF1aJsonCanonico(v===undefined?null:v)).join(',')+']';
+  if(valor&&typeof valor==='object')return '{'+Object.keys(valor).filter(k=>valor[k]!==undefined).sort()
+    .map(k=>JSON.stringify(k)+':'+alqF1aJsonCanonico(valor[k])).join(',')+'}';
+  return JSON.stringify(valor);
+}
+async function alqF1aSha256(valor){
+  const bytes=new TextEncoder().encode(alqF1aJsonCanonico(valor));
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
+    .map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function alqF1aLeerEstado(clave){
+  try{return JSON.parse(localStorage.getItem(clave)||'null')}
+  catch(_){throw new Error('ALQ_F1A_ESTADO_DURABLE_ILEGIBLE')}
+}
+function alqF1aGuardarEstado(clave,estado){
+  const bytes=JSON.stringify(estado);
+  try{
+    localStorage.setItem(clave,bytes);
+    if(localStorage.getItem(clave)!==bytes)throw new Error('verify');
+  }catch(_){throw new Error('ALQ_F1A_ESTADO_DURABLE_NO_DISPONIBLE')}
+}
+function alqF1aEliminarEstado(clave){try{localStorage.removeItem(clave)}catch(_){/* replay sigue seguro */}}
+async function alqF1aActorId(){
+  const {data,error}=await sb.auth.getSession();
+  const id=data&&data.session&&data.session.user&&data.session.user.id;
+  if(error||!id)throw new Error('ALQ_F1A_SESION_REQUERIDA');
+  return id;
+}
+function alqF1aClaveEstado(actor,op,slot){
+  return ALQ_F1A_V2_STORAGE+actor+':'+op+':'+encodeURIComponent(slot);
+}
+function alqF1aUuidNuevo(){
+  const id=crypto.randomUUID().toLowerCase();
+  if(!ALQ_F1A_UUID.test(id))throw new Error('ALQ_F1A_UUID_CLIENTE_INVALIDO');
+  return id;
+}
+function alqF1aComando(ctx,etapa){
+  let comando=ctx.estado.comandos[etapa];
+  if(!comando||comando.terminal===true){
+    comando={comando_request_id:alqF1aUuidNuevo(),terminal:false};
+    ctx.estado.comandos[etapa]=comando;
+    alqF1aGuardarEstado(ctx.clave,ctx.estado);
+  }
+  return comando;
+}
+function alqF1aRegistrarEnvelope(ctx,etapa,envelope){
+  const comando=ctx.estado.comandos[etapa];
+  comando.terminal=true;comando.envelope=envelope;
+  ctx.estado.ultima_accion=etapa;ctx.estado.ultimo_envelope=envelope;
+  alqF1aGuardarEstado(ctx.clave,ctx.estado);
+}
+function alqF1aErrorNegocio(envelope,ctx){
+  const sinFila=envelope&&envelope.estado==='rechazada_sin_fila';
+  const mensaje=(envelope&&envelope.codigo)||'ALQ_F1A_OPERACION_RECHAZADA';
+  const error=new Error(sinFila&&envelope.requiere_nueva_preparacion===true
+    ? mensaje+'. Corregí el borrador y volvé a confirmar.' : mensaje);
+  error.name='AlqF1aBusinessError';
+  error.alqF1a={envelope,clave:ctx.clave,operacion:ctx.operacion,payload:ctx.payload,
+    slot:ctx.slot,opciones:ctx.opciones};
+  return error;
+}
+async function alqF1aRpcCrudo(nombre,parametros){
+  const {data,error}=await sb.rpc(nombre,parametros);
+  if(error)throw new Error(error.message);
+  if(!data||typeof data!=='object')throw new Error('ALQ_F1A_ENVELOPE_INVALIDO');
+  return data;
+}
+async function alqF1aContexto(op,payload,opciones){
+  const campo=ALQ_F1A_V2_REFERENCIA[op];
+  const slot=String(opciones&&opciones.slot||'').trim();
+  if(!campo||!slot)throw new Error('ALQ_F1A_SLOT_DURABLE_REQUERIDO');
+  const actor=await alqF1aActorId();
+  const clave=alqF1aClaveEstado(actor,op,slot);
+  let estado=alqF1aLeerEstado(clave);
+  const refAportada=payload&&payload[campo];
+  if(refAportada&&!ALQ_F1A_UUID.test(String(refAportada)))
+    throw new Error('ALQ_F1A_REFERENCIA_MANUAL_NO_CANONICA');
+  if(!estado){
+    estado={version:1,operacion:op,slot,referencia_campo:campo,
+      referencia:String(refAportada||alqF1aUuidNuevo()).toLowerCase(),comandos:{}};
+    alqF1aGuardarEstado(clave,estado);
+  }else if(estado.operacion!==op||estado.referencia_campo!==campo||
+      (refAportada&&estado.referencia!==String(refAportada).toLowerCase())){
+    throw new Error('ALQ_F1A_BORRADOR_DURABLE_EN_CONFLICTO');
+  }
+  const normalizado=Object.assign({},payload,{[campo]:estado.referencia});
+  const payloadSha=await alqF1aSha256(normalizado);
+  const anterior=estado.ultimo_envelope;
+  if(estado.payload_sha256&&estado.payload_sha256!==payloadSha){
+    if(!(anterior&&anterior.estado==='rechazada_sin_fila'&&
+         anterior.requiere_nueva_preparacion===true))
+      throw new Error('ALQ_F1A_PAYLOAD_CAMBIO_CON_COMANDO_PENDIENTE');
+    estado.comandos={};estado.ultima_accion=null;estado.ultimo_envelope=null;
+  }else if(anterior&&anterior.estado==='rechazada_sin_fila'&&
+           anterior.requiere_nueva_preparacion===true){
+    estado.ultima_accion=null;estado.ultimo_envelope=null;
+  }
+  estado.payload_sha256=payloadSha;
+  alqF1aGuardarEstado(clave,estado);
+  return {clave,estado,operacion:op,payload:normalizado,slot,opciones:opciones||{}};
+}
+function alqF1aResultadoTerminal(ctx,envelope){
+  if(ctx.opciones.retener_hasta_continuacion!==true)alqF1aEliminarEstado(ctx.clave);
+  return envelope.resultado;
+}
+async function alqF1aAplicarV2(ctx,preparada){
+  const etapa='aplicar:'+preparada.operacion_request_id;
+  const comando=alqF1aComando(ctx,etapa);
+  const envelope=await alqF1aRpcCrudo('alq_admin_aplicar_v2',{
+    p_operacion_request_id:preparada.operacion_request_id,
+    p_comando_request_id:comando.comando_request_id,
+    p_operacion:ctx.operacion,p_firma:preparada.firma,p_payload:ctx.payload
+  });
+  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
+  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
+  throw alqF1aErrorNegocio(envelope,ctx);
+}
+async function alqF1aRpcV2Interno(op,payload,opciones){
+  const ctx=await alqF1aContexto(op,payload,opciones);
+  const previo=ctx.estado.ultimo_envelope;
+  if(previo){
+    if(previo.ok===true&&previo.estado==='aplicada')return alqF1aResultadoTerminal(ctx,previo);
+    if(previo.ok===true&&previo.estado==='preparada')return alqF1aAplicarV2(ctx,previo);
+    throw alqF1aErrorNegocio(previo,ctx);
+  }
+  const etapa='preparar';
+  const comando=alqF1aComando(ctx,etapa);
+  const envelope=await alqF1aRpcCrudo('alq_admin_preparar_v2',{
+    p_comando_request_id:comando.comando_request_id,p_operacion:op,p_payload:ctx.payload
+  });
+  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
+  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
+  if(envelope.ok===true&&envelope.estado==='preparada')return alqF1aAplicarV2(ctx,envelope);
+  throw alqF1aErrorNegocio(envelope,ctx);
+}
+async function alqF1aRpcV2(op,payload,opciones){
+  const vuelo=op+':'+String(opciones&&opciones.slot||'');
+  if(ALQ_F1A_V2_EN_VUELO.has(vuelo))return ALQ_F1A_V2_EN_VUELO.get(vuelo);
+  const trabajo=alqF1aRpcV2Interno(op,payload,opciones);
+  ALQ_F1A_V2_EN_VUELO.set(vuelo,trabajo);
+  try{return await trabajo}
+  finally{if(ALQ_F1A_V2_EN_VUELO.get(vuelo)===trabajo)ALQ_F1A_V2_EN_VUELO.delete(vuelo)}
+}
+async function alqF1aCancelarV2(info,motivo){
+  const previo=info&&info.envelope;
+  if(!previo||!previo.operacion_request_id)throw new Error('ALQ_F1A_CANCELACION_SIN_INTENTO');
+  const estado=alqF1aLeerEstado(info.clave);
+  if(!estado)throw new Error('ALQ_F1A_ESTADO_DURABLE_AUSENTE');
+  const ctx={clave:info.clave,estado,operacion:info.operacion,payload:info.payload,
+    slot:info.slot,opciones:info.opciones||{}};
+  const etapa='cancelar:'+previo.operacion_request_id;
+  const comando=alqF1aComando(ctx,etapa);
+  const envelope=await alqF1aRpcCrudo('alq_admin_cancelar_v2',{
+    p_operacion_request_id:previo.operacion_request_id,
+    p_comando_request_id:comando.comando_request_id,p_motivo:String(motivo||'Cancelación explícita UI')
+  });
+  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
+  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
+  throw alqF1aErrorNegocio(envelope,ctx);
+}
+async function alqF1aReintentarV2(info,motivo){
+  const previo=info&&info.envelope;
+  if(!previo||!previo.hecho_id||previo.reintentable!==true||previo.estado!=='rechazada')
+    throw new Error('ALQ_F1A_REINTENTO_NO_HABILITADO');
+  const estado=alqF1aLeerEstado(info.clave);
+  if(!estado)throw new Error('ALQ_F1A_ESTADO_DURABLE_AUSENTE');
+  const ctx={clave:info.clave,estado,operacion:info.operacion,payload:info.payload,
+    slot:info.slot,opciones:info.opciones||{}};
+  const etapa='reintentar:'+previo.hecho_id;
+  const comando=alqF1aComando(ctx,etapa);
+  const envelope=await alqF1aRpcCrudo('alq_admin_reintentar_v2',{
+    p_hecho_id:previo.hecho_id,p_comando_request_id:comando.comando_request_id,
+    p_motivo:String(motivo||'Reintento explícito UI')
+  });
+  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
+  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
+  if(envelope.ok===true&&envelope.estado==='preparada')return alqF1aAplicarV2(ctx,envelope);
+  throw alqF1aErrorNegocio(envelope,ctx);
+}
+async function alqF1aCerrarBorrador(op,slot){
+  const actor=await alqF1aActorId();
+  alqF1aEliminarEstado(alqF1aClaveEstado(actor,op,slot));
+}
+function alqF1aMostrarError(contenedor,error,alCompletar){
+  contenedor.textContent='No se emitió. '+error.message;
+  const info=error&&error.alqF1a,envelope=info&&info.envelope;
+  if(!envelope||!envelope.hecho_id||envelope.reintentable!==true||envelope.estado!=='rechazada')return;
+  const boton=document.createElement('button');
+  boton.type='button';boton.className='btn';boton.textContent='Reintentar';boton.style.marginLeft='.6rem';
+  boton.onclick=async()=>{
+    boton.disabled=true;
+    try{
+      const resultado=await alqF1aReintentarV2(info,'Reintento explícito desde alquileres-franjas-qa');
+      if(alCompletar)await alCompletar(resultado);
+    }catch(siguiente){alqF1aMostrarError(contenedor,siguiente,alCompletar)}
+  };
+  contenedor.appendChild(boton);
+}
+async function alqRpcV1(op,payload){
+  const preparada=await sb.rpc('alq_admin_preparar',{p_operacion:op,p_payload:payload});
+  if(preparada.error)throw new Error(preparada.error.message);
+  const aplicada=await sb.rpc('alq_admin_aplicar',{p_request_id:preparada.data.request_id,
+    p_operacion:op,p_firma:preparada.data.firma,p_payload:payload});
+  if(aplicada.error)throw new Error(aplicada.error.message);
+  return aplicada.data;
+}
+async function rpc(op,payload,opciones){
+  if(ALQ_F1A_V2_OPERACIONES.has(op))return alqF1aRpcV2(op,payload,opciones);
+  return alqRpcV1(op,payload);
+}
+
+const COLOR={electricidad:'--k-electricidad',gas:'--k-gas',agua:'--k-agua',internet:'--k-internet',
+  expensas:'--k-expensas',municipal:'--k-municipal',alquiler:'--k-alquiler'};
+const NOMBRE={electricidad:'Electricidad',gas:'Gas',agua:'Agua',internet:'Internet',
+  expensas:'Expensas',municipal:'Municipal'};
+const HEX={alquiler:'#1e5fa0',electricidad:'#26b8a8',gas:'#0f6e80',agua:'#7fb3d5',
+  internet:'#6f7fe8',expensas:'#1f8473',municipal:'#7a8a3e',otros:'#8a8a82'};
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const $=s=>document.querySelector(s);
+if(!window.AlqSeguridad?.escaparHtml || !window.AlqSeguridad?.esUuid)
+  throw new Error('ALQ_F0_SEGURIDAD_UI_NO_CARGADA');
+const H=window.AlqSeguridad.escaparHtml;
+const ID_OK=window.AlqSeguridad.esUuid;
+const plata=n=>{const v=Number(n);return '$'+(isFinite(v)?Math.round(v):0).toLocaleString('es-AR');};
+const D=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?new Date(+m[1],+m[2]-1,+m[3]):new Date(s||NaN);};
+let HOY=new Date(), MES={y:HOY.getFullYear(),m:HOY.getMonth()}, DATA=null;
+let VISTA={tipo:'mes'};
+
+/* ══ login ══ */
+$('#bLogin').onclick=async()=>{
+  $('#msg').textContent='';
+  const {error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
+  if(error){$('#msg').textContent=error.message;return;}
+  arrancar();
+};
+$('#pw').onkeydown=e=>{if(e.key==='Enter')$('#bLogin').click()};
+$('#bOut').onclick=async()=>{await sb.auth.signOut();location.reload()};
+sb.auth.getSession().then(({data})=>{if(data.session)arrancar()});
+
+async function arrancar(){
+  $('#login').style.display='none'; $('#app').style.display='block';
+  await cargar(); pintarRegistro(); render();
+}
+
+async function cargar(){
+  const q=(t,sel='*')=>sb.from(t).select(sel);
+  const [props,contratos,versiones,cargos,cuentas,facturas,titul,mails]=await Promise.all([
+    q('alq_v_propiedad'),q('alq_v_contrato'),q('alq_v_contrato_version'),
+    q('alq_v_cargo'),q('alq_v_servicio_cuenta'),q('alq_v_servicio_factura'),
+    q('alq_v_titularidad'),
+    sb.from('alq_mail_entrante').select('*').order('recibido_at',{ascending:false})
+  ]);
+  DATA={props:props.data||[],contratos:contratos.data||[],versiones:versiones.data||[],
+    cargos:cargos.data||[],cuentas:cuentas.data||[],facturas:facturas.data||[],
+    titul:titul.data||[],mails:mails.data||[],
+    err:[props,contratos,versiones,cargos,cuentas,facturas,titul,mails]
+      .map(r=>r.error?.message).filter(Boolean)};
+}
+
+function pintarRegistro(){
+  $('#registro').innerHTML=Object.entries(HEX).map(([k,h])=>
+    `<div class="rc" style="--k:${h}"><i></i><div><div class="n">${(NOMBRE[k]||k[0].toUpperCase()+k.slice(1))}</div><div class="h">${h}</div></div></div>`).join('');
+}
+
+/* alquiler = cargo cuyo snapshot_regla dice que representa un período (workaround F6) */
+const esAlquiler=c=>/alquiler_periodo/i.test(c.snapshot_regla?.semantica_real||'');
+
+/* El estado se DERIVA (ARQ §0). El umbral de mora sale de punitorio_desde_dia del
+   contrato; si no hay contrato con versión, se usa 30 y se avisa que es supuesto. */
+function estadoDe(vence,saldo,saldada,diasMora){
+  if(saldada===true||Number(saldo)===0) return 'ok';
+  const v=D(vence); if(isNaN(v)) return 'pend';
+  const finDia=new Date(v.getFullYear(),v.getMonth(),v.getDate(),23,59,59);
+  if(finDia>=HOY) return 'pend';                    // vence hoy = todavía pendiente
+  const dias=Math.floor((HOY-finDia)/86400000)+1;   // días enteros de atraso
+  const umbral=(typeof diasMora==='number'&&diasMora>=0)?diasMora:30;
+  return dias>umbral?'mora':'venc';
+}
+
+function render(){
+  if(VISTA.tipo==='unidad'){ renderAnio(); return; }
+  const nd=new Date(MES.y,MES.m+1,0).getDate();
+  const ini=new Date(MES.y,MES.m,1), fin=new Date(MES.y,MES.m,nd,23,59,59);
+  const enMes=d=>{const x=D(d);return x>=ini&&x<=fin};
+  const antes=d=>D(d)<ini;
+  $('#mesTit').textContent=`${MESES[MES.m]} ${MES.y}`;
+
+  /* ── ARRASTRE ── */
+  const cAtras=DATA.cargos.filter(c=>antes(c.vence_at)&&Number(c.saldo_pendiente)>0);
+  const fAtras=DATA.facturas.filter(f=>antes(f.vence_at)&&!f.saldada);
+  const totalAtras=cAtras.reduce((a,c)=>a+Number(c.saldo_pendiente),0)+fAtras.reduce((a,f)=>a+Number(f.monto),0);
+  const moras=cAtras.filter(esAlquiler).length;
+  const sinCargar=DATA.cuentas.filter(cu=>cu.activa&&!DATA.facturas.some(f=>f.cuenta_id===cu.id&&enMes(f.vence_at))).length;
+  const masViejo=[...cAtras,...fAtras].reduce((a,x)=>Math.min(a,D(x.vence_at)),Infinity);
+  $('#kpis').innerHTML=`
+   <div class="kpi" style="--c:var(--blanco)"><div class="kpi-label">Total arrastrado</div>
+     <div class="kpi-valor">${plata(totalAtras)}</div>
+     <div class="kpi-sub">${masViejo===Infinity?'sin deuda vieja':'el más viejo: '+Math.round((HOY-masViejo)/86400000)+' días'}</div></div>
+   <div class="kpi" style="--c:var(--e-mora-txt)"><div class="kpi-label">Alquileres en mora</div>
+     <div class="kpi-valor">${moras}</div><div class="kpi-sub">de meses anteriores</div></div>
+   <div class="kpi" style="--c:var(--e-venc)"><div class="kpi-label">Servicios vencidos</div>
+     <div class="kpi-valor">${fAtras.length}</div><div class="kpi-sub">facturas impagas</div></div>
+   <div class="kpi" style="--c:var(--e-sin)"><div class="kpi-label">Facturas sin cargar</div>
+     <div class="kpi-valor">${sinCargar}</div><div class="kpi-sub">cuentas sin factura este mes</div></div>`;
+
+  /* ── DIAGRAMA ── */
+  const pos=(d)=>Math.max(0,Math.min(nd,D(d).getDate()));
+  const L=d=>`${((pos(d)-1)/nd*100).toFixed(3)}%`;
+  const W=(a,b)=>`${(Math.max(1,pos(b)-pos(a)+1)/nd*100).toFixed(3)}%`;
+  const hoyPct=(HOY>=ini&&HOY<=fin)?`${((HOY.getDate()-.5)/nd*100).toFixed(3)}%`:null;
+  const HL=hoyPct?`<div class="hoyline" style="left:${hoyPct}"></div>`:'';
+
+  let h=`<div class="row head" style="--nd:${nd}"><div class="lbl">Unidad funcional</div>`;
+  for(let d=1;d<=nd;d++){
+    const dow=new Date(MES.y,MES.m,d).getDay();
+    const wk=(dow===0||dow===6)?' wk':'';
+    const esHoy=HOY.getDate()===d&&HOY.getMonth()===MES.m&&HOY.getFullYear()===MES.y;
+    h+=`<div class="d${wk}${esHoy?' hoy':''}">${d}<small>${esHoy?'HOY':'DLMMJVS'[dow]}</small></div>`;
+  }
+  h+='</div>';
+
+  for(const p of DATA.props){
+    const ctr=DATA.contratos.filter(c=>c.propiedad_id===p.id);
+    const vig=ctr.find(c=>c.estado==='vigente');
+    const cg=DATA.cargos.filter(c=>c.propiedad_id===p.id);
+    const cgMes=cg.filter(c=>enMes(c.vence_at));
+    const cuentas=DATA.cuentas.filter(c=>c.propiedad_id===p.id&&c.activa);
+    const ver = (vig && DATA.versiones.filter(v=>v.contrato_id===vig.id).slice(-1)[0]) || null;
+    /* punitorio_desde_dia es DÍA DEL MES: la gracia real es punitorio_desde_dia - dia_pago_hasta */
+    const diasMora = (ver && ver.punitorio_desde_dia && ver.dia_pago_hasta)
+      ? Math.max(0, Number(ver.punitorio_desde_dia) - Number(ver.dia_pago_hasta)) : null;
+    const pendientes=cg.filter(c=>Number(c.saldo_pendiente)>0);
+    const debe=pendientes.reduce((a,c)=>a+Number(c.saldo_pendiente),0);
+    let _venc=0,_mora=0;
+    pendientes.forEach(c=>{const st=estadoDe(c.vence_at,c.saldo_pendiente,false,esAlquiler(c)?diasMora:null);
+      if(st==='mora')_mora++; else if(st==='venc')_venc++;});
+
+    const tags=[];
+    if(!vig) tags.push(['--via-directo','sin contrato vigente']);
+    if(cg.filter(c=>esAlquiler(c)&&Number(c.saldo_pendiente)>0).length) tags.push(['--e-mora-txt','alquiler impago']);
+    cuentas.filter(cu=>!DATA.facturas.some(f=>f.cuenta_id===cu.id&&D(f.vence_at)>=ini)
+                     &&!DATA.cargos.some(c=>c.snapshot_regla&&c.snapshot_regla.cuenta_id===cu.id&&D(c.vence_at)>=ini))
+      .forEach(cu=>tags.push([COLOR[cu.tipo]||'--k-otros',(NOMBRE[cu.tipo]||cu.tipo)+' sin cargar']));
+    const _sv=pendientes.filter(c=>!esAlquiler(c))
+      .map(c=>estadoDe(c.vence_at,c.saldo_pendiente,false,null))
+      .filter(st=>st==='venc'||st==='mora').length;
+    if(_sv) tags.push(['--e-venc',_sv+' cargo(s) vencido(s)']);
+    if(!tags.length) tags.push(debe>0?['--via-directo','nada vencido aún']:['--e-ok','al día']);
+
+    h+=`<div class="u" style="--nd:${nd}"><div class="row" style="--nd:${nd}">
+      <div class="uhead" onclick="this.closest('.u').classList.toggle('cerrada')"><span class="caret">▾</span>
+        <span><span class="uname">${H(p.direccion)}</span>
+        <span class="udeb" style="color:${_mora?'var(--e-mora-txt)':_venc?'var(--e-venc)':debe>0?'rgba(245,243,240,.55)':'rgba(245,243,240,.38)'}">${debe>0?('debe '+plata(debe)+((_mora||_venc)?'':' · nada vencido aún')):'sin deuda'}</span></span>${ID_OK(p.id)?`<button class="btn anio-btn js-ver-anio" data-prop-id="${H(p.id)}">Ver año ▸</button>`:''}</div>
+      <div class="uspan">${tags.map(([c,t])=>`<span class="mini" style="--m:var(${c})">${H(t)}</span>`).join('')}${HL}</div></div>`;
+
+    /* carril alquiler */
+    const alq=cgMes.filter(esAlquiler);
+    h+=`<div class="row lane-row" style="--nd:${nd}">
+      <div class="klbl" style="--k:var(--k-alquiler)"><i class="kdot"></i>Alquiler<span class="knro">${ver?plata(ver.monto)+'/mes':'—'}</span></div>
+      <div class="track" style="--nd:${nd}">`;
+    for(const c of alq){
+      const st=estadoDe(c.vence_at,c.saldo_pendiente,false,diasMora);
+      const dd=ver?.dia_pago_desde||1, dh=ver?.dia_pago_hasta||D(c.vence_at).getDate();
+      const a=new Date(MES.y,MES.m,dd), b=new Date(MES.y,MES.m,Math.max(dh,D(c.vence_at).getDate()));
+      h+=`<div class="franja ${st==='ok'?'':'f-'+st}" style="--k:var(--k-alquiler);left:${L(a)};width:${W(a,b)}"
+        title="${H(c.snapshot_regla?.semantica_real||c.concepto)} · ${plata(c.monto)} · saldo ${plata(c.saldo_pendiente)}">
+        ${st==='mora'?'<span class="stchip m">▪ EN MORA</span>':st==='venc'?'<span class="stchip v">✕ VENCIDO</span>':''}Alquiler · ${plata(c.monto)}${Number(c.saldo_pendiente)>0?' · debe '+plata(c.saldo_pendiente):''}</div>`;
+    }
+    if(!alq.length) h+=`<div class="franja f-sin" style="--k:var(--k-alquiler);left:0;width:${W(ini,new Date(MES.y,MES.m,10))}">Sin alquiler emitido · F6</div>`;
+    h+=HL+'</div></div>';
+
+    /* un carril por cuenta de servicio */
+    for(const cu of cuentas){
+      const col=COLOR[cu.tipo]||'--k-otros';
+      const fs=DATA.facturas.filter(f=>f.cuenta_id===cu.id&&enMes(f.vence_at));
+      // cargos emitidos al confirmar una factura de ESTA cuenta (van a alq_cargo, no a facturas)
+      const cgCuentaTodos=DATA.cargos.filter(c=>c.snapshot_regla&&c.snapshot_regla.cuenta_id===cu.id);
+      const cgCuenta=cgCuentaTodos.filter(c=>enMes(c.vence_at));
+      h+=`<div class="row lane-row" style="--nd:${nd}">
+        <div class="klbl" style="--k:var(${col})"><i class="kdot"></i>${H(NOMBRE[cu.tipo]||cu.tipo)}<span class="knro">${H(cu.nro_cliente)}</span></div>
+        <div class="track" style="--nd:${nd}">`;
+      if(fs.length||cgCuenta.length){
+        for(const f of fs){
+          const st=estadoDe(f.vence_at,f.monto,f.saldada);
+          const b=D(f.vence_at), a=new Date(MES.y,MES.m,Math.max(1,b.getDate()-7));
+          h+=`<div class="franja ${st==='ok'?'':'f-'+st}" style="--k:var(${col});left:${L(a)};width:${W(a,b)}"
+            title="vence ${b.toLocaleDateString('es-AR')} · ${plata(f.monto)}${f.cargo_id?'':' · SIN CARGO GENERADO'}">
+            ${st==='venc'?'<span class="stchip v">✕ VENCIDA</span>':st==='mora'?'<span class="stchip m">▪ EN MORA</span>':''}${H(NOMBRE[cu.tipo]||cu.tipo)} · ${plata(f.monto)} · vence ${b.getDate()}</div>`;
+        }
+        for(const c of cgCuenta){
+          const st=estadoDe(c.vence_at,c.saldo_pendiente,false,null);
+          const b=D(c.vence_at), a=new Date(MES.y,MES.m,Math.max(1,b.getDate()-7));
+          h+=`<div class="franja ${st==='ok'?'':'f-'+st}" style="--k:var(${col});left:${L(a)};width:${W(a,b)}"
+            title="confirmada desde la bandeja · ${H(c.snapshot_regla?.emisor||'')}">
+            ${st==='venc'?'<span class="stchip v">✕ VENCIDA</span>':st==='mora'?'<span class="stchip m">▪ EN MORA</span>':''}${H(NOMBRE[cu.tipo]||cu.tipo)} · ${plata(c.monto)} · vence ${b.getDate()}</div>`;
+        }
+      } else {
+        const prox=[...DATA.facturas.filter(f=>f.cuenta_id===cu.id&&!f.saldada&&D(f.vence_at)>=ini),
+                    ...cgCuentaTodos.filter(c=>Number(c.saldo_pendiente)>0&&D(c.vence_at)>=ini)]
+                   .sort((a,b)=>D(a.vence_at)-D(b.vence_at))[0];
+        const _pl=L(new Date(MES.y,MES.m,Math.min(15,nd))), _pw=W(new Date(MES.y,MES.m,Math.min(15,nd)),new Date(MES.y,MES.m,Math.min(24,nd)));
+        if(prox){
+          const pv=D(prox.vence_at);
+          h+=`<div class="franja f-prox" style="--k:var(${col});left:${_pl};width:${_pw}"
+            title="Ya está en el sistema. Se paga en ${MESES[pv.getMonth()]} — este mes no se debe nada de este servicio.">Ya cargada ✓ · vence ${String(pv.getDate()).padStart(2,'0')}/${String(pv.getMonth()+1).padStart(2,'0')} · ${plata(prox.saldo_pendiente??prox.monto)}</div>`;
+        } else {
+          h+=`<div class="franja f-sin" style="--k:var(${col});left:${_pl};width:${_pw}">Factura sin cargar</div>`;
+        }
+      }
+      h+=HL+'</div></div>';
+    }
+
+    /* carril otros cargos */
+    const otros=cgMes.filter(c=>!esAlquiler(c) && !(c.snapshot_regla&&c.snapshot_regla.cuenta_id));
+    if(otros.length){
+      h+=`<div class="row lane-row" style="--nd:${nd}">
+        <div class="klbl" style="--k:var(--k-otros)"><i class="kdot"></i>Otros<span class="knro">${otros.length} cargo(s)</span></div>
+        <div class="track" style="--nd:${nd}">`;
+      otros.forEach(c=>{
+        const st=estadoDe(c.vence_at,c.saldo_pendiente,false,null);
+        const b=D(c.vence_at), a=new Date(MES.y,MES.m,Math.max(1,b.getDate()-4));
+        h+=`<div class="franja ${st==='ok'?'':'f-'+st}" style="--k:var(--k-otros);left:${L(a)};width:${W(a,b)}"
+          title="${H(c.concepto)} · ${plata(c.monto)}">${st==='venc'?'<span class="stchip v">✕ VENCIDO</span>':st==='mora'?'<span class="stchip m">▪ EN MORA</span>':''}${H(c.concepto)} · ${plata(c.monto)}</div>`;
+      });
+      h+=HL+'</div></div>';
+    }
+    h+='</div>';
+  }
+  $('#gantt').innerHTML=h;
+  document.querySelectorAll('#gantt .js-ver-anio').forEach(btn=>{
+    btn.addEventListener('click',event=>{
+      const pid=btn.dataset.propId;
+      if(ID_OK(pid)) window.verAnio(event,pid);
+    });
+  });
+  $('#mesSub').textContent=`${DATA.props.length} unidades · ${DATA.cargos.length} cargos · ${DATA.facturas.length} facturas`
+    +(DATA.err.length?` · ⚠ ${DATA.err.length} error(es) de lectura`:'');
+
+  /* ── BANDEJA ── */
+  const b=DATA.mails;
+  const colorEstado=e=>e==='descartada'?'--via-directo':e==='pendiente'?'--e-sin':'--e-ok';
+  $('#bandeja').innerHTML = b.length ? b.map(m=>{
+    if(!ID_OK(m.id)) return '<div class="warn"><b>Correo omitido.</b> Identificador inválido.</div>';
+    const tienePdf = m.adjunto_nombre && !/\(sin PDF\)/i.test(m.adjunto_nombre);
+    return `<div class="fila" data-id="${H(m.id)}">
+      <span class="mini" style="--m:var(${colorEstado(m.estado)});flex:none">${H(m.estado||'pendiente')}</span>
+      <span class="ftxt"><b>${H(tienePdf?m.adjunto_nombre:(m.asunto||'(sin asunto)'))}</b>
+        <small>${H(m.remitente||'')}${m.asunto&&tienePdf?' · '+H(m.asunto):''} · ${H(m.recibido_at?new Date(m.recibido_at).toLocaleString('es-AR'):'')}</small>
+        <div class="lectura" id="lec-${H(m.id)}"></div></span>
+      ${tienePdf?`<button class="btn js-leer-pdf" data-mail-id="${H(m.id)}" style="flex:none">Leer factura</button>`:''}
+    </div>`}).join('')
+    : '<div class="empty">La bandeja está vacía. Tocá "Revisar casilla" para que el robot entre al mail.</div>';
+  document.querySelectorAll('#bandeja .js-leer-pdf').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.mailId;
+      if(ID_OK(id)) leerPdf(id);
+    });
+  });
+}
+
+/* ── C3 · VISTA UNIDAD: el año entero, mes por mes ── */
+window.verAnio=function(ev,pid){ if(ev&&ev.stopPropagation)ev.stopPropagation(); if(!ID_OK(pid))return; VISTA={tipo:'unidad',prop_id:pid,anio:MES.y}; render(); };
+window.verMes=function(y,m){ VISTA={tipo:'mes'}; if(typeof y==='number'){ MES={y:y,m:m}; } render(); };
+const SYM={ok:'✓',pend:'◔',venc:'✕',mora:'▪'};
+function renderAnio(){
+  const p=DATA.props.find(x=>x.id===VISTA.prop_id);
+  if(!p){ VISTA={tipo:'mes'}; return render(); }
+  const anio=VISTA.anio;
+  const ctr=DATA.contratos.filter(c=>c.propiedad_id===p.id);
+  const vig=ctr.find(c=>c.estado==='vigente');
+  const ver=(vig&&DATA.versiones.filter(v=>v.contrato_id===vig.id).slice(-1)[0])||null;
+  const diasMora=(ver&&ver.punitorio_desde_dia&&ver.dia_pago_hasta)?Math.max(0,Number(ver.punitorio_desde_dia)-Number(ver.dia_pago_hasta)):null;
+  const cg=DATA.cargos.filter(c=>c.propiedad_id===p.id);
+  const cuentas=DATA.cuentas.filter(c=>c.propiedad_id===p.id&&c.activa);
+  const enM=(d,m)=>{const x=D(d);return x.getFullYear()===anio&&x.getMonth()===m;};
+  const peor=(list,dm)=>{
+    if(!list.length) return null;
+    let r='ok';
+    for(const it of list){
+      const st=estadoDe(it.vence_at, it.saldo_pendiente??(it.saldada?0:it.monto), it.saldada===true, dm);
+      if(st==='mora') return 'mora';
+      if(st==='venc') r='venc';
+      else if(st==='pend'&&r==='ok') r='pend';
+    }
+    return r;
+  };
+  const pendDe=list=>list.reduce((a,it)=>a+Number(it.saldo_pendiente??(it.saldada?0:it.monto)??0),0);
+  const celda=(list,m,dm)=>{
+    const st=peor(list,dm);
+    if(!st) return `<div class="ac ac-na" onclick="verMes(${anio},${m})">·</div>`;
+    const deb=pendDe(list);
+    return `<div class="ac ac-${st}" onclick="verMes(${anio},${m})" title="${list.length} ítem(s)${deb>0?' · pendiente '+plata(deb):''}">${SYM[st]}${deb>0?`<small>${plata(deb)}</small>`:''}</div>`;
+  };
+  let filas='';
+  const fila=(nombre,nro,col,porMes,dm)=>{
+    filas+=`<div class="row2"><div class="klbl" style="--k:${col}"><i class="kdot"></i>${H(nombre)}<span class="knro">${H(nro||'')}</span></div>`;
+    for(let m=0;m<12;m++) filas+=celda(porMes(m),m,dm);
+    filas+='</div>';
+  };
+  fila('Alquiler','','var(--k-alquiler)',m=>cg.filter(c=>esAlquiler(c)&&enM(c.vence_at,m)),diasMora);
+  for(const cu of cuentas){
+    fila(NOMBRE[cu.tipo]||cu.tipo, cu.nro_cliente, `var(${COLOR[cu.tipo]||'--k-otros'})`, m=>[
+      ...DATA.facturas.filter(f=>f.cuenta_id===cu.id&&enM(f.vence_at,m)),
+      ...cg.filter(c=>c.snapshot_regla&&c.snapshot_regla.cuenta_id===cu.id&&enM(c.vence_at,m))]);
+  }
+  fila('Otros','','var(--k-otros)',m=>cg.filter(c=>!esAlquiler(c)&&!(c.snapshot_regla&&c.snapshot_regla.cuenta_id)&&enM(c.vence_at,m)));
+  $('#mesTit').textContent=`${p.direccion} — ${anio}`;
+  $('#mesSub').textContent='el año mes a mes · tocá un mes para abrirlo en franjas · ‹ › cambia el año';
+  const MESN=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  $('#gantt').innerHTML=`
+    <button class="btn" style="margin-bottom:.8rem" onclick="verMes()">‹ Volver a ${MESES[MES.m]} ${MES.y}</button>
+    <div class="row2 head"><div class="lbl">Concepto</div>
+      ${MESN.map((nm,m)=>`<div class="d${(anio===HOY.getFullYear()&&m===HOY.getMonth())?' hoy':''}">${nm}</div>`).join('')}</div>
+    ${filas}
+    <div class="sub" style="margin-top:.7rem">✓ pagado · ◔ por vencer · ✕ vencido · ▪ en mora · «·» sin movimientos</div>`;
+}
+
+/* ── LEER UN PDF DE LA BANDEJA con js/alq-lector-facturas.js ── */
+window.leerPdf = async function(id){
+  if(!ID_OK(id)) return;
+  const _m=(DATA.mails||[]).find(x=>x.id===id); const path=_m&&_m.storage_path;
+  if(!path){document.getElementById('lec-'+id).innerHTML='<div class="warn"><b>Sin archivo.</b></div>';return;}
+  if(_m && _m.estado==='confirmada'){
+    document.getElementById('lec-'+id).innerHTML='<div class="okbox"><b>Ya está confirmada.</b> Esta factura ya se convirtió en cargo — no se cobra dos veces.</div>';
+    return;
+  }
+  const box = document.getElementById('lec-'+id);
+  box.innerHTML = '<span class="sub">Bajando el PDF…</span>';
+  try{
+    const {data,error} = await sb.storage.from('alq-docs').download(path);
+    if(error) throw new Error('Storage: '+error.message);
+
+    box.innerHTML = '<span class="sub">Leyendo…</span>';
+    const LEC = window.AlqLector;
+    if(!LEC || typeof LEC.pdfATexto!=='function')
+      throw new Error('No cargó js/alq-lector-facturas.js — revisá la ruta ../js/');
+    if(window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc)
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const texto = await LEC.pdfATexto(data);
+    window.__TEXTOS = window.__TEXTOS || {};
+    window.__TEXTOS[id] = texto;
+    const f = LEC.parseFacturaTexto(texto) || {};
+    const reconocida = f.emisor && !/desconocid/i.test(f.emisor);
+    /* Se guarda acá y NO se pasa por el atributo onclick: el JSON trae comillas dobles
+       y el navegador corta el atributo en la primera → el botón quedaba muerto.
+       Bug encontrado el 17-ago-2026. */
+    window.__LEIDAS = window.__LEIDAS || {};
+    window.__LEIDAS[id] = {emisor:f.emisor||'manual', alertas:f.alertas||[],
+                           nro:f.nro||null, socio:f.socio||null, reconocida:!!reconocida};
+    /* cruce por número de cliente — usa matchServicio del propio lector */
+    let cuenta = null;
+    if(typeof LEC.matchServicio==='function'){
+      try{ cuenta = LEC.matchServicio(f, DATA.cuentas); }catch(_){}
+    }
+    if(!cuenta && f.nro){
+      const n = String(f.nro).replace(/\D/g,'');
+      cuenta = DATA.cuentas.find(c => c.nro_cliente &&
+        (c.nro_cliente.replace(/\D/g,'').includes(n) || n.includes(c.nro_cliente.replace(/\D/g,'')))) || null;
+    }
+    const prop = cuenta ? DATA.props.find(p=>p.id===cuenta.propiedad_id) : null;
+    /* opciones de cuenta: todas las cuentas activas, agrupadas por unidad */
+    const opciones = DATA.cuentas.filter(c=>c.activa).map(c=>{
+      const p = DATA.props.find(x=>x.id===c.propiedad_id);
+      return `<option value="${H(c.id)}" ${cuenta&&c.id===cuenta.id?'selected':''}>
+        ${H(p?p.direccion:'?')} — ${H(NOMBRE[c.tipo]||c.tipo)} · ${H(c.nro_cliente)}</option>`;
+    }).join('');
+    /* ⚠ NO usar replace(/[^\d]/g,'') sobre el total: el lector devuelve un Number
+       (338057.8) y sacarle el punto lo convierte en 3380578 — diez veces más.
+       Bug encontrado el 17-ago-2026 antes de emitir ningún cargo. */
+    const montoPre = (typeof f.total==='number' && isFinite(f.total) && f.total>0)
+      ? String(Math.round(f.total)) : '';
+    const vencePre = f.vence ? (isoDeFecha(f.vence)||'').slice(0,10) : '';
+    /* completa = el lector sacó todo Y la identificó sola → no hay nada que pedirle a Mariano */
+    const completa = !!(prop && montoPre && Number(montoPre)>0 && vencePre);
+
+    box.innerHTML = `
+      <div class="lec-grid">
+        <span class="mini" style="--m:var(${reconocida?'--e-ok':'--e-sin'})">${H(f.emisor||'DESCONOCIDO')}</span>
+        ${f.nro?`<span class="dato">N° <b>${H(f.nro)}</b></span>`:''}
+        ${f.socio?`<span class="dato">Socio <b>${H(f.socio)}</b></span>`:''}
+        ${montoPre?`<span class="dato">Total <b>${plata(montoPre)}</b></span>`:''}
+        ${f.vence?`<span class="dato">Vence <b>${H(f.vence)}</b></span>`:''}
+        ${f.periodo?`<span class="dato">Período <b>${H(f.periodo)}</b></span>`:''}
+      </div>
+      ${(f.alertas&&f.alertas.length)?`<div class="warn"><b>⚠ ${f.alertas.length} alerta(s):</b> ${f.alertas.map(H).join(' · ')}</div>`:''}
+      ${prop
+        ? `<div class="okbox"><b>Identificada sola:</b> ${H(prop.direccion)} — cruzó por el número de cliente <code>${H(cuenta.nro_cliente)}</code>.</div>`
+        : `<div class="warn"><b>No la pude identificar sola.</b> ${reconocida
+             ? `El número <code>${H(f.nro||'—')}</code> no coincide con ninguna cuenta cargada.`
+             : `El formato no es de las 4 empresas mapeadas (EDERSA · Camuzzi · Aguas Rionegrinas · COOPETEL).`}
+             Completala a mano acá abajo.</div>`}
+
+      <div class="formfila" id="frm-${H(id)}" ${completa?'hidden':''}>
+        <label>A qué unidad y servicio
+          <select class="sp-input" id="sel-${H(id)}">${prop?'':'<option value="">— elegir —</option>'}${opciones}</select></label>
+        <label>Monto
+          <input class="sp-input" id="mon-${H(id)}" type="number" inputmode="numeric" value="${H(montoPre)}" placeholder="0"></label>
+        <label>Vence
+          <input class="sp-input" id="ven-${H(id)}" type="date" value="${H(vencePre)}"></label>
+      </div>
+
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:.75rem">
+        <button class="btn js-confirmar-factura" data-mail-id="${H(id)}">
+          ${completa?'Confirmar y cobrar al inquilino':'Confirmar y cobrar al inquilino'}</button>
+        ${completa?`<button class="btn" style="border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.03);color:rgba(245,243,240,.6)"
+          data-mail-id="${H(id)}" data-action="corregir-manual">Corregir a mano</button>`:''}
+        ${!reconocida?`<button class="btn" style="border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.03);color:rgba(245,243,240,.6)"
+          data-mail-id="${H(id)}" data-action="ver-texto">Ver texto del PDF</button>`:''}
+      </div>
+      <div id="txt-${H(id)}"></div>
+      <div class="sub" style="margin-top:.45rem">
+        ${completa
+          ? `Va a cobrarle <b>${plata(montoPre)}</b> al inquilino de <b>${H(prop.direccion)}</b>, con vencimiento <b>${H(vencePre.split('-').reverse().join('/'))}</b>.`
+          : 'Completá lo que falta y confirmá.'}
+        Emite un cargo <b>externa</b>: deudor el inquilino, acreedor el titular.
+        La plata no toca la caja de la administración.
+        </div>`;
+    /* el atributo selected no siempre queda: se fija por JS, deterministico */
+    const sel=document.getElementById('sel-'+id);
+    if(sel&&cuenta) sel.value=cuenta.id;
+    box.querySelector('.js-confirmar-factura')?.addEventListener('click',event=>confirmarFactura(id,event));
+    box.querySelector('[data-action="corregir-manual"]')?.addEventListener('click',event=>{
+      const form=document.getElementById('frm-'+id);
+      if(form) form.hidden=false;
+      event.currentTarget.remove();
+    });
+    box.querySelector('[data-action="ver-texto"]')?.addEventListener('click',()=>verTexto(id));
+  }catch(e){
+    box.innerHTML = `<div class="warn"><b>No pude leerla.</b> ${H(e.message)}</div>`;
+  }
+};
+
+/* ── CONFIRMAR: la factura leída se convierte en deuda del inquilino ──
+   Usa SOLO cargo_manual_emitir, del catálogo sellado de 45. No inventa operaciones. */
+window.confirmarFactura = async function(id, ev){
+  if(!ID_OK(id)) return;
+  const _e = ev || window.event;
+  const f = (window.__LEIDAS||{})[id] || {emisor:'manual',alertas:[]};
+  const _mm=(DATA.mails||[]).find(x=>x.id===id);
+  if(_mm && _mm.estado==='confirmada'){
+    (ev&&ev.target||{}).textContent='Ya estaba confirmada';
+    return;
+  }
+  const btn = (_e && _e.target) || document.activeElement;
+  const cuenta_id = document.getElementById('sel-'+id)?.value;
+  const monto = String(document.getElementById('mon-'+id)?.value||'').replace(/[^\d]/g,'');
+  const fecha = document.getElementById('ven-'+id)?.value;
+
+  const aviso=t=>{btn.disabled=false;btn.textContent='Confirmar y cobrar al inquilino';
+    btn.insertAdjacentHTML('afterend',`<div class="warn"><b>Falta un dato.</b> ${H(t)}</div>`)};
+  btn.disabled=true; btn.textContent='Emitiendo…';
+  if(!cuenta_id) return aviso('Elegí a qué unidad y servicio corresponde.');
+  if(!monto||Number(monto)<=0) return aviso('Poné el monto.');
+  if(!fecha) return aviso('Poné la fecha de vencimiento.');
+  /* guarda: no emitir cargos con fecha absurda (bug de parseo de fechas) */
+  const anio=Number(fecha.slice(0,4));
+  if(anio<2020||anio>2035) return aviso(`El año ${anio} no puede ser. Revisá la fecha de vencimiento.`);
+
+  const cuenta = DATA.cuentas.find(c=>c.id===cuenta_id);
+  const prop_id = cuenta.propiedad_id;
+  const tit = DATA.titul.find(t=>t.propiedad_id===prop_id);
+  const ctr = DATA.contratos.find(c=>c.propiedad_id===prop_id && c.estado==='vigente');
+  if(!tit) return aviso('Esa unidad no tiene titular asignado.');
+  const vence = fecha+'T00:00:00Z';
+
+  const payload = {
+    cargo_fuente_ref: String(id).toLowerCase(),
+    propiedad_id: prop_id,
+    concepto: 'servicio',
+    ambito: 'externa',                       // la plata va directo al titular
+    moneda: 'ARS',
+    monto: monto,
+    vence_at: vence,
+    deudor_parte_id: cuenta.responsable_parte_id,
+    acreedor_parte_id: tit.parte_id,
+    snapshot_regla: {
+      origen:'factura_servicio_leida',
+      emisor:f.emisor||'manual', nro_leido:f.nro||null,
+      cuenta_id:cuenta.id, nro_cliente:cuenta.nro_cliente, tipo:cuenta.tipo,
+      reconocida_por_lector: !!f.reconocida,
+      alertas:f.alertas||[], lote:'MES-PRUEBA-2026-08',
+      mail_entrante_id:id,
+      nota: f.reconocida ? 'leida por el lector y confirmada en la bandeja'
+                         : 'formato no reconocido — completada a mano y confirmada'
+    }
+  };
+  if(ctr) payload.contrato_id = ctr.id;
+  const cargoSlot='factura-mail:'+String(id).toLowerCase();
+  const finalizar=async()=>{
+    // El staging forma parte de la continuación: el borrador durable se cierra después de marcarlo.
+    const marca=await sb.from('alq_mail_entrante').update({estado:'confirmada'}).eq('id',id);
+    if(marca.error)throw new Error('Confirmando mail: '+marca.error.message);
+    await alqF1aCerrarBorrador('cargo_manual_emitir',cargoSlot);
+    const prop = DATA.props.find(p=>p.id===prop_id);
+    const _vd=fecha.split('-'), _vy=Number(_vd[0]), _vm=Number(_vd[1])-1;
+    const _otroMes=(_vy!==MES.y||_vm!==MES.m);
+    btn.outerHTML = `<div class="okbox"><b>Cargo emitido y firmado en el ledger.</b> ${plata(monto)} a cobrar
+      al inquilino de <b>${H(prop?prop.direccion:'')}</b>, vence ${H(fecha.split('-').reverse().join('/'))}.
+      ${_otroMes?('Vence en <b>'+MESES[_vm]+'</b> — te llevo a ese mes para que la veas en la franja.'):'Ya aparece en la franja de la unidad, arriba.'}</div>`;
+    if(_otroMes){ MES={y:_vy,m:_vm}; }
+    await cargar(); render();
+  };
+
+  try{
+    await rpc('cargo_manual_emitir',payload,{slot:cargoSlot,retener_hasta_continuacion:true});
+    await finalizar();
+  }catch(err){
+    btn.disabled=false; btn.textContent='Confirmar y cobrar al inquilino';
+    const aviso=document.createElement('div');aviso.className='warn';
+    btn.insertAdjacentElement('afterend',aviso);
+    alqF1aMostrarError(aviso,err,async()=>{await finalizar();aviso.remove()});
+  }
+};
+/* Acepta ISO (2026-09-11) y formato argentino (11/09/2026 · 11-9-26).
+   El lector devuelve ISO: si no se contempla, 2026-09-11 se leía como 26/09/2011. */
+/* Muestra el texto crudo que pdf.js sacó del PDF, para poder mapear plantillas nuevas
+   o arreglar una que falla. Con un botón para copiarlo entero. */
+window.verTexto = function(id){
+  if(!ID_OK(id)) return;
+  const box = document.getElementById('txt-'+id);
+  const t = (window.__TEXTOS||{})[id] || '(no hay texto — leé la factura primero)';
+  box.innerHTML = `
+    <div style="margin-top:.8rem">
+      <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.4rem;flex-wrap:wrap">
+        <span class="sec-title">Texto crudo del PDF · ${t.length.toLocaleString('es-AR')} caracteres</span>
+        <button class="btn js-copiar-texto" data-mail-id="${H(id)}">Copiar todo</button>
+      </div>
+      <textarea class="sp-input js-texto-pdf" readonly rows="14"
+        style="font-family:ui-monospace,monospace;font-size:.66rem;line-height:1.5;white-space:pre;resize:vertical"></textarea>
+      <div class="sub" style="margin-top:.4rem">
+        Copiá esto y pegámelo en el chat: con eso arreglo o mapeo la plantilla.
+      </div>
+    </div>`;
+  const area=box.querySelector('.js-texto-pdf');
+  if(area){ area.value=t; area.addEventListener('click',()=>area.select()); }
+  box.querySelector('.js-copiar-texto')?.addEventListener('click',async event=>{
+    await navigator.clipboard.writeText(t);
+    event.currentTarget.textContent='Copiado ✓';
+  });
+};
+
+function isoDeFecha(s){
+  const t=String(s||'').trim();
+  let m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);          // ISO — primero
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}T00:00:00Z`;
+  m=t.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); // dd/mm/aaaa
+  if(!m) return null;
+  let [,d,mo,y]=m;
+  if(y.length===2) y=(Number(y)>70?'19':'20')+y;
+  if(Number(d)>31||Number(mo)>12) return null;
+  return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}T00:00:00Z`;
+}
+
+$('#bPrev').onclick=()=>{if(VISTA.tipo==='unidad'){VISTA.anio--;render();return;}MES.m--;if(MES.m<0){MES.m=11;MES.y--}render()};
+$('#bNext').onclick=()=>{if(VISTA.tipo==='unidad'){VISTA.anio++;render();return;}MES.m++;if(MES.m>11){MES.m=0;MES.y++}render()};
+$('#bCasilla').onclick=async()=>{
+  $('#robotMsg').textContent='Entrando a la casilla…';
+  const {data,error}=await sb.functions.invoke('robot-facturas',{body:{}});
+  $('#robotMsg').textContent=error?('Error: '+error.message):('Robot: '+JSON.stringify(data));
+  if(!error){await cargar();render()}
+};
+</script>
+</body>
+</html>

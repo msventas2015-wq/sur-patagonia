@@ -522,6 +522,10 @@
               <input type="checkbox" id="psec-contacto" checked>
               Datos de contacto
             </label>
+            <label class="gpdf-check-item">
+              <input type="checkbox" id="psec-cotizacion" checked>
+              Datos de la cotización (cliente, precio acordado, financiación)
+            </label>
           </div>
 
           <!-- Preview -->
@@ -537,6 +541,37 @@
             </div>
           </div>
 
+        </div>
+
+        <!-- Campos editables para cotización -->
+        <div class="gpdf-card" style="margin-bottom:2rem;">
+          <div class="gpdf-card-titulo">Datos de la cotización</div>
+          <div class="gpdf-grid" style="gap:1.2rem;">
+            <div>
+              <div class="gpdf-select-wrap" style="margin-bottom:1rem;">
+                <label>Fecha del documento</label>
+                <input type="date" id="pcot-fecha" class="gpdf-select" style="max-width:220px;" />
+              </div>
+              <div class="gpdf-select-wrap" style="margin-bottom:1rem;">
+                <label>Nombre del cliente (opcional)</label>
+                <input type="text" id="pcot-cliente" class="gpdf-select" placeholder="Ej: Juan García" style="max-width:320px;" />
+              </div>
+              <div class="gpdf-select-wrap" style="margin-bottom:0;">
+                <label>Precio acordado en cotización (opcional)</label>
+                <input type="number" id="pcot-precio" class="gpdf-select" placeholder="Usa el precio de la propiedad si queda vacío" style="max-width:280px;" />
+              </div>
+            </div>
+            <div>
+              <div class="gpdf-select-wrap" style="margin-bottom:1rem;">
+                <label>Financiación acordada</label>
+                <textarea id="pcot-financiacion" rows="3" class="gpdf-select" style="max-width:100%;resize:vertical;font-family:inherit;" placeholder="Ej: 50% de entrada + saldo a 12 meses..."></textarea>
+              </div>
+              <div class="gpdf-select-wrap" style="margin-bottom:0;">
+                <label>Nota para el cliente — sale impresa en el PDF</label>
+                <textarea id="pcot-nota" rows="3" class="gpdf-select" style="max-width:100%;resize:vertical;font-family:inherit;" placeholder="Acuerdo especial, condiciones, observaciones..."></textarea>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div><!-- /contenido-propiedad -->
@@ -1271,7 +1306,8 @@ window.generarPDFProyecto = async function() {
     if (sec.nota && cotNota) {
       g.rotulo('NOTA DEL ASESOR', M, y); y += 6
       g.tinta(); g.sans(8.2)
-      doc.text(doc.splitTextToSize(cotNota, W-2*M).slice(0, 4), M, y, { lineHeightFactor: 1.5 })
+      const notaL = doc.splitTextToSize(cotNota, W-2*M).slice(0, 4)
+      doc.text(notaL, M, y, { lineHeightFactor: 1.5 })
     }
 
     // ─── PÁGINA 2 ───
@@ -1405,6 +1441,18 @@ window.generarPDFPropiedad = async function() {
       precio:      document.getElementById('psec-precio').checked,
       ubicacion:   document.getElementById('psec-ubicacion').checked,
       contacto:    document.getElementById('psec-contacto').checked,
+      cotizacion:  document.getElementById('psec-cotizacion').checked,
+    }
+    const cotFecha = document.getElementById('pcot-fecha').value
+    const cotCliente = document.getElementById('pcot-cliente').value.trim()
+    const cotPrecio = document.getElementById('pcot-precio').value.trim()
+    const cotFinanciacion = document.getElementById('pcot-financiacion').value.trim()
+    const cotNota = document.getElementById('pcot-nota').value.trim()
+    let fechaStr = ''
+    if (cotFecha) {
+      const [yy, mm, dd] = cotFecha.split('-')
+      const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+      fechaStr = `${parseInt(dd)} de ${meses[parseInt(mm)-1]} de ${yy}`
     }
     advertenciasPropiedad(p, sec).forEach(w => { if (!warnings.includes(w)) warnings.push(w) })
 
@@ -1443,15 +1491,35 @@ window.generarPDFPropiedad = async function() {
 
     g.filete(y, true); y += 10
 
-    if (sec.precio && p.precio) {
-      g.rotulo('PRECIO', M, y)
+    // A quién va dirigida y cuándo — igual que en la cotización de proyecto.
+    if (sec.cotizacion && (cotCliente || fechaStr)) {
+      g.rotulo('COTIZACIÓN PREPARADA PARA', M, y)
+      g.rotulo('FECHA', W-M, y, 'right')
+      y += 6
+      g.tinta(); g.titulo(14)
+      doc.text(cotCliente || '—', M, y)
+      g.sans(8.2)
+      doc.text(fechaStr || '—', W-M, y, { align: 'right' })
+      y += 13
+    }
+
+    if (sec.precio && (p.precio || cotPrecio)) {
+      // Si el asesor acordó un precio, ese manda y se rotula como acordado.
+      const acordado = !!cotPrecio
+      g.rotulo(acordado ? 'PRECIO ACORDADO' : 'PRECIO', M, y)
       g.rotulo('OPERACIÓN', W-M, y, 'right')
       y += 7
       g.tinta(); g.sans(15, true)
-      doc.text(plata(p.precio), M, y)
+      doc.text(plata(acordado ? cotPrecio : p.precio), M, y)
       g.sans(8.2)
       doc.text((p.operacion || '—').toUpperCase(), W-M, y, { align: 'right' })
-      y += 13
+      y += 6
+      if (acordado && p.precio && Number(cotPrecio) !== Number(p.precio)) {
+        doc.setTextColor(...GPDF.GRIS); g.sans(6.8)
+        doc.text(`Precio de publicación: ${plata(p.precio)}`, M, y)
+        y += 6
+      }
+      y += 7
     }
 
     const TOPE = H - 42 - 34
@@ -1459,6 +1527,7 @@ window.generarPDFPropiedad = async function() {
     const asegurar = alto => { if (y + alto > TOPE) { doc.addPage(); y = 26 } }
 
     if (sec.descripcion && p.descripcion) {
+      g.sans(8.2)   // fijar la fuente ANTES de medir: el corte de línea depende de ella
       const desc = doc.splitTextToSize(String(p.descripcion).replace(/\n+/g, ' '), W-2*M).slice(0, 10)
       asegurar(6 + desc.length * 4.6)
       g.rotulo('LA PROPIEDAD', M, y); y += 6
@@ -1493,6 +1562,26 @@ window.generarPDFPropiedad = async function() {
       }
     }
 
+    if (sec.cotizacion && cotFinanciacion) {
+      g.sans(8.2)
+      const fin = doc.splitTextToSize(cotFinanciacion, W-2*M).slice(0, 4)
+      asegurar(6 + fin.length * 4.4)
+      g.rotulo('FINANCIACIÓN', M, y); y += 6
+      g.tinta(); g.sans(8.2)
+      doc.text(fin, M, y, { lineHeightFactor: 1.5 })
+      y += fin.length * 4.4 + 10
+    }
+
+    if (sec.cotizacion && cotNota) {
+      g.sans(8.2)
+      const nt = doc.splitTextToSize(cotNota, W-2*M).slice(0, 4)
+      asegurar(6 + nt.length * 4.4)
+      g.rotulo('NOTA DEL ASESOR', M, y); y += 6
+      g.tinta(); g.sans(8.2)
+      doc.text(nt, M, y, { lineHeightFactor: 1.5 })
+      y += nt.length * 4.4 + 10
+    }
+
     if (sec.contacto) {
       // El cierre se apoya abajo si el contenido de esta página ya terminó.
       g._yRed = Math.max(y + 6, TOPE)
@@ -1503,7 +1592,10 @@ window.generarPDFPropiedad = async function() {
     g.pie()
 
     const nombre = (p.titulo || 'propiedad').toLowerCase().replace(/\s+/g, '-')
-    doc.save(`ficha-${nombre}${imprimible ? '-imprimible' : ''}.pdf`)
+    const paraQuien = (sec.cotizacion && cotCliente)
+      ? '-' + cotCliente.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      : ''
+    doc.save(`ficha-${nombre}${paraQuien}${imprimible ? '-imprimible' : ''}.pdf`)
     info.textContent = warnings.length
       ? `✓ PDF generado — ${warnings.length} advertencias: ${warnings.join(', ')}`
       : '✓ PDF generado'
