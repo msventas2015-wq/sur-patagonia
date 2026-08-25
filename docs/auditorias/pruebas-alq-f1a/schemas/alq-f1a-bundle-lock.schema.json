@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://surpatagonian.local/schemas/alq-f1a-bundle-lock.schema.json",
+  "title": "ALQ F1-A bundle lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "target_ref", "production_ref_denied", "network", "execution_ack", "migration_name", "postgres_runtime", "node_runtime", "artifacts"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"const": "ALQ_F1A_BUNDLE_LOCKED_OFFLINE"},
+    "target_ref": {"const": "rsjwqmpseknvydistgfr"},
+    "production_ref_denied": {"const": "wajkfydxutptcvvfwrvq"},
+    "network": {"const": false},
+    "execution_ack": {"type": ["string", "null"]},
+    "migration_name": {"type": ["string", "null"]},
+    "postgres_runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release", "postgres_version", "server_version_num", "architecture", "asset_url", "asset_bytes", "asset_sha256"],
+      "properties": {
+        "release": {"const": "v2.8.5"},
+        "postgres_version": {"const": "17.6"},
+        "server_version_num": {"const": 170006},
+        "architecture": {"enum": ["arm64", "x86_64", "universal"]},
+        "asset_url": {"type": "string", "pattern": "^https://github\\.com/PostgresApp/PostgresApp/releases/download/v2\\.8\\.5/[^/?#]+$"},
+        "asset_bytes": {"type": "integer", "minimum": 1},
+        "asset_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "node_runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "binary_sha256"],
+      "properties": {
+        "version": {"type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "binary_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 52,
+      "maxItems": 52,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "role", "will_execute", "sha256", "bytes", "lines", "mode"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "role": {"enum": ["authority", "baseline", "forward_source", "verification_sql", "rollback_sql", "consumer", "harness", "schema", "documentation", "cloud_input"]},
+          "will_execute": {"type": "boolean"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "bytes": {"type": "integer", "minimum": 0},
+          "lines": {"type": "integer", "minimum": 0},
+          "mode": {"type": "string", "pattern": "^[0-7]{4}$"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://surpatagonian.local/schemas/alq-f1a-receipt-contract.schema.json",
+  "title": "ALQ F1-A structured receipt base contract",
+  "type": "object",
+  "required": ["schema_version", "status"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"type": "string", "minLength": 1},
+    "target_ref": {"const": "rsjwqmpseknvydistgfr"},
+    "production_ref_denied": {"const": "wajkfydxutptcvvfwrvq"},
+    "environment": {"enum": ["LOCAL_DISPOSABLE_PG17", "QA"]},
+    "server_version_num": {"const": 170006},
+    "network": {"type": "boolean"},
+    "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "run_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "captured_utc": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {"required": ["target_ref"]},
+      "then": {"required": ["source_sha256", "run_id", "captured_utc"]}
+    }
+  ],
+  "not": {
+    "anyOf": [
+      {"required": ["password"]},
+      {"required": ["access_token"]},
+      {"required": ["refresh_token"]},
+      {"required": ["authorization"]},
+      {"required": ["secret"]},
+      {"required": ["email"]},
+      {"required": ["auth_user_id"]}
+    ]
+  }
+}
