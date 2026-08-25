@@ -343,4 +343,62 @@ def main() -> int:
     for path, stage in ((args.baseline, "baseline"),
                         (args.forward_source, "forward")):
         stdout, stderr = psql_file(psql, fixture_row, path, stage, run_id,
-      
+                                   single_transaction=True)
+        logs.extend([f"[{stage}:stdout]\n{stdout}", f"[{stage}:stderr]\n{stderr}"])
+    sql_stdout, sql_stderr = psql_file(
+        psql, fixture_row, args.regression_sql, "regression", run_id,
+        single_transaction=False)
+    logs.extend([f"[regression:stdout]\n{sql_stdout}",
+                 f"[regression:stderr]\n{sql_stderr}"])
+    sql_receipt = exact_receipt(sql_stdout, SQL_PREFIX, "suite SQL")
+    check_sql_receipt(sql_receipt, run_id)
+    ui_receipt, ui_stdout, ui_stderr = run_ui(
+        args.node, args.expected_node_sha256, node_runtime["version"], args.ui_test)
+    logs.extend([f"[ui:stdout]\n{ui_stdout}", f"[ui:stderr]\n{ui_stderr}"])
+
+    concurrency_output = Path("/private/tmp") / f"alq-f1a-concurrency-{run_id}.receipt"
+    proc = run_argv([
+        sys.executable, str(args.concurrency_harness),
+        "--fixture-receipt", str(args.fixture_receipt),
+        "--bundle-lock", str(args.bundle_lock),
+        "--case-spec", str(args.concurrency_spec),
+        "--output", str(concurrency_output), "--execute", "--ack", CONCURRENCY_ACK,
+    ], timeout=900)
+    logs.extend([f"[concurrency:stdout]\n{proc.stdout}",
+                 f"[concurrency:stderr]\n{proc.stderr}"])
+    if proc.returncode != 0:
+        raise Stop(f"harness de concurrencia fallo exit={proc.returncode}: {proc.stderr[-1400:]}")
+    concurrency = check_concurrency_receipt(concurrency_output)
+    assert_identity(psql, fixture_row, "final")
+
+    receipt = {
+        "schema_version": 1, "status": "ALQ_F1A_LOCAL_PASS",
+        "environment": "LOCAL_DISPOSABLE_PG17", "server_version_num": 170006,
+        "network": False, "run_id": run_id,
+        "fixture_run_id": fixture_row["run_id"],
+        "integrity_cases": sql_receipt["integrity_cases"],
+        "nominal_rejections": sql_receipt["nominal_rejections"],
+        "legacy_controls": sql_receipt["legacy_controls"],
+        "invalid_probes": sql_receipt["invalid_probes"],
+        "valid_cases": sql_receipt["valid_cases"],
+        "v1_giro_cases": sql_receipt["v1_giro_cases"],
+        "state_machine_pass": sql_receipt["state_machine_pass"],
+        "rls_pass": sql_receipt["rls_pass"],
+        "concurrency_pass": True, "concurrency_cases": len(concurrency["cases"]),
+        "ui_pass": ui_receipt["status"] == "ALQ_F1A_UI_OFFLINE_PASS",
+        "source_bytes_exact": True,
+        "forward_source_sha256": sha256_file(args.forward_source),
+        "cleanup_residual_rows": 0, "assert_global_ok": True,
+    }
+    create_exclusive(log_path, "\n".join(logs).encode("utf-8"))
+    create_exclusive(output, FINAL_PREFIX.encode("ascii") + json_bytes(receipt))
+    print(FINAL_PREFIX + json.dumps(receipt, separators=(",", ":"), sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Stop as exc:
+        print(f"STOP ALQ F1-A HARNESS LOCAL: {exc}", file=os.sys.stderr)
+        raise SystemExit(2)

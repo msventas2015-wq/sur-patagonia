@@ -364,4 +364,24 @@ def validate_evidence_binding(
 
 
 def run_argv(argv: list[str], *, env: dict[str, str] | None = None,
-          
+             timeout: int = 120, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    if not argv or any(not isinstance(item, str) or "\x00" in item for item in argv):
+        raise Stop("argv invalido")
+    try:
+        return subprocess.run(argv, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              text=True, encoding="utf-8", errors="replace",
+                              env=env, cwd=cwd, timeout=timeout, check=False)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise Stop(f"no se pudo ejecutar {Path(argv[0]).name}: {type(exc).__name__}") from exc
+
+
+def clean_pg_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    env = dict(os.environ)
+    for key in tuple(env):
+        if key.startswith("PG") or key in {"PSQLRC", "HISTFILE"}:
+            env.pop(key, None)
+    env.update({"PGCLIENTENCODING": "UTF8", "HISTFILE": "/dev/null"})
+    if extra:
+        env.update(extra)
+    return env
