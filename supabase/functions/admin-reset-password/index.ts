@@ -3,10 +3,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
+  if (req.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405, headers: cors })
+  }
 
   try {
     const authHeader = req.headers.get('Authorization')
@@ -23,7 +27,9 @@ Deno.serve(async (req) => {
     const { data: { user: caller }, error: authErr } = await callerClient.auth.getUser()
     if (authErr || !caller) return new Response('Unauthorized', { status: 401, headers: cors })
 
-    const rol = caller.user_metadata?.rol
+    // Autorización: user_metadata es editable por el propio usuario y nunca
+    // puede decidir privilegios. El rol administrativo vive en app_metadata.
+    const rol = caller.app_metadata?.rol
     if (rol !== 'admin') return new Response('Forbidden', { status: 403, headers: cors })
 
     // 2. Leer body
