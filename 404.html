@@ -1048,7 +1048,7 @@ import { supabase, getRef, getRefVia, registrarVisita } from '/js/config.js'
 // Los QRs impresos apuntan a surpatagonia.com.ar/r/{codigo}. Como esta
 // página es el fallback universal de Cloudflare, resolvemos acá:
 // buscamos la referencia y redirigimos a su destino con ?canal=.
-const _rMatch = location.pathname.match(/^\/r\/([a-z0-9-]{2,80})\/?$/)
+const _rMatch = location.pathname.toLowerCase().match(/^\/r\/([a-z0-9-]{2,80})\/?$/)
 function agregarTrackingDestino(destino, codigo, via) {
   const hashIdx = destino.indexOf('#')
   const base = hashIdx >= 0 ? destino.slice(0, hashIdx) : destino
@@ -1162,7 +1162,7 @@ if (_rMatch) {
           && (!c.fecha_inicio || c.fecha_inicio <= _now)
           && (!c.fecha_fin    || c.fecha_fin    >= _now))
         .sort((a, b) => (b.fecha_inicio || '').localeCompare(a.fecha_inicio || ''))[0]
-      if (_camp) _dest = _camp.url_destino
+      if (_camp && _camp.url_destino) _dest = _camp.url_destino
     }
     const _via = viaRedirectActual()
     if (!(await destinoInstrumentado(_dest))) {
