@@ -1134,6 +1134,10 @@ async function confirmarFactura(i){
     }
     const doc=await rpc('documento_registrar',{tipo:'factura_servicio',path:path,sha256:sha,
       mime:'application/pdf',bytes:String(buf.byteLength),propiedad_id:pid,audiencia:'admin'});
+    // La identidad v2 usa el ID inmutable real: staging si vino por mail,
+    // documento interno si fue una carga directa. Nunca un UUID manual paralelo.
+    const fuenteId=String((b.meta&&b.meta.id)||(doc&&doc.id)||'').toLowerCase();
+    if(!ALQ_F1A_UUID.test(fuenteId))throw new Error('ALQ_F1A_FUENTE_SERVER_OWNED_INVALIDA');
     // 2 · cargo al inquilino (opcional, acreedor = titular) — igual que la pestaña Servicios
     let cargoId=null;
     let cargoSlot=null;
@@ -1161,11 +1165,13 @@ async function confirmarFactura(i){
       const acreedor=(titular&&titular.parte_id)||(adminParte&&adminParte.id);
       cargoSlot='bandeja-factura:'+String((b.meta&&b.meta.id)||sha);
       const res=await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,
+        cargo_fuente_ref:fuenteId,
         deudor_parte_id:cvig.inquilino_parte_id,acreedor_parte_id:acreedor,
         ambito:'custodiada',concepto:'servicio',moneda:'ARS',monto:String(monto),
         vence_at:vence+'T00:00:00Z',
         snapshot_regla:{detalle:'Factura '+f.emisor+(f.periodo?' '+f.periodo:''),origen:'bandeja_robot',
-          comprobante_documento_id:doc&&doc.id}},
+          comprobante_documento_id:doc&&doc.id,
+          mail_entrante_id:b.meta&&b.meta.id||null}},
         {slot:cargoSlot,retener_hasta_continuacion:true});
       cargoId=res&&res.id;
     }
