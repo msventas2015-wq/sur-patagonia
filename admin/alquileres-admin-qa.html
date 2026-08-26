@@ -710,9 +710,15 @@ function ajustarNumeroKpi(el){
 function ajustarKpis(){
   cancelAnimationFrame(ajusteKpiPendiente);
   ajusteKpiPendiente=requestAnimationFrame(()=>{
-    document.querySelectorAll('#kpis .kpi-num').forEach(ajustarNumeroKpi);
+    ajusteKpiPendiente=requestAnimationFrame(()=>{
+      document.querySelectorAll('#kpis .kpi-num').forEach(ajustarNumeroKpi);
+    });
   });
 }
+const observadorTamanoKpis=new ResizeObserver(ajustarKpis);
+const observadorContenidoKpis=new MutationObserver(ajustarKpis);
+observadorTamanoKpis.observe($('kpis'));
+observadorContenidoKpis.observe($('kpis'),{childList:true,subtree:true,characterData:true});
 function render(){
   const propsVisibles=D.prop.filter(p=>propCumpleFiltro(p.id)),idsVisibles=new Set(propsVisibles.map(p=>p.id));
   const cargosVisibles=D.cargo.filter(c=>idsVisibles.has(c.propiedad_id));
