@@ -147,6 +147,18 @@ Ingresá concepto, monto, deudor, acreedor, vencimiento y detalle. Deudor y acre
 
 Seleccioná el cargo, tipo, monto y motivo. La historia no se edita: la corrección se registra como una nota nueva.
 
+### Excepciones
+
+Esta pestaña concentra los meses que no siguen el circuito normal.
+
+- **Mora:** elegí el cargo impago, la fecha de cálculo, los días de gracia y el porcentaje decidido por la administración. El primer botón genera sólo una propuesta. Después hay que escribir un motivo y elegir **Aplicar mora** o **Condonar**. Nunca se crea sola.
+- **Ajuste contractual:** ingresá el mes desde el cual rige, el nuevo alquiler confirmado y el motivo. El programa crea una nueva versión y conserva la anterior. Hacelo antes de generar el mes ajustado.
+- **Gasto a recuperar del propietario:** usalo cuando la administración pagó algo por cuenta del propietario. Exige comprobante y crea una obligación independiente del propietario hacia la administración; no se mezcla con lo que debe el inquilino.
+- **Depósito:** registra que el dinero está en poder del propietario. Para cerrar el contrato, exige que no queden obligaciones del inquilino y un comprobante de la devolución total.
+- **Pago parcial y pago de más:** se siguen cargando en **Operar → Pago de obligaciones administradas**. El parcial deja saldo; un pago posterior cancela primero lo anterior y el excedente queda como crédito.
+
+Para el piloto Ñancos, el recorrido excepcional es: mora decidida en noviembre, ajuste antes de diciembre, reintegro del gasto en febrero, pago parcial en abril, pago con excedente en mayo y cierre con devolución del depósito en agosto.
+
 ## Caja y pagos directos
 
 **Caja real de la administración** contiene únicamente movimientos de dinero custodiado.
@@ -171,6 +183,9 @@ La liquidación es informativa: no es factura, recibo fiscal ni comprobante de A
 - sumar obligaciones, honorarios y rendiciones como si fueran una sola deuda.
 - modificar una liquidación ya emitida o reemplazarla sin conservar la versión anterior;
 - registrar como enviado un email que todavía no fue enviado.
+- convertir una propuesta de mora en cargo sin una decisión humana y su motivo;
+- ajustar un alquiler después de haber generado el mes afectado;
+- cerrar un contrato con obligaciones del inquilino pendientes o sin devolver todo el depósito.
 
 ## Si algo no se entiende
 
