@@ -708,15 +708,17 @@ function ajustarNumeroKpi(el){
   el.dataset.fit=String(el.scrollWidth<=anchoDisponible);
 }
 function ajustarKpis(){
-  cancelAnimationFrame(ajusteKpiPendiente);
+  document.querySelectorAll('#kpis .kpi-num').forEach(ajustarNumeroKpi);
+}
+function programarAjusteKpis(){
+  if(ajusteKpiPendiente)return;
   ajusteKpiPendiente=requestAnimationFrame(()=>{
-    ajusteKpiPendiente=requestAnimationFrame(()=>{
-      document.querySelectorAll('#kpis .kpi-num').forEach(ajustarNumeroKpi);
-    });
+    ajusteKpiPendiente=0;
+    ajustarKpis();
   });
 }
-const observadorTamanoKpis=new ResizeObserver(ajustarKpis);
-const observadorContenidoKpis=new MutationObserver(ajustarKpis);
+const observadorTamanoKpis=new ResizeObserver(programarAjusteKpis);
+const observadorContenidoKpis=new MutationObserver(programarAjusteKpis);
 observadorTamanoKpis.observe($('kpis'));
 observadorContenidoKpis.observe($('kpis'),{childList:true,subtree:true,characterData:true});
 function render(){
@@ -737,7 +739,7 @@ function render(){
     ['var(--verde)',fmt(caja),'En caja','dinero realmente custodiado'],
     ['var(--azul)',fmt(girado),'Girado a propietarios','vía rendición'],
   ].map(([c,n,l,s])=>{const texto=String(n);return `<div class="kpi" style="--c:${c}"><div class="kpi-num" title="${esc(texto)}">${texto}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`}).join('');
-  ajustarKpis();
+  programarAjusteKpis();
   const cards=propsVisibles
   .map(p=>{
     const e=estadoProp(p.id);
@@ -1570,8 +1572,8 @@ $('chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
   $('chips').querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
   c.classList.add('on');filtro=c.dataset.f;render();
 });
-window.addEventListener('resize',ajustarKpis);
-if(document.fonts)document.fonts.ready.then(ajustarKpis);
+window.addEventListener('resize',programarAjusteKpis);
+if(document.fonts)document.fonts.ready.then(programarAjusteKpis);
 start();
 </script>
 </body>
