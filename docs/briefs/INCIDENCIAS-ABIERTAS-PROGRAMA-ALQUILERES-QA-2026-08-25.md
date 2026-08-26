@@ -12,6 +12,7 @@ Fecha de corrección: 2026-08-25. Archivo principal: `admin/alquileres-admin-qa.
 - **Corregidas en el programa:** ALQ-001 a ALQ-018 y ALQ-021 a ALQ-033.
 - **Corrección posterior preparada para publicación:** invalidación explícita de la imagen de marca con URL versionada, service workers v9, KPI monetario adaptable y reintento automático de lecturas transitorias.
 - **ALQ-019, cerrada en QA el 2026-08-26:** el Bloque 2 quedó instalado como migración `20260826105140`. Agrega borrador derivado de hechos registrados, tres cuentas separadas, saldo anterior, emisión inmutable, correcciones versionadas y registro del resultado del envío por email. La corrección de PDF durable guarda el archivo exacto de cada versión en `alq-docs`, lo vincula de manera inmutable y obliga a descargar esos mismos bytes. La versión 1 de Ñancos para septiembre quedó emitida con saldo propietario–administración cero; el borrador de corrección produjo una versión 2 enlazada sin modificar la primera.
+- **Bloque 3, cerrado en QA el 2026-08-26:** instalado como migración `20260826170000`. El recorrido real de Ñancos cubrió mora decidida por la administración, ajuste contractual versionado, gasto del propietario pagado por la administración, pago parcial, pago con excedente y crédito aplicado al mes siguiente, más cierre contractual con devolución total del depósito. La medición final dio contrato `cerrado` al 31/08/2027, depósito `$450.000 → $0`, obligaciones del inquilino `$0`, crédito remanente `$0` y `ALQ_ASSERT_GLOBAL_OK`. Los honorarios `$309.600` y el reintegro `$80.000` permanecen abiertos en la cuenta separada propietario → administración, como corresponde.
 - **ALQ-020, mitigación local:** la pantalla sigue exigiendo autenticación y ahora declara `noindex`, `nofollow` y `noarchive`. Retirar o aislar físicamente la ruta pública requiere una decisión de publicación y no se ejecutó en este cambio local.
 
 La corrección local incluye, entre otros puntos:
@@ -125,6 +126,20 @@ La corrección local de `--accent` a `var(--accent)` está preparada; falta publ
 ### ALQ-019 · Liquidación del propietario
 
 La implementación incorpora vista previa y PDF revisable para el propietario, con saldo anterior, conceptos, honorarios y saldo final. Cada concepto nace de un hecho registrado; una corrección crea una nueva versión y un nuevo PDF sin borrar los anteriores. El PDF emitido se conserva en `alq-docs` con su SHA-256 y las descargas posteriores recuperan ese objeto, no una regeneración. El correo se prepara manualmente y su resultado real se registra aparte. En QA se verificó la liquidación real del piloto Ñancos: alquiler `$450.000`, expensas `$60.000`, pago directo informado `$510.000`, honorario devengado `$36.000`, pago del propietario `$36.000` y saldo final independiente `$0`.
+
+## Bloque 3 · meses excepcionales
+
+El programa fue recorrido directamente en QA, sin banco de pruebas adicional:
+
+- noviembre: propuesta de mora por nueve días (`$4.050`) y condonación humana explícita (`$0` aplicado);
+- diciembre: nueva versión contractual ilustrativa de `$450.000` a `$495.000`, con motivo y vigencia desde el 01/12/2026;
+- febrero: gasto de termotanque de `$80.000`, separado como deuda del propietario hacia la administración;
+- abril: pago parcial de `$300.000`, conservando el saldo pendiente;
+- mayo: pago de `$910.000`, equivalente al saldo acumulado de `$810.000` más un excedente real de `$100.000`;
+- junio: aplicación automática de ese crédito de `$100.000` y pago de los `$455.000` restantes;
+- agosto: pago total, cierre del contrato al 31/08/2027 y devolución documentada de los `$450.000` de depósito.
+
+La cifra de `$700.000` que aparecía en la descripción inicial de mayo no podía producir un excedente: después del pago parcial de abril, el saldo acumulado era `$810.000`. Para no falsear la cuenta, el recorrido de QA usó `$910.000` y dejó esta precisión registrada. El ajuste a `$495.000` fue un valor ilustrativo de QA, no un índice ni una regla automática del producto.
 
 ## Operación y publicación
 
