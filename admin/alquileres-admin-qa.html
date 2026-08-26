@@ -256,12 +256,55 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
 const $=id=>document.getElementById(id);
 const fmt=n=>'$'+Number(n||0).toLocaleString('es-AR',{maximumFractionDigits:0});
-const fdate=s=>s?new Date(s).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
 const esc=s=>(s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const hoy=()=>new Date().toISOString().slice(0,10);
-const mesActual=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,7)};
+
+/*
+ * CONTRATO DE FECHA CIVIL ALQ_F3_V1
+ * `vence_at` viaja como timestamptz por compatibilidad con el dominio V1, pero
+ * sus primeros 10 caracteres son la fecha civil argentina. No se interpreta
+ * como un instante: se muestra y agrupa por YYYY-MM-DD, y vence recién al
+ * comenzar el día civil siguiente. PDF, mora y exports deben usar esta regla.
+ */
+const ALQ_F3_TZ='America/Argentina/Buenos_Aires';
+function fechaCivil(valor){
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(valor||''));
+  if(!m)return null;
+  const y=Number(m[1]),mes=Number(m[2]),dia=Number(m[3]);
+  const d=new Date(Date.UTC(y,mes-1,dia));
+  if(d.getUTCFullYear()!==y||d.getUTCMonth()!==mes-1||d.getUTCDate()!==dia)return null;
+  return `${m[1]}-${m[2]}-${m[3]}`;
+}
+function partesFechaCivil(valor){
+  const k=fechaCivil(valor);if(!k)return null;
+  return{y:Number(k.slice(0,4)),m:Number(k.slice(5,7))-1,d:Number(k.slice(8,10))};
+}
+function hoyCivil(){
+  const p=Object.fromEntries(new Intl.DateTimeFormat('en',{timeZone:ALQ_F3_TZ,
+    year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date())
+    .filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function fechaCivilATimestamp(valor){
+  const k=fechaCivil(valor);if(!k)throw new Error('Fecha civil inválida.');
+  return k+'T00:00:00Z';
+}
+const fdate=valor=>{const k=fechaCivil(valor);return k?`${k.slice(8,10)}/${k.slice(5,7)}/${k.slice(2,4)}`:'—'};
+const fdateInstante=valor=>valor?new Intl.DateTimeFormat('es-AR',{timeZone:ALQ_F3_TZ,
+  day:'2-digit',month:'2-digit',year:'2-digit'}).format(new Date(valor)):'—';
+const hoy=()=>hoyCivil();
+const mesActual=()=>hoyCivil().slice(0,7);
+const fechaCivilEnMes=(valor,y,m)=>{const p=partesFechaCivil(valor);return !!p&&p.y===y&&p.m===m};
+const diaFechaCivil=valor=>{const p=partesFechaCivil(valor);return p?p.d:null};
+const fechaCivilVencida=valor=>{const k=fechaCivil(valor);return !!k&&k<hoyCivil()};
+const ordenarFechaCivil=(a,b)=>String(fechaCivil(a)||'').localeCompare(String(fechaCivil(b)||''));
+function desplazarMesFechaCivil(valor,delta){
+  const p=partesFechaCivil(valor);if(!p)throw new Error('Fecha civil inválida.');
+  const baseMes=p.m+delta,y=p.y+Math.floor(baseMes/12),m=((baseMes%12)+12)%12;
+  const ultimo=new Date(Date.UTC(y,m+1,0)).getUTCDate(),dia=Math.min(p.d,ultimo);
+  return `${String(y).padStart(4,'0')}-${String(m+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+}
 let D={},filtro='todas',propAbierta=null,tabAbierta='Cargos';
-const _hoy=new Date();let mesRef={y:_hoy.getFullYear(),m:_hoy.getMonth()};let calYear=_hoy.getFullYear();
+const _hoy=partesFechaCivil(hoyCivil());let mesRef={y:_hoy.y,m:_hoy.m};let calYear=_hoy.y;
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function shiftMes(d){let m=mesRef.m+d,y=mesRef.y;if(m<0){m=11;y--}if(m>11){m=0;y++}mesRef={y,m};renderAgenda()}
 
@@ -534,7 +577,7 @@ async function cargar(){
   if(propAbierta&&$('ov').classList.contains('on'))abrir(propAbierta,tabAbierta);
 }
 const deudaProp=pid=>D.cargo.filter(c=>c.propiedad_id===pid).reduce((s,c)=>s+Number(c.saldo_pendiente),0);
-const vencidaProp=pid=>D.cargo.some(c=>c.propiedad_id===pid&&Number(c.saldo_pendiente)>0&&new Date(c.vence_at)<new Date());
+const vencidaProp=pid=>D.cargo.some(c=>c.propiedad_id===pid&&Number(c.saldo_pendiente)>0&&fechaCivilVencida(c.vence_at));
 function estadoProp(pid){
   const d=deudaProp(pid);
   if(d<=0)return{k:'aldia',c:'var(--verde)',t:'Al día'};
@@ -546,7 +589,7 @@ function render(){
   const caja=conf.reduce((s,t)=>s+(t.direccion==='entrada'?1:-1)*Number(t.monto),0);
   const girado=D.apl.filter(a=>a.rendicion_id).reduce((s,a)=>s+Number(a.importe_destino),0);
   $('kpis').innerHTML=[
-    ['--accent',D.prop.length,'Propiedades','en administración'],
+    ['var(--accent)',D.prop.length,'Propiedades','en administración'],
     ['var(--rojo)',fmt(deudaTotal),'Deuda viva','saldos pendientes'],
     ['var(--verde)',fmt(caja),'En caja','custodiada · confirmada'],
     ['var(--azul)',fmt(girado),'Girado a dueños','vía rendición'],
@@ -575,7 +618,7 @@ function render(){
   renderAgenda();
   const txs=[...D.tx].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
   $('caja').innerHTML=txs.length?`<table><tr><th>Fecha</th><th>Dirección</th><th>Contraparte</th><th>Medio</th><th class="num">Monto</th></tr>`+
-    txs.map(t=>`<tr><td>${fdate(t.fecha)}</td>
+    txs.map(t=>`<tr><td>${fdateInstante(t.fecha)}</td>
       <td><span class="tag" style="--tc:${t.direccion==='entrada'?'var(--verde)':'var(--rojo)'}">${t.direccion}${t.reversa_de?' · reversa':''}${t.ambito==='externa_informativa'?' · directo':''}</span></td>
       <td>${esc(D.pname[t.contraparte_parte_id]||'—')}</td><td>${esc(t.medio||'—')}</td>
       <td class="num ${t.direccion==='entrada'?'pos':'neg'}">${t.direccion==='entrada'?'+':'−'}${fmt(t.monto)}</td></tr>`).join('')+'</table>'
@@ -625,28 +668,28 @@ async function resolver(cid){
   catch(e){m.textContent=e.message;m.className='op-msg op-err'}
 }
 function estadoCargo(c){
-  const saldo=Number(c.saldo_pendiente),monto=Number(c.monto),vence=new Date(c.vence_at),ahora=new Date();
+  const saldo=Number(c.saldo_pendiente),monto=Number(c.monto),vence=fechaCivilVencida(c.vence_at);
   if(saldo<=0)return{t:'Pagado',c:'var(--verde)'};
-  if(saldo<monto)return{t:vence<ahora?'Parcial · vencido':'Parcial',c:vence<ahora?'var(--rojo)':'var(--azul)'};
-  if(vence<ahora)return{t:'Vencido',c:'var(--rojo)'};
+  if(saldo<monto)return{t:vence?'Parcial · vencido':'Parcial',c:vence?'var(--rojo)':'var(--azul)'};
+  if(vence)return{t:'Vencido',c:'var(--rojo)'};
   return{t:'Impago',c:'var(--ambar)'};
 }
 function shortUnit(pr){if(!pr)return'?';const p=pr.direccion.split('·');return (p.length>1?p[p.length-1]:pr.direccion).trim().slice(0,7)}
 function renderAgenda(){
   if(!D.cargo){return}
   const y=mesRef.y,m=mesRef.m;
-  const cargos=D.cargo.filter(c=>{const v=new Date(c.vence_at);return v.getFullYear()===y&&v.getMonth()===m});
+  const cargos=D.cargo.filter(c=>fechaCivilEnMes(c.vence_at,y,m));
   const pagos=(D.tx||[]).filter(t=>t.direccion==='entrada'&&(()=>{const v=new Date(t.fecha);return v.getFullYear()===y&&v.getMonth()===m})());
   const totalMes=cargos.reduce((s,c)=>s+Number(c.monto),0);
   const pend=cargos.reduce((s,c)=>s+Number(c.saldo_pendiente),0);
   const cobrado=totalMes-pend;
   // eventos por día
   const evDia={};
-  for(const c of cargos){const d=new Date(c.vence_at).getDate();(evDia[d]=evDia[d]||[]).push({tipo:'cargo',c})}
+  for(const c of cargos){const d=diaFechaCivil(c.vence_at);(evDia[d]=evDia[d]||[]).push({tipo:'cargo',c})}
   for(const t of pagos){const d=new Date(t.fecha).getDate();(evDia[d]=evDia[d]||[]).push({tipo:'pago',t})}
   const diasMes=new Date(y,m+1,0).getDate();
   const offset=(new Date(y,m,1).getDay()+6)%7; // lunes primero
-  const hoy=new Date();const esHoy=d=>hoy.getFullYear()===y&&hoy.getMonth()===m&&hoy.getDate()===d;
+  const hoyP=partesFechaCivil(hoyCivil());const esHoy=d=>hoyP.y===y&&hoyP.m===m&&hoyP.d===d;
   const dias=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
   let celdas='';
   for(let i=0;i<offset;i++)celdas+=`<div class="cal-cell cal-empty"></div>`;
@@ -692,8 +735,8 @@ function abrir(pid,tabIni){
   tab(pid,ini);$('ov').classList.add('on');
 }
 function renderCalMes(pid,m){
-  const cs=D.cargo.filter(c=>c.propiedad_id===pid&&(()=>{const v=new Date(c.vence_at);return v.getFullYear()===calYear&&v.getMonth()===m})())
-    .sort((a,b)=>new Date(a.vence_at)-new Date(b.vence_at));
+  const cs=D.cargo.filter(c=>c.propiedad_id===pid&&fechaCivilEnMes(c.vence_at,calYear,m))
+    .sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
   const det=$('calDet');if(!det)return;
   if(!cs.length){det.innerHTML=`<div class="empty">${MESES[m]} ${calYear}: sin cargos.</div>`;return}
   det.innerHTML=`<div class="pg-l" style="margin-bottom:.5rem">${MESES[m]} ${calYear} — al detalle</div>
@@ -708,13 +751,13 @@ function tab(pid,t){
   if(t==='Calendario'){
     const cy=calYear;const cells=[];
     for(let m=0;m<12;m++){
-      const cs=D.cargo.filter(c=>c.propiedad_id===pid&&(()=>{const v=new Date(c.vence_at);return v.getFullYear()===cy&&v.getMonth()===m})());
+      const cs=D.cargo.filter(c=>c.propiedad_id===pid&&fechaCivilEnMes(c.vence_at,cy,m));
       const total=cs.reduce((s,c)=>s+Number(c.monto),0);
       const saldo=cs.reduce((s,c)=>s+Number(c.saldo_pendiente),0);
       let st,col,txt;
       if(!cs.length){st='—';col='rgba(255,255,255,.12)';txt='sin cargos'}
       else if(saldo<=0){st='Pagado ✓';col='var(--verde)';txt=fmt(total)}
-      else{const venc=cs.some(c=>Number(c.saldo_pendiente)>0&&new Date(c.vence_at)<new Date());
+      else{const venc=cs.some(c=>Number(c.saldo_pendiente)>0&&fechaCivilVencida(c.vence_at));
         st=venc?'Debe':'Pendiente';col=venc?'var(--rojo)':'var(--ambar)';txt='debe '+fmt(saldo)}
       cells.push(`<div onclick="renderCalMes('${pid}',${m})" style="cursor:pointer;border:1px solid var(--card-border);border-top:2px solid ${col};border-radius:10px;padding:.7rem .8rem;background:var(--glass-t2)">
         <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,243,240,.5)">${MESES[m]}</div>
@@ -796,7 +839,7 @@ function tab(pid,t){
     const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
     const titular=D.tit.find(x=>x.propiedad_id===pid);
     const cs=D.cargo.filter(c=>c.propiedad_id===pid&&Number(c.saldo_pendiente)>0)
-      .sort((a,b)=>new Date(a.vence_at)-new Date(b.vence_at));
+      .sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
     const partesOpts=D.parte.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
     const creditos=cvig?D.credito.filter(c=>c.contrato_id===cvig.id&&Number(c.saldo_pendiente)>0):[];
     const creditoTotal=creditos.reduce((s,c)=>s+Number(c.saldo_pendiente),0);
@@ -957,7 +1000,7 @@ async function opCobro(pid){
   if(!sel.length){m.textContent='Elegí al menos un cargo.';m.className='op-msg op-err';return}
   if(!file){m.textContent='Adjuntá el comprobante del pago.';m.className='op-msg op-err';return}
   const cargos=sel.map(id=>D.cargo.find(c=>c.id===id)).filter(Boolean)
-    .sort((a,b)=>new Date(a.vence_at)-new Date(b.vence_at));
+    .sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
   const primero=cargos[0];
   if(cargos.some(c=>c.deudor_parte_id!==primero.deudor_parte_id||
       c.acreedor_parte_id!==primero.acreedor_parte_id||c.moneda!==primero.moneda||
@@ -990,7 +1033,7 @@ async function opCargo(pid){
     $('btnCargo').disabled=true;
     const payload={propiedad_id:pid,deudor_parte_id:$('cgDeudor').value,acreedor_parte_id:$('cgAcreedor').value,
       ambito:'custodiada',concepto:$('cgConcepto').value.trim()||'extra',moneda:'ARS',monto:String(monto),
-      vence_at:$('cgVence').value+'T00:00:00Z',
+      vence_at:fechaCivilATimestamp($('cgVence').value),
       snapshot_regla:{detalle:$('cgDetalle').value.trim()||null}};
     if(cvig)payload.contrato_id=cvig.id;
     await rpc('cargo_manual_emitir',payload,{slot});
@@ -1032,7 +1075,7 @@ async function opFactura(pid){
   let cargoSlot=null;
   const completar=async cargoId=>{
     const pf={cuenta_id:$('faCta').value,desde:$('faDesde').value,hasta:$('faHasta').value,
-      moneda:'ARS',monto:String(monto),vence_at:$('faVence').value+'T00:00:00Z'};
+      moneda:'ARS',monto:String(monto),vence_at:fechaCivilATimestamp($('faVence').value)};
     if(cargoId)pf.cargo_id=cargoId;
     await rpc('servicio_factura_registrar',pf);
     if(cargoSlot)await alqF1aCerrarBorrador('cargo_manual_emitir',cargoSlot);
@@ -1053,7 +1096,7 @@ async function opFactura(pid){
       const res=await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,
         deudor_parte_id:cvig.inquilino_parte_id,acreedor_parte_id:acreedor,
         ambito:'custodiada',concepto:'servicio',moneda:'ARS',monto:String(monto),
-        vence_at:$('faVence').value+'T00:00:00Z',
+        vence_at:fechaCivilATimestamp($('faVence').value),
         snapshot_regla:{detalle:'Factura '+(cta?cta.tipo:'servicio')+' '+$('faDesde').value+' → '+$('faHasta').value}},
         {slot:cargoSlot,retener_hasta_continuacion:true});
       cargoId=res&&res.id;
@@ -1229,9 +1272,9 @@ async function confirmarFactura(i){
     let cargoSlot=null;
     completar=async idCargo=>{
       // 3 · la factura del servicio, con su PDF y su cargo ligados
-      const hoyD=new Date(vence);const d1=new Date(hoyD);d1.setMonth(d1.getMonth()-1);
-      const pf={cuenta_id:ctaId,desde:d1.toISOString().slice(0,10),hasta:vence,moneda:'ARS',
-        monto:String(monto),vence_at:vence+'T00:00:00Z',comprobante_documento_id:doc&&doc.id};
+      const desde=desplazarMesFechaCivil(vence,-1);
+      const pf={cuenta_id:ctaId,desde:desde,hasta:vence,moneda:'ARS',
+        monto:String(monto),vence_at:fechaCivilATimestamp(vence),comprobante_documento_id:doc&&doc.id};
       if(idCargo)pf.cargo_id=idCargo;
       await rpc('servicio_factura_registrar',pf);
       if(b.meta&&b.meta.id){
@@ -1254,7 +1297,7 @@ async function confirmarFactura(i){
         cargo_fuente_ref:fuenteId,
         deudor_parte_id:cvig.inquilino_parte_id,acreedor_parte_id:acreedor,
         ambito:'custodiada',concepto:'servicio',moneda:'ARS',monto:String(monto),
-        vence_at:vence+'T00:00:00Z',
+        vence_at:fechaCivilATimestamp(vence),
         snapshot_regla:{detalle:'Factura '+f.emisor+(f.periodo?' '+f.periodo:''),origen:'bandeja_robot',
           comprobante_documento_id:doc&&doc.id,
           mail_entrante_id:b.meta&&b.meta.id||null}},

@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'sur-patagonia-admin-';
-const CACHE_NAME = CACHE_PREFIX + 'v7';
+const CACHE_NAME = CACHE_PREFIX + 'v8';
 
 const STATIC_ASSETS = [
   '/assets/admin-icon-192.png',
