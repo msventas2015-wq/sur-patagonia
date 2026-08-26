@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sur-patagonia-aliados-v6';
+const CACHE_NAME = 'sur-patagonia-aliados-v8';
 const CACHE_PREFIX = 'sur-patagonia-aliados-';
 
 const STATIC_ASSETS = [
