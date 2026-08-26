@@ -1,6 +1,6 @@
 export const PANEL_VISUAL_VERSION = 1
 export const PANEL_CONFIG_KEY = 'panel_visual_config'
-export const PANEL_DEFAULT_URL = '../assets/ChatGPT Image 19 jun 2026, 23_34_52.png'
+export const PANEL_DEFAULT_URL = '../assets/ChatGPT Image 19 jun 2026, 23_34_52.png?v=9'
 export const PANEL_STORAGE_PREFIX = 'https://wajkfydxutptcvvfwrvq.supabase.co/storage/v1/object/public/imagenes/panel-fondo/'
 
 export const PANEL_VISUAL_DEFAULT = Object.freeze({

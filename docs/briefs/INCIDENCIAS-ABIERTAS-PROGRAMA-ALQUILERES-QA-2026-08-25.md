@@ -4,11 +4,13 @@ Fecha de relevamiento: 2026-08-25
 Método: recorrido visual del programa QA con los datos ya existentes.  
 Alcance: lista única de defectos; no es un banco de pruebas ni autoriza cambios en producción.
 
-## Estado de la corrección integrada local
+## Estado de la corrección integrada
 
 Fecha de corrección: 2026-08-25. Archivo principal: `admin/alquileres-admin-qa.html`.
 
-- **Corregidas localmente en el programa:** ALQ-001 a ALQ-018 y ALQ-021 a ALQ-031.
+- **Primera publicación:** commit `4bfbcb270a537bfe4ae18ee2dd585e17b30fb9ac`.
+- **Corregidas en el programa:** ALQ-001 a ALQ-018 y ALQ-021 a ALQ-033.
+- **Corrección posterior preparada para publicación:** invalidación explícita de la imagen de marca con URL versionada, service workers v9, KPI monetario adaptable y reintento automático de lecturas transitorias.
 - **ALQ-019, avance parcial:** las rendiciones ya tienen una vista imprimible que puede guardarse como PDF. Sigue faltando el circuito completo del Bloque 2: borrador previo a emisión, saldo anterior arrastrado y envío.
 - **ALQ-020, mitigación local:** la pantalla sigue exigiendo autenticación y ahora declara `noindex`, `nofollow` y `noarchive`. Retirar o aislar físicamente la ruta pública requiere una decisión de publicación y no se ejecutó en este cambio local.
 
@@ -26,7 +28,7 @@ La corrección local incluye, entre otros puntos:
 - navegación rápida, guía de uso y ayudas contextuales;
 - robot de correo retirado de la operación y sin ejecución automática.
 
-Este estado describe bytes locales. No implica publicación, deploy ni modificación de QA o producción.
+La primera publicación no ejecutó SQL ni modificó QA o producción. La corrección posterior debe publicarse y verificarse visualmente antes de cerrar esta etapa.
 
 ## Bloqueantes contables
 
@@ -175,6 +177,14 @@ El botón `Generar alquiler, expensas y honorario` presenta como una única acci
 ### ALQ-031 · El calendario no controla días con muchos eventos
 
 Todos los cargos y pagos de una fecha se apilan dentro de la misma celda, sin máximo, agrupación ni enlace `+N más`. La celda y toda la fila semanal crecen indefinidamente; los textos individuales se recortan con puntos suspensivos. Con actividad normal el calendario se volverá alto e ilegible. Debe mostrar un resumen acotado por día y abrir el detalle completo al tocar la fecha.
+
+### ALQ-032 · El KPI Obligaciones recorta importes grandes
+
+El importe `$1.085.000` desborda el ancho útil de la tarjeta y se percibe como `$1.085.0`. El número debe reducir su tipografía de forma automática, permanecer en una sola línea y conservar el valor completo como ayuda emergente.
+
+### ALQ-033 · Un fallo transitorio deja el tablero vacío
+
+Una lectura inicial puede fallar con mensajes transitorios como `JWT issued at future`. La pantalla no debe quedar detenida: debe renovar la sesión cuando corresponda, reintentar automáticamente hasta tres veces y ofrecer un botón manual si los tres intentos fallan.
 
 ## Precisión importante
 

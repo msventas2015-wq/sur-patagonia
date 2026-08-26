@@ -34,7 +34,7 @@ html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--blanco);font-family:'Inter',sans-serif;min-height:100vh}
 .admin-main h1,.admin-main h2,.admin-main h3,.admin-main h4{font-family:'Inter',sans-serif}
 .sp-bg-brand{position:fixed;bottom:6vh;left:0;right:0;height:65vh;
-  background:url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png') center 52%/cover no-repeat;
+  background:url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png?v=9') center 52%/cover no-repeat;
   filter:grayscale(1) brightness(.75);opacity:.11;pointer-events:none;z-index:9;
   -webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%);
   mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%)}
@@ -78,9 +78,11 @@ header{position:sticky;top:0;z-index:40;background:rgba(9,9,9,.96);backdrop-filt
   border-radius:14px;padding:1.4rem 1.6rem;position:relative;overflow:hidden}
 .kpi::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:2px;border-radius:99px;
   background:var(--c,var(--accent));opacity:.75}
-.kpi-num{font-size:2.45rem;font-weight:300;line-height:1;
+.kpi-num{font-size:clamp(1.7rem,2.2vw,2.45rem);font-weight:300;line-height:1;
+  max-width:100%;white-space:nowrap;font-variant-numeric:tabular-nums;
   background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,transparent));
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.kpi-num.compact{font-size:clamp(1.25rem,1.4vw,1.65rem);letter-spacing:-.06em}
 .kpi-lbl{margin-top:.35rem;font-size:.58rem;font-weight:600;text-transform:uppercase;
   letter-spacing:.12em;color:rgba(245,243,240,.42)}
 .kpi-sub{margin-top:.2rem;font-size:.6rem;color:rgba(245,243,240,.3)}
@@ -588,6 +590,7 @@ async function rpc(op,payload,opciones){
 }
 function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';
   setTimeout(()=>el.style.display='none',3200)}
+const pausa=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function login(){
   $('loginErr').textContent='';
@@ -602,7 +605,7 @@ async function start(){
   $('hUser').textContent=session.user.email;
   await cargar();
 }
-async function cargar(){
+async function cargar(intento=0){
   const v=n=>sb.from(n).select('*');
   const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
     doc,mesgen,pago,credito,periodo]=await Promise.all([
@@ -614,7 +617,20 @@ async function cargar(){
     v('alq_v_credito'),v('alq_v_periodo')]);
   const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
     doc,mesgen,pago,credito,periodo].find(r=>r.error);
-  if(err){$('props').innerHTML='<div class="empty">Error leyendo QA: '+esc(err.error.message)+'</div>';return}
+  if(err){
+    const mensaje=String(err.error&&err.error.message||'No se pudo leer QA');
+    if(intento<2){
+      $('props').innerHTML='<div class="empty">La lectura de QA falló momentáneamente. Reintentando…</div>';
+      if(/JWT.*future|issued at future/i.test(mensaje)){
+        try{await sb.auth.refreshSession()}catch(_){}
+      }
+      await pausa(800*(intento+1));
+      return cargar(intento+1);
+    }
+    $('props').innerHTML='<div class="empty">No pudimos leer QA después de tres intentos: '+esc(mensaje)+
+      '<br><button class="btn-g" type="button" onclick="cargar()" style="margin-top:.8rem">Reintentar ahora</button></div>';
+    return;
+  }
   D={prop:prop.data,con:con.data,ver:ver.data,parte:parte.data,cargo:cargo.data,nota:nota.data,
      tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data,mv:mv.data,mand:mand.data,cta:cta.data,
      scta:scta.data,sfac:sfac.data,tit:tit.data,doc:doc.data,mesgen:mesgen.data,
@@ -690,7 +706,7 @@ function render(){
     ['var(--gris)',fmt(otros),'Otros movimientos','cuentas no clasificadas arriba'],
     ['var(--verde)',fmt(caja),'En caja','dinero realmente custodiado'],
     ['var(--azul)',fmt(girado),'Girado a propietarios','vía rendición'],
-  ].map(([c,n,l,s])=>`<div class="kpi" style="--c:${c}"><div class="kpi-num">${n}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`).join('');
+  ].map(([c,n,l,s])=>{const texto=String(n);return `<div class="kpi" style="--c:${c}"><div class="kpi-num ${texto.length>=9?'compact':''}" title="${esc(texto)}">${texto}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`}).join('');
   const cards=propsVisibles
   .map(p=>{
     const e=estadoProp(p.id);
