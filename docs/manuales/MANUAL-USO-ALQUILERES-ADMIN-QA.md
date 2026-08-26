@@ -45,7 +45,7 @@ Tocá el casillero para ver la lista completa del día: propiedad, cuenta, conce
 
 ## Abrir una propiedad
 
-Tocá su tarjeta. Se abren seis pestañas:
+Tocá su tarjeta. Se abren siete pestañas:
 
 ### Calendario
 
@@ -82,6 +82,28 @@ Permite:
 Para cargar una factura se exige archivo, servicio, período, monto y vencimiento. Si se genera un cargo, queda ligado al documento. El mismo documento no se vuelve a cargar desde la pantalla.
 
 El ingreso automático por correo está apagado. Sólo se procesan los archivos elegidos o arrastrados manualmente.
+
+### Liquidación
+
+Prepara la liquidación mensual del propietario. El documento mantiene tres secciones independientes:
+
+1. obligaciones del inquilino administradas;
+2. pagos informados directamente entre las partes;
+3. cuenta exclusiva entre el propietario y Sur Patagonian Real Estate.
+
+Para emitirla:
+
+1. Elegí el mes.
+2. Tocá **Calcular borrador para revisar**.
+3. Revisá deudores, acreedores, importes, pagos y el saldo anterior.
+4. Si falta un gasto, crédito u otro concepto, no lo escribas en el PDF: registralo primero en **Operar** y volvé a calcular el borrador.
+5. Descargá el PDF del borrador si querés hacer una revisión externa.
+6. Tocá **Emitir y sellar esta versión** sólo cuando el contenido sea correcto.
+7. Descargá el PDF emitido. Ese PDF se genera desde el mismo contenido que quedó sellado.
+8. Tocá **Preparar email**, adjuntá el PDF en tu programa de correo y envialo.
+9. Volvé al programa y registrá el resultado real: enviado, fallido o rebotado.
+
+Una liquidación emitida no se edita. Si hay una corrección, elegí la versión anterior en **Tipo de emisión**, calculá un nuevo borrador y emití la sucesora. La versión vieja permanece en el historial.
 
 ### Operar
 
@@ -129,9 +151,9 @@ Seleccioná el cargo, tipo, monto y motivo. La historia no se edita: la correcci
 
 ## Rendiciones
 
-La pantalla muestra líneas, saldo rendido y transferencias vinculadas. El botón **Vista imprimible / guardar PDF** abre el documento emitido para revisión o guardado mediante la función de impresión del navegador.
+La sección principal muestra las liquidaciones del Bloque 2, su versión, saldo anterior, saldo final y estado de envío. Las rendiciones anteriores permanecen plegadas como historia previa y no se mezclan con el nuevo circuito.
 
-El flujo completo de borrador previo, saldo anterior y envío corresponde al Bloque 2 y todavía no debe considerarse cerrado.
+La liquidación es informativa: no es factura, recibo fiscal ni comprobante de ARCA. El registro de envío tampoco manda el correo por sí solo; conserva el resultado de un envío efectivamente realizado por la administración.
 
 ## Acciones que el programa debe impedir
 
@@ -143,6 +165,8 @@ El flujo completo de borrador previo, saldo anterior y envío corresponde al Blo
 - emitir un cargo con deudor y acreedor iguales;
 - cargar dos veces la misma factura desde la pantalla;
 - sumar obligaciones, honorarios y rendiciones como si fueran una sola deuda.
+- modificar una liquidación ya emitida o reemplazarla sin conservar la versión anterior;
+- registrar como enviado un email que todavía no fue enviado.
 
 ## Si algo no se entiende
 

@@ -11,7 +11,7 @@ Fecha de corrección: 2026-08-25. Archivo principal: `admin/alquileres-admin-qa.
 - **Primera publicación:** commit `4bfbcb270a537bfe4ae18ee2dd585e17b30fb9ac`.
 - **Corregidas en el programa:** ALQ-001 a ALQ-018 y ALQ-021 a ALQ-033.
 - **Corrección posterior preparada para publicación:** invalidación explícita de la imagen de marca con URL versionada, service workers v9, KPI monetario adaptable y reintento automático de lecturas transitorias.
-- **ALQ-019, avance parcial:** las rendiciones ya tienen una vista imprimible que puede guardarse como PDF. Sigue faltando el circuito completo del Bloque 2: borrador previo a emisión, saldo anterior arrastrado y envío.
+- **ALQ-019, cerrada en QA el 2026-08-26:** el Bloque 2 quedó instalado como migración `20260826105140`. Agrega borrador derivado de hechos registrados, tres cuentas separadas, saldo anterior, emisión inmutable, correcciones versionadas, PDF desde el snapshot sellado y registro del resultado del envío por email. La versión 1 de Ñancos para septiembre quedó emitida con saldo propietario–administración cero; el borrador de corrección produjo una versión 2 enlazada sin modificar la primera.
 - **ALQ-020, mitigación local:** la pantalla sigue exigiendo autenticación y ahora declara `noindex`, `nofollow` y `noarchive`. Retirar o aislar físicamente la ruta pública requiere una decisión de publicación y no se ejecutó en este cambio local.
 
 La corrección local incluye, entre otros puntos:
@@ -120,11 +120,11 @@ La corrección local evita mostrar, agrupar o vencer los cargos un día antes. F
 
 La corrección local de `--accent` a `var(--accent)` está preparada; falta publicación.
 
-## Función todavía inexistente
+## Función implementada en Bloque 2
 
 ### ALQ-019 · Liquidación del propietario
 
-Todavía no existe la vista previa ni el PDF de liquidación revisable para el propietario, con saldo anterior, conceptos, honorarios y saldo final.
+La implementación incorpora vista previa y PDF revisable para el propietario, con saldo anterior, conceptos, honorarios y saldo final. Cada concepto nace de un hecho registrado; una corrección crea una nueva versión sin borrar la anterior. El correo se prepara manualmente y su resultado real se registra aparte. En QA se verificó la liquidación real del piloto Ñancos: alquiler `$450.000`, expensas `$60.000`, pago directo informado `$510.000`, honorario devengado `$36.000`, pago del propietario `$36.000` y saldo final independiente `$0`.
 
 ## Operación y publicación
 

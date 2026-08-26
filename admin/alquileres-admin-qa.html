@@ -6,7 +6,8 @@
   · Lee QA vía vistas public.alq_v_* (security_invoker → RLS real del usuario)
   · OPERA vía RPC canónico public.alq_admin_preparar/aplicar (firma + ledger):
     generar mes normal · confirmar pago con comprobante · crédito por excedente ·
-    honorario mensual abierto · emitir cargo · nota crédito/débito. Nada toca QR.
+    honorario mensual abierto · emitir cargo · nota crédito/débito · liquidación
+    mensual revisable, PDF sellado y registro manual del email. Nada toca QR.
   Ubicación: admin/alquileres-admin-qa.html · QA autenticado · no indexar ni enlazar públicamente.
 ============================================================================ -->
 <html lang="es">
@@ -18,6 +19,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --bg:#090909; --card-bg:#141414; --card-border:rgba(255,255,255,.07);
@@ -353,6 +355,7 @@ function desplazarMesFechaCivil(valor,delta){
   return `${String(y).padStart(4,'0')}-${String(m+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
 }
 let D={},filtro='piloto',propAbierta=null,tabAbierta='Cargos';
+const liquidacionBorradorCache=new Map();
 const _hoy=partesFechaCivil(hoyCivil());let mesRef={y:_hoy.y,m:_hoy.m};let calYear=_hoy.y;
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function shiftMes(d){let m=mesRef.m+d,y=mesRef.y;if(m<0){m=11;y--}if(m>11){m=0;y++}mesRef={y,m};renderAgenda()}
@@ -607,15 +610,16 @@ async function start(){
 async function cargar(intento=0){
   const v=n=>sb.from(n).select('*');
   const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
-    doc,mesgen,pago,credito,periodo]=await Promise.all([
+    doc,mesgen,pago,credito,periodo,liq,lenv]=await Promise.all([
     v('alq_v_propiedad'),v('alq_v_contrato'),v('alq_v_contrato_version'),v('alq_v_parte'),
     v('alq_v_cargo'),v('alq_v_nota'),v('alq_v_transaccion_caja'),v('alq_v_aplicacion'),
     v('alq_v_rendicion'),v('alq_v_rendicion_linea'),v('alq_v_comunicado'),v('alq_v_comunicado_mensaje'),
     v('alq_v_mandato_version'),v('alq_v_mandato'),v('alq_v_cuenta_custodia'),v('alq_v_servicio_cuenta'),v('alq_v_servicio_factura'),
     v('alq_v_titularidad'),v('alq_v_documento'),v('alq_v_mes_generado'),v('alq_v_pago_confirmado'),
-    v('alq_v_credito'),v('alq_v_periodo')]);
+    v('alq_v_credito'),v('alq_v_periodo'),v('alq_v_liquidacion_propietario'),
+    v('alq_v_liquidacion_envio')]);
   const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
-    doc,mesgen,pago,credito,periodo].find(r=>r.error);
+    doc,mesgen,pago,credito,periodo,liq,lenv].find(r=>r.error);
   if(err){
     const mensaje=String(err.error&&err.error.message||'No se pudo leer QA');
     if(intento<2){
@@ -633,7 +637,7 @@ async function cargar(intento=0){
   D={prop:prop.data,con:con.data,ver:ver.data,parte:parte.data,cargo:cargo.data,nota:nota.data,
      tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data,mv:mv.data,mand:mand.data,cta:cta.data,
      scta:scta.data,sfac:sfac.data,tit:tit.data,doc:doc.data,mesgen:mesgen.data,
-     pago:pago.data,credito:credito.data,periodo:periodo.data};
+     pago:pago.data,credito:credito.data,periodo:periodo.data,liq:liq.data,lenv:lenv.data};
   D.pname=Object.fromEntries(D.parte.map(p=>[p.id,p.nombre]));
   render();
   if(propAbierta&&$('ov').classList.contains('on'))abrir(propAbierta,tabAbierta);
@@ -780,8 +784,24 @@ function render(){
       <td>${esc(D.pname[p.beneficiario_parte_id]||'—')}</td><td>${esc(medioPagoVisible(t))}</td>
       <td class="num pos">${fmt(t.monto)}</td></tr>`}).join('')+'</table>'
     :'<div class="empty">Sin pagos directos informados.</div>';
+  const liquidacionesVisibles=(D.liq||[]).filter(r=>idsVisibles.has(r.propiedad_id))
+    .sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))||b.version_documento-a.version_documento);
+  const liquidacionesHtml=liquidacionesVisibles.map(r=>{
+    const pr=D.prop.find(p=>p.id===r.propiedad_id),envios=(D.lenv||[]).filter(e=>e.liquidacion_id===r.id);
+    const saldo=Number(r.saldo_cierre_admin||0),sentido=saldo>0?'El propietario debe a la administración':
+      saldo<0?'La administración debe al propietario':'Cuenta propietario ↔ administración saldada';
+    return `<div class="account-box fees" style="margin-bottom:.8rem"><div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <b>${esc(pr?pr.direccion:'')}</b><span class="tag" style="--tc:var(--azul)">${esc(r.estado)} · v${r.version_documento}</span>
+      <span class="tag" style="--tc:${saldo===0?'var(--verde)':'var(--ambar)'}">${esc(String(r.periodo).slice(0,7))}</span></div>
+      <div class="account-grid"><div><div class="pg-l">Saldo anterior</div><div class="pg-v">${fmt(r.saldo_apertura_admin)}</div></div>
+      <div><div class="pg-l">Saldo final</div><div class="pg-v ${saldo===0?'aldia':'deuda'}">${fmt(Math.abs(saldo))}</div></div>
+      <div><div class="pg-l">Interpretación</div><div class="pg-v">${esc(sentido)}</div></div>
+      <div><div class="pg-l">Email</div><div class="pg-v">${envios.length?envios.length+' intento(s)':'Todavía no registrado'}</div></div></div>
+      <button class="btn-g" onclick="descargarLiquidacionGuardada('${r.id}')">Descargar PDF</button>
+      <button class="btn-g" onclick="abrir('${r.propiedad_id}','Liquidación')" style="margin-left:.4rem">Abrir liquidación</button></div>`;
+  }).join('');
   const rendicionesVisibles=D.rend.filter(r=>idsVisibles.has(r.propiedad_id));
-  $('rends').innerHTML=rendicionesVisibles.length?rendicionesVisibles.map(r=>{
+  const legadoHtml=rendicionesVisibles.length?`<details style="margin-top:1rem"><summary class="section-note" style="cursor:pointer">Rendiciones históricas anteriores al Bloque 2</summary><div style="margin-top:1rem">`+rendicionesVisibles.map(r=>{
     const g=D.apl.filter(a=>a.rendicion_id===r.id).reduce((s,a)=>s+Number(a.importe_destino),0);
     const cuadra=Number(r.saldo_final)===g;
     const lin=D.rlin.filter(l=>l.rendicion_id===r.id);
@@ -796,7 +816,8 @@ function render(){
       `<tr><td colspan="2" style="font-weight:700;color:var(--blanco)">Saldo rendido al propietario</td>
        <td class="num" style="font-weight:700;color:var(--blanco)">${fmt(r.saldo_final)}</td></tr>
        <tr><td colspan="2">Girado (transferencias ligadas)</td><td class="num">${fmt(g)}</td></tr></table>`;
-  }).join('<div style="height:1.4rem"></div>'):'<div class="empty">Sin rendiciones aún.</div>';
+  }).join('<div style="height:1.4rem"></div>')+'</div></details>':'';
+  $('rends').innerHTML=liquidacionesHtml+legadoHtml||'<div class="empty">Sin liquidaciones aún. Abrí una propiedad → Liquidación para preparar la primera.</div>';
   const comunicadosVisibles=D.com.filter(c=>idsVisibles.has(c.propiedad_id));
   $('coms').innerHTML=comunicadosVisibles.length?comunicadosVisibles.map(c=>{
     const pr=D.prop.find(p=>p.id===c.propiedad_id);
@@ -827,6 +848,119 @@ function imprimirRendicion(id){
   <tr class="total"><td colspan="2">Saldo liquidado al propietario</td><td class="n">${fmt(r.saldo_final)}</td></tr></table>
   <div class="note">Documento generado desde QA para revisión. Usá Imprimir → Guardar como PDF.</div><button onclick="window.print()">Imprimir / guardar PDF</button></body></html>`;
   const w=window.open('','_blank');if(!w){toast('Habilitá las ventanas emergentes para abrir la liquidación.');return}w.document.write(html);w.document.close();
+}
+
+function signoImporte(linea){return Number(linea.signo||0)<0?'−':'+'}
+function saldoLiquidacionTexto(valor){
+  const n=Number(valor||0);
+  if(n>0)return`El propietario debe ${fmt(n)} a la administración`;
+  if(n<0)return`La administración debe ${fmt(Math.abs(n))} al propietario`;
+  return'La cuenta propietario ↔ administración está saldada';
+}
+function htmlBorradorLiquidacion(wrapper){
+  const c=wrapper.contenido||wrapper,o=c.obligaciones_inquilino||[],p=c.pagos_informados_entre_partes||[],
+    a=c.cuenta_propietario_administracion||[];
+  const filas=(xs,campos)=>xs.length?xs.map(campos).join(''):'<tr><td colspan="5" class="empty">Sin movimientos en esta sección.</td></tr>';
+  return `<div class="account-box" style="margin-top:1rem;border-left:2px solid var(--azul)">
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b>Borrador · ${esc(String(c.periodo).slice(0,7))} · versión ${c.version_documento}</b><span class="tag" style="--tc:var(--ambar)">revisar antes de emitir</span></div>
+    <div class="account-caption">Propietario: ${esc(c.propietario&&c.propietario.nombre||'—')} · Propiedad: ${esc(c.propiedad&&c.propiedad.direccion||'—')} · huella ${esc(String(wrapper.contenido_sha256).slice(0,12))}…</div>
+    <div class="sec-t" style="margin-top:1rem">1 · Obligaciones del inquilino administradas</div>
+    <table><tr><th>Concepto</th><th>Deudor → acreedor</th><th class="num">Monto</th><th class="num">Pagado</th><th class="num">Saldo</th></tr>${filas(o,x=>`<tr><td>${esc(x.detalle)}</td><td>${esc(x.deudor)} → ${esc(x.acreedor)}</td><td class="num">${fmt(x.monto)}</td><td class="num pos">${fmt(x.pagado)}</td><td class="num">${fmt(x.saldo)}</td></tr>`)}</table>
+    <div class="sec-t" style="margin-top:1rem">2 · Pagos informados entre las partes</div>
+    <table><tr><th>Fecha</th><th>Pagador → beneficiario</th><th>Medio</th><th class="num">Monto</th></tr>${p.length?p.map(x=>`<tr><td>${fdateInstante(x.fecha)}</td><td>${esc(x.pagador)} → ${esc(x.beneficiario)}</td><td>${esc(String(x.medio||'').replaceAll('_',' '))}</td><td class="num pos">${fmt(x.monto)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Sin pagos informados para estas obligaciones.</td></tr>'}</table>
+    <div class="sec-t" style="margin-top:1rem">3 · Cuenta propietario ↔ administración</div>
+    <div class="account-caption">Saldo anterior: ${fmt(c.saldo_apertura_admin)}. Esta cuenta no se suma a la deuda del inquilino.</div>
+    <table><tr><th>Concepto</th><th>Mes de origen</th><th class="num">Movimiento</th></tr>${a.length?a.map(x=>`<tr><td>${esc(x.detalle)}</td><td>${esc(x.mes_origen?String(x.mes_origen).slice(0,7):'períodos anteriores')}</td><td class="num ${Number(x.signo)<0?'pos':'neg'}">${signoImporte(x)}${fmt(x.monto)}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Sin movimientos.</td></tr>'}
+      <tr><td colspan="2"><b>Saldo final propietario ↔ administración</b></td><td class="num"><b>${fmt(Math.abs(Number(c.saldo_cierre_admin)))}</b></td></tr></table>
+    <div class="section-note" style="margin-top:.8rem">${esc(saldoLiquidacionTexto(c.saldo_cierre_admin))}. ${esc(c.leyenda_no_fiscal)}</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem"><button class="btn-g" id="btnLiqPdfBorrador">Descargar PDF del borrador</button><button class="btn" id="btnLiqEmitir">Emitir y sellar esta versión</button></div>
+    <div class="op-msg" id="msgLiqEmitir"></div></div>`;
+}
+async function previsualizarLiquidacion(pid){
+  const m=$('msgLiq');m.className='op-msg';m.textContent='Calculando desde los hechos registrados…';
+  const mes=$('liqMes').value,corregir=$('liqCorreccion').value||null;
+  if(!/^\d{4}-\d{2}$/.test(mes)){m.textContent='Elegí un mes válido.';m.className='op-msg op-err';return}
+  try{
+    $('btnLiqBorrador').disabled=true;
+    const {data,error}=await sb.rpc('alq_admin_liquidacion_borrador',{
+      p_propiedad_id:pid,p_periodo:mes+'-01',p_corregir_id:corregir});
+    if(error)throw new Error(error.message);
+    const clave=pid+':'+mes+':'+(corregir||'raiz');liquidacionBorradorCache.set(clave,data);
+    $('liqPreview').innerHTML=htmlBorradorLiquidacion(data);m.textContent='Borrador listo. Revisá las tres secciones antes de emitir.';
+    $('btnLiqPdfBorrador').onclick=()=>descargarLiquidacionContenido(data.contenido,data.contenido_sha256,'BORRADOR');
+    $('btnLiqEmitir').onclick=()=>emitirLiquidacion(pid,mes,corregir,data);
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err';$('liqPreview').innerHTML=''}
+  finally{const b=$('btnLiqBorrador');if(b)b.disabled=false}
+}
+async function emitirLiquidacion(pid,mes,corregir,borrador){
+  const m=$('msgLiqEmitir');m.className='op-msg';m.textContent='Verificando que el borrador no haya cambiado…';
+  try{
+    $('btnLiqEmitir').disabled=true;
+    const payload={propiedad_id:pid,periodo:mes+'-01',contenido_sha256:borrador.contenido_sha256};
+    if(corregir)payload.corregir_id=corregir;
+    const r=await rpc('liquidacion_propietario_emitir',payload);
+    toast('Liquidación '+(corregir?'corregida':'emitida')+' · versión '+r.version_documento);
+    await cargar();abrir(pid,'Liquidación');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnLiqEmitir');if(b)b.disabled=false}
+}
+function textoPdfSeguro(texto){
+  return String(texto??'').replaceAll('−','-').replaceAll('↔','y').replaceAll('→','a')
+    .replaceAll('—','-').replaceAll('–','-').replaceAll('✓','OK');
+}
+function pdfLinea(doc,texto,x,y,ancho,estilo){
+  if(estilo)doc.setFont('helvetica',estilo);const lineas=doc.splitTextToSize(String(texto||''),ancho);
+  doc.text(lineas.map(textoPdfSeguro),x,y);return y+lineas.length*5;
+}
+function descargarLiquidacionContenido(c,sha,estado){
+  if(!window.jspdf||!window.jspdf.jsPDF){toast('No se pudo cargar el generador de PDF. Reintentá.');return}
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'});let y=18;const maxY=276;
+  const nueva=()=>{doc.addPage();y=18};
+  const asegurar=alto=>{if(y+alto>maxY)nueva()};
+  const titulo=(t)=>{asegurar(12);doc.setFontSize(11);doc.setTextColor(35,35,35);doc.setFont('helvetica','bold');doc.text(t,16,y);y+=7;doc.setFont('helvetica','normal')};
+  const fila=(detalle,monto)=>{asegurar(12);doc.setFontSize(9);doc.setTextColor(55,55,55);const antes=y;y=pdfLinea(doc,detalle,18,y,135,'normal');doc.text(textoPdfSeguro(monto),194,antes,{align:'right'});y+=2;doc.setDrawColor(225);doc.line(18,y,194,y);y+=4};
+  doc.setTextColor(20,20,20);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.text('SUR PATAGONIAN REAL ESTATE',16,y);y+=8;
+  doc.setFontSize(12);doc.text('Liquidación mensual del propietario',16,y);y+=7;doc.setFont('helvetica','normal');doc.setFontSize(9);
+  y=pdfLinea(doc,`${estado||'EMITIDA'} · ${String(c.periodo).slice(0,7)} · versión ${c.version_documento}`,16,y,178,'normal');
+  y=pdfLinea(doc,`${c.propiedad.direccion} · ${c.propiedad.ciudad} · Propietario: ${c.propietario.nombre}`,16,y,178,'normal');y+=3;
+  titulo('1 · Obligaciones del inquilino administradas');
+  (c.obligaciones_inquilino||[]).forEach(x=>fila(`${x.detalle} · ${x.deudor} a ${x.acreedor} · pagado ${fmt(x.pagado)} · saldo ${fmt(x.saldo)}`,fmt(x.monto)));
+  if(!(c.obligaciones_inquilino||[]).length)fila('Sin obligaciones registradas','—');
+  titulo('2 · Pagos informados entre las partes');
+  (c.pagos_informados_entre_partes||[]).forEach(x=>fila(`${fdateInstante(x.fecha)} · ${x.pagador} a ${x.beneficiario} · ${String(x.medio||'').replaceAll('_',' ')}`,fmt(x.monto)));
+  if(!(c.pagos_informados_entre_partes||[]).length)fila('Sin pagos informados','—');
+  titulo('3 · Cuenta propietario / administración');
+  fila('Saldo de apertura',fmt(c.saldo_apertura_admin));
+  (c.cuenta_propietario_administracion||[]).forEach(x=>fila(`${x.detalle}${x.mes_origen?' · '+String(x.mes_origen).slice(0,7):''}`,`${signoImporte(x)}${fmt(x.monto)}`));
+  asegurar(18);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(textoPdfSeguro(saldoLiquidacionTexto(c.saldo_cierre_admin)),18,y);y+=8;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);y=pdfLinea(doc,c.leyenda_no_fiscal,18,y,176,'normal');
+  y=pdfLinea(doc,`Huella de contenido: ${sha}`,18,y+2,176,'normal');
+  const paginas=doc.getNumberOfPages();for(let i=1;i<=paginas;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(110);doc.text(`Sur Patagonian Real Estate · página ${i} de ${paginas}`,105,291,{align:'center'})}
+  const nombre=`liquidacion-${String(c.propiedad.direccion).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${String(c.periodo).slice(0,7)}-v${c.version_documento}.pdf`;
+  doc.save(nombre);
+}
+function descargarLiquidacionGuardada(id){
+  const x=(D.liq||[]).find(r=>r.id===id);if(!x)return;
+  descargarLiquidacionContenido(x.contenido,x.contenido_sha256,x.estado.toUpperCase());
+}
+function prepararEmailLiquidacion(id){
+  const x=(D.liq||[]).find(r=>r.id===id);if(!x)return;const c=x.contenido||{};
+  const input=$('liqEmail-'+id),email=input&&input.value.trim()||c.propietario&&c.propietario.email||'';
+  if(!email){toast('Completá el email del propietario.');return}
+  const asunto=`Liquidación ${String(x.periodo).slice(0,7)} · ${c.propiedad&&c.propiedad.direccion||''}`;
+  const cuerpo=`Hola ${c.propietario&&c.propietario.nombre||''},\n\nAdjunto la liquidación de ${String(x.periodo).slice(0,7)} de ${c.propiedad&&c.propiedad.direccion||''}.\n\n${saldoLiquidacionTexto(x.saldo_cierre_admin)}.\n\nRecordatorio: adjuntá el PDF descargado desde el programa.\n\nSur Patagonian Real Estate`;
+  window.location.href=`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+}
+async function registrarEnvioLiquidacion(id){
+  const m=$('liqEnvMsg-'+id);m.className='op-msg';m.textContent='';
+  const email=$('liqEmail-'+id).value.trim(),estado=$('liqEstado-'+id).value;
+  if(!email){m.textContent='Completá el email.';m.className='op-msg op-err';return}
+  try{
+    const r=await rpc('liquidacion_envio_registrar',{liquidacion_id:id,
+      destinatario_email:email,estado,detalle:'Registrado manualmente por la administración'});
+    toast('Resultado del envío registrado · intento '+r.intento_n);await cargar();
+    const liq=(D.liq||[]).find(x=>x.id===id);if(liq)abrir(liq.propiedad_id,'Liquidación');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
 }
 
 /* ── OPERACIONES ── */
@@ -921,7 +1055,7 @@ function abrir(pid,tabIni){
   propAbierta=pid;
   $('mTitle').textContent=p.direccion;
   $('mSub').textContent=(p.ciudad||'')+' · '+estadoProp(pid).t;
-  const tabs=['Calendario','Cargos','Contratos','Notas','Servicios','Operar'];
+  const tabs=['Calendario','Cargos','Contratos','Notas','Servicios','Liquidación','Operar'];
   const ini=tabIni&&tabs.includes(tabIni)?tabIni:'Calendario';
   $('mTabs').innerHTML=tabs.map(t=>`<button class="tab${t===ini?' on':''}" data-t="${t}">${t}</button>`).join('');
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');tab(pid,b.dataset.t)});
@@ -1042,6 +1176,32 @@ function tab(pid,t){
       <div class="f-full"><button class="btn" id="btnFac">Cargar factura</button>
         <div class="op-msg" id="msgFac"></div></div>
     </div>`;
+  }else if(t==='Liquidación'){
+    const meses=(D.mesgen||[]).filter(x=>x.propiedad_id===pid)
+      .sort((a,b)=>String(b.mes).localeCompare(String(a.mes)));
+    const liquidaciones=(D.liq||[]).filter(x=>x.propiedad_id===pid)
+      .sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))||b.version_documento-a.version_documento);
+    const mesElegido=meses[0]?String(meses[0].mes).slice(0,7):mesActual();
+    const ownerId=titularParteId(pid),owner=D.parte.find(x=>x.id===ownerId);
+    h=`<div class="section-note"><b>Esta liquidación no mezcla cuentas.</b> Informa lo que pagó el inquilino, muestra aparte los honorarios y termina con el saldo exclusivo entre el propietario y la administración. El borrador sale de hechos registrados; no se escriben renglones a mano.</div>
+      <div class="sec-t">Preparar liquidación mensual</div>
+      <div class="f-grid"><div><span class="f-l">Mes</span><input class="f" id="liqMes" type="month" value="${mesElegido}"/></div>
+      <div><span class="f-l">Tipo de emisión</span><select class="f" id="liqCorreccion"><option value="">Primera emisión</option>${liquidaciones.map(x=>`<option value="${x.id}">Corrección de ${esc(String(x.periodo).slice(0,7))} · v${x.version_documento}</option>`).join('')}</select></div>
+      <div class="f-full"><button class="btn" id="btnLiqBorrador" ${meses.length?'':'disabled'}>Calcular borrador para revisar</button><div class="op-msg" id="msgLiq"></div></div></div>
+      ${meses.length?'':'<div class="empty">Primero generá el mes normal en la pestaña Operar.</div>'}
+      <div id="liqPreview"></div>
+      <div class="sec-t">Liquidaciones emitidas</div>
+      ${liquidaciones.length?liquidaciones.map(x=>{const envios=(D.lenv||[]).filter(e=>e.liquidacion_id===x.id).sort((a,b)=>b.intento_n-a.intento_n);return `<div class="account-box fees" style="margin-bottom:.8rem">
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap"><b>${esc(String(x.periodo).slice(0,7))} · versión ${x.version_documento}</b><span class="tag" style="--tc:var(--azul)">${esc(x.estado)}</span></div>
+        <div class="account-caption">Emitida ${fdateInstante(x.emitida_at)} · huella ${esc(String(x.contenido_sha256).slice(0,12))}…</div>
+        <div class="account-grid"><div><div class="pg-l">Saldo anterior</div><div class="pg-v">${fmt(x.saldo_apertura_admin)}</div></div>
+        <div><div class="pg-l">Saldo propietario ↔ administración</div><div class="pg-v">${fmt(Math.abs(Number(x.saldo_cierre_admin)))}</div></div></div>
+        <button class="btn-g" onclick="descargarLiquidacionGuardada('${x.id}')">Descargar PDF</button>
+        <button class="btn-g" onclick="prepararEmailLiquidacion('${x.id}')" style="margin-left:.35rem">Preparar email</button>
+        <div class="f-grid" style="margin-top:.8rem"><div><span class="f-l">Email del propietario</span><input class="f" id="liqEmail-${x.id}" type="email" value="${esc(owner&&owner.email||'')}"/></div>
+        <div><span class="f-l">Resultado real del envío</span><select class="f" id="liqEstado-${x.id}"><option value="enviado">Enviado</option><option value="fallido">Falló</option><option value="rebotado">Rebotó</option></select></div>
+        <div class="f-full"><button class="btn" onclick="registrarEnvioLiquidacion('${x.id}')">Registrar resultado</button><div class="op-msg" id="liqEnvMsg-${x.id}"></div></div></div>
+        <div class="account-caption">${envios.length?'Último intento: '+esc(envios[0].estado)+' · '+esc(envios[0].destinatario_email)+' · '+fdateInstante(envios[0].registrado_at):'Todavía no hay un envío registrado.'}</div></div>`}).join(''):'<div class="empty">Todavía no se emitió ninguna liquidación.</div>'}`;
   }else{ /* OPERAR */
     const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
     const titular=D.tit.find(x=>x.propiedad_id===pid);
@@ -1130,6 +1290,13 @@ function tab(pid,t){
     const d1=hoyCivil().slice(0,7)+'-01';
     $('faDesde').value=d1;
     $('faHasta').value=desplazarMesFechaCivil(d1,1);
+  }
+  if(t==='Liquidación'){
+    if($('btnLiqBorrador'))$('btnLiqBorrador').onclick=()=>previsualizarLiquidacion(pid);
+    if($('liqCorreccion'))$('liqCorreccion').onchange=()=>{
+      const id=$('liqCorreccion').value,liq=(D.liq||[]).find(x=>x.id===id);
+      if(liq&&$('liqMes'))$('liqMes').value=String(liq.periodo).slice(0,7);
+    };
   }
   if(t==='Operar'){
     $('btnMes').onclick=()=>opMesNormal(pid);
