@@ -610,16 +610,17 @@ async function start(){
 async function cargar(intento=0){
   const v=n=>sb.from(n).select('*');
   const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
-    doc,mesgen,pago,credito,periodo,liq,lenv]=await Promise.all([
+    doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion]=await Promise.all([
     v('alq_v_propiedad'),v('alq_v_contrato'),v('alq_v_contrato_version'),v('alq_v_parte'),
     v('alq_v_cargo'),v('alq_v_nota'),v('alq_v_transaccion_caja'),v('alq_v_aplicacion'),
     v('alq_v_rendicion'),v('alq_v_rendicion_linea'),v('alq_v_comunicado'),v('alq_v_comunicado_mensaje'),
     v('alq_v_mandato_version'),v('alq_v_mandato'),v('alq_v_cuenta_custodia'),v('alq_v_servicio_cuenta'),v('alq_v_servicio_factura'),
     v('alq_v_titularidad'),v('alq_v_documento'),v('alq_v_mes_generado'),v('alq_v_pago_confirmado'),
     v('alq_v_credito'),v('alq_v_periodo'),v('alq_v_liquidacion_propietario'),
-    v('alq_v_liquidacion_envio')]);
+    v('alq_v_liquidacion_envio'),v('alq_v_mora_propuesta'),v('alq_v_ajuste'),
+    v('alq_v_deposito'),v('alq_v_deposito_evento'),v('alq_v_deposito_liquidacion')]);
   const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
-    doc,mesgen,pago,credito,periodo,liq,lenv].find(r=>r.error);
+    doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion].find(r=>r.error);
   if(err){
     const mensaje=String(err.error&&err.error.message||'No se pudo leer QA');
     if(intento<2){
@@ -637,7 +638,9 @@ async function cargar(intento=0){
   D={prop:prop.data,con:con.data,ver:ver.data,parte:parte.data,cargo:cargo.data,nota:nota.data,
      tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data,mv:mv.data,mand:mand.data,cta:cta.data,
      scta:scta.data,sfac:sfac.data,tit:tit.data,doc:doc.data,mesgen:mesgen.data,
-     pago:pago.data,credito:credito.data,periodo:periodo.data,liq:liq.data,lenv:lenv.data};
+     pago:pago.data,credito:credito.data,periodo:periodo.data,liq:liq.data,lenv:lenv.data,
+     mora:mora.data,ajuste:ajuste.data,deposito:deposito.data,devento:devento.data,
+     dliquidacion:dliquidacion.data};
   D.pname=Object.fromEntries(D.parte.map(p=>[p.id,p.nombre]));
   render();
   if(propAbierta&&$('ov').classList.contains('on'))abrir(propAbierta,tabAbierta);
@@ -645,7 +648,7 @@ async function cargar(intento=0){
 const titularParteId=pid=>{const t=D.tit.find(x=>x.propiedad_id===pid);return t&&t.parte_id};
 const conceptoAmigable=v=>({alquiler_periodo:'Alquiler',honorario_administracion:'Honorario de administración',
   expensas:'Expensas',servicio:'Servicio',extra:'Cargo extraordinario',reparacion:'Reparación',
-  penalidad:'Penalidad'}[v]||String(v||'Cargo').replaceAll('_',' '));
+  penalidad:'Penalidad',mora:'Mora resuelta por la administración',gasto_propietario:'Gasto a reintegrar por el propietario'}[v]||String(v||'Cargo').replaceAll('_',' '));
 function circuitoCargo(c){
   if(c.concepto==='honorario_administracion')return'honorarios';
   const titular=titularParteId(c.propiedad_id);
@@ -1120,7 +1123,7 @@ function abrir(pid,tabIni){
   propAbierta=pid;
   $('mTitle').textContent=p.direccion;
   $('mSub').textContent=(p.ciudad||'')+' · '+estadoProp(pid).t;
-  const tabs=['Calendario','Cargos','Contratos','Notas','Servicios','Liquidación','Operar'];
+  const tabs=['Calendario','Cargos','Contratos','Notas','Servicios','Liquidación','Operar','Excepciones'];
   const ini=tabIni&&tabs.includes(tabIni)?tabIni:'Calendario';
   $('mTabs').innerHTML=tabs.map(t=>`<button class="tab${t===ini?' on':''}" data-t="${t}">${t}</button>`).join('');
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');tab(pid,b.dataset.t)});
@@ -1269,6 +1272,37 @@ function tab(pid,t){
         <div><span class="f-l">Resultado real del envío</span><select class="f" id="liqEstado-${x.id}"><option value="enviado">Enviado</option><option value="fallido">Falló</option><option value="rebotado">Rebotó</option></select></div>
         <div class="f-full"><button class="btn" onclick="registrarEnvioLiquidacion('${x.id}')" ${x.documento_id?'':'disabled'}>Registrar resultado</button><div class="op-msg" id="liqEnvMsg-${x.id}"></div></div></div>
         <div class="account-caption">${envios.length?'Último intento: '+esc(envios[0].estado)+' · '+esc(envios[0].destinatario_email)+' · '+fdateInstante(envios[0].registrado_at):'Todavía no hay un envío registrado.'}</div></div>`}).join(''):'<div class="empty">Todavía no se emitió ninguna liquidación.</div>'}`;
+  }else if(t==='Excepciones'){
+    const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+    const version=cvig&&D.ver.filter(v=>v.contrato_id===cvig.id)
+      .sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+    const titular=titularParteId(pid),admin=D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
+    const cargosMora=D.cargo.filter(c=>c.propiedad_id===pid&&circuitoCargo(c)==='obligaciones'&&Number(c.saldo_pendiente)>0);
+    const propuestas=(D.mora||[]).filter(x=>x.propiedad_id===pid).sort((a,b)=>String(b.propuesta_at).localeCompare(String(a.propuesta_at)));
+    const deposito=(D.deposito||[]).find(x=>x.contrato_id===(cvig&&cvig.id))||(D.deposito||[]).find(x=>x.propiedad_id===pid);
+    const ajustes=(D.ajuste||[]).filter(x=>x.contrato_id===(cvig&&cvig.id)).sort((a,b)=>String(b.aplicado_at).localeCompare(String(a.aplicado_at)));
+    h=`<div class="section-note"><b>Bloque 3 · meses excepcionales.</b> Acá se resuelven sólo las excepciones. La mora nunca se carga sola; el pago parcial y el excedente siguen en Operar.</div>
+      <div class="sec-t">Mora: proponer primero, decidir después</div>
+      <div class="f-grid">
+        <div class="f-full"><span class="f-l">Cargo impago del inquilino</span><select class="f" id="b3MoraCargo">${cargosMora.map(c=>`<option value="${c.id}">${esc(conceptoAmigable(c.concepto))} · vence ${fdate(c.vence_at)} · saldo ${fmt(c.saldo_pendiente)}</option>`).join('')}</select></div>
+        <div><span class="f-l">Calcular hasta</span><input class="f" id="b3MoraHasta" type="date" value="${hoy()}"/></div>
+        <div><span class="f-l">Porcentaje diario (%)</span><input class="f" id="b3MoraPct" type="number" min="0.000001" max="100" step="0.01" placeholder="lo decide la administración"/></div>
+        <div><span class="f-l">Días de gracia</span><input class="f" id="b3MoraGracia" type="number" min="0" step="1" value="0"/></div>
+        <div style="align-self:end"><button class="btn" id="btnB3MoraProponer" ${cargosMora.length?'':'disabled'}>Calcular propuesta</button></div>
+        <div class="f-full"><div class="op-msg" id="msgB3Mora"></div></div>
+      </div>
+      ${propuestas.length?propuestas.map(p=>`<div class="account-box obligations" style="margin-top:.7rem"><b>Propuesta ${esc(p.estado)}</b> · capital ${fmt(p.capital)} · ${p.dias_mora} días · ${esc(p.porcentaje_diario)} % diario · <b>${fmt(p.monto_propuesto)}</b>
+        ${p.estado==='propuesta'?`<div class="f-grid" style="margin-top:.6rem"><div><span class="f-l">Monto final</span><input class="f" id="b3MoraMonto-${p.id}" type="number" min="0" value="${Number(p.monto_propuesto)}"/></div><div><span class="f-l">Vence</span><input class="f" id="b3MoraVence-${p.id}" type="date" value="${fechaCivil(p.calculada_hasta)}"/></div><div class="f-full"><span class="f-l">Motivo obligatorio</span><input class="f" id="b3MoraMotivo-${p.id}" placeholder="decisión de la administración"/></div><div class="f-full"><button class="btn" onclick="opB3MoraResolver('${pid}','${p.id}','aplicar')">Aplicar mora</button> <button class="btn-g" onclick="opB3MoraResolver('${pid}','${p.id}','condonar')">Condonar</button><div class="op-msg" id="msgB3Mora-${p.id}"></div></div></div>`:`<div class="account-caption">Resuelta: ${fmt(p.monto_resuelto)} · ${esc(p.motivo_resolucion||'')}</div>`}</div>`).join(''):'<div class="empty">Todavía no hay propuestas de mora.</div>'}
+      <div class="sec-t">Ajuste contractual</div>
+      <div class="section-note">El programa no inventa el índice ni el porcentaje. Ingresá el nuevo alquiler confirmado y el motivo; la versión anterior queda en la historia.</div>
+      <div class="f-grid"><div><span class="f-l">Vigente desde</span><input class="f" id="b3AjusteDesde" type="month" value="${mesActual()}"/></div><div><span class="f-l">Alquiler actual</span><input class="f" value="${version?Number(version.monto):''}" disabled/></div><div><span class="f-l">Alquiler nuevo</span><input class="f" id="b3AjusteMonto" type="number" min="1" step="1"/></div><div><span class="f-l">Motivo / índice confirmado</span><input class="f" id="b3AjusteMotivo" placeholder="ej. ajuste trimestral acordado"/></div><div class="f-full"><button class="btn" id="btnB3Ajuste" ${cvig?'':'disabled'}>Aplicar nueva versión</button><div class="op-msg" id="msgB3Ajuste"></div></div></div>
+      ${ajustes.length?`<div class="account-caption">Último ajuste: ${fmt(ajustes[0].resultado_final)} desde ${fdate(ajustes[0].vigente_desde)} · ${esc(ajustes[0].motivo||'')}</div>`:''}
+      <div class="sec-t">Gasto pagado por la administración para recuperar del propietario</div>
+      <div class="f-grid"><div><span class="f-l">Monto</span><input class="f" id="b3GastoMonto" type="number" min="1" step="1"/></div><div><span class="f-l">Vence</span><input class="f" id="b3GastoVence" type="date" value="${hoy()}"/></div><div class="f-full"><span class="f-l">Detalle</span><input class="f" id="b3GastoDetalle" placeholder="ej. termotanque pagado por la administración"/></div><div class="f-full"><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="b3GastoDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Gasto" ${cvig&&titular&&admin?'':'disabled'}>Registrar reintegro</button><div class="op-msg" id="msgB3Gasto"></div></div></div>
+      <div class="sec-t">Depósito en poder del propietario</div>
+      ${deposito?`<div class="section-note">Depósito registrado: ${fmt(deposito.monto_constituido)} · saldo disponible ${fmt(deposito.saldo_disponible)} · custodia del propietario.</div>`:`<div class="f-grid"><div><span class="f-l">Monto entregado</span><input class="f" id="b3DepMonto" type="number" min="1" step="1" value="${version?Number(version.monto):''}"/></div><div><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="b3DepDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Deposito" ${cvig?'':'disabled'}>Registrar depósito</button><div class="op-msg" id="msgB3Deposito"></div></div></div>`}
+      ${deposito&&cvig?`<div class="sec-t">Cerrar contrato y registrar devolución total del depósito</div><div class="f-grid"><div><span class="f-l">Fecha efectiva</span><input class="f" id="b3CierreFecha" type="date" value="${fechaCivil(cvig.fin_pactado)||hoy()}"/></div><div><span class="f-l">Monto devuelto</span><input class="f" id="b3CierreMonto" type="number" min="1" value="${Number(deposito.saldo_disponible)}"/></div><div class="f-full"><span class="f-l">Comprobante de devolución</span><input class="f" id="b3CierreDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Cerrar">Cerrar contrato</button><div class="op-msg" id="msgB3Cerrar"></div></div></div>`:''}
+      <div class="sec-t">Pago parcial y pago de más</div><div class="section-note">Se hacen en <b>Operar → Pago de obligaciones administradas</b>. Abril: cargá el pago parcial; mayo: cargá el total recibido. El saldo anterior se cancela primero y el excedente queda como crédito del inquilino.</div>`;
   }else{ /* OPERAR */
     const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
     const titular=D.tit.find(x=>x.propiedad_id===pid);
@@ -1365,6 +1399,13 @@ function tab(pid,t){
       if(liq&&$('liqMes'))$('liqMes').value=String(liq.periodo).slice(0,7);
     };
   }
+  if(t==='Excepciones'){
+    if($('btnB3MoraProponer'))$('btnB3MoraProponer').onclick=()=>opB3MoraProponer(pid);
+    if($('btnB3Ajuste'))$('btnB3Ajuste').onclick=()=>opB3Ajuste(pid);
+    if($('btnB3Gasto'))$('btnB3Gasto').onclick=()=>opB3Gasto(pid);
+    if($('btnB3Deposito'))$('btnB3Deposito').onclick=()=>opB3Deposito(pid);
+    if($('btnB3Cerrar'))$('btnB3Cerrar').onclick=()=>opB3Cerrar(pid);
+  }
   if(t==='Operar'){
     $('btnMes').onclick=()=>opMesNormal(pid);
     if($('btnCobro-obligaciones'))$('btnCobro-obligaciones').onclick=()=>opCobro(pid,'obligaciones');
@@ -1407,6 +1448,74 @@ async function opMesNormal(pid){
     await cargar();
   }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
   finally{const b=$('btnMes');if(b)b.disabled=false}
+}
+function contratoVigentePropiedad(pid){return D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado))}
+function adminPartePropiedad(pid){
+  const mes=(D.mesgen||[]).filter(x=>x.propiedad_id===pid).sort((a,b)=>String(b.mes).localeCompare(String(a.mes)))[0];
+  return (mes&&mes.administracion_parte_id)||(D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase())||{}).id;
+}
+function b3Error(id,e){const m=$(id);if(m){m.textContent=e.message;m.className='op-msg op-err'}}
+async function opB3MoraProponer(pid){
+  const m=$('msgB3Mora');m.className='op-msg';m.textContent='';
+  const pct=Number($('b3MoraPct').value),cargo=$('b3MoraCargo').value;
+  if(!cargo||!pct||pct<=0){m.textContent='Elegí el cargo y escribí el porcentaje diario decidido.';m.className='op-msg op-err';return}
+  try{
+    $('btnB3MoraProponer').disabled=true;
+    const r=await rpc('mora_proponer',{cargo_id:cargo,calculada_hasta:$('b3MoraHasta').value,
+      porcentaje_diario:String(pct),gracia_dias:String(Number($('b3MoraGracia').value||0))});
+    toast('Propuesta calculada · '+r.dias_mora+' días · '+fmt(r.monto_propuesto)+' · todavía no es un cargo');await cargar();
+  }catch(e){b3Error('msgB3Mora',e)}finally{const b=$('btnB3MoraProponer');if(b)b.disabled=false}
+}
+async function opB3MoraResolver(pid,id,decision){
+  const mid='msgB3Mora-'+id,m=$(mid);m.className='op-msg';m.textContent='';
+  const motivo=$('b3MoraMotivo-'+id).value.trim();if(!motivo){m.textContent='El motivo de la decisión es obligatorio.';m.className='op-msg op-err';return}
+  try{
+    const payload={propuesta_id:id,decision,motivo};
+    if(decision==='aplicar'){payload.monto_final=$('b3MoraMonto-'+id).value;payload.vence=$('b3MoraVence-'+id).value}
+    const r=await rpc('mora_resolver',payload);toast(decision==='aplicar'?'Mora aplicada · '+fmt(r.monto_resuelto):'Mora condonada');await cargar();
+  }catch(e){b3Error(mid,e)}
+}
+async function opB3Ajuste(pid){
+  const m=$('msgB3Ajuste');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
+  const monto=Number($('b3AjusteMonto').value),motivo=$('b3AjusteMotivo').value.trim();
+  if(!cvig||!monto||monto<=0||!motivo){m.textContent='Completá alquiler nuevo y motivo.';m.className='op-msg op-err';return}
+  try{$('btnB3Ajuste').disabled=true;const r=await rpc('ajuste_contractual_aplicar',{contrato_id:cvig.id,
+    vigente_desde:$('b3AjusteDesde').value+'-01',monto_nuevo:String(monto),motivo});
+    toast('Ajuste aplicado · '+fmt(r.monto_anterior)+' → '+fmt(r.monto_nuevo));await cargar();
+  }catch(e){b3Error('msgB3Ajuste',e)}finally{const b=$('btnB3Ajuste');if(b)b.disabled=false}
+}
+async function opB3Gasto(pid){
+  const m=$('msgB3Gasto');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
+  const monto=Number($('b3GastoMonto').value),detalle=$('b3GastoDetalle').value.trim(),file=$('b3GastoDoc').files&&$('b3GastoDoc').files[0];
+  const owner=titularParteId(pid),admin=adminPartePropiedad(pid);
+  if(!cvig||!owner||!admin||!monto||monto<=0||!detalle||!file){m.textContent='Completá monto, detalle y comprobante.';m.className='op-msg op-err';return}
+  try{$('btnB3Gasto').disabled=true;m.textContent='Guardando comprobante y reintegro…';
+    const doc=await documentoArchivo(pid,file,'gasto_propietario_comprobante','gastos-propietario','Adjuntá el comprobante del gasto.');
+    await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,cargo_fuente_ref:doc.id,
+      deudor_parte_id:owner,acreedor_parte_id:admin,ambito:'externa',concepto:'gasto_propietario',
+      moneda:'ARS',monto:String(monto),vence_at:fechaCivilATimestamp($('b3GastoVence').value),
+      snapshot_regla:{detalle,evidencia_documento_id:doc.id}},{slot:'gasto-propietario:'+doc.id});
+    toast('Reintegro registrado en la cuenta propietario → administración');await cargar();
+  }catch(e){b3Error('msgB3Gasto',e)}finally{const b=$('btnB3Gasto');if(b)b.disabled=false}
+}
+async function opB3Deposito(pid){
+  const m=$('msgB3Deposito');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
+  const monto=Number($('b3DepMonto').value),file=$('b3DepDoc').files&&$('b3DepDoc').files[0];
+  if(!cvig||!monto||monto<=0||!file){m.textContent='Completá monto y comprobante.';m.className='op-msg op-err';return}
+  try{$('btnB3Deposito').disabled=true;const doc=await documentoArchivo(pid,file,'deposito_comprobante','depositos','Adjuntá el comprobante del depósito.');
+    await rpc('deposito_registrar',{contrato_id:cvig.id,monto:String(monto),evidencia_documento_id:doc.id});
+    toast('Depósito registrado en custodia del propietario');await cargar();
+  }catch(e){b3Error('msgB3Deposito',e)}finally{const b=$('btnB3Deposito');if(b)b.disabled=false}
+}
+async function opB3Cerrar(pid){
+  const m=$('msgB3Cerrar');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
+  const monto=Number($('b3CierreMonto').value),file=$('b3CierreDoc').files&&$('b3CierreDoc').files[0];
+  if(!cvig||!monto||monto<=0||!file){m.textContent='Completá devolución y comprobante.';m.className='op-msg op-err';return}
+  try{$('btnB3Cerrar').disabled=true;const doc=await documentoArchivo(pid,file,'deposito_devolucion_comprobante','depositos-devolucion','Adjuntá el comprobante de devolución.');
+    await rpc('contrato_cerrar_deposito',{contrato_id:cvig.id,fecha:$('b3CierreFecha').value,
+      monto_devuelto:String(monto),evidencia_documento_id:doc.id});
+    toast('Contrato cerrado y depósito devuelto');await cargar();
+  }catch(e){b3Error('msgB3Cerrar',e)}finally{const b=$('btnB3Cerrar');if(b)b.disabled=false}
 }
 async function shaArchivo(file){
   const bytes=new Uint8Array(await file.arrayBuffer());
