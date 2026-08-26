@@ -82,7 +82,6 @@ header{position:sticky;top:0;z-index:40;background:rgba(9,9,9,.96);backdrop-filt
   max-width:100%;white-space:nowrap;font-variant-numeric:tabular-nums;
   background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,transparent));
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.kpi-num.compact{font-size:clamp(1.25rem,1.4vw,1.65rem);letter-spacing:-.06em}
 .kpi-lbl{margin-top:.35rem;font-size:.58rem;font-weight:600;text-transform:uppercase;
   letter-spacing:.12em;color:rgba(245,243,240,.42)}
 .kpi-sub{margin-top:.2rem;font-size:.6rem;color:rgba(245,243,240,.3)}
@@ -689,6 +688,31 @@ function medioPagoVisible(t){
   if(cargos.length&&cargos.every(c=>circuitoCargo(c)==='obligaciones'))return'Transferencia al propietario';
   return String(t.medio||'—').replaceAll('_',' ');
 }
+let ajusteKpiPendiente=0;
+function ajustarNumeroKpi(el){
+  el.style.removeProperty('font-size');
+  const anchoDisponible=Math.floor(el.clientWidth);
+  if(!anchoDisponible)return;
+  const tamanoBase=parseFloat(getComputedStyle(el).fontSize);
+  if(el.scrollWidth<=anchoDisponible){el.dataset.fit='true';return}
+  let minimo=10,maximo=tamanoBase;
+  for(let i=0;i<12;i++){
+    const candidato=(minimo+maximo)/2;
+    el.style.fontSize=candidato+'px';
+    if(el.scrollWidth<=anchoDisponible)minimo=candidato;else maximo=candidato;
+  }
+  el.style.fontSize=Math.floor(minimo*10)/10+'px';
+  while(el.scrollWidth>anchoDisponible&&minimo>8){
+    minimo-=.1;el.style.fontSize=minimo.toFixed(1)+'px';
+  }
+  el.dataset.fit=String(el.scrollWidth<=anchoDisponible);
+}
+function ajustarKpis(){
+  cancelAnimationFrame(ajusteKpiPendiente);
+  ajusteKpiPendiente=requestAnimationFrame(()=>{
+    document.querySelectorAll('#kpis .kpi-num').forEach(ajustarNumeroKpi);
+  });
+}
 function render(){
   const propsVisibles=D.prop.filter(p=>propCumpleFiltro(p.id)),idsVisibles=new Set(propsVisibles.map(p=>p.id));
   const cargosVisibles=D.cargo.filter(c=>idsVisibles.has(c.propiedad_id));
@@ -706,7 +730,8 @@ function render(){
     ['var(--gris)',fmt(otros),'Otros movimientos','cuentas no clasificadas arriba'],
     ['var(--verde)',fmt(caja),'En caja','dinero realmente custodiado'],
     ['var(--azul)',fmt(girado),'Girado a propietarios','vía rendición'],
-  ].map(([c,n,l,s])=>{const texto=String(n);return `<div class="kpi" style="--c:${c}"><div class="kpi-num ${texto.length>=8?'compact':''}" title="${esc(texto)}">${texto}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`}).join('');
+  ].map(([c,n,l,s])=>{const texto=String(n);return `<div class="kpi" style="--c:${c}"><div class="kpi-num" title="${esc(texto)}">${texto}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`}).join('');
+  ajustarKpis();
   const cards=propsVisibles
   .map(p=>{
     const e=estadoProp(p.id);
@@ -1539,6 +1564,8 @@ $('chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
   $('chips').querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
   c.classList.add('on');filtro=c.dataset.f;render();
 });
+window.addEventListener('resize',ajustarKpis);
+if(document.fonts)document.fonts.ready.then(ajustarKpis);
 start();
 </script>
 </body>
