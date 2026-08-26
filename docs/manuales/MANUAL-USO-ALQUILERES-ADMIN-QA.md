@@ -99,11 +99,15 @@ Para emitirla:
 4. Si falta un gasto, crédito u otro concepto, no lo escribas en el PDF: registralo primero en **Operar** y volvé a calcular el borrador.
 5. Descargá el PDF del borrador si querés hacer una revisión externa.
 6. Tocá **Emitir y sellar esta versión** sólo cuando el contenido sea correcto.
-7. Descargá el PDF emitido. Ese PDF se genera desde el mismo contenido que quedó sellado.
+7. Al emitir, el sistema guarda el PDF definitivo en el archivo privado y lo vincula a esa versión. **Descargar PDF guardado** baja siempre esos mismos bytes; no vuelve a generar el documento.
 8. Tocá **Preparar email**, adjuntá el PDF en tu programa de correo y envialo.
 9. Volvé al programa y registrá el resultado real: enviado, fallido o rebotado.
 
-Una liquidación emitida no se edita. Si hay una corrección, elegí la versión anterior en **Tipo de emisión**, calculá un nuevo borrador y emití la sucesora. La versión vieja permanece en el historial.
+Una liquidación emitida no se edita. Si hay una corrección, elegí la versión anterior en **Tipo de emisión**, calculá un nuevo borrador y emití la sucesora. La versión vieja y su PDF permanecen en el historial; la corrección tiene otro PDF y otra huella.
+
+El sello de contenido y el sello del PDF son distintos: el primero identifica los datos contables y el segundo los bytes exactos del archivo. Si el archivo guardado falta o no coincide con su sello, el programa debe mostrar el error y no regenerarlo silenciosamente. Sólo una liquidación histórica que nunca tuvo intento de envío puede reconstruirse antes de su primer envío; queda marcada como tal.
+
+**Preparar email** abre el programa de correo, pero no puede adjuntar por sí solo. El operador debe bajar el PDF guardado, adjuntarlo y recién después registrar el resultado. Ese registro es una declaración manual de lo ocurrido; no prueba criptográficamente qué archivo fue adjuntado.
 
 ### Operar
 

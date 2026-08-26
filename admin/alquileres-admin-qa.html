@@ -797,7 +797,8 @@ function render(){
       <div><div class="pg-l">Saldo final</div><div class="pg-v ${saldo===0?'aldia':'deuda'}">${fmt(Math.abs(saldo))}</div></div>
       <div><div class="pg-l">Interpretación</div><div class="pg-v">${esc(sentido)}</div></div>
       <div><div class="pg-l">Email</div><div class="pg-v">${envios.length?envios.length+' intento(s)':'Todavía no registrado'}</div></div></div>
-      <button class="btn-g" onclick="descargarLiquidacionGuardada('${r.id}')">Descargar PDF</button>
+      ${r.documento_id?`<button class="btn-g" onclick="descargarLiquidacionGuardada('${r.id}')">Descargar PDF guardado</button>`:
+        `<button class="btn-g" onclick="vincularPdfLiquidacion('${r.id}')">Guardar PDF emitido</button>`}
       <button class="btn-g" onclick="abrir('${r.propiedad_id}','Liquidación')" style="margin-left:.4rem">Abrir liquidación</button></div>`;
   }).join('');
   const rendicionesVisibles=D.rend.filter(r=>idsVisibles.has(r.propiedad_id));
@@ -893,13 +894,17 @@ async function previsualizarLiquidacion(pid){
   finally{const b=$('btnLiqBorrador');if(b)b.disabled=false}
 }
 async function emitirLiquidacion(pid,mes,corregir,borrador){
-  const m=$('msgLiqEmitir');m.className='op-msg';m.textContent='Verificando que el borrador no haya cambiado…';
+  const m=$('msgLiqEmitir');m.className='op-msg';m.textContent='Generando y guardando el PDF definitivo…';
   try{
     $('btnLiqEmitir').disabled=true;
-    const payload={propiedad_id:pid,periodo:mes+'-01',contenido_sha256:borrador.contenido_sha256};
+    const guardado=await guardarPdfLiquidacionDocumento(pid,borrador.contenido,
+      borrador.contenido_sha256,corregir?'CORREGIDA':'EMITIDA');
+    m.textContent='PDF verificado. Sellando la liquidación…';
+    const payload={propiedad_id:pid,periodo:mes+'-01',contenido_sha256:borrador.contenido_sha256,
+      documento_id:guardado.documento.id,pdf_sha256:guardado.pdf_sha256};
     if(corregir)payload.corregir_id=corregir;
     const r=await rpc('liquidacion_propietario_emitir',payload);
-    toast('Liquidación '+(corregir?'corregida':'emitida')+' · versión '+r.version_documento);
+    toast('Liquidación '+(corregir?'corregida':'emitida')+' · PDF guardado · versión '+r.version_documento);
     await cargar();abrir(pid,'Liquidación');
   }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
   finally{const b=$('btnLiqEmitir');if(b)b.disabled=false}
@@ -912,9 +917,14 @@ function pdfLinea(doc,texto,x,y,ancho,estilo){
   if(estilo)doc.setFont('helvetica',estilo);const lineas=doc.splitTextToSize(String(texto||''),ancho);
   doc.text(lineas.map(textoPdfSeguro),x,y);return y+lineas.length*5;
 }
-function descargarLiquidacionContenido(c,sha,estado){
+function nombreLiquidacionPdf(c){
+  return `liquidacion-${String(c.propiedad.direccion).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${String(c.periodo).slice(0,7)}-v${c.version_documento}.pdf`;
+}
+function crearLiquidacionPdf(c,sha,estado){
   if(!window.jspdf||!window.jspdf.jsPDF){toast('No se pudo cargar el generador de PDF. Reintentá.');return}
   const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'});let y=18;const maxY=276;
+  if(typeof doc.setFileId==='function')doc.setFileId(String(sha).slice(0,32).toUpperCase());
+  if(typeof doc.setCreationDate==='function')doc.setCreationDate(new Date(String(c.periodo).slice(0,10)+'T00:00:00Z'));
   const nueva=()=>{doc.addPage();y=18};
   const asegurar=alto=>{if(y+alto>maxY)nueva()};
   const titulo=(t)=>{asegurar(12);doc.setFontSize(11);doc.setTextColor(35,35,35);doc.setFont('helvetica','bold');doc.text(t,16,y);y+=7;doc.setFont('helvetica','normal')};
@@ -936,28 +946,83 @@ function descargarLiquidacionContenido(c,sha,estado){
   doc.setFont('helvetica','normal');doc.setFontSize(8);y=pdfLinea(doc,c.leyenda_no_fiscal,18,y,176,'normal');
   y=pdfLinea(doc,`Huella de contenido: ${sha}`,18,y+2,176,'normal');
   const paginas=doc.getNumberOfPages();for(let i=1;i<=paginas;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(110);doc.text(`Sur Patagonian Real Estate · página ${i} de ${paginas}`,105,291,{align:'center'})}
-  const nombre=`liquidacion-${String(c.propiedad.direccion).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${String(c.periodo).slice(0,7)}-v${c.version_documento}.pdf`;
-  doc.save(nombre);
+  return {blob:new Blob([doc.output('arraybuffer')],{type:'application/pdf'}),nombre:nombreLiquidacionPdf(c)};
 }
-function descargarLiquidacionGuardada(id){
+function descargarBlob(blob,nombre){
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function descargarLiquidacionContenido(c,sha,estado){
+  const pdf=crearLiquidacionPdf(c,sha,estado);if(!pdf)return;
+  descargarBlob(pdf.blob,pdf.nombre);
+}
+async function guardarPdfLiquidacionDocumento(pid,c,contenidoSha,estado){
+  const pdf=crearLiquidacionPdf(c,contenidoSha,estado);if(!pdf)throw new Error('No se pudo generar el PDF.');
+  const pdfSha=await shaArchivo(pdf.blob);
+  const archivo=new File([pdf.blob],pdf.nombre,{type:'application/pdf',lastModified:0});
+  const periodo=String(c.periodo).slice(0,7),version=Number(c.version_documento);
+  const path=`liquidaciones/${pid}/${periodo}/v${version}-${pdfSha}.pdf`;
+  const doc=await documentoArchivo(pid,archivo,'liquidacion_propietario_pdf','liquidaciones',
+    'No se pudo preparar el PDF de la liquidación.',{audiencia:'propietario',
+      version,path,retencion:{contenido_sha256:contenidoSha,
+        version_documento:String(version),periodo}});
+  if(doc.sha256!==pdfSha)throw new Error('La huella del PDF guardado no coincide.');
+  const verificacion=await sb.storage.from('alq-docs').download(doc.path);
+  if(verificacion.error)throw new Error('Verificando el PDF guardado: '+verificacion.error.message);
+  if(await shaArchivo(verificacion.data)!==pdfSha)throw new Error('El PDF recuperado no coincide byte a byte.');
+  return {documento:doc,pdf_sha256:pdfSha,pdf_bytes:pdf.blob.size,nombre:pdf.nombre};
+}
+async function obtenerPdfLiquidacionGuardada(x){
+  if(!x.documento_id||!x.pdf_path||!x.pdf_sha256){
+    throw new Error('Primero guardá el PDF emitido de esta versión.');
+  }
+  const descarga=await sb.storage.from('alq-docs').download(x.pdf_path);
+  if(descarga.error)throw new Error('No se pudo descargar el PDF guardado: '+descarga.error.message);
+  const sha=await shaArchivo(descarga.data);
+  if(sha!==x.pdf_sha256)throw new Error('El PDF guardado no coincide con su huella.');
+  return descarga.data;
+}
+async function descargarLiquidacionGuardada(id){
   const x=(D.liq||[]).find(r=>r.id===id);if(!x)return;
-  descargarLiquidacionContenido(x.contenido,x.contenido_sha256,x.estado.toUpperCase());
+  try{descargarBlob(await obtenerPdfLiquidacionGuardada(x),nombreLiquidacionPdf(x.contenido))}
+  catch(e){toast(e.message)}
 }
-function prepararEmailLiquidacion(id){
+async function vincularPdfLiquidacion(id){
+  const x=(D.liq||[]).find(r=>r.id===id);if(!x||x.documento_id)return;
+  const m=$('liqPdfMsg-'+id);if(m){m.className='op-msg';m.textContent='Guardando y verificando el PDF exacto…'}
+  try{
+    const guardado=await guardarPdfLiquidacionDocumento(x.propiedad_id,x.contenido,
+      x.contenido_sha256,x.estado.toUpperCase());
+    await rpc('liquidacion_pdf_vincular',{liquidacion_id:x.id,
+      documento_id:guardado.documento.id,pdf_sha256:guardado.pdf_sha256});
+    toast('PDF emitido guardado y vinculado');await cargar();abrir(x.propiedad_id,'Liquidación');
+  }catch(e){if(m){m.textContent=e.message;m.className='op-msg op-err'}else toast(e.message)}
+}
+async function prepararEmailLiquidacion(id){
   const x=(D.liq||[]).find(r=>r.id===id);if(!x)return;const c=x.contenido||{};
+  if(!x.documento_id){toast('Primero guardá el PDF emitido.');return}
   const input=$('liqEmail-'+id),email=input&&input.value.trim()||c.propietario&&c.propietario.email||'';
   if(!email){toast('Completá el email del propietario.');return}
+  try{descargarBlob(await obtenerPdfLiquidacionGuardada(x),nombreLiquidacionPdf(c))}
+  catch(e){toast(e.message);return}
   const asunto=`Liquidación ${String(x.periodo).slice(0,7)} · ${c.propiedad&&c.propiedad.direccion||''}`;
   const cuerpo=`Hola ${c.propietario&&c.propietario.nombre||''},\n\nAdjunto la liquidación de ${String(x.periodo).slice(0,7)} de ${c.propiedad&&c.propiedad.direccion||''}.\n\n${saldoLiquidacionTexto(x.saldo_cierre_admin)}.\n\nRecordatorio: adjuntá el PDF descargado desde el programa.\n\nSur Patagonian Real Estate`;
   window.location.href=`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
 }
 async function registrarEnvioLiquidacion(id){
   const m=$('liqEnvMsg-'+id);m.className='op-msg';m.textContent='';
+  const liquidacion=(D.liq||[]).find(x=>x.id===id);
+  if(!liquidacion||!liquidacion.documento_id){
+    m.textContent='Primero guardá el PDF emitido.';m.className='op-msg op-err';return;
+  }
   const email=$('liqEmail-'+id).value.trim(),estado=$('liqEstado-'+id).value;
   if(!email){m.textContent='Completá el email.';m.className='op-msg op-err';return}
   try{
+    await obtenerPdfLiquidacionGuardada(liquidacion);
     const r=await rpc('liquidacion_envio_registrar',{liquidacion_id:id,
-      destinatario_email:email,estado,detalle:'Registrado manualmente por la administración'});
+      destinatario_email:email,estado,
+      detalle:'Resultado declarado manualmente; el sistema no verifica el archivo adjunto del correo.'});
     toast('Resultado del envío registrado · intento '+r.intento_n);await cargar();
     const liq=(D.liq||[]).find(x=>x.id===id);if(liq)abrir(liq.propiedad_id,'Liquidación');
   }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
@@ -1193,14 +1258,16 @@ function tab(pid,t){
       <div class="sec-t">Liquidaciones emitidas</div>
       ${liquidaciones.length?liquidaciones.map(x=>{const envios=(D.lenv||[]).filter(e=>e.liquidacion_id===x.id).sort((a,b)=>b.intento_n-a.intento_n);return `<div class="account-box fees" style="margin-bottom:.8rem">
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap"><b>${esc(String(x.periodo).slice(0,7))} · versión ${x.version_documento}</b><span class="tag" style="--tc:var(--azul)">${esc(x.estado)}</span></div>
-        <div class="account-caption">Emitida ${fdateInstante(x.emitida_at)} · huella ${esc(String(x.contenido_sha256).slice(0,12))}…</div>
+        <div class="account-caption">Emitida ${fdateInstante(x.emitida_at)} · contenido ${esc(String(x.contenido_sha256).slice(0,12))}… · ${x.documento_id?'PDF guardado '+esc(String(x.pdf_sha256).slice(0,12))+'… · '+(x.pdf_origen==='reconstruido_antes_primer_envio'?'reconstruido antes del primer envío':'archivado al emitir'):'PDF emitido pendiente de guardar'}</div>
         <div class="account-grid"><div><div class="pg-l">Saldo anterior</div><div class="pg-v">${fmt(x.saldo_apertura_admin)}</div></div>
         <div><div class="pg-l">Saldo propietario ↔ administración</div><div class="pg-v">${fmt(Math.abs(Number(x.saldo_cierre_admin)))}</div></div></div>
-        <button class="btn-g" onclick="descargarLiquidacionGuardada('${x.id}')">Descargar PDF</button>
-        <button class="btn-g" onclick="prepararEmailLiquidacion('${x.id}')" style="margin-left:.35rem">Preparar email</button>
+        ${x.documento_id?`<button class="btn-g" onclick="descargarLiquidacionGuardada('${x.id}')">Descargar PDF guardado</button>`:
+          `<button class="btn" onclick="vincularPdfLiquidacion('${x.id}')">Guardar PDF emitido</button>`}
+        <button class="btn-g" onclick="prepararEmailLiquidacion('${x.id}')" style="margin-left:.35rem" ${x.documento_id?'':'disabled'}>Preparar email</button>
+        <div class="op-msg" id="liqPdfMsg-${x.id}"></div>
         <div class="f-grid" style="margin-top:.8rem"><div><span class="f-l">Email del propietario</span><input class="f" id="liqEmail-${x.id}" type="email" value="${esc(owner&&owner.email||'')}"/></div>
         <div><span class="f-l">Resultado real del envío</span><select class="f" id="liqEstado-${x.id}"><option value="enviado">Enviado</option><option value="fallido">Falló</option><option value="rebotado">Rebotó</option></select></div>
-        <div class="f-full"><button class="btn" onclick="registrarEnvioLiquidacion('${x.id}')">Registrar resultado</button><div class="op-msg" id="liqEnvMsg-${x.id}"></div></div></div>
+        <div class="f-full"><button class="btn" onclick="registrarEnvioLiquidacion('${x.id}')" ${x.documento_id?'':'disabled'}>Registrar resultado</button><div class="op-msg" id="liqEnvMsg-${x.id}"></div></div></div>
         <div class="account-caption">${envios.length?'Último intento: '+esc(envios[0].estado)+' · '+esc(envios[0].destinatario_email)+' · '+fdateInstante(envios[0].registrado_at):'Todavía no hay un envío registrado.'}</div></div>`}).join(''):'<div class="empty">Todavía no se emitió ninguna liquidación.</div>'}`;
   }else{ /* OPERAR */
     const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
@@ -1346,19 +1413,22 @@ async function shaArchivo(file){
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
     .map(x=>x.toString(16).padStart(2,'0')).join('');
 }
-async function documentoArchivo(pid,file,tipo,carpeta,mensaje){
+async function documentoArchivo(pid,file,tipo,carpeta,mensaje,opciones={}){
   if(!file||file.size<=0)throw new Error(mensaje||'Adjuntá el archivo.');
   const sha=await shaArchivo(file);
-  let doc=(D.doc||[]).find(d=>d.propiedad_id===pid&&d.sha256===sha&&d.tipo===tipo);
-  if(doc)return doc;
-  const porSha=await sb.from('alq_v_documento').select('*').eq('propiedad_id',pid)
-    .eq('sha256',sha).eq('tipo',tipo).limit(1);
-  if(porSha.error)throw new Error('Buscando el comprobante: '+porSha.error.message);
-  if(porSha.data&&porSha.data[0])return porSha.data[0];
   const nombre=String(file.name||'comprobante').toLowerCase();
   const encontrada=(nombre.match(/\.([a-z0-9]{1,8})$/)||[])[1];
   const ext=(encontrada||((file.type||'').includes('pdf')?'pdf':'bin'));
-  const path=carpeta+'/'+pid+'/'+sha+'.'+ext;
+  const path=opciones.path||carpeta+'/'+pid+'/'+sha+'.'+ext;
+  let doc=(D.doc||[]).find(d=>d.propiedad_id===pid&&d.path===path&&d.tipo===tipo);
+  if(doc){if(doc.sha256!==sha)throw new Error('La ruta ya pertenece a otro archivo.');return doc}
+  const porPath=await sb.from('alq_v_documento').select('*').eq('path',path).limit(1);
+  if(porPath.error)throw new Error('Buscando el documento: '+porPath.error.message);
+  if(porPath.data&&porPath.data[0]){
+    if(porPath.data[0].sha256!==sha||porPath.data[0].tipo!==tipo)
+      throw new Error('La ruta ya pertenece a otro archivo.');
+    return porPath.data[0];
+  }
   const subida=await sb.storage.from('alq-docs').upload(path,file,{upsert:false,
     contentType:file.type||'application/octet-stream'});
   if(subida.error){
@@ -1369,7 +1439,9 @@ async function documentoArchivo(pid,file,tipo,carpeta,mensaje){
   }
   try{
     const r=await rpc('documento_registrar',{tipo,path,sha256:sha,
-      mime:file.type||'application/octet-stream',bytes:String(file.size),propiedad_id:pid,audiencia:'admin'});
+      mime:file.type||'application/octet-stream',bytes:String(file.size),propiedad_id:pid,
+      audiencia:opciones.audiencia||'admin',version:String(opciones.version||1),
+      retencion:opciones.retencion||{}});
     if(r&&r.id)return {id:r.id,path,sha256:sha,propiedad_id:pid,tipo};
   }catch(e){
     const carrera=await sb.from('alq_v_documento').select('*').eq('path',path).limit(1);
