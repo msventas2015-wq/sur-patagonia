@@ -1855,14 +1855,35 @@
     const proyImgs = {}
     ;(rProyImgs.data || []).forEach(p => { proyImgs[p.slug] = p })
     const propDataMap = {}
-    ;(rPropAll.data || []).forEach(p => { propDataMap[slugify(p.titulo)] = p })
-    function findPropData(slug) {
+    const propDataById = {}
+    ;(rPropAll.data || []).forEach(p => {
+      propDataMap[slugify(p.titulo)] = p
+      propDataById[String(p.id).toLowerCase()] = p
+    })
+    function propiedadIdDesdeDestino(destino) {
+      if (!destino) return null
+      try {
+        const url = new URL(String(destino), location.origin)
+        if (!/(^|\/)propiedad(?:\.html)?\/?$/.test(url.pathname)) return null
+        const id = String(url.searchParams.get('id') || '').toLowerCase()
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id) ? id : null
+      } catch (_) {
+        return null
+      }
+    }
+    function findPropData(slotOslug) {
+      const slot = slotOslug && typeof slotOslug === 'object' ? slotOslug : null
+      const id = slot ? propiedadIdDesdeDestino(slot.destino) : null
+      if (id && propDataById[id]) return propDataById[id]
+      const slug = slot ? slot.proyecto_slug : slotOslug
       if (!slug) return null
       if (propDataMap[slug]) return propDataMap[slug]
       for (const [k, v] of Object.entries(propDataMap)) { if (k.startsWith(slug) || slug.startsWith(k)) return v }
       return null
     }
     const esPropiedadReal = slot => {
+      const propiedadId = propiedadIdDesdeDestino(slot.destino)
+      if (propiedadId && propDataById[propiedadId]) return true
       if (!slot.proyecto_slug) return false
       if (proyImgs[slot.proyecto_slug]) return true
       if (findPropData(slot.proyecto_slug)) return true
@@ -4180,7 +4201,7 @@
       // ── Sección A: Propiedades activas (código sin cambios) ──
       const cards = propSlots.map(slot => {
         const proy       = proyImgs[slot.proyecto_slug]
-        const prop       = findPropData(slot.proyecto_slug)
+        const prop       = findPropData(slot)
         const fotoUrl    = proy?.foto_portada || prop?.imagenes?.[0] || ''
         const proyNombre = proy?.nombre || prop?.titulo || slot.nombre || slot.codigo
         const attrSrc    = prop || proy

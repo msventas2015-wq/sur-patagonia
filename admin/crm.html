@@ -888,6 +888,13 @@ function resolverCanal(canalRef) {
   return _canalPorReferencia.get(claveMapa(ref)) || _canalPorCodigo.get(claveMapa(ref)) || null
 }
 
+function etiquetaPropiedadInterna(propiedad) {
+  if (!propiedad) return null
+  const titulo = textoPlano(propiedad.titulo)
+  const codigo = textoPlano(propiedad.codigo_interno)
+  return codigo ? `${codigo} · ${titulo || 'Propiedad'}` : (titulo || null)
+}
+
 function enriquecerLead(l) {
   const directo = !textoPlano(l.canal_ref)
   const canal = resolverCanal(l.canal_ref)
@@ -896,7 +903,7 @@ function enriquecerLead(l) {
   const proyecto = proyectoSlug ? _proyectoPorSlug.get(claveMapa(proyectoSlug)) : null
   return {
     ...l,
-    _propTitulo: l.propiedades?.titulo || null,
+    _propTitulo: etiquetaPropiedadInterna(l.propiedades),
     _canalNombre: directo ? 'Directo' : (canal?.nombre || 'Sin canal'),
     _canalColorIndex: colorIndexValido(canal?.color_index) ? Number(canal.color_index) : null,
     _canalColor: directo ? COLOR_NEUTRO : colorCanalDeRegistro(canal),
@@ -1005,7 +1012,7 @@ function inicializarFiltros() {
 async function cargar() {
   const { data, error } = await supabase
     .from('contactos')
-    .select('*, propiedades(id, titulo)')
+    .select('*, propiedades(id, titulo, codigo_interno)')
     .order('created_at', { ascending: false })
 
   await cargarMapasFiltros()
@@ -1191,7 +1198,8 @@ function renderPersonaError() {
 }
 
 function oportunidadTitulo(o) {
-  if (o.propiedades?.titulo) return esc(o.propiedades.titulo)
+  const etiqueta = etiquetaPropiedadInterna(o.propiedades)
+  if (etiqueta) return esc(etiqueta)
   if (o.proyecto_slug) return `Proyecto: ${esc(o.proyecto_slug)}`
   if (o.propiedad_id) return `Propiedad ${esc(o.propiedad_id)}`
   return 'Oportunidad sin propiedad asociada'
@@ -1453,7 +1461,7 @@ async function cargarPersonaOportunidades(lead) {
   try {
     const { data, error } = await supabase
       .from('contactos')
-      .select('id, created_at, fecha, estado, canal_ref, canal_via, origen, propiedad_id, proyecto_slug, mensaje, propiedades(id, titulo)')
+      .select('id, created_at, fecha, estado, canal_ref, canal_via, origen, propiedad_id, proyecto_slug, mensaje, propiedades(id, titulo, codigo_interno)')
       .eq('persona_id', lead.persona_id)
       .order('created_at', { ascending: false })
 

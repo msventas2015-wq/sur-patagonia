@@ -167,6 +167,7 @@
     .e-breadcrumb { font-size:.62rem; font-weight:500; letter-spacing:.2em; text-transform:uppercase; color:var(--gris2); margin-bottom:1rem; }
     .e-breadcrumb span { color:var(--gold); }
     .e-titulo { font-family:'Montserrat',sans-serif; font-size:clamp(1.4rem,3vw,2.2rem); font-weight:500; letter-spacing:0.04em; line-height:1.2; color:var(--negro); margin-bottom:.4rem; text-transform:uppercase; }
+    .e-public-ref { font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:var(--dorado); margin-bottom:.45rem; }
     .e-ubicacion { font-size:.78rem; color:var(--gris); margin-bottom:1.2rem; display:flex; align-items:center; gap:.4rem; }
     .e-precio { font-family:'Montserrat',sans-serif; font-size:clamp(1.4rem,3vw,2rem); font-weight:600; color:var(--negro); margin-bottom:.2rem; line-height:1; }
     .e-precio-sub { font-size:.72rem; color:var(--gris); letter-spacing:.08em; margin-bottom:2rem; }
@@ -242,6 +243,7 @@
     .p-hero-content { position:absolute; bottom:0; left:0; right:0; padding:3rem; }
     .p-hero-sub { font-size:.65rem; font-weight:500; letter-spacing:.25em; text-transform:uppercase; color:rgba(255,255,255,.7); margin-bottom:.8rem; }
     .p-hero-titulo { font-family:'Cormorant Garamond',serif; font-size:clamp(2rem,5vw,3.8rem); font-weight:400; color:#fff; line-height:1.1; margin-bottom:.6rem; }
+    .p-public-ref { font-family:'Montserrat',sans-serif; font-size:.62rem; letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.75); margin-bottom:.55rem; }
     .p-hero-precio { font-family:'Montserrat',sans-serif; font-size:clamp(1.2rem,2.5vw,1.8rem); font-weight:600; color:var(--gold2); }
     .p-scroll-indicator { position:absolute; right:2rem; bottom:3rem; writing-mode:vertical-rl; font-size:.6rem; font-weight:500; letter-spacing:.3em; text-transform:uppercase; color:rgba(255,255,255,.5); display:flex; align-items:center; gap:.6rem; }
     .p-scroll-indicator::after { content:''; display:block; width:1px; height:40px; background:rgba(255,255,255,.3); }
@@ -364,6 +366,7 @@
   <div class="e-wrap">
     <div>
       <p class="e-breadcrumb" id="eBreadcrumb">—</p>
+      <p class="e-public-ref" id="ePublicRef" style="display:none;"></p>
       <h1 class="e-titulo" id="eTitulo"></h1>
       <p class="e-ubicacion" id="eUbicacion">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -488,6 +491,7 @@
     <div class="p-hero-overlay"></div>
     <div class="p-hero-content">
       <p class="p-hero-sub" id="pHeroSub">—</p>
+      <p class="p-public-ref" id="pPublicRef" style="display:none;"></p>
       <h2 class="p-hero-titulo" id="pHeroTitulo"></h2><!-- h2 intencional: el h1 canónico está en #estandar; solo uno es visible a la vez -->
       <div class="p-hero-precio" id="pHeroPrecio"></div>
     </div>
@@ -1042,6 +1046,8 @@ function renderEstandar(p) {
 
   // Info
   document.getElementById('eBreadcrumb').textContent = buildBreadcrumb(p)
+  document.getElementById('ePublicRef').textContent = p.codigo_publico ? `Ref. ${p.codigo_publico}` : ''
+  document.getElementById('ePublicRef').style.display = p.codigo_publico ? 'block' : 'none'
   document.getElementById('eTitulo').textContent = p.titulo
   document.getElementById('eUbicacion').innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ${[p.ubicacion,p.ciudad,p.provincia].filter(Boolean).join(', ') || '—'}`
   document.getElementById('ePrecio').textContent = formatPrecio(p)
@@ -1106,7 +1112,9 @@ function renderEstandar(p) {
   }
 
   // WhatsApp
-  const msg = encodeURIComponent(`Hola Mariana, me interesa la propiedad "${p.titulo}".${getRef() ? ` (ref: ${getRef()})` : ''}\n${window.location.href}`)
+  const referenciaPublica = p.codigo_publico ? ` (Ref. ${p.codigo_publico})` : ''
+  const canalOrigen = getRef() ? ` (canal: ${getRef()})` : ''
+  const msg = encodeURIComponent(`Hola Mariana, me interesa la propiedad "${p.titulo}"${referenciaPublica}.${canalOrigen}\n${window.location.href}`)
   document.getElementById('eBtnWsp').href = `https://wa.me/5492944791799?text=${msg}`
   document.getElementById('eBtnCompartir').href = `https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad:\n*${p.titulo}*\n${window.location.href}`)}`
 
@@ -1152,6 +1160,8 @@ async function renderPremium(p) {
   // Hero
   document.getElementById('pHeroImg').src = imgs[0] || ''
   document.getElementById('pHeroSub').textContent = [p.ciudad, p.provincia].filter(Boolean).join(' · ').toUpperCase()
+  document.getElementById('pPublicRef').textContent = p.codigo_publico ? `Ref. ${p.codigo_publico}` : ''
+  document.getElementById('pPublicRef').style.display = p.codigo_publico ? 'block' : 'none'
   document.getElementById('pHeroTitulo').textContent = p.titulo
   document.getElementById('pHeroPrecio').textContent = formatPrecio(p)
 
@@ -1218,7 +1228,9 @@ async function renderPremium(p) {
   }
 
   // WhatsApp
-  const msg = encodeURIComponent(`Hola Mariana, me interesa la propiedad "${p.titulo}".${getRef() ? ` (ref: ${getRef()})` : ''}\n${window.location.href}`)
+  const referenciaPublica = p.codigo_publico ? ` (Ref. ${p.codigo_publico})` : ''
+  const canalOrigen = getRef() ? ` (canal: ${getRef()})` : ''
+  const msg = encodeURIComponent(`Hola Mariana, me interesa la propiedad "${p.titulo}"${referenciaPublica}.${canalOrigen}\n${window.location.href}`)
   document.getElementById('pBtnWsp').href = `https://wa.me/5492944791799?text=${msg}`
   document.getElementById('pBtnCompartir').href = `https://wa.me/?text=${encodeURIComponent(`Mirá esta propiedad:\n*${p.titulo}*\n${window.location.href}`)}`
 
@@ -1259,7 +1271,7 @@ async function renderPremium(p) {
   // Relacionadas
   const { data: rel } = await supabase
     .from('propiedades')
-    .select('id, titulo, precio, moneda, tipo, ciudad, imagenes, dormitorios, superficie_cubierta, operacion')
+    .select('id, titulo, codigo_publico, precio, moneda, tipo, ciudad, imagenes, dormitorios, superficie_cubierta, operacion')
     .eq('activa', true)
     .neq('id', p.id)
     .limit(3)
@@ -1274,6 +1286,7 @@ async function renderPremium(p) {
         <div class="rel-card-body">
           <div class="rel-card-tipo">${r.tipo || ''} · ${r.operacion || ''}</div>
           <div class="rel-card-titulo">${r.titulo}</div>
+          ${r.codigo_publico ? `<div style="font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:#8a847c;margin-bottom:.25rem;">Ref. ${r.codigo_publico}</div>` : ''}
           <div class="rel-card-precio">${r.moneda || 'USD'} ${r.precio ? Number(r.precio).toLocaleString('es-AR') : 'Consultar'}</div>
         </div>
       </a>`).join('')

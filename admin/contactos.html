@@ -929,16 +929,19 @@ let _ultActividad = {}           // nombre de canal → timestamp ms última vis
 // Filtros y orden propios de la LISTA (encima de los filtros globales)
 let _lstOrigen = '', _lstCanal = '', _lstRef = '', _lstEstado = '', _lstOrden = 'recientes'
 let _canalesRaw = [], _refsRaw = [], _propsRaw = [], _proysRaw = [], _personaMap = {}
+const etiquetaPropiedadInterna = p => p
+  ? `${p.codigo_interno ? `${p.codigo_interno} · ` : ''}${p.titulo || 'Propiedad'}`
+  : null
 
 // ── Carga de datos ────────────────────────────────────────
 async function cargarTodo() {
   const [rLeads, rCanales, rRefs, rProy, rProp, rVisitas] = await Promise.all([
-    supabase.from('contactos').select('*, propiedades(id, titulo)').order('created_at', { ascending: false }),
+    supabase.from('contactos').select('*, propiedades(id, titulo, codigo_interno)').order('created_at', { ascending: false }),
     supabase.from('canales').select('id, nombre, codigo, tipo, ciudad, provincia, latitud, longitud, color_index, activo').eq('activo', true).order('nombre'),
     supabase.from('referencias').select('codigo, canal_id, nombre, proyecto_slug, punto_tipo, activo'),
     supabase.from('proyectos').select('nombre, slug, latitud, longitud, estado')
       .then(r => r.error ? supabase.from('proyectos').select('nombre, slug').then(r2 => r2.error ? supabase.from('proyectos').select('nombre') : r2) : r),
-    supabase.from('propiedades').select('id, titulo, tipo, operacion, latitud, longitud, precio, moneda, activa').eq('activa', true).order('titulo'),
+    supabase.from('propiedades').select('id, titulo, codigo_interno, tipo, operacion, latitud, longitud, precio, moneda, activa').eq('activa', true).order('titulo'),
     supabase.from('visitas').select('canal_ref, created_at').not('canal_ref', 'is', null).order('created_at', { ascending: false }).limit(5000),
   ])
 
@@ -979,7 +982,7 @@ async function cargarTodo() {
       ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString('es-AR')}`
       : ''
     _propsGeo.push({
-      nombre: p.titulo,
+      nombre: etiquetaPropiedadInterna(p),
       tipo: p.operacion || p.tipo || '',
       precio,
       lat: p.latitud == null ? null : Number(p.latitud),
@@ -1022,7 +1025,7 @@ async function cargarTodo() {
     }
     const proyecto = c.proyecto_slug
       ? (proyPorSlug[c.proyecto_slug] || c.proyecto_slug)
-      : (c.propiedades?.titulo || null)
+      : etiquetaPropiedadInterna(c.propiedades)
     const origen = c.origen === 'manual' ? 'manual' : (c.canal_ref ? (c.canal_via === 'qr' ? 'qr' : 'link') : 'directo')
     const meta   = canalNombre ? (metaCanal[canalNombre] || {}) : {}
     // Tipo de fuente de la consulta para íconos y links diferenciados
@@ -1886,7 +1889,7 @@ function abrirModalReferido() {
   const propiedades = _propsRaw.filter(p => p.activa)
   const proyectos = _proysRaw.filter(p => p.estado === 'activo' && p.slug)
   $('refDestino').innerHTML = '<option value="">Sin destino — consulta general</option>'
-    + propiedades.map(p => `<option value="prop:${esc(p.id)}">Propiedad · ${esc(p.titulo)}</option>`).join('')
+    + propiedades.map(p => `<option value="prop:${esc(p.id)}">Propiedad · ${esc(etiquetaPropiedadInterna(p))}</option>`).join('')
     + proyectos.map(p => `<option value="proy:${esc(p.slug)}">Proyecto · ${esc(p.nombre)}</option>`).join('')
 
   $('modalReferido').hidden = false

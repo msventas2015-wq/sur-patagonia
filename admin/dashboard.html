@@ -405,13 +405,13 @@ async function cargar() {
   const hace60 = new Date(); hace60.setDate(hace60.getDate() - 60)
 
   const [rLeads60, rVisitas60, rCanales, rRefs, rProps, rNumProps, rNumProy, rNuevas] = await Promise.all([
-    supabase.from('contactos').select('nombre, mensaje, canal_ref, canal_via, origen, proyecto_slug, estado, leido, created_at, propiedades(titulo)')
+    supabase.from('contactos').select('nombre, mensaje, canal_ref, canal_via, origen, proyecto_slug, estado, leido, created_at, propiedades(titulo, codigo_interno)')
       .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }),
     supabase.from('visitas').select('canal_ref, canal_via, created_at')
       .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }).limit(50000),
     supabase.from('canales').select('id, nombre, codigo, activo, color_index'),
     supabase.from('referencias').select('codigo, canal_id'),
-    supabase.from('propiedades').select('id, titulo, precio, moneda, operacion, imagenes, activa').order('created_at', { ascending: false }).limit(8),
+    supabase.from('propiedades').select('id, titulo, codigo_interno, precio, moneda, operacion, imagenes, activa').order('created_at', { ascending: false }).limit(8),
     supabase.from('propiedades').select('*', { count: 'exact', head: true }).eq('activa', true),
     supabase.from('proyectos').select('*', { count: 'exact', head: true }),
     supabase.from('contactos').select('*', { count: 'exact', head: true }).eq('estado', 'nueva'),
@@ -699,7 +699,9 @@ async function cargar() {
                 ? '<span class="badge-via badge-link">Link</span>'
                 : '<span class="badge-via badge-directo">Directo</span>')
           : '<span class="badge-via badge-directo">Directo</span>'
-        const proyecto = l.propiedades?.titulo || l.proyecto_slug || ''
+        const proyecto = l.propiedades?.titulo
+          ? `${l.propiedades.codigo_interno ? `${l.propiedades.codigo_interno} · ` : ''}${l.propiedades.titulo}`
+          : (l.proyecto_slug || '')
         return `
         <a href="contactos.html" class="mini-lead">
           <div class="ml-head">
@@ -727,7 +729,7 @@ async function cargar() {
       <div class="prop-card">
         ${p.imagenes?.[0] ? `<img src="${esc(p.imagenes[0])}" alt="" loading="lazy" />` : '<div class="sin-img">Sin imagen</div>'}
         <div class="prop-body">
-          <div class="prop-titulo">${esc(p.titulo)}</div>
+          <div class="prop-titulo">${p.codigo_interno ? `<span style="font-family:monospace;color:var(--accent);">${esc(p.codigo_interno)}</span> · ` : ''}${esc(p.titulo)}</div>
           <div class="prop-meta">
             <span>${esc(p.operacion || '')}</span>
             <span class="prop-precio">${p.precio ? (p.moneda || 'USD') + ' ' + Number(p.precio).toLocaleString() : 'Consultar'}</span>

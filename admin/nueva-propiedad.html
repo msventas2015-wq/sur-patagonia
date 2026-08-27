@@ -182,6 +182,14 @@
             <input type="text" id="titulo" placeholder="Ej: Casa con vista al lago en Bariloche" required />
           </div>
           <div class="form-grupo">
+            <label>Referencia pública</label>
+            <input type="text" id="codigoPublico" placeholder="Se genera automáticamente" readonly />
+          </div>
+          <div class="form-grupo">
+            <label>Código interno</label>
+            <input type="text" id="codigoInterno" placeholder="Ej: D 2A 3P CF SM1877" autocomplete="off" />
+          </div>
+          <div class="form-grupo">
             <label>Tipo de propiedad *</label>
             <select id="tipo" required>
               <option value="">Seleccionar</option>
@@ -932,6 +940,8 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     const { data } = await supabase.from('propiedades').select('*').eq('id', editId).single()
     if (data) {
       document.getElementById('titulo').value = data.titulo || ''
+      document.getElementById('codigoPublico').value = data.codigo_publico ? `Ref. ${data.codigo_publico}` : ''
+      document.getElementById('codigoInterno').value = data.codigo_interno || ''
       document.getElementById('tipo').value = data.tipo || ''
       document.getElementById('operacion').value = data.operacion || ''
       document.getElementById('precio').value = data.precio || ''
@@ -1050,6 +1060,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
 
       const datos = {
         titulo: document.getElementById('titulo').value,
+        codigo_interno: document.getElementById('codigoInterno').value.trim() || null,
         tipo: document.getElementById('tipo').value,
         operacion: document.getElementById('operacion').value,
         precio: document.getElementById('precio').value || null,

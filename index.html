@@ -279,6 +279,7 @@
     .prop-badge { position: absolute; top: 1.2rem; left: 1.2rem; z-index: 3; display: inline-block; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; padding: 0.5rem 1.15rem; background: var(--gold); color: var(--bg); }
     .prop-badge.alquiler { background: rgba(8,8,8,0.55); color: var(--gold); border: 1px solid var(--gold); }
     .prop-title { font-family: 'Montserrat', sans-serif; font-size: 1rem; font-weight: 400; line-height: 1.3; margin-bottom: 0.4rem; letter-spacing: 0.04em; }
+    .prop-public-ref { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,.7); margin-bottom: 0.35rem; }
     .prop-loc { display: none; }
     .prop-price { font-family: 'Montserrat', sans-serif; font-size: 1.1rem; font-weight: 600; color: var(--gold-light); letter-spacing: 0.02em; margin-bottom: 0.8rem; }
     .prop-specs { display: flex; gap: 0; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.1); }
@@ -2127,7 +2128,8 @@ async function cargarPropiedades() {
       (!p.superficie_cubierta && p.superficie_total) && { val: p.superficie_total + ' m²', lbl: 'Total' }
     ].filter(Boolean)
     const specsHtml = specsItems.length ? `<div class="prop-specs">${specsItems.map(s=>`<span class="prop-spec-item"><strong>${s.val}</strong>${s.lbl}</span>`).join('')}</div>` : ''
-    return `<div class="prop-card reveal" onclick="window.open('propiedad.html?id=${p.id}','_blank')" style="transition-delay:${i*.1}s">${img}<div class="prop-overlay"></div><div class="prop-badge ${p.operacion}">${p.operacion==='venta'?'Venta':p.operacion==='alquiler'?'Alquiler':'Temporario'}</div><div class="prop-info"><div class="prop-title">${p.titulo}</div><div class="prop-price">${precio}</div>${specsHtml}</div></div>`
+    const referencia = p.codigo_publico ? `<div class="prop-public-ref">Ref. ${p.codigo_publico}</div>` : ''
+    return `<div class="prop-card reveal" onclick="window.open('propiedad.html?id=${p.id}','_blank')" style="transition-delay:${i*.1}s">${img}<div class="prop-overlay"></div><div class="prop-badge ${p.operacion}">${p.operacion==='venta'?'Venta':p.operacion==='alquiler'?'Alquiler':'Temporario'}</div><div class="prop-info">${referencia}<div class="prop-title">${p.titulo}</div><div class="prop-price">${precio}</div>${specsHtml}</div></div>`
   }).join('')
   gsap.utils.toArray('#propGrid .reveal').forEach((el,i) => {
     gsap.to(el, { opacity:1, y:0, duration:0.8, ease:'power3.out', delay:i*.1, scrollTrigger:{ trigger:el, start:'top 90%', once:true } })
@@ -2258,6 +2260,7 @@ async function cargarProyectos() {
 .sp-prop-card-body { padding: 0.55rem 0.75rem; }
 .sp-prop-card-tipo { font-size: 0.55rem; color: #c9a84c; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.2rem; }
 .sp-prop-card-titulo { font-size: 0.8rem; color: #f0ede8; font-weight: 400; line-height: 1.3; }
+.sp-prop-card-ref { font-size: 0.55rem; color: #888; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 0.15rem; }
 .sp-prop-card-precio { font-size: 0.88rem; color: #e8c97a; margin-top: 0.2rem; }
 .sp-prop-card-loc { font-size: 0.62rem; color: #666; margin-top: 0.15rem; }
 
@@ -2461,6 +2464,7 @@ async function buscarPropiedades() {
         <div class="sp-prop-card-body">
           <div class="sp-prop-card-tipo">${p.tipo || ''} · ${p.operacion === 'venta' ? 'Venta' : p.operacion === 'alquiler' ? 'Alquiler' : 'Temporario'}</div>
           <div class="sp-prop-card-titulo">${p.titulo}</div>
+          ${p.codigo_publico ? `<div class="sp-prop-card-ref">Ref. ${p.codigo_publico}</div>` : ''}
           <div class="sp-prop-card-precio">${precio}</div>
           <div class="sp-prop-card-loc">📍 ${[p.ubicacion, p.ciudad].filter(Boolean).join(', ')}</div>
         </div>`

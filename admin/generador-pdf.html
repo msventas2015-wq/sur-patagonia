@@ -772,13 +772,14 @@ async function cargarListaProyectos() {
 async function cargarListaPropiedades() {
   const { data } = await supabase
     .from('propiedades')
-    .select('id, titulo, tipo, ciudad, precio, moneda, activa')
+    .select('id, titulo, codigo_publico, codigo_interno, tipo, ciudad, precio, moneda, activa')
     .order('titulo')
   const sel = document.getElementById('sel-propiedad')
   if (data) data.forEach(p => {
     const o = document.createElement('option')
     o.value = p.id
-    o.textContent = p.titulo + (p.activa ? '' : ' (inactiva)')
+    const codigo = p.codigo_interno || (p.codigo_publico ? `Ref. ${p.codigo_publico}` : '')
+    o.textContent = `${codigo ? `${codigo} · ` : ''}${p.titulo}${p.activa ? '' : ' (inactiva)'}`
     sel.appendChild(o)
   })
 }
@@ -885,7 +886,13 @@ window.cargarPropiedad = async function() {
   else { prev.style.display = 'none' }
 
   document.getElementById('prop-nombre').textContent = p.titulo
-  const meta = [p.tipo, p.ciudad, p.provincia].filter(Boolean).join(' · ')
+  const meta = [
+    p.codigo_interno ? `Interno ${p.codigo_interno}` : null,
+    p.codigo_publico ? `Ref. ${p.codigo_publico}` : null,
+    p.tipo,
+    p.ciudad,
+    p.provincia
+  ].filter(Boolean).join(' · ')
   document.getElementById('prop-meta').textContent = meta
   document.getElementById('prop-precio').textContent =
     p.precio ? `${p.moneda || 'USD'} ${Number(p.precio).toLocaleString()}` : ''
@@ -1468,6 +1475,10 @@ window.generarPDFPropiedad = async function() {
 
     g.tinta(); g.titulo(24)
     doc.text(doc.splitTextToSize(p.titulo || 'Propiedad', W-2*M)[0], W/2, y, { align: 'center' }); y += 7.5
+    if (p.codigo_publico) {
+      doc.setTextColor(...GPDF.GRIS); g.sans(6.2)
+      doc.text(`Ref. ${p.codigo_publico}`, W/2, y, { align: 'center' }); y += 5
+    }
     const sub = [p.tipo, p.operacion].filter(Boolean).join(' · ')
     if (sub) {
       doc.setTextColor(...GPDF.GRIS); g.sans(7.4)
