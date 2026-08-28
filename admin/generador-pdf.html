@@ -1469,9 +1469,9 @@ window.generarPDFPropiedad = async function() {
     const logo = await gpdfLogo(warnings)
 
     // ─── PÁGINA ÚNICA ───
-    let y = gpdfEncabezado(g, logo, 70, 16) + 13
+    let y = gpdfEncabezado(g, logo, 52, 10) + 9
     doc.setDrawColor(...GPDF.LIN); doc.setLineWidth(0.25); doc.line(W/2 - 14, y, W/2 + 14, y)
-    y += 13 + 6.3
+    y += 11
 
     g.tinta(); g.titulo(24)
     doc.text(doc.splitTextToSize(p.titulo || 'Propiedad', W-2*M)[0], W/2, y, { align: 'center' }); y += 7.5
@@ -1489,7 +1489,7 @@ window.generarPDFPropiedad = async function() {
       doc.setTextColor(...GPDF.GRIS); g.sans(6)
       g.tracked(loc.toUpperCase(), W/2, y, 1.6, 'center')
     }
-    y += 8
+    y += 5
 
     if (sec.foto && g.conFotos && imagenes[0]) {
       try {
@@ -1497,10 +1497,10 @@ window.generarPDFPropiedad = async function() {
         const fit = await coverImg(raw, Math.round((W-2*M)*4), 42*4)
         doc.addImage(fit || raw, 'JPEG', M, y, W-2*M, 42, '', 'FAST')
         y += 42 + 10
-      } catch (e) { y += 4 }
-    } else { y += 4 }
+      } catch (e) { y += 2 }
+    } else { y += 2 }
 
-    g.filete(y, true); y += 10
+    g.filete(y, true); y += 8
 
     // A quién va dirigida y cuándo — igual que en la cotización de proyecto.
     if (sec.cotizacion && (cotCliente || fechaStr)) {
@@ -1511,7 +1511,7 @@ window.generarPDFPropiedad = async function() {
       doc.text(cotCliente || '—', M, y)
       g.sans(8.2)
       doc.text(fechaStr || '—', W-M, y, { align: 'right' })
-      y += 13
+      y += 11
     }
 
     if (sec.precio && (p.precio || cotPrecio)) {
@@ -1544,33 +1544,41 @@ window.generarPDFPropiedad = async function() {
       g.rotulo('LA PROPIEDAD', M, y); y += 6
       doc.setTextColor(...GPDF.TEXTO); g.sans(8.2)
       doc.text(desc, M, y, { lineHeightFactor: 1.55 })
-      y += desc.length * 4.6 + 10
+      y += desc.length * 4.6 + 7
     }
 
-    if (sec.datos) {
-      const dt = datosTecnicosPropiedad(p).slice(0, 8)
+    // La ubicación entra como celda de la ficha técnica si cabe en media columna;
+    // si la dirección es muy larga, conserva su bloque propio más abajo.
+    const dirCompleta = sec.ubicacion ? [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ') : ''
+    let dirPendiente = dirCompleta
+    if (sec.datos || dirCompleta) {
+      const dt = sec.datos ? datosTecnicosPropiedad(p).slice(0, 7) : []
+      if (dirCompleta) {
+        g.sans(8.4)
+        if (doc.getTextWidth(dirCompleta) <= (W-2*M)/2 - 6 && dt.length) {
+          dt.push(['Ubicación', dirCompleta])
+          dirPendiente = ''
+        }
+      }
       if (dt.length) {
-        asegurar(7 + Math.ceil(dt.length / 2) * 12.5)
+        asegurar(7 + Math.ceil(dt.length / 2) * 11)
         g.rotulo('FICHA TÉCNICA', M, y); y += 7
         dt.slice(0, 8).forEach((it, i) => {
-          const col = i % 2, ix = M + col * ((W-2*M)/2 + 4), iy = y + Math.floor(i/2) * 12.5
+          const col = i % 2, ix = M + col * ((W-2*M)/2 + 4), iy = y + Math.floor(i/2) * 11
           doc.setTextColor(...GPDF.GRIS); g.sans(5.3)
           g.tracked(String(it[0]).toUpperCase(), ix, iy, 0.7, 'left')
           g.tinta(); g.sans(8.4)
           doc.text(String(it[1]), ix, iy+5)
         })
-        y += Math.ceil(Math.min(dt.length, 8) / 2) * 12.5 + 6
+        y += Math.ceil(Math.min(dt.length, 8) / 2) * 11 + 6
       }
     }
 
-    if (sec.ubicacion) {
-      const dir = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
-      if (dir) {
-        asegurar(17)
-        g.rotulo('UBICACIÓN', M, y); y += 6
-        g.tinta(); g.sans(8.4)
-        doc.text(dir, M, y); y += 11
-      }
+    if (dirPendiente) {
+      asegurar(17)
+      g.rotulo('UBICACIÓN', M, y); y += 6
+      g.tinta(); g.sans(8.4)
+      doc.text(dirPendiente, M, y); y += 11
     }
 
     if (sec.cotizacion && cotFinanciacion) {
