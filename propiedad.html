@@ -460,9 +460,9 @@
           <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
           Compartir
         </a>
-        <button onclick="window.print()" class="btn-accion">
+        <button type="button" class="btn-accion btn-ficha-pdf">
           <svg viewBox="0 0 24 24"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg>
-          PDF
+          <span class="btn-ficha-pdf-txt">PDF</span>
         </button>
       </div>
       <div class="form-card">
@@ -595,9 +595,9 @@
           <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
           Compartir
         </a>
-        <button onclick="window.print()" class="btn-accion">
+        <button type="button" class="btn-accion btn-ficha-pdf">
           <svg viewBox="0 0 24 24"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg>
-          PDF
+          <span class="btn-ficha-pdf-txt">PDF</span>
         </button>
       </div>
       <div class="form-card">
@@ -1313,6 +1313,7 @@ if (!id) {
   } else {
     data._escenas = escenas || []
     document.title = `${data.titulo} — Sur Patagonian`
+    window.__fichaProp = data
     if (data.premium) {
       await renderPremium(data)
     } else {
@@ -1346,6 +1347,310 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
 
 <script type="module">
   import('./js/config.js').then(m => m.registrarVisita?.()).catch(() => {})
+</script>
+
+<script>
+// ─── Ficha PDF pública · mismo diseño V4.3 del generador admin (aprobado) ───
+// Librerías y fuentes se cargan recién al primer click: la página no paga el costo.
+(function () {
+  const FSITE = 'https://surpatagonian.com'
+  const FHOST = 'surpatagonian.com'
+  const FG = {
+    W: 210, H: 297, M: 20,
+    TINTA: [26, 26, 26], GRIS: [94, 90, 85], LIN: [206, 202, 195], TEXTO: [42, 40, 37],
+    LOGO: 'assets/logos/logo-vertical-negro.png',
+    LEGAL_NOMBRE: 'Mariana Ayelén García · Martillera y Corredora Pública',
+    LEGAL_MAT: 'Mat. 271-RP-18 · F°350 T°II · El Bolsón, Río Negro, Argentina',
+    LEGAL_NOTA: 'Documento informativo. Los precios y condiciones pueden variar sin previo aviso; la operación se perfecciona por escrito.',
+    RED_TITULO: 'Conocé más de la red de Sur Patagonian',
+    RED_BAJADA: 'Propiedades, comercios adheridos, beneficios exclusivos.',
+    RED_CTA: '¿Tenés una propiedad o un comercio para sumar? Sé parte: surpatagonian.com'
+  }
+  let cargado = null
+  function script(srcUrl) {
+    return new Promise((ok, no) => {
+      const s = document.createElement('script')
+      s.src = srcUrl; s.onload = ok; s.onerror = () => no(new Error(srcUrl))
+      document.head.appendChild(s)
+    })
+  }
+  function cargarLibs() {
+    if (!cargado) cargado = Promise.all([
+      script('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+      script('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'),
+      script('js/gpdf-fuentes.js')
+    ])
+    return cargado
+  }
+  function fBase64(url) {
+    return fetch(url).then(r => { if (!r.ok) throw new Error('img'); return r.blob() })
+      .then(b => new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = no; fr.readAsDataURL(b) }))
+  }
+  function fCover(base64, pxW, pxH) {
+    return new Promise(res => {
+      const img = new Image()
+      img.onload = () => {
+        const c = document.createElement('canvas'); c.width = pxW; c.height = pxH
+        const x = c.getContext('2d'); const esc = Math.max(pxW / img.width, pxH / img.height)
+        const sw = img.width * esc, sh = img.height * esc
+        x.drawImage(img, (pxW - sw) / 2, (pxH - sh) / 2, sw, sh)
+        res(c.toDataURL('image/jpeg', 0.92))
+      }
+      img.onerror = () => res(null); img.crossOrigin = 'anonymous'; img.src = base64
+    })
+  }
+  function fQr(texto, size) {
+    return new Promise(res => {
+      const div = document.createElement('div'); document.body.appendChild(div)
+      let fin = false
+      const done = d => { if (fin) return; fin = true; try { document.body.removeChild(div) } catch (_) {}; res(d) }
+      try {
+        new QRCode(div, { text: texto, width: size, height: size, correctLevel: QRCode.CorrectLevel.M })
+        const t0 = Date.now()
+        const poll = () => {
+          const c = div.querySelector('canvas')
+          if (c) return done(c.toDataURL('image/png'))
+          if (Date.now() - t0 >= 2000) return done(null)
+          setTimeout(poll, 80)
+        }
+        poll()
+      } catch (e) { done(null) }
+    })
+  }
+  function fLogoLimpio(base64) {
+    return new Promise(res => {
+      const img = new Image()
+      img.onload = () => {
+        const t = document.createElement('canvas'); t.width = img.naturalWidth; t.height = img.naturalHeight
+        const tx = t.getContext('2d'); tx.drawImage(img, 0, 0)
+        let x0 = t.width, y0 = t.height, x1 = 0, y1 = 0
+        try {
+          const d = tx.getImageData(0, 0, t.width, t.height).data
+          for (let yy = 0; yy < t.height; yy++) for (let xx = 0; xx < t.width; xx++) {
+            if (d[(yy * t.width + xx) * 4 + 3] > 16) {
+              if (xx < x0) x0 = xx; if (xx > x1) x1 = xx
+              if (yy < y0) y0 = yy; if (yy > y1) y1 = yy
+            }
+          }
+        } catch (e) {}
+        if (x1 <= x0 || y1 <= y0) { x0 = 0; y0 = 0; x1 = t.width - 1; y1 = t.height - 1 }
+        const bw = x1 - x0 + 1, bh = y1 - y0 + 1, esc = Math.min(1, 1000 / bw)
+        const c = document.createElement('canvas'); c.width = Math.round(bw * esc); c.height = Math.round(bh * esc)
+        const x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height)
+        x.drawImage(img, x0, y0, bw, bh, 0, 0, c.width, c.height)
+        res({ uri: c.toDataURL('image/jpeg', 0.92), ratio: c.height / c.width })
+      }
+      img.onerror = () => res(null); img.src = base64
+    })
+  }
+  function fPlata(moneda, precio) {
+    if (!precio) return 'Consultar'
+    return `${moneda || 'ARS'} ${Number(precio).toLocaleString('es-AR')}`
+  }
+  function fDatos(p) {
+    const it = []
+    if (p.tipo) it.push(['Tipo', p.tipo])
+    if (p.operacion) it.push(['Operación', p.operacion])
+    if (p.dormitorios) it.push(['Dormitorios', p.dormitorios])
+    if (p.banos) it.push(['Baños', p.banos])
+    if (p.superficie_cubierta) it.push(['Sup. cubierta', p.superficie_cubierta + ' m²'])
+    if (p.superficie_total) it.push(['Sup. total', p.superficie_total + ' m²'])
+    return it
+  }
+  async function generarFicha(p, btn) {
+    const txt = btn.querySelector('.btn-ficha-pdf-txt')
+    const prev = txt.textContent
+    btn.disabled = true; txt.textContent = 'Generando…'
+    try {
+      await cargarLibs()
+      const { jsPDF } = window.jspdf
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+      const F = window.GPDF_FUENTES
+      if (F) {
+        doc.addFileToVFS('Corm-SB.ttf', F.cormSB); doc.addFont('Corm-SB.ttf', 'Cormorant', 'bold')
+        doc.addFileToVFS('Mont-R.ttf', F.montR); doc.addFont('Mont-R.ttf', 'Sans', 'normal')
+        doc.addFileToVFS('Mont-SB.ttf', F.montSB); doc.addFont('Mont-SB.ttf', 'Sans', 'bold')
+      }
+      const { W, H, M } = FG
+      const titulo = t => { doc.setFont(F ? 'Cormorant' : 'times', 'bold'); doc.setFontSize(t) }
+      const sans = (t, b) => { doc.setFont(F ? 'Sans' : 'helvetica', b ? 'bold' : 'normal'); doc.setFontSize(t) }
+      const tinta = c => doc.setTextColor(...(c || FG.TINTA))
+      const tracked = (tx, ancla, yy, cs, al) => {
+        doc.setCharSpace(0)
+        const w = doc.getTextWidth(tx) + cs * Math.max(0, tx.length - 1)
+        const x = al === 'center' ? ancla - w / 2 : al === 'right' ? ancla - w : ancla
+        doc.setCharSpace(cs); doc.text(tx, x, yy); doc.setCharSpace(0)
+      }
+      const rotulo = (tx, x, yy, al) => { doc.setTextColor(...FG.GRIS); sans(5.8, true); tracked(tx, x, yy, 0.8, al || 'left') }
+      const filete = (yy, fuerte) => {
+        doc.setDrawColor(...(fuerte ? FG.TINTA : FG.LIN)); doc.setLineWidth(fuerte ? 0.4 : 0.2)
+        doc.line(M, yy, W - M, yy)
+      }
+      const justif = (lineas, x, yy, ancho, lh) => {
+        lineas.forEach((ln, i) => {
+          const pal = String(ln).split(' ').filter(Boolean)
+          const sobra = ancho - doc.getTextWidth(ln), py = yy + i * lh
+          if (i === lineas.length - 1 || pal.length < 2 || sobra <= 0 || sobra > ancho * 0.2) { doc.text(ln, x, py) }
+          else {
+            const extra = sobra / (pal.length - 1), esp = doc.getTextWidth(' ')
+            let xx = x
+            pal.forEach(w2 => { doc.text(w2, xx, py); xx += doc.getTextWidth(w2) + esp + extra })
+          }
+        })
+      }
+
+      let logo = null
+      try { logo = await fLogoLimpio(await fBase64(FG.LOGO)) } catch (e) {}
+      let y
+      if (logo) { doc.addImage(logo.uri, 'JPEG', W / 2 - 26, 10, 52, 52 * logo.ratio); y = 10 + 52 * logo.ratio + 9 }
+      else {
+        tinta(); sans(11, true); tracked('SUR PATAGONIAN', W / 2, 18, 2.6, 'center')
+        doc.setTextColor(...FG.GRIS); sans(6); tracked('RED INMOBILIARIA', W / 2, 23, 2.2, 'center')
+        y = 34
+      }
+      doc.setDrawColor(...FG.LIN); doc.setLineWidth(0.25); doc.line(W / 2 - 14, y, W / 2 + 14, y)
+      y += 11
+
+      tinta(); titulo(22)
+      doc.text(doc.splitTextToSize(p.titulo || 'Propiedad', W - 2 * M)[0], W / 2, y, { align: 'center' }); y += 7.5
+      if (p.codigo_publico) {
+        doc.setTextColor(...FG.GRIS); sans(6.2)
+        doc.text(`Ref. ${p.codigo_publico}`, W / 2, y, { align: 'center' }); y += 5
+      }
+      const sub = [p.tipo, p.operacion].filter(Boolean).join(' · ')
+      if (sub) {
+        doc.setTextColor(...FG.GRIS); sans(7.4)
+        doc.text(sub.charAt(0).toUpperCase() + sub.slice(1), W / 2, y, { align: 'center' }); y += 6
+      }
+      const loc = [p.ciudad, p.provincia].filter(Boolean).join(' · ')
+      if (loc) { doc.setTextColor(...FG.GRIS); sans(6); tracked(loc.toUpperCase(), W / 2, y, 1.1, 'center') }
+      y += 5
+
+      const imgs = Array.isArray(p.imagenes) ? p.imagenes : []
+      if (imgs[0]) {
+        try {
+          const raw = await fBase64(imgs[0])
+          const fit = await fCover(raw, Math.round((W - 2 * M) * 4), 56 * 4)
+          doc.addImage(fit || raw, 'JPEG', M, y, W - 2 * M, 56, '', 'FAST')
+          y += 56 + 8
+        } catch (e) { y += 2 }
+      } else { y += 2 }
+
+      filete(y, true); y += 8
+
+      rotulo('PRECIO', M, y); rotulo('OPERACIÓN', W - M, y, 'right'); y += 7
+      tinta(); sans(15, true)
+      const esAlq = String(p.operacion || '').toLowerCase().includes('alquiler')
+      doc.text(fPlata(p.moneda, p.precio) + (esAlq && p.precio ? ' / mes' : ''), M, y)
+      sans(8.2); doc.text((p.operacion || '—').toUpperCase(), W - M, y, { align: 'right' })
+      y += 11
+
+      const TOPE = H - 42 - 34
+      const asegurar = alto => { if (y + alto > TOPE) { doc.addPage(); y = 26 } }
+
+      if (p.descripcion) {
+        sans(8.2)
+        const desc = doc.splitTextToSize(String(p.descripcion).replace(/\n+/g, ' '), W - 2 * M).slice(0, 8)
+        asegurar(6 + desc.length * 4.6)
+        rotulo('LA PROPIEDAD', M, y); y += 6
+        doc.setTextColor(...FG.TEXTO); sans(8.2)
+        justif(desc, M, y, W - 2 * M, 4.6)
+        y += desc.length * 4.6 + 7
+      }
+
+      const dirCompleta = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
+      let dirPendiente = dirCompleta
+      const dt = fDatos(p).slice(0, 7)
+      if (dirCompleta) {
+        sans(8.4)
+        if (doc.getTextWidth(dirCompleta) <= (W - 2 * M) / 2 - 6 && dt.length) { dt.push(['Ubicación', dirCompleta]); dirPendiente = '' }
+      }
+      if (dt.length) {
+        asegurar(7 + Math.ceil(dt.length / 2) * 11)
+        rotulo('FICHA TÉCNICA', M, y); y += 7
+        dt.slice(0, 8).forEach((it, i) => {
+          const col = i % 2, ix = M + col * ((W - 2 * M) / 2 + 4), iy = y + Math.floor(i / 2) * 11
+          doc.setTextColor(...FG.GRIS); sans(5.3)
+          tracked(String(it[0]).toUpperCase(), ix, iy, 0.7, 'left')
+          tinta(); sans(8.4)
+          doc.text(String(it[1]), ix, iy + 5)
+        })
+        y += Math.ceil(Math.min(dt.length, 8) / 2) * 11 + 6
+      }
+      if (dirPendiente) {
+        asegurar(17)
+        rotulo('UBICACIÓN', M, y); y += 6
+        tinta(); sans(8.4); doc.text(dirPendiente, M, y); y += 11
+      }
+
+      // Galería digital: hasta 4 fotos más (2 a 5), en grilla de dos columnas.
+      const galeria = imgs.slice(1, 5)
+      if (galeria.length) {
+        const celW = (W - 2 * M - 4) / 2, celH = 54
+        const filas = Math.ceil(galeria.length / 2)
+        asegurar(7 + filas * (celH + 4))
+        rotulo('GALERÍA', M, y); y += 7
+        for (let gi = 0; gi < galeria.length; gi++) {
+          const gx = M + (gi % 2) * (celW + 4), gy = y + Math.floor(gi / 2) * (celH + 4)
+          try {
+            const raw = await fBase64(galeria[gi])
+            const fit = await fCover(raw, Math.round(celW * 4), celH * 4)
+            if (fit) doc.addImage(fit, 'JPEG', gx, gy, celW, celH, '', 'FAST')
+          } catch (e) {}
+        }
+        y += filas * (celH + 4) + 4
+      }
+
+      // Cierre anclado al fondo: QRs + red + martillera (link directo, sin tracking).
+      let qy = Math.max(y + 6, TOPE)
+      if (qy + 32 > H - 42) { doc.addPage(); qy = Math.max(26, TOPE) }
+      const urlProp = `${FSITE}/propiedad?id=${p.id}`
+      const qsz = 19, qx1 = M + 8, qx2 = W - M - 8 - qsz
+      const qA = await fQr(urlProp, 150)
+      const qB = await fQr(FSITE, 150)
+      if (qA) {
+        doc.addImage(qA, 'PNG', qx1, qy, qsz, qsz)
+        doc.setTextColor(...FG.GRIS); sans(5.4); tracked('VER ONLINE', qx1 + qsz / 2, qy + qsz + 4.5, 0.6, 'center')
+      }
+      if (qB) {
+        doc.addImage(qB, 'PNG', qx2, qy, qsz, qsz)
+        doc.setTextColor(...FG.GRIS); sans(5.4); tracked('CONSULTANOS', qx2 + qsz / 2, qy + qsz + 4.5, 0.6, 'center')
+      }
+      tinta(); sans(8, true); doc.text(FG.RED_TITULO, W / 2, qy + 6, { align: 'center' })
+      doc.setTextColor(...FG.GRIS); sans(6.6); doc.text(FG.RED_BAJADA, W / 2, qy + 10.5, { align: 'center' })
+      tinta(); sans(6.6, true); doc.text(FG.RED_CTA, W / 2, qy + 15.5, { align: 'center' })
+
+      doc.setPage(doc.getNumberOfPages())
+      const yl = H - 42
+      filete(yl, true)
+      tinta(); sans(6.6, true); doc.text(FG.LEGAL_NOMBRE, W / 2, yl + 6.5, { align: 'center' })
+      doc.setTextColor(...FG.GRIS); sans(6); doc.text(FG.LEGAL_MAT, W / 2, yl + 11.5, { align: 'center' })
+      sans(5.4); doc.text(FG.LEGAL_NOTA, W / 2, yl + 16, { align: 'center' })
+      for (let pg = 1; pg <= doc.getNumberOfPages(); pg++) {
+        doc.setPage(pg)
+        doc.setDrawColor(...FG.LIN); doc.setLineWidth(0.2); doc.line(M, H - 20, W - M, H - 20)
+        doc.setTextColor(...FG.GRIS); sans(5.8)
+        doc.text('SUR PATAGONIAN · RED INMOBILIARIA', M, H - 14)
+        doc.text(FHOST, W - M, H - 14, { align: 'right' })
+      }
+
+      const slug = (p.titulo || 'propiedad').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      doc.save(`ficha-${slug}.pdf`)
+      txt.textContent = prev
+    } catch (e) {
+      console.error('[ficha-pdf]', e)
+      txt.textContent = 'Error, reintentá'
+      setTimeout(() => { txt.textContent = prev }, 3000)
+    } finally { btn.disabled = false }
+  }
+  document.querySelectorAll('.btn-ficha-pdf').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = window.__fichaProp
+      if (!p) return
+      generarFicha(p, btn)
+    })
+  })
+})()
 </script>
 </body>
 </html>
