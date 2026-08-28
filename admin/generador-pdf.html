@@ -1092,7 +1092,7 @@ function gpdfDoc(jsPDF, modoImprimible) {
       const x = al === 'center' ? ancla - w / 2 : al === 'right' ? ancla - w : ancla
       doc.setCharSpace(cs); doc.text(tx, x, y); doc.setCharSpace(0)
     },
-    rotulo: (tx, x, y, al) => { doc.setTextColor(...GPDF.GRIS); api.sans(5.8, true); api.tracked(tx, x, y, 1.2, al || 'left') },
+    rotulo: (tx, x, y, al) => { doc.setTextColor(...GPDF.GRIS); api.sans(5.8, true); api.tracked(tx, x, y, 0.8, al || 'left') },
     filete: (y, fuerte) => {
       doc.setDrawColor(...(fuerte ? GPDF.TINTA : GPDF.LIN))
       doc.setLineWidth(fuerte ? 0.4 : 0.2)
@@ -1135,6 +1135,25 @@ function gpdfEncabezado(g, logo, ancho, arriba) {
   doc.setTextColor(...GPDF.GRIS); g.sans(6)
   g.tracked('RED INMOBILIARIA', W / 2, arriba + 13, 2.2, 'center')
   return arriba + 15
+}
+
+// Párrafo justificado a mano: jsPDF no justifica con fuentes embebidas (el
+// operador de word-spacing no aplica a TTF Identity-H). Se reparte el sobrante
+// entre palabras; la última línea queda natural, como en imprenta.
+function gpdfParrafoJustificado(g, lineas, x, y, ancho, lineH) {
+  const { doc } = g
+  lineas.forEach((ln, i) => {
+    const palabras = String(ln).split(' ').filter(Boolean)
+    const sobra = ancho - doc.getTextWidth(ln)
+    const yy = y + i * lineH
+    if (i === lineas.length - 1 || palabras.length < 2 || sobra <= 0 || sobra > ancho * 0.2) {
+      doc.text(ln, x, yy)
+    } else {
+      const extra = sobra / (palabras.length - 1), esp = doc.getTextWidth(' ')
+      let xx = x
+      palabras.forEach(pal => { doc.text(pal, xx, yy); xx += doc.getTextWidth(pal) + esp + extra })
+    }
+  })
 }
 
 // Bloque de la red: QR izquierda + texto + QR derecha. Va en los dos modos.
@@ -1232,7 +1251,7 @@ window.generarPDFProyecto = async function() {
     const loc = [p.ciudad, (p.provincia || '').replace(/_/g, ' ')].filter(Boolean).join(' · ')
     if (loc) {
       doc.setTextColor(...GPDF.GRIS); g.sans(6)
-      g.tracked((loc + ' · PATAGONIA ARGENTINA').toUpperCase(), W/2, y, 1.6, 'center')
+      g.tracked((loc + ' · PATAGONIA ARGENTINA').toUpperCase(), W/2, y, 1.1, 'center')
     }
     y += 8
 
@@ -1487,7 +1506,7 @@ window.generarPDFPropiedad = async function() {
     const loc = [p.ciudad, p.provincia].filter(Boolean).join(' · ')
     if (loc) {
       doc.setTextColor(...GPDF.GRIS); g.sans(6)
-      g.tracked(loc.toUpperCase(), W/2, y, 1.6, 'center')
+      g.tracked(loc.toUpperCase(), W/2, y, 1.1, 'center')
     }
     y += 5
 
@@ -1543,7 +1562,7 @@ window.generarPDFPropiedad = async function() {
       asegurar(6 + desc.length * 4.6)
       g.rotulo('LA PROPIEDAD', M, y); y += 6
       doc.setTextColor(...GPDF.TEXTO); g.sans(8.2)
-      doc.text(desc, M, y, { lineHeightFactor: 1.55 })
+      gpdfParrafoJustificado(g, desc, M, y, W-2*M, 4.6)
       y += desc.length * 4.6 + 7
     }
 
@@ -1587,7 +1606,7 @@ window.generarPDFPropiedad = async function() {
       asegurar(6 + fin.length * 4.4)
       g.rotulo('FINANCIACIÓN', M, y); y += 6
       g.tinta(); g.sans(8.2)
-      doc.text(fin, M, y, { lineHeightFactor: 1.5 })
+      gpdfParrafoJustificado(g, fin, M, y, W-2*M, 4.4)
       y += fin.length * 4.4 + 10
     }
 
@@ -1597,7 +1616,7 @@ window.generarPDFPropiedad = async function() {
       asegurar(6 + nt.length * 4.4)
       g.rotulo('NOTA DEL ASESOR', M, y); y += 6
       g.tinta(); g.sans(8.2)
-      doc.text(nt, M, y, { lineHeightFactor: 1.5 })
+      gpdfParrafoJustificado(g, nt, M, y, W-2*M, 4.4)
       y += nt.length * 4.4 + 10
     }
 
