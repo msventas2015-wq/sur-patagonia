@@ -1549,26 +1549,26 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
 
       const TOPE = H - 42 - 34
       const LIMITE = 250
-      const asegurar = alto => { if (y + alto > TOPE) { doc.addPage(); y = 26 } }
-      const asegurarSuelto = alto => { if (y + alto > LIMITE) { doc.addPage(); y = 26 } }
 
+      // Hoja 1: la descripcion se recorta sola para llenar la hoja sin desbordarla.
       if (p.descripcion) {
         sans(8.2)
-        const desc = doc.splitTextToSize(String(p.descripcion).replace(/\n+/g, ' '), W - 2 * M).slice(0, 8)
-        asegurarSuelto(6 + desc.length * 4.6)
+        const maxL = Math.min(10, Math.max(3, Math.floor((LIMITE - y - 6) / 4.6)))
+        const desc = doc.splitTextToSize(String(p.descripcion).replace(/\n+/g, ' '), W - 2 * M).slice(0, maxL)
         rotulo('LA PROPIEDAD', M, y); y += 6
         doc.setTextColor(...FG.TEXTO); sans(8.2)
         justif(desc, M, y, W - 2 * M, 4.6)
         y += desc.length * 4.6 + 8
       }
 
-      // Comodidades en tres columnas, con vinetas doradas
+      // Hoja 2 — siempre arranca acá: datos, galeria y cierre. Nunca hay hoja 3.
+      doc.addPage(); y = 26
+
       const amen = Array.isArray(window.__fichaAmen) ? window.__fichaAmen : []
       if (amen.length) {
         const colN = 3, colW2 = (W - 2 * M) / colN
         const lista = amen.slice(0, 18)
         const filasA = Math.ceil(lista.length / colN)
-        asegurarSuelto(7 + filasA * 4.8)
         rotulo('COMODIDADES', M, y); y += 6.5
         lista.forEach((am, i) => {
           const cx = M + (i % colN) * colW2, cy = y + Math.floor(i / colN) * 4.8
@@ -1585,7 +1585,6 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
       if (p.antiguedad) dt.push(['Antigüedad', p.antiguedad])
       if (p.condicion) dt.push(['Condición', p.condicion])
       if (dt.length) {
-        asegurarSuelto(7 + Math.ceil(dt.length / 2) * 10)
         rotulo('FICHA TÉCNICA', M, y); y += 7
         dt.slice(0, 8).forEach((it, i) => {
           const col = i % 2, ix = M + col * ((W - 2 * M) / 2 + 4), iy = y + Math.floor(i / 2) * 10
@@ -1599,30 +1598,32 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
 
       const dirCompleta = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
       if (dirCompleta) {
-        asegurarSuelto(17)
         rotulo('UBICACIÓN', M, y); y += 6
         tinta(); sans(8.4); doc.text(dirCompleta, M, y); y += 9
       }
 
-      // Galería digital: hasta 4 fotos más (2 a 5), en grilla de dos columnas.
-      const galeria = imgs.slice(1, 5)
+      // Galeria autoajustable: usa exactamente el espacio que queda hasta el cierre.
+      let galeria = imgs.slice(1, 5)
       if (galeria.length) {
-        const celW = (W - 2 * M - 4) / 2, celH = 44
-        asegurarSuelto(7 + celH)
-        rotulo('GALERÍA', M, y); y += 7
-        for (let gi = 0; gi < galeria.length; gi += 2) {
-          asegurarSuelto(celH + 3)
-          const fila = galeria.slice(gi, gi + 2)
-          for (let ci = 0; ci < fila.length; ci++) {
-            try {
-              const raw = await fBase64(fila[ci])
-              const fit = await fCover(raw, Math.round(celW * 8), celH * 8)
-              if (fit) doc.addImage(fit, 'JPEG', M + ci * (celW + 4), y, celW, celH, '', 'FAST')
-            } catch (e) {}
+        const celW = (W - 2 * M - 4) / 2
+        const disp = TOPE - y - 20  // margen para que el cierre siempre quede en esta hoja
+        let filas = Math.min(2, Math.ceil(galeria.length / 2))
+        let celH = Math.min(46, (disp - (filas - 1) * 3) / filas)
+        if (filas === 2 && celH < 28) { filas = 1; galeria = galeria.slice(0, 2); celH = Math.min(46, disp) }
+        if (celH >= 22) {
+          rotulo('GALERÍA', M, y); y += 7
+          for (let gi = 0; gi < Math.min(galeria.length, filas * 2); gi += 2) {
+            const fila = galeria.slice(gi, gi + 2)
+            for (let ci = 0; ci < fila.length; ci++) {
+              try {
+                const raw = await fBase64(fila[ci])
+                const fit = await fCover(raw, Math.round(celW * 8), Math.round(celH * 8))
+                if (fit) doc.addImage(fit, 'JPEG', M + ci * (celW + 4), y, celW, celH, '', 'FAST')
+              } catch (e) {}
+            }
+            y += celH + 3
           }
-          y += celH + 3
         }
-        y += 2
       }
 
       // Cierre anclado al fondo: QRs + red + martillera (link directo, sin tracking).
