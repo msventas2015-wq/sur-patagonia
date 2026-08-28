@@ -1504,11 +1504,6 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
 
       tinta(); titulo(22)
       doc.text(doc.splitTextToSize(p.titulo || 'Propiedad', W - 2 * M)[0], W / 2, y, { align: 'center' }); y += 7.5
-      const sub = p.tipo || ''
-      if (sub) {
-        doc.setTextColor(...FG.GRIS); sans(7.4)
-        doc.text(sub.charAt(0).toUpperCase() + sub.slice(1), W / 2, y, { align: 'center' }); y += 6
-      }
       const loc = [p.ciudad, p.provincia].filter(Boolean).join(' · ')
       if (loc) { doc.setTextColor(...FG.GRIS); sans(6); tracked(loc.toUpperCase(), W / 2, y, 1.1, 'center') }
       y += 5
@@ -1573,7 +1568,7 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
         const colN = 3, colW2 = (W - 2 * M) / colN
         const lista = amen.slice(0, 18)
         const filasA = Math.ceil(lista.length / colN)
-        asegurar(7 + filasA * 5.2)
+        asegurarSuelto(7 + filasA * 5.2)
         rotulo('COMODIDADES', M, y); y += 6.5
         lista.forEach((am, i) => {
           const cx = M + (i % colN) * colW2, cy = y + Math.floor(i / colN) * 5.2
@@ -1590,7 +1585,7 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
       if (p.antiguedad) dt.push(['Antigüedad', p.antiguedad])
       if (p.condicion) dt.push(['Condición', p.condicion])
       if (dt.length) {
-        asegurar(7 + Math.ceil(dt.length / 2) * 11)
+        asegurarSuelto(7 + Math.ceil(dt.length / 2) * 11)
         rotulo('FICHA TÉCNICA', M, y); y += 7
         dt.slice(0, 8).forEach((it, i) => {
           const col = i % 2, ix = M + col * ((W - 2 * M) / 2 + 4), iy = y + Math.floor(i / 2) * 11
@@ -1604,7 +1599,7 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
 
       const dirCompleta = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
       if (dirCompleta) {
-        asegurar(17)
+        asegurarSuelto(17)
         rotulo('UBICACIÓN', M, y); y += 6
         tinta(); sans(8.4); doc.text(dirCompleta, M, y); y += 11
       }
@@ -1613,18 +1608,21 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
       const galeria = imgs.slice(1, 5)
       if (galeria.length) {
         const celW = (W - 2 * M - 4) / 2, celH = 54
-        const filas = Math.ceil(galeria.length / 2)
-        asegurar(7 + filas * (celH + 4))
+        asegurarSuelto(7 + celH)
         rotulo('GALERÍA', M, y); y += 7
-        for (let gi = 0; gi < galeria.length; gi++) {
-          const gx = M + (gi % 2) * (celW + 4), gy = y + Math.floor(gi / 2) * (celH + 4)
-          try {
-            const raw = await fBase64(galeria[gi])
-            const fit = await fCover(raw, Math.round(celW * 8), celH * 8)
-            if (fit) doc.addImage(fit, 'JPEG', gx, gy, celW, celH, '', 'FAST')
-          } catch (e) {}
+        for (let gi = 0; gi < galeria.length; gi += 2) {
+          asegurarSuelto(celH + 4)
+          const fila = galeria.slice(gi, gi + 2)
+          for (let ci = 0; ci < fila.length; ci++) {
+            try {
+              const raw = await fBase64(fila[ci])
+              const fit = await fCover(raw, Math.round(celW * 8), celH * 8)
+              if (fit) doc.addImage(fit, 'JPEG', M + ci * (celW + 4), y, celW, celH, '', 'FAST')
+            } catch (e) {}
+          }
+          y += celH + 4
         }
-        y += filas * (celH + 4) + 6
+        y += 2
       }
 
       // Cierre anclado al fondo: QRs + red + martillera (link directo, sin tracking).
