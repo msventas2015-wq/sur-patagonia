@@ -1509,12 +1509,49 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
       y += 5
 
       const imgs = Array.isArray(p.imagenes) ? p.imagenes : []
-      if (imgs[0]) {
+      const amen = Array.isArray(window.__fichaAmen) ? window.__fichaAmen : []
+      const filasAmen = Math.ceil(Math.min(amen.length, 18) / 3)
+      const altoAmen = amen.length ? 6.5 + filasAmen * 4.8 + 6 : 0
+      const TOPE = H - 42 - 34
+      const LIMITE = 250
+
+      // EL TEXTO COMPLETO MANDA: nunca se recorta. Para que entre entero se
+      // ajustan, en este orden: tamano de la foto principal, tamano de letra,
+      // y en el caso extremo las comodidades pasan a la hoja 2.
+      const descTxt = p.descripcion ? String(p.descripcion).replace(/\n+/g, ' ') : ''
+      const combos = [[8.2, 4.6], [7.8, 4.35], [7.4, 4.15]]
+      const kpiN = [p.dormitorios, p.banos, p.superficie_cubierta, p.superficie_total].filter(Boolean).length
+      const kpiH = kpiN ? 20 : 0
+      let heroH = imgs[0] ? 70 : 0, descSize = 8.2, descLH = 4.6, amenEnHoja2 = false
+      if (descTxt) {
+        const cabe = (hh, conAmen) => {
+          const disp = LIMITE - (y + (hh ? hh + 8 : 2) + 24 + kpiH) - 6 - (conAmen ? altoAmen : 0)
+          for (const [s, lh] of combos) {
+            sans(s)
+            if (doc.splitTextToSize(descTxt, W - 2 * M).length * lh <= disp) return [s, lh]
+          }
+          return null
+        }
+        let elegido = null
+        for (const hh of (imgs[0] ? [70, 58, 48] : [0])) {
+          elegido = cabe(hh, true)
+          if (elegido) { heroH = hh; break }
+        }
+        if (!elegido) {
+          if (imgs[0]) heroH = 48
+          elegido = cabe(heroH, false)
+          if (elegido) amenEnHoja2 = amen.length > 0
+        }
+        if (!elegido) { elegido = [7.4, 4.15]; amenEnHoja2 = amen.length > 0 }
+        descSize = elegido[0]; descLH = elegido[1]
+      }
+
+      if (imgs[0] && heroH) {
         try {
           const raw = await fBase64(imgs[0])
-          const fit = await fCover(raw, Math.round((W - 2 * M) * 8), 70 * 8)
-          doc.addImage(fit || raw, 'JPEG', M, y, W - 2 * M, 70, '', 'FAST')
-          y += 70 + 8
+          const fit = await fCover(raw, Math.round((W - 2 * M) * 8), heroH * 8)
+          doc.addImage(fit || raw, 'JPEG', M, y, W - 2 * M, heroH, '', 'FAST')
+          y += heroH + 8
         } catch (e) { y += 2 }
       } else { y += 2 }
 
@@ -1547,38 +1584,39 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
         y += 12 + 8
       }
 
-      const TOPE = H - 42 - 34
-      const LIMITE = 250
-
-      // Hoja 1: la descripcion se recorta sola para llenar la hoja sin desbordarla.
-      const amen = Array.isArray(window.__fichaAmen) ? window.__fichaAmen : []
-      const filasAmen = Math.ceil(Math.min(amen.length, 18) / 3)
-      const altoAmen = amen.length ? 6.5 + filasAmen * 4.8 + 6 : 0
-      if (p.descripcion) {
-        sans(8.2)
-        const maxL = Math.min(10, Math.max(3, Math.floor((LIMITE - y - 6 - altoAmen) / 4.6)))
-        const desc = doc.splitTextToSize(String(p.descripcion).replace(/\n+/g, ' '), W - 2 * M).slice(0, maxL)
+      // Descripcion ENTERA, justificada; si es enorme, sigue en la hoja siguiente.
+      if (descTxt) {
         rotulo('LA PROPIEDAD', M, y); y += 6
-        doc.setTextColor(...FG.TEXTO); sans(8.2)
-        justif(desc, M, y, W - 2 * M, 4.6)
-        y += desc.length * 4.6 + 8
+        doc.setTextColor(...FG.TEXTO); sans(descSize)
+        let resto = doc.splitTextToSize(descTxt, W - 2 * M)
+        while (resto.length) {
+          const caben = Math.max(1, Math.floor((LIMITE - y) / descLH))
+          const tramo = resto.slice(0, caben)
+          justif(tramo, M, y, W - 2 * M, descLH)
+          y += tramo.length * descLH
+          resto = resto.slice(caben)
+          if (resto.length) { doc.addPage(); y = 26; doc.setTextColor(...FG.TEXTO); sans(descSize) }
+        }
+        y += 8
       }
 
-      if (amen.length) {
+      const dibujarComodidades = () => {
+        if (!amen.length) return
         const colN = 3, colW2 = (W - 2 * M) / colN
         const lista = amen.slice(0, 18)
-        const filasA = filasAmen
         rotulo('COMODIDADES', M, y); y += 6.5
         lista.forEach((am, i) => {
           const cx = M + (i % colN) * colW2, cy = y + Math.floor(i / colN) * 4.8
           doc.setTextColor(...FG.DORADO); sans(8.2, true); doc.text('•', cx, cy)
           doc.setTextColor(...FG.TEXTO); sans(7.6); doc.text(String(am), cx + 3.2, cy)
         })
-        y += filasA * 4.8 + 6
+        y += filasAmen * 4.8 + 6
       }
+      if (!amenEnHoja2) dibujarComodidades()
 
-      // Hoja 2 — siempre arranca acá: datos, galeria y cierre. Nunca hay hoja 3.
-      doc.addPage(); y = 26
+      // Hoja 2 (si la descripcion no la abrio ya): ficha, ubicacion, galeria y cierre.
+      if (doc.getNumberOfPages() === 1) { doc.addPage(); y = 26 }
+      if (amenEnHoja2) dibujarComodidades()
 
       const dt = []
       if (p.codigo_publico) dt.push(['Referencia', p.codigo_publico])
