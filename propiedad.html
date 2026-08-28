@@ -1504,11 +1504,7 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
 
       tinta(); titulo(22)
       doc.text(doc.splitTextToSize(p.titulo || 'Propiedad', W - 2 * M)[0], W / 2, y, { align: 'center' }); y += 7.5
-      if (p.codigo_publico) {
-        doc.setTextColor(...FG.GRIS); sans(6.2)
-        doc.text(`Ref. ${p.codigo_publico}`, W / 2, y, { align: 'center' }); y += 5
-      }
-      const sub = [p.tipo, p.operacion].filter(Boolean).join(' · ')
+      const sub = p.tipo || ''
       if (sub) {
         doc.setTextColor(...FG.GRIS); sans(7.4)
         doc.text(sub.charAt(0).toUpperCase() + sub.slice(1), W / 2, y, { align: 'center' }); y += 6
@@ -1521,7 +1517,7 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
       if (imgs[0]) {
         try {
           const raw = await fBase64(imgs[0])
-          const fit = await fCover(raw, Math.round((W - 2 * M) * 4), 70 * 4)
+          const fit = await fCover(raw, Math.round((W - 2 * M) * 8), 70 * 8)
           doc.addImage(fit || raw, 'JPEG', M, y, W - 2 * M, 70, '', 'FAST')
           y += 70 + 8
         } catch (e) { y += 2 }
@@ -1534,7 +1530,8 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
       doc.setTextColor(255, 255, 255); sans(15, true)
       const esAlq = String(p.operacion || '').toLowerCase().includes('alquiler')
       doc.text(fPlata(p.moneda, p.precio) + (esAlq && p.precio ? ' / mes' : ''), M + 6, y + 12.4)
-      doc.setTextColor(...FG.DORADO); sans(8.2, true)
+      doc.setTextColor(...FG.DORADO); sans(5.6, true); tracked('OPERACIÓN', W - M - 6, y + 5.8, 0.8, 'right')
+      doc.setTextColor(255, 255, 255); sans(13, true)
       doc.text((p.operacion || '—').toUpperCase(), W - M - 6, y + 12.4, { align: 'right' })
       y += bandH + 8
 
@@ -1556,34 +1553,18 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
       }
 
       const TOPE = H - 42 - 34
+      const LIMITE = 250
       const asegurar = alto => { if (y + alto > TOPE) { doc.addPage(); y = 26 } }
+      const asegurarSuelto = alto => { if (y + alto > LIMITE) { doc.addPage(); y = 26 } }
 
       if (p.descripcion) {
         sans(8.2)
         const desc = doc.splitTextToSize(String(p.descripcion).replace(/\n+/g, ' '), W - 2 * M).slice(0, 8)
-        asegurar(6 + desc.length * 4.6)
+        asegurarSuelto(6 + desc.length * 4.6)
         rotulo('LA PROPIEDAD', M, y); y += 6
         doc.setTextColor(...FG.TEXTO); sans(8.2)
         justif(desc, M, y, W - 2 * M, 4.6)
         y += desc.length * 4.6 + 8
-      }
-
-      // Galería digital: hasta 4 fotos más (2 a 5), en grilla de dos columnas.
-      const galeria = imgs.slice(1, 5)
-      if (galeria.length) {
-        const celW = (W - 2 * M - 4) / 2, celH = 54
-        const filas = Math.ceil(galeria.length / 2)
-        asegurar(7 + filas * (celH + 4))
-        rotulo('GALERÍA', M, y); y += 7
-        for (let gi = 0; gi < galeria.length; gi++) {
-          const gx = M + (gi % 2) * (celW + 4), gy = y + Math.floor(gi / 2) * (celH + 4)
-          try {
-            const raw = await fBase64(galeria[gi])
-            const fit = await fCover(raw, Math.round(celW * 4), celH * 4)
-            if (fit) doc.addImage(fit, 'JPEG', gx, gy, celW, celH, '', 'FAST')
-          } catch (e) {}
-        }
-        y += filas * (celH + 4) + 6
       }
 
       // Comodidades en tres columnas, con vinetas doradas
@@ -1603,6 +1584,7 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
       }
 
       const dt = []
+      if (p.codigo_publico) dt.push(['Referencia', p.codigo_publico])
       if (p.tipo) dt.push(['Tipo', p.tipo])
       if (p.operacion) dt.push(['Operación', p.operacion])
       if (p.antiguedad) dt.push(['Antigüedad', p.antiguedad])
@@ -1620,23 +1602,29 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
         y += Math.ceil(Math.min(dt.length, 8) / 2) * 11 + 6
       }
 
-      // Ubicacion con QR de "como llegar" cuando hay coordenadas
       const dirCompleta = [p.ubicacion, p.ciudad, p.provincia].filter(Boolean).join(', ')
-      const hayCoords = p.latitud != null && p.longitud != null
-      if (dirCompleta || hayCoords) {
-        asegurar(hayCoords ? 26 : 17)
+      if (dirCompleta) {
+        asegurar(17)
         rotulo('UBICACIÓN', M, y); y += 6
-        tinta(); sans(8.4)
-        if (dirCompleta) doc.text(dirCompleta, M, y)
-        if (hayCoords) {
-          const qM = await fQr(`https://www.google.com/maps?q=${p.latitud},${p.longitud}`, 150)
-          if (qM) {
-            doc.addImage(qM, 'PNG', W - M - 16, y - 4, 16, 16)
-            doc.setTextColor(...FG.GRIS); sans(5)
-            tracked('CÓMO LLEGAR', W - M - 8, y + 15.5, 0.5, 'center')
-          }
-          y += 22
-        } else { y += 11 }
+        tinta(); sans(8.4); doc.text(dirCompleta, M, y); y += 11
+      }
+
+      // Galería digital: hasta 4 fotos más (2 a 5), en grilla de dos columnas.
+      const galeria = imgs.slice(1, 5)
+      if (galeria.length) {
+        const celW = (W - 2 * M - 4) / 2, celH = 54
+        const filas = Math.ceil(galeria.length / 2)
+        asegurar(7 + filas * (celH + 4))
+        rotulo('GALERÍA', M, y); y += 7
+        for (let gi = 0; gi < galeria.length; gi++) {
+          const gx = M + (gi % 2) * (celW + 4), gy = y + Math.floor(gi / 2) * (celH + 4)
+          try {
+            const raw = await fBase64(galeria[gi])
+            const fit = await fCover(raw, Math.round(celW * 8), celH * 8)
+            if (fit) doc.addImage(fit, 'JPEG', gx, gy, celW, celH, '', 'FAST')
+          } catch (e) {}
+        }
+        y += filas * (celH + 4) + 6
       }
 
       // Cierre anclado al fondo: QRs + red + martillera (link directo, sin tracking).
