@@ -25,18 +25,6 @@
       font-size:.46rem; font-weight:700; letter-spacing:.06em; text-align:center; padding:1px 0;
     }
     .upload-preview:first-child .up-badge { display:block; }
-    .upload-preview .up-mover {
-      position:absolute; left:0; right:0; top:0; display:flex;
-      justify-content:space-between; opacity:0; transition:opacity .15s ease;
-    }
-    .upload-preview:hover .up-mover { opacity:1; }
-    .upload-preview .up-mover button {
-      width:18px; height:18px; border:none; cursor:pointer; font-size:.55rem; line-height:1;
-      background:rgba(9,9,9,.72); color:var(--blanco);
-      display:flex; align-items:center; justify-content:center;
-    }
-    .upload-preview .up-mover button:hover:not(:disabled) { background:var(--dorado); color:var(--negro); }
-    .upload-preview .up-mover button:disabled { opacity:.25; cursor:default; }
     .up-ayuda { font-size:.66rem; color:var(--gris-claro); margin-top:.6rem; }
     .admin-main { font-family:'Inter',system-ui,sans-serif; }
     /* Secciones de formulario */
@@ -782,12 +770,6 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
 
   function refrescarOrden() {
     const tiles = tilesActuales()
-    tiles.forEach((tile, i) => {
-      const prev = tile.querySelector('[data-mov="prev"]')
-      const next = tile.querySelector('[data-mov="next"]')
-      if (prev) prev.disabled = i === 0
-      if (next) next.disabled = i === tiles.length - 1
-    })
     const cont = document.getElementById('uploadPreviews')
     if (!cont) return
     let ayuda = document.getElementById('upAyuda')
@@ -810,28 +792,10 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
   function montarTile(div) {
     div.setAttribute('draggable', 'true')
 
-    const mover = document.createElement('div')
-    mover.className = 'up-mover'
-    mover.innerHTML =
-      '<button type="button" data-mov="prev" title="Mover a la izquierda">&#9664;</button>' +
-      '<button type="button" data-mov="next" title="Mover a la derecha">&#9654;</button>'
-    div.appendChild(mover)
-
     const badge = document.createElement('div')
     badge.className = 'up-badge'
     badge.textContent = 'Portada'
     div.appendChild(badge)
-
-    mover.querySelector('[data-mov="prev"]').addEventListener('click', ev => {
-      ev.preventDefault()
-      const ant = div.previousElementSibling
-      if (ant && ant.classList.contains('upload-preview')) { div.parentNode.insertBefore(div, ant); refrescarOrden() }
-    })
-    mover.querySelector('[data-mov="next"]').addEventListener('click', ev => {
-      ev.preventDefault()
-      const sig = div.nextElementSibling
-      if (sig && sig.classList.contains('upload-preview')) { div.parentNode.insertBefore(sig, div); refrescarOrden() }
-    })
 
     div.addEventListener('dragstart', ev => {
       tileArrastrado = div
