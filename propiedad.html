@@ -1551,9 +1551,12 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
       const LIMITE = 250
 
       // Hoja 1: la descripcion se recorta sola para llenar la hoja sin desbordarla.
+      const amen = Array.isArray(window.__fichaAmen) ? window.__fichaAmen : []
+      const filasAmen = Math.ceil(Math.min(amen.length, 18) / 3)
+      const altoAmen = amen.length ? 6.5 + filasAmen * 4.8 + 6 : 0
       if (p.descripcion) {
         sans(8.2)
-        const maxL = Math.min(10, Math.max(3, Math.floor((LIMITE - y - 6) / 4.6)))
+        const maxL = Math.min(10, Math.max(3, Math.floor((LIMITE - y - 6 - altoAmen) / 4.6)))
         const desc = doc.splitTextToSize(String(p.descripcion).replace(/\n+/g, ' '), W - 2 * M).slice(0, maxL)
         rotulo('LA PROPIEDAD', M, y); y += 6
         doc.setTextColor(...FG.TEXTO); sans(8.2)
@@ -1561,14 +1564,10 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
         y += desc.length * 4.6 + 8
       }
 
-      // Hoja 2 — siempre arranca acá: datos, galeria y cierre. Nunca hay hoja 3.
-      doc.addPage(); y = 26
-
-      const amen = Array.isArray(window.__fichaAmen) ? window.__fichaAmen : []
       if (amen.length) {
         const colN = 3, colW2 = (W - 2 * M) / colN
         const lista = amen.slice(0, 18)
-        const filasA = Math.ceil(lista.length / colN)
+        const filasA = filasAmen
         rotulo('COMODIDADES', M, y); y += 6.5
         lista.forEach((am, i) => {
           const cx = M + (i % colN) * colW2, cy = y + Math.floor(i / colN) * 4.8
@@ -1577,6 +1576,9 @@ document.querySelectorAll('a,button,[onclick],select,input,label,textarea').forE
         })
         y += filasA * 4.8 + 6
       }
+
+      // Hoja 2 — siempre arranca acá: datos, galeria y cierre. Nunca hay hoja 3.
+      doc.addPage(); y = 26
 
       const dt = []
       if (p.codigo_publico) dt.push(['Referencia', p.codigo_publico])
