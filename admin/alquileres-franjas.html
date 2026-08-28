@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Alquileres · Franjas · QA</title>
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Alquileres · Franjas · PRODUCCIÓN</title>
 <!--
-  admin/alquileres-franjas-qa.html
+  admin/alquileres-franjas.html
   Cloud · 17-ago-2026 · Gobernanza visual: APLICA (canon gobernanza-visual.md v02)
-  ENTORNO: SOLO QA (rsjwqmpseknvydistgfr). NO usa js/config.js — ese apunta a PRODUCCIÓN.
+  ENTORNO: SOLO PRODUCCIÓN (wajkfydxutptcvvfwrvq). NO usa js/config.js — ese apunta a PRODUCCIÓN.
   Diseño aprobado por Mariano el 17-ago (maqueta v5). Lee de alq_v_* por PostgREST.
   Escritura: solo por alq_admin_preparar/aplicar. Esta pantalla hoy es READ-ONLY.
 -->
@@ -213,10 +214,10 @@ code{font-family:ui-monospace,monospace;font-size:.66rem;background:rgba(255,255
 
 <!-- ══ LOGIN ══ -->
 <div id="login">
-  <div class="kicker" style="text-align:center">Sur Patagonia · Alquileres · QA</div>
+  <div class="kicker" style="text-align:center">Sur Patagonian Real Estate · Alquileres · Producción</div>
   <div class="t1">
     <div class="sec-title" style="margin-bottom:.4rem">Entrar</div>
-    <div class="sub">Banco de pruebas · <code style="font-size:.62rem">rsjwqmpseknvydistgfr</code></div>
+    <div class="sub">Acceso administrativo protegido</div>
     <label>Email</label>
     <input class="sp-input" id="em" type="email" autocomplete="username" placeholder="msventas2015@gmail.com">
     <label>Contraseña</label>
@@ -228,7 +229,7 @@ code{font-family:ui-monospace,monospace;font-size:.66rem;background:rgba(255,255
 
 <!-- ══ APP ══ -->
 <div id="app"><div class="wrap">
-  <div class="kicker">Sur Patagonia · Alquileres · Banco de pruebas QA · <b style="color:#e89a6f">BUILD 9</b> · 17-ago · paleta v2</div>
+  <div class="kicker">Sur Patagonian Real Estate · Alquileres · Producción</div>
   <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem">
     <h1 class="p-title">Alquileres</h1>
     <button class="btn" id="bOut">Salir</button>
@@ -271,8 +272,8 @@ code{font-family:ui-monospace,monospace;font-size:.66rem;background:rgba(255,255
 
   <section class="t1">
     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.9rem">
-      <span class="sec-title" style="color:var(--accent)">▸ Bandeja del robot — facturas que llegaron al mail</span>
-      <button class="btn" id="bCasilla">Revisar casilla</button>
+      <span class="sec-title" style="color:var(--accent)">▸ Bandeja manual de facturas</span>
+      <button class="btn" id="bCasilla" disabled title="La automatización de correo está fuera de esta ventana">Ingreso automático desactivado</button>
     </div>
     <div id="bandeja"></div>
     <div id="robotMsg" class="sub" style="margin-top:.6rem"></div>
@@ -280,8 +281,8 @@ code{font-family:ui-monospace,monospace;font-size:.66rem;background:rgba(255,255
 </div></div>
 
 <script>
-const SB_URL='https://rsjwqmpseknvydistgfr.supabase.co';
-const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzandxbXBzZWtudnlkaXN0Z2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NDE1OTEsImV4cCI6MjEwMjMxNzU5MX0.X31f3AGUg0Oi01daBktS9ltfcp3ID6uZFJd7tGIlUKg';
+const SB_URL='https://wajkfydxutptcvvfwrvq.supabase.co';
+const SB_KEY='sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s';
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
 
 /* F1-A: contrato v2 acotado; cualquier operación fuera de la allowlist conserva v1. */
@@ -492,7 +493,7 @@ function alqF1aMostrarError(contenedor,error,alCompletar){
   boton.onclick=async()=>{
     boton.disabled=true;
     try{
-      const resultado=await alqF1aReintentarV2(info,'Reintento explícito desde alquileres-franjas-qa');
+      const resultado=await alqF1aReintentarV2(info,'Reintento explícito desde alquileres-franjas');
       if(alCompletar)await alCompletar(resultado);
     }catch(siguiente){alqF1aMostrarError(contenedor,siguiente,alCompletar)}
   };
@@ -1055,12 +1056,7 @@ function isoDeFecha(s){
 
 $('#bPrev').onclick=()=>{if(VISTA.tipo==='unidad'){VISTA.anio--;render();return;}MES.m--;if(MES.m<0){MES.m=11;MES.y--}render()};
 $('#bNext').onclick=()=>{if(VISTA.tipo==='unidad'){VISTA.anio++;render();return;}MES.m++;if(MES.m>11){MES.m=0;MES.y++}render()};
-$('#bCasilla').onclick=async()=>{
-  $('#robotMsg').textContent='Entrando a la casilla…';
-  const {data,error}=await sb.functions.invoke('robot-facturas',{body:{}});
-  $('#robotMsg').textContent=error?('Error: '+error.message):('Robot: '+JSON.stringify(data));
-  if(!error){await cargar();render()}
-};
+$('#robotMsg').textContent='Cargá los PDF manualmente. El circuito automático de correo no está habilitado.';
 </script>
 </body>
 </html>
