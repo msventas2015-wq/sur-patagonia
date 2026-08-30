@@ -10,12 +10,10 @@
   Cloud · 17-ago-2026 · Gobernanza visual: APLICA (canon gobernanza-visual.md v02)
   ENTORNO: SOLO PRODUCCIÓN (wajkfydxutptcvvfwrvq). NO usa js/config.js — ese apunta a PRODUCCIÓN.
   Diseño aprobado por Mariano el 17-ago (maqueta v5). Lee de alq_v_* por PostgREST.
-  Escritura: solo por alq_admin_preparar/aplicar. Esta pantalla hoy es READ-ONLY.
+  Escritura: ninguna. Esta pantalla es READ-ONLY.
 -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="../js/alq-lector-facturas.js?v=4"></script>
 <script src="../js/alq-html-seguro.js?v=1"></script>
 <style>
 :root{
@@ -157,41 +155,6 @@ body{background:var(--bg);font-family:'Inter',system-ui,sans-serif;color:var(--b
   background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent) 45%,transparent));
   box-shadow:0 0 8px color-mix(in srgb,var(--accent) 55%,transparent)}
 .u.cerrada .lane-row{display:none}
-/* bandeja */
-.fila{display:flex;align-items:center;gap:.8rem;padding:.6rem .8rem;border-radius:9px;
-  border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.015);margin-bottom:.45rem}
-.ftxt{flex:1;min-width:0;font-size:.75rem}
-.ftxt small{display:block;font-size:.62rem;color:rgba(245,243,240,.42);margin-top:.12rem}
-.empty{color:rgba(255,255,255,.28);font-size:.75rem;padding:.5rem 0}
-.warn{border:1px solid rgba(240,149,106,.28);
-  background:linear-gradient(135deg,rgba(240,149,106,.13),rgba(240,149,106,.04));
-  border-radius:8px;padding:.7rem .95rem;font-size:.71rem;line-height:1.55;
-  color:rgba(245,243,240,.78);margin-top:.8rem}
-.warn b{color:var(--e-sin);font-weight:600}
-.okbox{border:1px solid rgba(59,191,136,.3);
-  background:linear-gradient(135deg,rgba(59,191,136,.13),rgba(59,191,136,.04));
-  border-radius:8px;padding:.6rem .9rem;font-size:.71rem;line-height:1.55;
-  color:rgba(245,243,240,.8);margin-top:.6rem}
-.okbox b{color:var(--e-ok);font-weight:600}
-.lectura:empty{display:none}
-.lectura{margin-top:.7rem}
-.lec-grid{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
-.dato{font-size:.68rem;color:rgba(245,243,240,.62);padding:.24rem .7rem;border-radius:8px;
-  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
-.dato b{color:var(--blanco);font-weight:700}
-.formfila[hidden]{display:none}
-.formfila{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.8rem;align-items:flex-end}
-.formfila label{font-size:.55rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;
-  color:rgba(255,255,255,.42);display:flex;flex-direction:column;gap:.3rem}
-.formfila label:first-child{flex:1;min-width:280px}
-.formfila .sp-input{font-size:.75rem;padding:.45rem .6rem}
-.formfila select.sp-input{min-width:280px}
-.formfila input[type=number]{width:130px}
-.formfila input[type=date]{width:160px}
-.fila{align-items:flex-start}
-.fila .mini{margin-top:.15rem}
-code{font-family:ui-monospace,monospace;font-size:.66rem;background:rgba(255,255,255,.06);
-  padding:.08rem .28rem;border-radius:4px;color:#e8c96a}
 /* leyenda de lectura */
 .leytit{font-size:.54rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);margin-right:.3rem}
 .lg{display:inline-flex;align-items:center;gap:.42rem;font-size:.6rem;color:rgba(255,255,255,.45)}
@@ -232,7 +195,10 @@ code{font-family:ui-monospace,monospace;font-size:.66rem;background:rgba(255,255
   <div class="kicker">Sur Patagonian Real Estate · Alquileres · Producción</div>
   <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem">
     <h1 class="p-title">Alquileres</h1>
-    <button class="btn" id="bOut">Salir</button>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+      <a class="btn" href="alquileres-admin.html" style="text-decoration:none">Volver a administración</a>
+      <button class="btn" id="bOut">Salir</button>
+    </div>
   </div>
 
   <section class="t1">
@@ -270,247 +236,12 @@ code{font-family:ui-monospace,monospace;font-size:.66rem;background:rgba(255,255
     </div>
   </section>
 
-  <section class="t1">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.9rem">
-      <span class="sec-title" style="color:var(--accent)">▸ Bandeja manual de facturas</span>
-      <button class="btn" id="bCasilla" disabled title="La automatización de correo está fuera de esta ventana">Ingreso automático desactivado</button>
-    </div>
-    <div id="bandeja"></div>
-    <div id="robotMsg" class="sub" style="margin-top:.6rem"></div>
-  </section>
 </div></div>
 
 <script>
 const SB_URL='https://wajkfydxutptcvvfwrvq.supabase.co';
 const SB_KEY='sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s';
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
-
-/* F1-A: contrato v2 acotado; cualquier operación fuera de la allowlist conserva v1. */
-const ALQ_F1A_V2_OPERACIONES=new Set(Object.freeze([
-  'nota_emitir','credito_consumir','transferencia_interna','deposito_evento_registrar',
-  'deposito_liquidar_y_devolver','reversa_con_reapertura','cargo_manual_emitir','pago_multimoneda'
-]));
-const ALQ_F1A_V2_REFERENCIA=Object.freeze({
-  nota_emitir:'nota_ref',credito_consumir:'consumo_ref',transferencia_interna:'transferencia_ref',
-  deposito_evento_registrar:'evento_ref',deposito_liquidar_y_devolver:'liquidacion_ref',
-  reversa_con_reapertura:'reversa_ref',cargo_manual_emitir:'cargo_fuente_ref',
-  pago_multimoneda:'pago_fuente_ref'
-});
-const ALQ_F1A_V2_STORAGE='alq:f1a:v2:';
-const ALQ_F1A_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const ALQ_F1A_V2_EN_VUELO=new Map();
-
-function alqF1aJsonCanonico(valor){
-  if(Array.isArray(valor))return '['+valor.map(v=>alqF1aJsonCanonico(v===undefined?null:v)).join(',')+']';
-  if(valor&&typeof valor==='object')return '{'+Object.keys(valor).filter(k=>valor[k]!==undefined).sort()
-    .map(k=>JSON.stringify(k)+':'+alqF1aJsonCanonico(valor[k])).join(',')+'}';
-  return JSON.stringify(valor);
-}
-async function alqF1aSha256(valor){
-  const bytes=new TextEncoder().encode(alqF1aJsonCanonico(valor));
-  return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
-    .map(x=>x.toString(16).padStart(2,'0')).join('');
-}
-function alqF1aLeerEstado(clave){
-  try{return JSON.parse(localStorage.getItem(clave)||'null')}
-  catch(_){throw new Error('ALQ_F1A_ESTADO_DURABLE_ILEGIBLE')}
-}
-function alqF1aGuardarEstado(clave,estado){
-  const bytes=JSON.stringify(estado);
-  try{
-    localStorage.setItem(clave,bytes);
-    if(localStorage.getItem(clave)!==bytes)throw new Error('verify');
-  }catch(_){throw new Error('ALQ_F1A_ESTADO_DURABLE_NO_DISPONIBLE')}
-}
-function alqF1aEliminarEstado(clave){try{localStorage.removeItem(clave)}catch(_){/* replay sigue seguro */}}
-async function alqF1aActorId(){
-  const {data,error}=await sb.auth.getSession();
-  const id=data&&data.session&&data.session.user&&data.session.user.id;
-  if(error||!id)throw new Error('ALQ_F1A_SESION_REQUERIDA');
-  return id;
-}
-function alqF1aClaveEstado(actor,op,slot){
-  return ALQ_F1A_V2_STORAGE+actor+':'+op+':'+encodeURIComponent(slot);
-}
-function alqF1aUuidNuevo(){
-  const id=crypto.randomUUID().toLowerCase();
-  if(!ALQ_F1A_UUID.test(id))throw new Error('ALQ_F1A_UUID_CLIENTE_INVALIDO');
-  return id;
-}
-function alqF1aComando(ctx,etapa){
-  let comando=ctx.estado.comandos[etapa];
-  if(!comando||comando.terminal===true){
-    comando={comando_request_id:alqF1aUuidNuevo(),terminal:false};
-    ctx.estado.comandos[etapa]=comando;
-    alqF1aGuardarEstado(ctx.clave,ctx.estado);
-  }
-  return comando;
-}
-function alqF1aRegistrarEnvelope(ctx,etapa,envelope){
-  const comando=ctx.estado.comandos[etapa];
-  comando.terminal=true;comando.envelope=envelope;
-  ctx.estado.ultima_accion=etapa;ctx.estado.ultimo_envelope=envelope;
-  alqF1aGuardarEstado(ctx.clave,ctx.estado);
-}
-function alqF1aErrorNegocio(envelope,ctx){
-  const sinFila=envelope&&envelope.estado==='rechazada_sin_fila';
-  const mensaje=(envelope&&envelope.codigo)||'ALQ_F1A_OPERACION_RECHAZADA';
-  const error=new Error(sinFila&&envelope.requiere_nueva_preparacion===true
-    ? mensaje+'. Corregí el borrador y volvé a confirmar.' : mensaje);
-  error.name='AlqF1aBusinessError';
-  error.alqF1a={envelope,clave:ctx.clave,operacion:ctx.operacion,payload:ctx.payload,
-    slot:ctx.slot,opciones:ctx.opciones};
-  return error;
-}
-async function alqF1aRpcCrudo(nombre,parametros){
-  const {data,error}=await sb.rpc(nombre,parametros);
-  if(error)throw new Error(error.message);
-  if(!data||typeof data!=='object')throw new Error('ALQ_F1A_ENVELOPE_INVALIDO');
-  return data;
-}
-async function alqF1aContexto(op,payload,opciones){
-  const campo=ALQ_F1A_V2_REFERENCIA[op];
-  const slot=String(opciones&&opciones.slot||'').trim();
-  if(!campo||!slot)throw new Error('ALQ_F1A_SLOT_DURABLE_REQUERIDO');
-  const actor=await alqF1aActorId();
-  const clave=alqF1aClaveEstado(actor,op,slot);
-  let estado=alqF1aLeerEstado(clave);
-  const refAportada=payload&&payload[campo];
-  if(refAportada&&!ALQ_F1A_UUID.test(String(refAportada)))
-    throw new Error('ALQ_F1A_REFERENCIA_MANUAL_NO_CANONICA');
-  if(!estado){
-    estado={version:1,operacion:op,slot,referencia_campo:campo,
-      referencia:String(refAportada||alqF1aUuidNuevo()).toLowerCase(),comandos:{}};
-    alqF1aGuardarEstado(clave,estado);
-  }else if(estado.operacion!==op||estado.referencia_campo!==campo||
-      (refAportada&&estado.referencia!==String(refAportada).toLowerCase())){
-    throw new Error('ALQ_F1A_BORRADOR_DURABLE_EN_CONFLICTO');
-  }
-  const normalizado=Object.assign({},payload,{[campo]:estado.referencia});
-  const payloadSha=await alqF1aSha256(normalizado);
-  const anterior=estado.ultimo_envelope;
-  if(estado.payload_sha256&&estado.payload_sha256!==payloadSha){
-    if(!(anterior&&anterior.estado==='rechazada_sin_fila'&&
-         anterior.requiere_nueva_preparacion===true))
-      throw new Error('ALQ_F1A_PAYLOAD_CAMBIO_CON_COMANDO_PENDIENTE');
-    estado.comandos={};estado.ultima_accion=null;estado.ultimo_envelope=null;
-  }else if(anterior&&anterior.estado==='rechazada_sin_fila'&&
-           anterior.requiere_nueva_preparacion===true){
-    estado.ultima_accion=null;estado.ultimo_envelope=null;
-  }
-  estado.payload_sha256=payloadSha;
-  alqF1aGuardarEstado(clave,estado);
-  return {clave,estado,operacion:op,payload:normalizado,slot,opciones:opciones||{}};
-}
-function alqF1aResultadoTerminal(ctx,envelope){
-  if(ctx.opciones.retener_hasta_continuacion!==true)alqF1aEliminarEstado(ctx.clave);
-  return envelope.resultado;
-}
-async function alqF1aAplicarV2(ctx,preparada){
-  const etapa='aplicar:'+preparada.operacion_request_id;
-  const comando=alqF1aComando(ctx,etapa);
-  const envelope=await alqF1aRpcCrudo('alq_admin_aplicar_v2',{
-    p_operacion_request_id:preparada.operacion_request_id,
-    p_comando_request_id:comando.comando_request_id,
-    p_operacion:ctx.operacion,p_firma:preparada.firma,p_payload:ctx.payload
-  });
-  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
-  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
-  throw alqF1aErrorNegocio(envelope,ctx);
-}
-async function alqF1aRpcV2Interno(op,payload,opciones){
-  const ctx=await alqF1aContexto(op,payload,opciones);
-  const previo=ctx.estado.ultimo_envelope;
-  if(previo){
-    if(previo.ok===true&&previo.estado==='aplicada')return alqF1aResultadoTerminal(ctx,previo);
-    if(previo.ok===true&&previo.estado==='preparada')return alqF1aAplicarV2(ctx,previo);
-    throw alqF1aErrorNegocio(previo,ctx);
-  }
-  const etapa='preparar';
-  const comando=alqF1aComando(ctx,etapa);
-  const envelope=await alqF1aRpcCrudo('alq_admin_preparar_v2',{
-    p_comando_request_id:comando.comando_request_id,p_operacion:op,p_payload:ctx.payload
-  });
-  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
-  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
-  if(envelope.ok===true&&envelope.estado==='preparada')return alqF1aAplicarV2(ctx,envelope);
-  throw alqF1aErrorNegocio(envelope,ctx);
-}
-async function alqF1aRpcV2(op,payload,opciones){
-  const vuelo=op+':'+String(opciones&&opciones.slot||'');
-  if(ALQ_F1A_V2_EN_VUELO.has(vuelo))return ALQ_F1A_V2_EN_VUELO.get(vuelo);
-  const trabajo=alqF1aRpcV2Interno(op,payload,opciones);
-  ALQ_F1A_V2_EN_VUELO.set(vuelo,trabajo);
-  try{return await trabajo}
-  finally{if(ALQ_F1A_V2_EN_VUELO.get(vuelo)===trabajo)ALQ_F1A_V2_EN_VUELO.delete(vuelo)}
-}
-async function alqF1aCancelarV2(info,motivo){
-  const previo=info&&info.envelope;
-  if(!previo||!previo.operacion_request_id)throw new Error('ALQ_F1A_CANCELACION_SIN_INTENTO');
-  const estado=alqF1aLeerEstado(info.clave);
-  if(!estado)throw new Error('ALQ_F1A_ESTADO_DURABLE_AUSENTE');
-  const ctx={clave:info.clave,estado,operacion:info.operacion,payload:info.payload,
-    slot:info.slot,opciones:info.opciones||{}};
-  const etapa='cancelar:'+previo.operacion_request_id;
-  const comando=alqF1aComando(ctx,etapa);
-  const envelope=await alqF1aRpcCrudo('alq_admin_cancelar_v2',{
-    p_operacion_request_id:previo.operacion_request_id,
-    p_comando_request_id:comando.comando_request_id,p_motivo:String(motivo||'Cancelación explícita UI')
-  });
-  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
-  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
-  throw alqF1aErrorNegocio(envelope,ctx);
-}
-async function alqF1aReintentarV2(info,motivo){
-  const previo=info&&info.envelope;
-  if(!previo||!previo.hecho_id||previo.reintentable!==true||previo.estado!=='rechazada')
-    throw new Error('ALQ_F1A_REINTENTO_NO_HABILITADO');
-  const estado=alqF1aLeerEstado(info.clave);
-  if(!estado)throw new Error('ALQ_F1A_ESTADO_DURABLE_AUSENTE');
-  const ctx={clave:info.clave,estado,operacion:info.operacion,payload:info.payload,
-    slot:info.slot,opciones:info.opciones||{}};
-  const etapa='reintentar:'+previo.hecho_id;
-  const comando=alqF1aComando(ctx,etapa);
-  const envelope=await alqF1aRpcCrudo('alq_admin_reintentar_v2',{
-    p_hecho_id:previo.hecho_id,p_comando_request_id:comando.comando_request_id,
-    p_motivo:String(motivo||'Reintento explícito UI')
-  });
-  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
-  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
-  if(envelope.ok===true&&envelope.estado==='preparada')return alqF1aAplicarV2(ctx,envelope);
-  throw alqF1aErrorNegocio(envelope,ctx);
-}
-async function alqF1aCerrarBorrador(op,slot){
-  const actor=await alqF1aActorId();
-  alqF1aEliminarEstado(alqF1aClaveEstado(actor,op,slot));
-}
-function alqF1aMostrarError(contenedor,error,alCompletar){
-  contenedor.textContent='No se emitió. '+error.message;
-  const info=error&&error.alqF1a,envelope=info&&info.envelope;
-  if(!envelope||!envelope.hecho_id||envelope.reintentable!==true||envelope.estado!=='rechazada')return;
-  const boton=document.createElement('button');
-  boton.type='button';boton.className='btn';boton.textContent='Reintentar';boton.style.marginLeft='.6rem';
-  boton.onclick=async()=>{
-    boton.disabled=true;
-    try{
-      const resultado=await alqF1aReintentarV2(info,'Reintento explícito desde alquileres-franjas');
-      if(alCompletar)await alCompletar(resultado);
-    }catch(siguiente){alqF1aMostrarError(contenedor,siguiente,alCompletar)}
-  };
-  contenedor.appendChild(boton);
-}
-async function alqRpcV1(op,payload){
-  const preparada=await sb.rpc('alq_admin_preparar',{p_operacion:op,p_payload:payload});
-  if(preparada.error)throw new Error(preparada.error.message);
-  const aplicada=await sb.rpc('alq_admin_aplicar',{p_request_id:preparada.data.request_id,
-    p_operacion:op,p_firma:preparada.data.firma,p_payload:payload});
-  if(aplicada.error)throw new Error(aplicada.error.message);
-  return aplicada.data;
-}
-async function rpc(op,payload,opciones){
-  if(ALQ_F1A_V2_OPERACIONES.has(op))return alqF1aRpcV2(op,payload,opciones);
-  return alqRpcV1(op,payload);
-}
 
 const COLOR={electricidad:'--k-electricidad',gas:'--k-gas',agua:'--k-agua',internet:'--k-internet',
   expensas:'--k-expensas',municipal:'--k-municipal',alquiler:'--k-alquiler'};
@@ -547,17 +278,16 @@ async function arrancar(){
 
 async function cargar(){
   const q=(t,sel='*')=>sb.from(t).select(sel);
-  const [props,contratos,versiones,cargos,cuentas,facturas,repartos,titul,mails]=await Promise.all([
+  const [props,contratos,versiones,cargos,cuentas,facturas,repartos,titul]=await Promise.all([
     q('alq_v_propiedad'),q('alq_v_contrato'),q('alq_v_contrato_version'),
     q('alq_v_cargo'),q('alq_v_servicio_cuenta'),q('alq_v_servicio_factura'),
     q('alq_v_servicio_factura_reparto'),
-    q('alq_v_titularidad'),
-    sb.from('alq_mail_entrante').select('*').order('recibido_at',{ascending:false})
+    q('alq_v_titularidad')
   ]);
   DATA={props:props.data||[],contratos:contratos.data||[],versiones:versiones.data||[],
     cargos:cargos.data||[],cuentas:cuentas.data||[],facturas:facturas.data||[],repartos:repartos.data||[],
-    titul:titul.data||[],mails:mails.data||[],
-    err:[props,contratos,versiones,cargos,cuentas,facturas,repartos,titul,mails]
+    titul:titul.data||[],
+    err:[props,contratos,versiones,cargos,cuentas,facturas,repartos,titul]
       .map(r=>r.error?.message).filter(Boolean)};
 }
 
@@ -793,26 +523,6 @@ function render(){
   $('#mesSub').textContent=`${DATA.props.length} unidades · ${DATA.cargos.length} cargos · ${DATA.facturas.length} facturas`
     +(DATA.err.length?` · ⚠ ${DATA.err.length} error(es) de lectura`:'');
 
-  /* ── BANDEJA ── */
-  const b=DATA.mails;
-  const colorEstado=e=>e==='descartada'?'--via-directo':e==='pendiente'?'--e-sin':'--e-ok';
-  $('#bandeja').innerHTML = b.length ? b.map(m=>{
-    if(!ID_OK(m.id)) return '<div class="warn"><b>Correo omitido.</b> Identificador inválido.</div>';
-    const tienePdf = m.adjunto_nombre && !/\(sin PDF\)/i.test(m.adjunto_nombre);
-    return `<div class="fila" data-id="${H(m.id)}">
-      <span class="mini" style="--m:var(${colorEstado(m.estado)});flex:none">${H(m.estado||'pendiente')}</span>
-      <span class="ftxt"><b>${H(tienePdf?m.adjunto_nombre:(m.asunto||'(sin asunto)'))}</b>
-        <small>${H(m.remitente||'')}${m.asunto&&tienePdf?' · '+H(m.asunto):''} · ${H(m.recibido_at?new Date(m.recibido_at).toLocaleString('es-AR'):'')}</small>
-        <div class="lectura" id="lec-${H(m.id)}"></div></span>
-      ${tienePdf?`<button class="btn js-leer-pdf" data-mail-id="${H(m.id)}" style="flex:none">Leer factura</button>`:''}
-    </div>`}).join('')
-    : '<div class="empty">La bandeja está vacía. Tocá "Revisar casilla" para que el robot entre al mail.</div>';
-  document.querySelectorAll('#bandeja .js-leer-pdf').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const id=btn.dataset.mailId;
-      if(ID_OK(id)) leerPdf(id);
-    });
-  });
 }
 
 /* ── C3 · VISTA UNIDAD: el año entero, mes por mes ── */
@@ -874,245 +584,8 @@ function renderAnio(){
     <div class="sub" style="margin-top:.7rem">✓ pagado · ◔ por vencer · ✕ vencido · ▪ en mora · «·» sin movimientos</div>`;
 }
 
-/* ── LEER UN PDF DE LA BANDEJA con js/alq-lector-facturas.js ── */
-window.leerPdf = async function(id){
-  if(!ID_OK(id)) return;
-  const _m=(DATA.mails||[]).find(x=>x.id===id); const path=_m&&_m.storage_path;
-  if(!path){document.getElementById('lec-'+id).innerHTML='<div class="warn"><b>Sin archivo.</b></div>';return;}
-  if(_m && _m.estado==='confirmada'){
-    document.getElementById('lec-'+id).innerHTML='<div class="okbox"><b>Ya está confirmada.</b> Esta factura ya se convirtió en cargo — no se cobra dos veces.</div>';
-    return;
-  }
-  const box = document.getElementById('lec-'+id);
-  box.innerHTML = '<span class="sub">Bajando el PDF…</span>';
-  try{
-    const {data,error} = await sb.storage.from('alq-docs').download(path);
-    if(error) throw new Error('Storage: '+error.message);
-
-    box.innerHTML = '<span class="sub">Leyendo…</span>';
-    const LEC = window.AlqLector;
-    if(!LEC || typeof LEC.pdfATexto!=='function')
-      throw new Error('No cargó js/alq-lector-facturas.js — revisá la ruta ../js/');
-    if(window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc)
-      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    const texto = await LEC.pdfATexto(data);
-    window.__TEXTOS = window.__TEXTOS || {};
-    window.__TEXTOS[id] = texto;
-    const f = LEC.parseFacturaTexto(texto) || {};
-    const reconocida = f.emisor && !/desconocid/i.test(f.emisor);
-    /* Se guarda acá y NO se pasa por el atributo onclick: el JSON trae comillas dobles
-       y el navegador corta el atributo en la primera → el botón quedaba muerto.
-       Bug encontrado el 17-ago-2026. */
-    window.__LEIDAS = window.__LEIDAS || {};
-    window.__LEIDAS[id] = {emisor:f.emisor||'manual', alertas:f.alertas||[],
-                           nro:f.nro||null, socio:f.socio||null, reconocida:!!reconocida};
-    /* cruce por número de cliente — usa matchServicio del propio lector */
-    let cuenta = null;
-    if(typeof LEC.matchServicio==='function'){
-      try{ cuenta = LEC.matchServicio(f, DATA.cuentas); }catch(_){}
-    }
-    if(!cuenta && f.nro){
-      const n = String(f.nro).replace(/\D/g,'');
-      cuenta = DATA.cuentas.find(c => c.nro_cliente &&
-        (c.nro_cliente.replace(/\D/g,'').includes(n) || n.includes(c.nro_cliente.replace(/\D/g,'')))) || null;
-    }
-    const prop = cuenta ? DATA.props.find(p=>p.id===cuenta.propiedad_id) : null;
-    /* opciones de cuenta: todas las cuentas activas, agrupadas por unidad */
-    const opciones = DATA.cuentas.filter(c=>c.activa).map(c=>{
-      const p = DATA.props.find(x=>x.id===c.propiedad_id);
-      return `<option value="${H(c.id)}" ${cuenta&&c.id===cuenta.id?'selected':''}>
-        ${H(p?p.direccion:'?')} — ${H(NOMBRE[c.tipo]||c.tipo)} · ${H(c.nro_cliente)}</option>`;
-    }).join('');
-    /* ⚠ NO usar replace(/[^\d]/g,'') sobre el total: el lector devuelve un Number
-       (338057.8) y sacarle el punto lo convierte en 3380578 — diez veces más.
-       Bug encontrado el 17-ago-2026 antes de emitir ningún cargo. */
-    const montoPre = (typeof f.total==='number' && isFinite(f.total) && f.total>0)
-      ? String(Math.round(f.total)) : '';
-    const vencePre = f.vence ? (isoDeFecha(f.vence)||'').slice(0,10) : '';
-    /* completa = el lector sacó todo Y la identificó sola → no hay nada que pedirle a Mariano */
-    const completa = !!(prop && montoPre && Number(montoPre)>0 && vencePre);
-
-    box.innerHTML = `
-      <div class="lec-grid">
-        <span class="mini" style="--m:var(${reconocida?'--e-ok':'--e-sin'})">${H(f.emisor||'DESCONOCIDO')}</span>
-        ${f.nro?`<span class="dato">N° <b>${H(f.nro)}</b></span>`:''}
-        ${f.socio?`<span class="dato">Socio <b>${H(f.socio)}</b></span>`:''}
-        ${montoPre?`<span class="dato">Total <b>${plata(montoPre)}</b></span>`:''}
-        ${f.vence?`<span class="dato">Vence <b>${H(f.vence)}</b></span>`:''}
-        ${f.periodo?`<span class="dato">Período <b>${H(f.periodo)}</b></span>`:''}
-      </div>
-      ${(f.alertas&&f.alertas.length)?`<div class="warn"><b>⚠ ${f.alertas.length} alerta(s):</b> ${f.alertas.map(H).join(' · ')}</div>`:''}
-      ${prop
-        ? `<div class="okbox"><b>Identificada sola:</b> ${H(prop.direccion)} — cruzó por el número de cliente <code>${H(cuenta.nro_cliente)}</code>.</div>`
-        : `<div class="warn"><b>No la pude identificar sola.</b> ${reconocida
-             ? `El número <code>${H(f.nro||'—')}</code> no coincide con ninguna cuenta cargada.`
-             : `El formato no es de las 4 empresas mapeadas (EDERSA · Camuzzi · Aguas Rionegrinas · COOPETEL).`}
-             Completala a mano acá abajo.</div>`}
-
-      <div class="formfila" id="frm-${H(id)}" ${completa?'hidden':''}>
-        <label>A qué unidad y servicio
-          <select class="sp-input" id="sel-${H(id)}">${prop?'':'<option value="">— elegir —</option>'}${opciones}</select></label>
-        <label>Monto
-          <input class="sp-input" id="mon-${H(id)}" type="number" inputmode="numeric" value="${H(montoPre)}" placeholder="0"></label>
-        <label>Vence
-          <input class="sp-input" id="ven-${H(id)}" type="date" value="${H(vencePre)}"></label>
-      </div>
-
-      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:.75rem">
-        <button class="btn js-confirmar-factura" data-mail-id="${H(id)}">
-          ${completa?'Confirmar y cobrar al inquilino':'Confirmar y cobrar al inquilino'}</button>
-        ${completa?`<button class="btn" style="border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.03);color:rgba(245,243,240,.6)"
-          data-mail-id="${H(id)}" data-action="corregir-manual">Corregir a mano</button>`:''}
-        ${!reconocida?`<button class="btn" style="border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.03);color:rgba(245,243,240,.6)"
-          data-mail-id="${H(id)}" data-action="ver-texto">Ver texto del PDF</button>`:''}
-      </div>
-      <div id="txt-${H(id)}"></div>
-      <div class="sub" style="margin-top:.45rem">
-        ${completa
-          ? `Va a cobrarle <b>${plata(montoPre)}</b> al inquilino de <b>${H(prop.direccion)}</b>, con vencimiento <b>${H(vencePre.split('-').reverse().join('/'))}</b>.`
-          : 'Completá lo que falta y confirmá.'}
-        Emite un cargo <b>externa</b>: deudor el inquilino, acreedor el titular.
-        La plata no toca la caja de la administración.
-        </div>`;
-    /* el atributo selected no siempre queda: se fija por JS, deterministico */
-    const sel=document.getElementById('sel-'+id);
-    if(sel&&cuenta) sel.value=cuenta.id;
-    box.querySelector('.js-confirmar-factura')?.addEventListener('click',event=>confirmarFactura(id,event));
-    box.querySelector('[data-action="corregir-manual"]')?.addEventListener('click',event=>{
-      const form=document.getElementById('frm-'+id);
-      if(form) form.hidden=false;
-      event.currentTarget.remove();
-    });
-    box.querySelector('[data-action="ver-texto"]')?.addEventListener('click',()=>verTexto(id));
-  }catch(e){
-    box.innerHTML = `<div class="warn"><b>No pude leerla.</b> ${H(e.message)}</div>`;
-  }
-};
-
-/* ── CONFIRMAR: la factura leída se convierte en deuda del inquilino ──
-   Usa SOLO cargo_manual_emitir, del catálogo sellado de 45. No inventa operaciones. */
-window.confirmarFactura = async function(id, ev){
-  if(!ID_OK(id)) return;
-  const _e = ev || window.event;
-  const f = (window.__LEIDAS||{})[id] || {emisor:'manual',alertas:[]};
-  const _mm=(DATA.mails||[]).find(x=>x.id===id);
-  if(_mm && _mm.estado==='confirmada'){
-    (ev&&ev.target||{}).textContent='Ya estaba confirmada';
-    return;
-  }
-  const btn = (_e && _e.target) || document.activeElement;
-  const cuenta_id = document.getElementById('sel-'+id)?.value;
-  const monto = String(document.getElementById('mon-'+id)?.value||'').replace(/[^\d]/g,'');
-  const fecha = document.getElementById('ven-'+id)?.value;
-
-  const aviso=t=>{btn.disabled=false;btn.textContent='Confirmar y cobrar al inquilino';
-    btn.insertAdjacentHTML('afterend',`<div class="warn"><b>Falta un dato.</b> ${H(t)}</div>`)};
-  btn.disabled=true; btn.textContent='Emitiendo…';
-  if(!cuenta_id) return aviso('Elegí a qué unidad y servicio corresponde.');
-  if(!monto||Number(monto)<=0) return aviso('Poné el monto.');
-  if(!fecha) return aviso('Poné la fecha de vencimiento.');
-  /* guarda: no emitir cargos con fecha absurda (bug de parseo de fechas) */
-  const anio=Number(fecha.slice(0,4));
-  if(anio<2020||anio>2035) return aviso(`El año ${anio} no puede ser. Revisá la fecha de vencimiento.`);
-
-  const cuenta = DATA.cuentas.find(c=>c.id===cuenta_id);
-  const prop_id = cuenta.propiedad_id;
-  const tit = DATA.titul.find(t=>t.propiedad_id===prop_id);
-  const ctr = DATA.contratos.find(c=>c.propiedad_id===prop_id && c.estado==='vigente');
-  if(!tit) return aviso('Esa unidad no tiene titular asignado.');
-  const vence = fecha+'T00:00:00Z';
-
-  const payload = {
-    cargo_fuente_ref: String(id).toLowerCase(),
-    propiedad_id: prop_id,
-    concepto: 'servicio',
-    ambito: 'externa',                       // la plata va directo al titular
-    moneda: 'ARS',
-    monto: monto,
-    vence_at: vence,
-    deudor_parte_id: cuenta.responsable_parte_id,
-    acreedor_parte_id: tit.parte_id,
-    snapshot_regla: {
-      origen:'factura_servicio_leida',
-      emisor:f.emisor||'manual', nro_leido:f.nro||null,
-      cuenta_id:cuenta.id, nro_cliente:cuenta.nro_cliente, tipo:cuenta.tipo,
-      reconocida_por_lector: !!f.reconocida,
-      alertas:f.alertas||[], lote:'MES-PRUEBA-2026-08',
-      mail_entrante_id:id,
-      nota: f.reconocida ? 'leida por el lector y confirmada en la bandeja'
-                         : 'formato no reconocido — completada a mano y confirmada'
-    }
-  };
-  if(ctr) payload.contrato_id = ctr.id;
-  const cargoSlot='factura-mail:'+String(id).toLowerCase();
-  const finalizar=async()=>{
-    // El staging forma parte de la continuación: el borrador durable se cierra después de marcarlo.
-    const marca=await sb.from('alq_mail_entrante').update({estado:'confirmada'}).eq('id',id);
-    if(marca.error)throw new Error('Confirmando mail: '+marca.error.message);
-    await alqF1aCerrarBorrador('cargo_manual_emitir',cargoSlot);
-    const prop = DATA.props.find(p=>p.id===prop_id);
-    const _vd=fecha.split('-'), _vy=Number(_vd[0]), _vm=Number(_vd[1])-1;
-    const _otroMes=(_vy!==MES.y||_vm!==MES.m);
-    btn.outerHTML = `<div class="okbox"><b>Cargo emitido y firmado en el ledger.</b> ${plata(monto)} a cobrar
-      al inquilino de <b>${H(prop?prop.direccion:'')}</b>, vence ${H(fecha.split('-').reverse().join('/'))}.
-      ${_otroMes?('Vence en <b>'+MESES[_vm]+'</b> — te llevo a ese mes para que la veas en la franja.'):'Ya aparece en la franja de la unidad, arriba.'}</div>`;
-    if(_otroMes){ MES={y:_vy,m:_vm}; }
-    await cargar(); render();
-  };
-
-  try{
-    await rpc('cargo_manual_emitir',payload,{slot:cargoSlot,retener_hasta_continuacion:true});
-    await finalizar();
-  }catch(err){
-    btn.disabled=false; btn.textContent='Confirmar y cobrar al inquilino';
-    const aviso=document.createElement('div');aviso.className='warn';
-    btn.insertAdjacentElement('afterend',aviso);
-    alqF1aMostrarError(aviso,err,async()=>{await finalizar();aviso.remove()});
-  }
-};
-/* Acepta ISO (2026-09-11) y formato argentino (11/09/2026 · 11-9-26).
-   El lector devuelve ISO: si no se contempla, 2026-09-11 se leía como 26/09/2011. */
-/* Muestra el texto crudo que pdf.js sacó del PDF, para poder mapear plantillas nuevas
-   o arreglar una que falla. Con un botón para copiarlo entero. */
-window.verTexto = function(id){
-  if(!ID_OK(id)) return;
-  const box = document.getElementById('txt-'+id);
-  const t = (window.__TEXTOS||{})[id] || '(no hay texto — leé la factura primero)';
-  box.innerHTML = `
-    <div style="margin-top:.8rem">
-      <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.4rem;flex-wrap:wrap">
-        <span class="sec-title">Texto crudo del PDF · ${t.length.toLocaleString('es-AR')} caracteres</span>
-        <button class="btn js-copiar-texto" data-mail-id="${H(id)}">Copiar todo</button>
-      </div>
-      <textarea class="sp-input js-texto-pdf" readonly rows="14"
-        style="font-family:ui-monospace,monospace;font-size:.66rem;line-height:1.5;white-space:pre;resize:vertical"></textarea>
-      <div class="sub" style="margin-top:.4rem">
-        Copiá esto y pegámelo en el chat: con eso arreglo o mapeo la plantilla.
-      </div>
-    </div>`;
-  const area=box.querySelector('.js-texto-pdf');
-  if(area){ area.value=t; area.addEventListener('click',()=>area.select()); }
-  box.querySelector('.js-copiar-texto')?.addEventListener('click',async event=>{
-    await navigator.clipboard.writeText(t);
-    event.currentTarget.textContent='Copiado ✓';
-  });
-};
-
-function isoDeFecha(s){
-  const t=String(s||'').trim();
-  let m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);          // ISO — primero
-  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}T00:00:00Z`;
-  m=t.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); // dd/mm/aaaa
-  if(!m) return null;
-  let [,d,mo,y]=m;
-  if(y.length===2) y=(Number(y)>70?'19':'20')+y;
-  if(Number(d)>31||Number(mo)>12) return null;
-  return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}T00:00:00Z`;
-}
-
 $('#bPrev').onclick=()=>{if(VISTA.tipo==='unidad'){VISTA.anio--;render();return;}MES.m--;if(MES.m<0){MES.m=11;MES.y--}render()};
 $('#bNext').onclick=()=>{if(VISTA.tipo==='unidad'){VISTA.anio++;render();return;}MES.m++;if(MES.m>11){MES.m=0;MES.y++}render()};
-$('#robotMsg').textContent='Cargá los PDF manualmente. El circuito automático de correo no está habilitado.';
 </script>
 </body>
 </html>
