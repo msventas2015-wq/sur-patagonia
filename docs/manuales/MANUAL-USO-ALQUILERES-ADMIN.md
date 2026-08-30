@@ -231,6 +231,17 @@ La liquidación es informativa: no es factura, recibo fiscal ni comprobante de A
 - ajustar un alquiler después de haber generado el mes afectado;
 - cerrar un contrato con obligaciones del inquilino pendientes o sin devolver todo el depósito.
 
+## Instalación técnica F4
+
+El orden canónico de instalación y recuperación es de **cuatro** migraciones, siempre completo y sin invertir pasos:
+
+1. `alq_f4_alta_integral_panel.sql` — historial `20260829230952`;
+2. `alq_f4_condiciones_contractuales_operativas.sql` — historial `20260829230953`;
+3. `alq_f4_facturas_compartidas_y_ciclo_contrato.sql` — historial `20260829230954`;
+4. `alq_f4_icl_bcra_variable_40.sql` — historial `20260830020556`.
+
+La cuarta migración es obligatoria: reemplaza la variable BCRA discontinuada por la variable ICL 40 y conserva el validador exacto de IPC. El test F4 se ejecuta recién después de las cuatro. Luego se despliega `alq-indices-oficiales` con verificación JWT activa y, por último, se publican juntos `admin/alquileres-admin.html` y `admin/alquileres-franjas.html`. Nunca se debe reinstalar sólo una migración anterior ni publicar los paneles antes de completar y verificar la base y la función.
+
 ## Si algo no se entiende
 
 No confirmes la operación. Cerrá el formulario, volvé a la pestaña Cargos y verificá la flecha **deudor → acreedor**. Esa relación determina a qué cuenta pertenece el movimiento.
