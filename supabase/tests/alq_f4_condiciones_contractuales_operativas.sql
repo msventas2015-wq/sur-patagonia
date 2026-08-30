@@ -1,14 +1,64 @@
-\set ON_ERROR_STOP on
-set application_name='alq-f4-condiciones-regression';
-set timezone='UTC';
 begin;
+set local application_name='alq-f4-condiciones-regression';
+set local timezone='UTC';
 
--- Prueba focalizada: usa el actor sintético del fixture local y revierte todo.
-select set_config('request.jwt.claim.sub','f3b10000-0000-4000-8000-000000000001',true);
+-- Prueba focalizada: usa un administrador activo del entorno y revierte sus
+-- filas. Como en todo ROLLBACK de PostgreSQL, las secuencias pueden avanzar.
+select set_config('alq_f4.fixture_sub',(
+  select u.id::text
+  from auth.users u
+  join alq.alq_parte_usuario pu on pu.auth_user_id=u.id
+  join alq.alq_capacidad_admin ca on ca.parte_usuario_id=pu.id
+  where statement_timestamp()<@pu.vigencia
+    and statement_timestamp()<@ca.vigencia
+  order by u.id
+  limit 1
+),true);
+select set_config('request.jwt.claim.sub',current_setting('alq_f4.fixture_sub'),true);
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claims',jsonb_build_object(
-  'sub','f3b10000-0000-4000-8000-000000000001','role','authenticated',
+  'sub',current_setting('alq_f4.fixture_sub'),'role','authenticated',
   'app_metadata',jsonb_build_object('rol','admin'))::text,true);
+
+do $fixture_preflight$
+declare v_conflicts jsonb;
+begin
+  -- Usa la misma resolución de actor que usarán las RPC. Si no existe un
+  -- administrador activo o su capacidad no está vigente, la prueba frena acá.
+  perform alq_private.alq_actor_v1(true);
+  select pg_catalog.jsonb_agg(o.request_id order by o.request_id)
+    into v_conflicts
+  from alq.alq_operacion o
+  where o.request_id=any(array[
+    'f4000000-0000-4000-8000-000000001001',
+    'f4000000-0000-4000-8000-000000002001',
+    'f4000000-0000-4000-8000-000000002101',
+    'f4000000-0000-4000-8000-000000002102',
+    'f4000000-0000-4000-8000-000000003001',
+    'f4000000-0000-4000-8000-000000003101',
+    'f4000000-0000-4000-8000-000000003102',
+    'f4000000-0000-4000-8000-000000004001',
+    'f4000000-0000-4000-8000-000000005001'
+  ]::uuid[]);
+  if v_conflicts is not null then
+    raise exception 'ALQ_F4_FIXTURE_REQUEST_ID_OCUPADO:%',v_conflicts;
+  end if;
+  if exists(select 1 from alq.alq_parte p
+    where p.documento_tipo='DNI' and p.documento_numero=any(array[
+      'F4-FIX-OWNER','F4-FIX-TENANT','F4-IDX-OWNER','F4-IDX-TENANT',
+      'F4-ICL-OWNER','F4-ICL-TENANT'
+    ]::text[])) then
+    raise exception 'ALQ_F4_FIXTURE_DOCUMENTO_PERSONA_OCUPADO';
+  end if;
+  if exists(select 1 from alq.alq_documento d
+    where d.path=any(array[
+      'f4/conversion-usd.pdf','f4/factura-compartida.pdf',
+      'f4/pago-compartido-fijo.pdf','f4/pago-compartido-indice.pdf'
+    ]::text[])) then
+    raise exception 'ALQ_F4_FIXTURE_PATH_DOCUMENTO_OCUPADO';
+  end if;
+end
+$fixture_preflight$;
 
 create function pg_temp.alq_f4_rpc(p_operacion text,p_payload jsonb)
 returns jsonb language plpgsql security invoker set search_path=''
@@ -19,6 +69,15 @@ begin
   return public.alq_admin_aplicar((v_p->>'request_id')::uuid,p_operacion,
     v_p->>'firma',p_payload);
 end
+$fn$;
+
+-- El assert es privado. Este puente temporal, dueño postgres y SECURITY
+-- DEFINER, permite comprobarlo dentro de los tramos que ejercen las RPC con
+-- el rol real authenticated sin ampliar privilegios persistentes.
+create function pg_temp.alq_f4_assert_global()
+returns text language sql stable security definer set search_path=''
+as $fn$
+  select alq_private.alq_assert_global_v1()
 $fn$;
 
 set local role authenticated;
@@ -44,8 +103,7 @@ end
 $all_proration_modes$;
 
 -- Contrato de porcentaje fijo, alta a mitad de mes y fin a mitad de mes.
-select set_config('alq_f4.fixed',public.alq_admin_alta_integral(
-  'f4000000-0000-4000-8000-000000001001',jsonb_build_object(
+select set_config('alq_f4.fixed_payload',jsonb_build_object(
     'schema_version',1,
     'propietario',jsonb_build_object('tipo_persona','fisica','nombre','Propietaria F4 fija','documento_tipo','DNI','documento_numero','F4-FIX-OWNER'),
     'inquilino',jsonb_build_object('tipo_persona','fisica','nombre','Inquilino F4 fijo','documento_tipo','DNI','documento_numero','F4-FIX-TENANT'),
@@ -61,7 +119,52 @@ select set_config('alq_f4.fixed',public.alq_admin_alta_integral(
       'regla_pago_otra_moneda','tasa_pactada','fuente_conversion','Banco Nación · divisa vendedor',
       'fallback_indice',jsonb_build_object()),
     'garantia',null,'deposito',null,'servicios',jsonb_build_array(),'documentos',jsonb_build_object()
-  ))::text,true);
+  )::text,true);
+
+select set_config('alq_f4.fixed',public.alq_admin_alta_integral(
+  'f4000000-0000-4000-8000-000000001001',
+  current_setting('alq_f4.fixed_payload')::jsonb)::text,true);
+
+-- Replay secuencial real del alta: mismo request_id y exactamente el mismo
+-- valor JSONB normalizado. Los conteos se toman fuera de SET ROLE para no
+-- convertir permisos de tablas internas en parte del contrato público.
+reset role;
+select set_config('alq_f4.contracts_before_replay',
+  (select count(*) from alq.alq_contrato
+   where inquilino_parte_id=(select c.inquilino_parte_id from alq.alq_contrato c
+     where c.id=(current_setting('alq_f4.fixed')::jsonb->>'contrato_id')::uuid))::text,true);
+set local role authenticated;
+select set_config('alq_f4.fixed_replay',public.alq_admin_alta_integral(
+  'f4000000-0000-4000-8000-000000001001',
+  current_setting('alq_f4.fixed_payload')::jsonb)::text,true);
+reset role;
+
+do $alta_replay$
+declare
+  v_first jsonb:=current_setting('alq_f4.fixed')::jsonb;
+  v_replay jsonb:=current_setting('alq_f4.fixed_replay')::jsonb;
+  v_contratos_antes bigint:=current_setting('alq_f4.contracts_before_replay')::bigint;
+  v_contratos_despues bigint;
+  v_operaciones bigint;
+begin
+  select count(*) into v_contratos_despues from alq.alq_contrato
+  where inquilino_parte_id=(select c.inquilino_parte_id from alq.alq_contrato c
+    where c.id=(v_first->>'contrato_id')::uuid);
+  select count(*) into v_operaciones from alq.alq_operacion
+  where request_id='f4000000-0000-4000-8000-000000001001';
+  if (v_first->>'replay') is distinct from 'false'
+     or (v_replay->>'replay') is distinct from 'true'
+     or (v_replay->>'contrato_id') is distinct from (v_first->>'contrato_id')
+     or v_contratos_antes is distinct from 1
+     or v_contratos_despues is distinct from v_contratos_antes
+     or v_operaciones is distinct from 1 then
+    raise exception 'ALQ_F4_IDEMPOTENCIA_ALTA_FALLO:%/%/%/%/%',
+      v_first,v_replay,v_contratos_antes,v_contratos_despues,v_operaciones;
+  end if;
+end
+$alta_replay$;
+
+set local role authenticated;
 
 do $fixed_preview$
 declare r jsonb:=current_setting('alq_f4.fixed')::jsonb; p jsonb;
@@ -370,8 +473,126 @@ begin
      or y->>'replay'<>'true' then
     raise exception 'ALQ_F4_FACTURA_COMPARTIDA_APLICAR_FALLO:%',x;
   end if;
+  perform set_config('alq_f4.shared',x::text,true);
 end
 $shared_invoice$;
+
+select set_config('alq_f4.shared_pay_doc_fixed',pg_temp.alq_f4_rpc('documento_registrar',
+  jsonb_build_object('tipo','comprobante_pago','path','f4/pago-compartido-fijo.pdf',
+    'sha256',repeat('6',64),'mime','application/pdf','bytes','21','version','1',
+    'propiedad_id',current_setting('alq_f4.fixed')::jsonb->>'propiedad_id',
+    'audiencia','admin','retencion',jsonb_build_object()))::text,true);
+select set_config('alq_f4.shared_pay_doc_indexed',pg_temp.alq_f4_rpc('documento_registrar',
+  jsonb_build_object('tipo','comprobante_pago','path','f4/pago-compartido-indice.pdf',
+    'sha256',repeat('7',64),'mime','application/pdf','bytes','22','version','1',
+    'propiedad_id',current_setting('alq_f4.indexed')::jsonb->>'propiedad_id',
+    'audiencia','admin','retencion',jsonb_build_object()))::text,true);
+
+-- Camino real: dos comprobantes, uno por contrato/propiedad. El primer pago
+-- deja la factura abierta; el segundo la salda. La reversa del segundo pago
+-- reabre exactamente su cargo y la cabecera; una nota final restaura el saldo
+-- para que el resto de la prueba continúe sobre una foto global íntegra.
+do $shared_invoice_balance$
+declare
+  v_factura uuid:=(current_setting('alq_f4.shared')::jsonb->>'factura_id')::uuid;
+  v_fixed jsonb:=current_setting('alq_f4.fixed')::jsonb;
+  v_indexed jsonb:=current_setting('alq_f4.indexed')::jsonb;
+  v_cargo_fixed uuid; v_cargo_indexed uuid;
+  v_monto_fixed numeric; v_monto_indexed numeric;
+  v_moneda text; v_deudor uuid; v_acreedor uuid;
+  v_pago_fixed jsonb; v_pago_indexed jsonb; v_reversa jsonb; v_aplicacion uuid;
+begin
+  if (select saldada from alq.alq_servicio_factura where id=v_factura) then
+    raise exception 'ALQ_F4_FACTURA_COMPARTIDA_NACIO_SALDADA';
+  end if;
+
+  select cargo_id,monto,moneda into v_cargo_fixed,v_monto_fixed,v_moneda
+  from alq.alq_servicio_factura_reparto
+  where factura_id=v_factura and contrato_id=(v_fixed->>'contrato_id')::uuid;
+  select cargo_id,monto into v_cargo_indexed,v_monto_indexed
+  from alq.alq_servicio_factura_reparto
+  where factura_id=v_factura and contrato_id=(v_indexed->>'contrato_id')::uuid;
+  if v_cargo_fixed is null or v_cargo_indexed is null
+     or (v_monto_fixed,v_monto_indexed) is distinct from (40000::numeric,60000::numeric) then
+    raise exception 'ALQ_F4_FACTURA_COMPARTIDA_CARGOS_NO_RESUELTOS';
+  end if;
+
+  v_pago_fixed:=pg_temp.alq_f4_rpc('pago_comprobante_confirmar',jsonb_build_object(
+    'propiedad_id',v_fixed->>'propiedad_id','contrato_id',v_fixed->>'contrato_id',
+    'documento_id',current_setting('alq_f4.shared_pay_doc_fixed')::jsonb->>'id',
+    'cargo_ids',jsonb_build_array(v_cargo_fixed),'monto',v_monto_fixed,
+    'fecha','2026-10-26T12:00:00Z','medio','transferencia_directa_al_propietario'));
+  if (select saldada from alq.alq_servicio_factura where id=v_factura)
+     or (select saldo_pendiente from alq.alq_cargo where id=v_cargo_fixed)<>0
+     or (select saldo_pendiente from alq.alq_cargo where id=v_cargo_indexed)<>v_monto_indexed
+     or (v_pago_fixed->>'monto_aplicado')::numeric<>v_monto_fixed
+     or pg_temp.alq_f4_assert_global()<>'ALQ_ASSERT_GLOBAL_OK' then
+    raise exception 'ALQ_F4_FACTURA_COMPARTIDA_SALDADA_PARCIAL';
+  end if;
+
+  v_pago_indexed:=pg_temp.alq_f4_rpc('pago_comprobante_confirmar',jsonb_build_object(
+    'propiedad_id',v_indexed->>'propiedad_id','contrato_id',v_indexed->>'contrato_id',
+    'documento_id',current_setting('alq_f4.shared_pay_doc_indexed')::jsonb->>'id',
+    'cargo_ids',jsonb_build_array(v_cargo_indexed),'monto',v_monto_indexed,
+    'fecha','2026-10-26T12:01:00Z','medio','transferencia_directa_al_propietario'));
+  if not (select saldada from alq.alq_servicio_factura where id=v_factura)
+     or exists(select 1 from alq.alq_servicio_factura_reparto fr
+       join alq.alq_cargo c on c.id=fr.cargo_id
+       where fr.factura_id=v_factura and c.saldo_pendiente<>0)
+     or (v_pago_indexed->>'monto_aplicado')::numeric<>v_monto_indexed
+     or pg_temp.alq_f4_assert_global()<>'ALQ_ASSERT_GLOBAL_OK' then
+    raise exception 'ALQ_F4_FACTURA_COMPARTIDA_NO_SALDADA';
+  end if;
+
+  select c.deudor_parte_id,c.acreedor_parte_id,a.id
+    into v_deudor,v_acreedor,v_aplicacion
+  from alq.alq_cargo c
+  join alq.alq_aplicacion a on a.cargo_id=c.id
+  where c.id=v_cargo_indexed
+    and a.transaccion_id=(v_pago_indexed->>'transaccion_id')::uuid;
+  -- Reproduce deliberadamente un caller que heredó modo IMMEDIATE de una
+  -- aplicación anterior. El core V1 debe contener la operación compuesta,
+  -- diferir mientras crea cabecera+hijos, validar todo y restaurar DEFERRED.
+  set constraints all immediate;
+  v_reversa:=pg_temp.alq_f4_rpc('reversa_con_reapertura',jsonb_build_object(
+    'original_id',v_pago_indexed->>'transaccion_id',
+    'contraparte_parte_id',v_acreedor,'beneficiario_parte_id',v_deudor,
+    'monto',v_monto_indexed,'fecha','2026-10-27T12:00:00Z','medio','transferencia',
+    'reaperturas',jsonb_build_array(jsonb_build_object(
+      'aplicacion_original_id',v_aplicacion,
+      'importe_origen_revertido',v_monto_indexed,'moneda_origen',v_moneda,
+      'importe_destino_reabierto',v_monto_indexed,'moneda_destino',v_moneda))));
+  if (select saldada from alq.alq_servicio_factura where id=v_factura)
+     or (select saldo_pendiente from alq.alq_cargo where id=v_cargo_indexed)<>v_monto_indexed
+     or v_reversa->>'operacion'<>'reversa_con_reapertura'
+     or not exists(select 1 from alq.alq_transaccion_caja t
+       where t.id=(v_reversa->>'id')::uuid
+         and t.reversa_de=(v_pago_indexed->>'transaccion_id')::uuid
+         and t.estado='confirmada' and t.monto=v_monto_indexed)
+     or not exists(select 1 from alq.alq_aplicacion_reversa ar
+       where ar.reversa_transaccion_id=(v_reversa->>'id')::uuid
+         and ar.aplicacion_original_id=v_aplicacion
+         and ar.importe_origen_revertido=v_monto_indexed
+         and ar.importe_destino_reabierto=v_monto_indexed
+         and ar.moneda_origen=v_moneda and ar.moneda_destino=v_moneda) then
+    raise exception 'ALQ_F4_FACTURA_COMPARTIDA_NO_REABIERTA';
+  end if;
+  if pg_temp.alq_f4_assert_global()<>'ALQ_ASSERT_GLOBAL_OK' then
+    raise exception 'ALQ_F4_FACTURA_COMPARTIDA_ASSERT_REAPERTURA';
+  end if;
+
+  perform pg_temp.alq_f4_rpc('nota_emitir',jsonb_build_object(
+    'tipo','credito','cargo_id',v_cargo_indexed,'monto',v_monto_indexed,
+    'moneda',v_moneda,
+    'motivo','F4 volver a saldar factura compartida','fecha','2026-10-28T12:00:00Z'));
+  if not (select saldada from alq.alq_servicio_factura where id=v_factura) then
+    raise exception 'ALQ_F4_FACTURA_COMPARTIDA_RESALDADO_FALLO';
+  end if;
+  if pg_temp.alq_f4_assert_global()<>'ALQ_ASSERT_GLOBAL_OK' then
+    raise exception 'ALQ_F4_FACTURA_COMPARTIDA_ASSERT_FINAL';
+  end if;
+end
+$shared_invoice_balance$;
 
 -- Renovar permite redefinir las condiciones y extender el mandato en el
 -- mismo acto; rescindir sigue siendo una acción humana separada y trazable.
@@ -445,5 +666,5 @@ begin
 end
 $final$;
 
-select 'ALQ_F4_CONDICIONES_LOCAL_PASS|TRES_PRORRATEOS|HONORARIO_CONTRACTUAL_COMPLETO|MORA_CONTRACTUAL_HUMANA|AJUSTE_FIJO|AJUSTE_IPC|AJUSTE_ICL|PAGO_OTRA_MONEDA|FACTURA_COMPARTIDA|CONTINUACION_LEGAL|RENOVACION|RESCISION|BLOQUEO_PRE_MES|IDEMPOTENCIA_ALTA' receipt;
+select 'ALQ_F4_CONDICIONES_LOCAL_PASS|TRES_PRORRATEOS|HONORARIO_CONTRACTUAL_COMPLETO|MORA_CONTRACTUAL_HUMANA|AJUSTE_FIJO|AJUSTE_IPC|AJUSTE_ICL|PAGO_OTRA_MONEDA|FACTURA_COMPARTIDA|FACTURA_COMPARTIDA_SALDADA_REAPERTURA|CONTINUACION_LEGAL|RENOVACION|RESCISION|BLOQUEO_PRE_MES|IDEMPOTENCIA_ALTA' receipt;
 rollback;

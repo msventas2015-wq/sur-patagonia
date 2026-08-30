@@ -117,6 +117,8 @@ Una factura puede cargarse para una sola unidad o repartirse entre varios contra
 
 Elegí también si cada cargo queda a favor del propietario de esa unidad o de la administración. Antes de guardar, tocá **Calcular reparto** y revisá cada deudor, acreedor, porcentaje y monto. Si cambiás cualquier dato, la vista previa queda invalidada y hay que recalcularla. Al confirmar se crean la factura, todos los cargos y el detalle histórico del reparto en una sola operación; un reintento no los duplica.
 
+La factura compartida figura **saldada** únicamente cuando todos sus cargos están en cero. Si se revierte un pago y uno de esos cargos vuelve a tener saldo, la factura vuelve automáticamente a **pendiente**; cada propiedad muestra sólo la parte que le corresponde.
+
 El ingreso automático por correo está apagado. Sólo se procesan los archivos elegidos o arrastrados manualmente.
 
 ### Liquidación
@@ -190,7 +192,7 @@ Seleccioná el cargo, tipo, monto y motivo. La historia no se edita: la correcci
 Esta pestaña concentra los meses que no siguen el circuito normal.
 
 - **Mora:** elegí el cargo impago y la fecha hasta la cual querés calcular. El porcentaje diario y los días de gracia salen de la versión contractual que originó ese cargo; no se vuelven a escribir ni se pueden alterar desde esta pantalla. Se calcula sobre el saldo realmente pendiente. El primer botón genera sólo una propuesta. Después hay que escribir un motivo y elegir **Aplicar mora** o **Condonar**. Nunca se crea sola.
-- **Ajuste contractual:** el programa determina cuándo corresponde, toma el porcentaje fijo pactado o los niveles del índice, muestra fórmula, fuentes y monto nuevo, y exige un motivo para aprobar. IPC e ICL pueden obtenerse desde sus fuentes oficiales; un índice personalizado exige valor y URL verificable. El alquiler nuevo no se escribe a mano. La versión anterior se conserva y el ajuste debe aprobarse antes de generar el mes afectado.
+- **Ajuste contractual:** el programa determina cuándo corresponde, toma el porcentaje fijo pactado o los niveles del índice, muestra fórmula, fuentes y monto nuevo, y exige un motivo para aprobar. IPC e ICL pueden obtenerse automáticamente desde sus fuentes oficiales. Si esa consulta no responde, la misma pantalla permite cargar los valores publicados y sus URL oficiales de manera manual y verificable; los índices personalizados usan esa carga manual. El alquiler nuevo no se escribe a mano. La versión anterior se conserva y el ajuste debe aprobarse antes de generar el mes afectado.
 - **Gasto a recuperar del propietario:** usalo cuando la administración pagó algo por cuenta del propietario. Exige comprobante y crea una obligación independiente del propietario hacia la administración; no se mezcla con lo que debe el inquilino.
 - **Depósito:** registra que el dinero está en poder del propietario. Para cerrar el contrato, exige que no queden obligaciones del inquilino y un comprobante de la devolución total.
 - **Pago parcial y pago de más:** se siguen cargando en **Operar → Pago de obligaciones administradas**. El parcial deja saldo; un pago posterior cancela primero lo anterior y el excedente queda como crédito.

@@ -30,6 +30,17 @@ begin
 end
 $$;
 
+-- La vista heredada enumeraba sus columnas y no exponía el modo agregado por
+-- F4. Se conserva la superficie previa y se añade el dato al final.
+create or replace view public.alq_v_servicio_factura
+with (security_invoker='true') as
+select id,cuenta_id,propiedad_id,periodo,moneda,monto,vence_at,
+  comprobante_documento_id,cargo_id,saldada,operacion_id,distribucion_modo
+from alq.alq_servicio_factura;
+revoke all on public.alq_v_servicio_factura
+  from public,anon,authenticated,service_role;
+grant select on public.alq_v_servicio_factura to authenticated;
+
 -- El mismo comprobante no puede originar dos facturas de la misma cuenta.
 create unique index if not exists alq_servicio_factura_documento_cuenta_uq
   on alq.alq_servicio_factura(cuenta_id,comprobante_documento_id)
@@ -119,11 +130,295 @@ as $$
     when 'alq_credito' then p_operacion='pago_comprobante_confirmar'
     when 'alq_deposito_liquidacion_linea' then p_operacion='deposito_liquidar_y_devolver'
     when 'alq_rendicion_linea' then p_operacion=any(array['rendicion_emitir','rendicion_corregir']::text[])
+    when 'alq_servicio_factura' then p_operacion='servicio_factura_registrar'
     when 'alq_servicio_factura_reparto' then p_operacion='servicio_factura_registrar'
     else false end
 $$;
 revoke all on function alq_private.alq_f1a_tabla_permitida_operacion_v1(text,text)
   from public,anon,authenticated,service_role;
+
+-- Cierre acumulativo F4 de la guarda hija F1-A. La definición vive en este
+-- artefacto instalable (y no sólo en el fuente histórico F1-A) para que el
+-- parche llegue a QA/producción junto con la tabla de reparto. Las operaciones
+-- F4 que ya abren writer_context quedan protegidas sin entrar al grafo de locks
+-- F1-A, que no define raíces para ellas.
+create or replace function alq_private.alq_f1a_operacion_hijo_guard_v1()
+returns trigger language plpgsql volatile security definer set search_path=''
+as $fn$
+declare v_estado text; v_hecho uuid; v_operacion text; v_payload jsonb;
+        v_esperado numeric; v_saldada boolean; v_repartos bigint;
+begin
+  if tg_op='UPDATE' then
+    if tg_table_name='alq_transaccion_caja' then
+      if (new.ambito,new.cuenta_custodia_id,new.moneda,
+          new.cuenta_validacion_version,new.cuenta_validada_activa_at)
+         is distinct from
+         (old.ambito,old.cuenta_custodia_id,old.moneda,
+          old.cuenta_validacion_version,old.cuenta_validada_activa_at) then
+        raise exception using errcode='P0001',message='ALQ_F1A_T02_SNAPSHOT_INMUTABLE';
+      end if;
+    end if;
+  end if;
+  if tg_op='DELETE' then
+    if old.operacion_id is null then return old; end if;
+    select estado,hecho_id,operacion into v_estado,v_hecho,v_operacion from alq.alq_operacion
+    where id=old.operacion_id for update nowait;
+    if v_hecho is null and tg_table_name not in (
+      'alq_nota','alq_credito_consumo','alq_transaccion_caja','alq_aplicacion',
+      'alq_deposito_evento','alq_deposito_liquidacion','alq_aplicacion_reversa',
+      'alq_cargo','alq_credito','alq_conversion_moneda','alq_rendicion',
+      'alq_indice_observacion','alq_servicio_factura','alq_servicio_factura_reparto') then return old; end if;
+    if not found or v_estado<>'preparada' then
+      raise exception using errcode='P0001',message='ALQ_F1A_OPERACION_HIJO_HISTORICO';
+    end if;
+    return old;
+  end if;
+  if tg_op='UPDATE' and new.operacion_id is distinct from old.operacion_id then
+    raise exception using errcode='P0001',message='ALQ_F1A_OPERACION_HIJO_INMUTABLE';
+  end if;
+  if tg_op='INSERT' and new.operacion_id is not null then
+    select estado,hecho_id,operacion,payload_normalizado
+      into v_estado,v_hecho,v_operacion,v_payload from alq.alq_operacion
+    where id=new.operacion_id for update nowait;
+    if v_hecho is null and tg_table_name not in (
+      'alq_nota','alq_credito_consumo','alq_transaccion_caja','alq_aplicacion',
+      'alq_deposito_evento','alq_deposito_liquidacion','alq_aplicacion_reversa',
+      'alq_cargo','alq_credito','alq_conversion_moneda','alq_rendicion',
+      'alq_indice_observacion','alq_servicio_factura','alq_servicio_factura_reparto') then return new; end if;
+    if not found or v_estado<>'preparada' then
+      raise exception using errcode='P0001',message='ALQ_F1A_OPERACION_HIJO_TARDIO';
+    end if;
+    if (v_operacion=any(alq_private.alq_f1a_operaciones_lock_v1())
+        or v_operacion=any(array[
+          'conversion_registrar','alta_integral',
+          'indice_observacion_importar','servicio_factura_registrar'
+        ]::text[]))
+       and not (v_operacion='d0_fixture' and
+         alq_private.alq_f1a_qualification_run_id_v1() is not null)
+       and not alq_private.alq_f1a_writer_context_v1('check',new.operacion_id) then
+      raise exception using errcode='P0001',message='ALQ_F1A_DML_FINANCIERO_DIRECTO_PROHIBIDO';
+    end if;
+    if v_hecho is null and not
+       alq_private.alq_f1a_tabla_permitida_operacion_v1(v_operacion,tg_table_name)
+       and not (v_operacion='d0_fixture' and
+         alq_private.alq_f1a_qualification_run_id_v1() is not null) then
+      raise exception using errcode='P0001',message='ALQ_F1A_OPERACION_EFECTO_INCOMPATIBLE';
+    end if;
+    if v_operacion=any(alq_private.alq_f1a_operaciones_lock_v1()) then
+      perform alq_private.alq_f1a_lock_revalidar_payload_v1(v_operacion,v_payload);
+    end if;
+    if v_hecho is not null and not
+       alq_private.alq_f1a_tabla_permitida_operacion_v2(v_operacion,tg_table_name) then
+      raise exception using errcode='P0001',message='ALQ_F1A_OPERACION_EFECTO_INCOMPATIBLE';
+    end if;
+  elsif tg_op='UPDATE' and new.operacion_id is not null then
+    select estado,hecho_id,operacion into v_estado,v_hecho,v_operacion from alq.alq_operacion
+    where id=new.operacion_id for update nowait;
+    if v_hecho is null and tg_table_name not in (
+      'alq_nota','alq_credito_consumo','alq_transaccion_caja','alq_aplicacion',
+      'alq_deposito_evento','alq_deposito_liquidacion','alq_aplicacion_reversa',
+      'alq_cargo','alq_credito','alq_conversion_moneda','alq_rendicion',
+      'alq_indice_observacion','alq_servicio_factura','alq_servicio_factura_reparto') then return new; end if;
+    if not found then
+      raise exception using errcode='P0001',message='ALQ_F1A_OPERACION_HIJO_TARDIO';
+    end if;
+    if v_estado<>'preparada' then
+      if tg_table_name='alq_cargo'
+         and (to_jsonb(new)-'saldo_pendiente')=(to_jsonb(old)-'saldo_pendiente') then
+        select c.monto
+          -coalesce((select sum(a.importe_destino) from alq.alq_aplicacion a where a.cargo_id=c.id),0)
+          -coalesce((select sum(cc.monto) from alq.alq_credito_consumo cc where cc.cargo_id=c.id),0)
+          -coalesce((select sum(n.monto) from alq.alq_nota n where n.cargo_id=c.id and n.tipo='credito'),0)
+          +coalesce((select sum(n.monto) from alq.alq_nota n where n.cargo_id=c.id and n.tipo='debito'),0)
+          +coalesce((select sum(ar.importe_destino_reabierto)
+            from alq.alq_aplicacion_reversa ar
+            join alq.alq_aplicacion a on a.id=ar.aplicacion_original_id
+            join alq.alq_transaccion_caja rv on rv.id=ar.reversa_transaccion_id
+            where a.cargo_id=c.id and rv.estado='confirmada'),0)
+          into v_esperado from alq.alq_cargo c where c.id=old.id;
+        if new.saldo_pendiente is distinct from v_esperado then
+          raise exception using errcode='P0001',message='ALQ_F1A_PROYECCION_CARGO_INVALIDA';
+        end if;
+      elsif tg_table_name='alq_credito'
+         and (to_jsonb(new)-'saldo_pendiente')=(to_jsonb(old)-'saldo_pendiente') then
+        select cr.monto_original
+          -coalesce((select sum(cc.monto) from alq.alq_credito_consumo cc where cc.credito_id=cr.id),0)
+          -coalesce((select sum(a.importe_destino) from alq.alq_aplicacion a
+            join alq.alq_transaccion_caja t on t.id=a.transaccion_id
+            where a.credito_id=cr.id and t.direccion='salida' and t.estado='confirmada'),0)
+          +coalesce((select sum(ar.importe_destino_reabierto)
+            from alq.alq_aplicacion_reversa ar
+            join alq.alq_aplicacion a on a.id=ar.aplicacion_original_id
+            join alq.alq_transaccion_caja rv on rv.id=ar.reversa_transaccion_id
+            where a.credito_id=cr.id and rv.estado='confirmada'),0)
+          into v_esperado from alq.alq_credito cr where cr.id=old.id;
+        if new.saldo_pendiente is distinct from v_esperado then
+          raise exception using errcode='P0001',message='ALQ_F1A_PROYECCION_CREDITO_INVALIDA';
+        end if;
+      elsif tg_table_name='alq_servicio_factura'
+         and (to_jsonb(new)-'saldada')=(to_jsonb(old)-'saldada') then
+        if old.cargo_id is not null then
+          select c.saldo_pendiente=0
+            into v_saldada from alq.alq_cargo c where c.id=old.cargo_id;
+          v_repartos:=case when found then 1 else 0 end;
+        else
+          select pg_catalog.bool_and(c.saldo_pendiente=0),count(*)
+            into v_saldada,v_repartos
+          from alq.alq_servicio_factura_reparto r
+          join alq.alq_cargo c on c.id=r.cargo_id
+          where r.factura_id=old.id;
+        end if;
+        if v_repartos=0 or new.saldada is distinct from v_saldada then
+          raise exception using errcode='P0001',message='ALQ_F1A_PROYECCION_SERVICIO_FACTURA_INVALIDA';
+        end if;
+      else
+        raise exception using errcode='P0001',message='ALQ_F1A_OPERACION_HIJO_HISTORICO';
+      end if;
+    end if;
+  end if;
+  return new;
+exception when lock_not_available then
+  raise exception using errcode='40001',message='ALQ_F1A_CONFLICTO_CONCURRENCIA';
+end
+$fn$;
+revoke all on function alq_private.alq_f1a_operacion_hijo_guard_v1()
+  from public,anon,authenticated,service_role;
+
+-- Cada RPC HTTP entra en una transacción nueva, pero un cliente SQL puede
+-- componer varias aplicaciones V1 dentro de la misma transacción. El core V1
+-- heredado dejaba todos los constraint triggers en modo IMMEDIATE; la siguiente
+-- operación compuesta (por ejemplo una reversa con reaperturas) se validaba al
+-- insertar su cabecera, antes de que existieran sus hijos. Se conserva el flush
+-- final completo y se normaliza la salida en DEFERRED para que otra operación
+-- compuesta del mismo caller no herede el modo IMMEDIATE.
+create or replace function alq_private.alq_admin_aplicar_core_v1(
+  p_request_id uuid,p_operacion text,p_firma text,p_payload jsonb)
+returns jsonb language plpgsql volatile security definer set search_path=''
+as $fn$
+declare v_op alq.alq_operacion%rowtype; v_actor uuid; v_result jsonb;
+begin
+  v_actor:=alq_private.alq_actor_v1(true);
+  select * into v_op from alq.alq_operacion where request_id=p_request_id for update;
+  if not found then raise exception 'ALQ_REQUEST_NO_PREPARADO'; end if;
+  if v_op.operacion<>p_operacion or v_op.payload_normalizado<>coalesce(p_payload,'{}'::jsonb)
+     or v_op.firma_sha256<>p_firma
+     or p_firma<>alq_private.alq_firma_v1(p_operacion,coalesce(p_payload,'{}'::jsonb)) then
+    raise exception 'ALQ_FIRMA_O_PAYLOAD_NO_COINCIDE';
+  end if;
+  if v_op.actor_parte_usuario_id<>v_actor then raise exception 'ALQ_ACTOR_DISTINTO_AL_PREPARADOR'; end if;
+  if v_op.estado='aplicada' then return v_op.resultado; end if;
+  if v_op.estado<>'preparada' then raise exception 'ALQ_OPERACION_NO_APLICABLE:%',v_op.estado; end if;
+  if v_op.expires_at is null or clock_timestamp()>=v_op.expires_at then
+    raise exception 'ALQ_F1A_OPERACION_EXPIRADA';
+  end if;
+  set constraints all deferred;
+  v_result:=alq_private.alq_aplicar_operacion_v1(
+    p_operacion,v_op.payload_normalizado,v_op.id,v_actor);
+  set constraints all immediate;
+  update alq.alq_operacion set estado='aplicada',resultado=v_result,aplicada_at=clock_timestamp()
+    where id=v_op.id;
+  set constraints all deferred;
+  return v_result;
+end
+$fn$;
+revoke all on function alq_private.alq_admin_aplicar_core_v1(uuid,text,text,jsonb)
+  from public,anon,authenticated,service_role;
+grant execute on function alq_private.alq_admin_aplicar_core_v1(uuid,text,text,jsonb)
+  to authenticated;
+
+-- Mantiene la proyección de la factura simple y deriva la cabecera compartida
+-- desde todos sus cargos. Un pago o una reapertura recalcula el mismo estado
+-- que consume el panel; nunca se marca saldada por una señal del cliente.
+create or replace function alq_private.alq_recalcular_cargo_v1(p_cargo_id uuid)
+returns numeric language plpgsql volatile security definer set search_path=''
+as $fn$
+declare v_saldo numeric;
+begin
+  perform 1 from alq.alq_cargo where id=p_cargo_id for update;
+  if not found then raise exception 'ALQ_CARGO_NO_EXISTE'; end if;
+  select c.monto
+    -coalesce((select sum(a.importe_destino) from alq.alq_aplicacion a where a.cargo_id=c.id),0)
+    -coalesce((select sum(cc.monto) from alq.alq_credito_consumo cc where cc.cargo_id=c.id),0)
+    -coalesce((select sum(n.monto) from alq.alq_nota n where n.cargo_id=c.id and n.tipo='credito'),0)
+    +coalesce((select sum(n.monto) from alq.alq_nota n where n.cargo_id=c.id and n.tipo='debito'),0)
+    +coalesce((select sum(ar.importe_destino_reabierto)
+      from alq.alq_aplicacion_reversa ar
+      join alq.alq_aplicacion a on a.id=ar.aplicacion_original_id
+      join alq.alq_transaccion_caja r on r.id=ar.reversa_transaccion_id
+      where a.cargo_id=c.id and r.estado='confirmada'),0)
+    into v_saldo from alq.alq_cargo c where c.id=p_cargo_id;
+  if v_saldo<0 then raise exception 'ALQ_CARGO_SALDO_NEGATIVO'; end if;
+  update alq.alq_cargo set saldo_pendiente=v_saldo where id=p_cargo_id;
+  update alq.alq_servicio_factura set saldada=(v_saldo=0)
+    where cargo_id=p_cargo_id;
+  -- Dos cargos de una misma factura pueden recalcularse a la vez. Bloquear la
+  -- cabecera antes del agregado serializa ambos cierres; la última transacción
+  -- vuelve a leer todos los saldos ya confirmados y deja un único estado real.
+  perform f.id
+  from alq.alq_servicio_factura f
+  join alq.alq_servicio_factura_reparto r on r.factura_id=f.id
+  where r.cargo_id=p_cargo_id
+  order by f.id
+  for update of f;
+  update alq.alq_servicio_factura f
+    set saldada=not exists(
+      select 1 from alq.alq_servicio_factura_reparto r
+      join alq.alq_cargo c on c.id=r.cargo_id
+      where r.factura_id=f.id and c.saldo_pendiente<>0)
+    where exists(
+      select 1 from alq.alq_servicio_factura_reparto r
+      where r.factura_id=f.id and r.cargo_id=p_cargo_id);
+  return v_saldo;
+end
+$fn$;
+revoke all on function alq_private.alq_recalcular_cargo_v1(uuid)
+  from public,anon,authenticated,service_role;
+
+-- El assert global heredado sólo conocía facturas simples (un cargo_id en la
+-- cabecera). Se conserva completo y se agrega la misma proyección agregada que
+-- usa el recalculador para las facturas compartidas.
+create or replace function alq_private.alq_assert_global_v1()
+returns text language plpgsql stable security definer set search_path=''
+as $fn$
+begin
+  perform alq_private.alq_assert_global_pre_f1a_v1();
+  perform alq_private.alq_assert_financiero_f1a_v1();
+  if exists(
+    select 1
+    from alq.alq_servicio_factura f
+    where f.cargo_id is null
+      and exists(select 1 from alq.alq_servicio_factura_reparto r
+        where r.factura_id=f.id)
+      and f.saldada is distinct from not exists(
+        select 1
+        from alq.alq_servicio_factura_reparto r
+        join alq.alq_cargo c on c.id=r.cargo_id
+        where r.factura_id=f.id and c.saldo_pendiente<>0)) then
+    raise exception 'ALQ_ASSERT_SERVICIO_REPARTO_PROYECCION';
+  end if;
+  return 'ALQ_ASSERT_GLOBAL_OK';
+end
+$fn$;
+revoke all on function alq_private.alq_assert_global_v1()
+  from public,anon,authenticated,service_role;
+
+-- Re-ejecución segura: si una versión anterior alcanzó a registrar repartos
+-- sin esta proyección, normaliza únicamente las cabeceras compartidas cuyo
+-- estado no coincide con sus cargos. La guarda valida el valor derivado.
+update alq.alq_servicio_factura f
+set saldada=not exists(
+  select 1
+  from alq.alq_servicio_factura_reparto r
+  join alq.alq_cargo c on c.id=r.cargo_id
+  where r.factura_id=f.id and c.saldo_pendiente<>0)
+where f.cargo_id is null
+  and exists(select 1 from alq.alq_servicio_factura_reparto r
+    where r.factura_id=f.id)
+  and f.saldada is distinct from not exists(
+    select 1
+    from alq.alq_servicio_factura_reparto r
+    join alq.alq_cargo c on c.id=r.cargo_id
+    where r.factura_id=f.id and c.saldo_pendiente<>0);
 
 create or replace function alq_private.alq_f4_factura_reparto_previsualizar_v1(
   p_cuenta_id uuid,p_contrato_ids uuid[],p_modo text,p_valores numeric[],
@@ -595,13 +890,81 @@ grant execute on function public.alq_admin_contrato_renovar_integral(uuid,jsonb)
   to authenticated;
 
 do $$
+declare
+  v_guard text:=pg_catalog.pg_get_functiondef(
+    'alq_private.alq_f1a_operacion_hijo_guard_v1()'::pg_catalog.regprocedure);
+  v_recalculo text:=pg_catalog.pg_get_functiondef(
+    'alq_private.alq_recalcular_cargo_v1(uuid)'::pg_catalog.regprocedure);
+  v_assert text:=pg_catalog.pg_get_functiondef(
+    'alq_private.alq_assert_global_v1()'::pg_catalog.regprocedure);
+  v_aplicar_v1 text:=pg_catalog.pg_get_functiondef(
+    'alq_private.alq_admin_aplicar_core_v1(uuid,text,text,jsonb)'::pg_catalog.regprocedure);
 begin
   if to_regclass('alq.alq_servicio_factura_reparto') is null
+     or not exists(select 1 from pg_catalog.pg_attribute a
+       where a.attrelid='public.alq_v_servicio_factura'::pg_catalog.regclass
+         and a.attname='distribucion_modo' and a.attnum>0 and not a.attisdropped)
      or to_regprocedure('public.alq_admin_factura_reparto_previsualizar(uuid,uuid[],text,numeric[],numeric,text,date,text)') is null
      or to_regprocedure('public.alq_admin_factura_repartida_registrar(uuid,jsonb)') is null
      or to_regprocedure('public.alq_admin_contrato_renovar_integral(uuid,jsonb)') is null
+     or not exists(select 1 from pg_catalog.pg_trigger t
+       where t.tgrelid='alq.alq_servicio_factura_reparto'::pg_catalog.regclass
+         and t.tgname='alq_f1a_operacion_hijo_alq_servicio_factura_reparto_biu'
+         and t.tgfoid='alq_private.alq_f1a_operacion_hijo_guard_v1()'::pg_catalog.regprocedure
+         and t.tgenabled<>'D' and not t.tgisinternal)
+     or not exists(select 1 from pg_catalog.pg_trigger t
+       where t.tgrelid='alq.alq_servicio_factura'::pg_catalog.regclass
+         and t.tgname='alq_f1a_operacion_hijo_alq_servicio_factura_biu'
+         and t.tgfoid='alq_private.alq_f1a_operacion_hijo_guard_v1()'::pg_catalog.regprocedure
+         and t.tgenabled<>'D' and not t.tgisinternal)
+     or not exists(select 1 from pg_catalog.pg_trigger t
+       where t.tgrelid='alq.alq_indice_observacion'::pg_catalog.regclass
+         and t.tgname='alq_f1a_operacion_hijo_alq_indice_observacion_biu'
+         and t.tgfoid='alq_private.alq_f1a_operacion_hijo_guard_v1()'::pg_catalog.regprocedure
+         and t.tgenabled<>'D' and not t.tgisinternal)
+     or not exists(select 1 from pg_catalog.pg_trigger t
+       where t.tgrelid='alq.alq_deposito_evento'::pg_catalog.regclass
+         and t.tgname='alq_f1a_operacion_hijo_alq_deposito_evento_biu'
+         and t.tgfoid='alq_private.alq_f1a_operacion_hijo_guard_v1()'::pg_catalog.regprocedure
+         and t.tgenabled<>'D' and not t.tgisinternal)
+     or pg_catalog.regexp_count(v_guard,'''alq_indice_observacion''')<>3
+     or pg_catalog.regexp_count(v_guard,'''alq_servicio_factura''')<>4
+     or pg_catalog.regexp_count(v_guard,'''alq_servicio_factura_reparto''')<>3
+     or pg_catalog.regexp_count(v_guard,'''alta_integral''')<>1
+     or pg_catalog.regexp_count(v_guard,'''indice_observacion_importar''')<>1
+     or pg_catalog.regexp_count(v_guard,'''servicio_factura_registrar''')<>1
+     or pg_catalog.regexp_count(v_recalculo,'alq_servicio_factura_reparto')<>3
+     or pg_catalog.regexp_count(v_recalculo,
+       'r\.cargo_id[[:space:]]*=[[:space:]]*p_cargo_id')<>2
+     or pg_catalog.regexp_count(v_assert,
+       'ALQ_ASSERT_SERVICIO_REPARTO_PROYECCION')<>1
+     or pg_catalog.regexp_count(pg_catalog.lower(v_aplicar_v1),
+       'set constraints all deferred')<>2
+     or pg_catalog.regexp_count(pg_catalog.lower(v_aplicar_v1),
+       'set constraints all immediate')<>1
+     or has_function_privilege('anon',
+       'alq_private.alq_admin_aplicar_core_v1(uuid,text,text,jsonb)','EXECUTE')
+     or not has_function_privilege('authenticated',
+       'alq_private.alq_admin_aplicar_core_v1(uuid,text,text,jsonb)','EXECUTE')
+     or has_function_privilege('service_role',
+       'alq_private.alq_admin_aplicar_core_v1(uuid,text,text,jsonb)','EXECUTE')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('alta_integral','alq_deposito_evento')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('alta_integral','alq_contrato_version')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('alta_integral','alq_deposito')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('alta_integral','alq_contrato')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('indice_observacion_importar','alq_indice_observacion')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('servicio_factura_registrar','alq_cargo')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('servicio_factura_registrar','alq_servicio_factura')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('servicio_factura_registrar','alq_servicio_factura_reparto')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('contrato_renovar','alq_contrato')
+     or not alq_private.alq_f1a_tabla_permitida_operacion_v1('contrato_renovar','alq_contrato_version')
+     or 'alta_integral'=any(alq_private.alq_f1a_operaciones_lock_v1())
+     or 'indice_observacion_importar'=any(alq_private.alq_f1a_operaciones_lock_v1())
+     or 'servicio_factura_registrar'=any(alq_private.alq_f1a_operaciones_lock_v1())
+     or has_function_privilege('anon','public.alq_admin_factura_reparto_previsualizar(uuid,uuid[],text,numeric[],numeric,text,date,text)','EXECUTE')
      or has_function_privilege('anon','public.alq_admin_factura_repartida_registrar(uuid,jsonb)','EXECUTE')
      or has_function_privilege('anon','public.alq_admin_contrato_renovar_integral(uuid,jsonb)','EXECUTE')
+     or not has_function_privilege('authenticated','public.alq_admin_factura_reparto_previsualizar(uuid,uuid[],text,numeric[],numeric,text,date,text)','EXECUTE')
      or not has_function_privilege('authenticated','public.alq_admin_factura_repartida_registrar(uuid,jsonb)','EXECUTE')
      or not has_function_privilege('authenticated','public.alq_admin_contrato_renovar_integral(uuid,jsonb)','EXECUTE') then
     raise exception using errcode='P0001',message='ALQ_F4_CICLO_POSTCHECK_FALLO';

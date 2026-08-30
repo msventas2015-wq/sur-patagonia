@@ -272,7 +272,7 @@ revoke all on function alq_private.alq_f3_b3_mora_resolver_aplicar_v1(jsonb,uuid
 -- Una conversion ligada a un cargo sólo es válida si la versión contractual
 -- vigente para la fecha del pago la permite y la fuente coincide exactamente
 -- con la pactada. La pantalla no es la autoridad de esta decisión.
-create function alq_private.alq_f4_conversion_contractual_check_v1()
+create or replace function alq_private.alq_f4_conversion_contractual_check_v1()
 returns trigger
 language plpgsql
 security definer
@@ -308,6 +308,8 @@ $$;
 revoke all on function alq_private.alq_f4_conversion_contractual_check_v1()
   from public,anon,authenticated,service_role;
 
+drop trigger if exists alq_aplicacion_conversion_contractual_f4_ct
+  on alq.alq_aplicacion;
 create constraint trigger alq_aplicacion_conversion_contractual_f4_ct
 after insert or update of cargo_id,conversion_id,transaccion_id,
   moneda_destino on alq.alq_aplicacion
@@ -1320,6 +1322,8 @@ begin
      or not exists(select 1 from pg_catalog.pg_trigger t
        where t.tgrelid='alq.alq_aplicacion'::regclass
          and t.tgname='alq_aplicacion_conversion_contractual_f4_ct'
+         and t.tgfoid='alq_private.alq_f4_conversion_contractual_check_v1()'::pg_catalog.regprocedure
+         and t.tgdeferrable and t.tginitdeferred and t.tgenabled<>'D'
          and not t.tgisinternal) then
     raise exception using errcode='P0001',message='ALQ_F4_CONDICIONES_POSTCHECK_OBJETOS';
   end if;
