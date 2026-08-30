@@ -23,7 +23,7 @@ Al entrar, el filtro inicial es **Todas**. Ese filtro se aplica al tablero compl
 - Otros pendientes;
 - Sin pendientes.
 
-La barra superior lleva directamente a Resumen, Agenda, Propiedades, Facturas, Caja real, Pagos informados, Rendiciones y Comunicados.
+La barra superior permite volver al panel administrativo, abrir **Calendario global · Franjas** y llevar directamente a Resumen, Agenda, Propiedades, Facturas, Caja real, Pagos informados, Rendiciones y Comunicados.
 
 El botón **＋ Alta completa** abre el formulario para cargar un alquiler nuevo desde cero. No hace falta completar tablas ni ejecutar SQL por separado.
 
@@ -65,7 +65,7 @@ Tocá el casillero para ver la lista completa del día: propiedad, cuenta, conce
 
 ## Abrir una propiedad
 
-Tocá su tarjeta. Se abren ocho pestañas:
+Tocá **Gestionar** en su tarjeta —o la tarjeta completa—. Se abren ocho pestañas:
 
 ### Calendario
 
@@ -119,7 +119,9 @@ Elegí también si cada cargo queda a favor del propietario de esa unidad o de l
 
 La factura compartida figura **saldada** únicamente cuando todos sus cargos están en cero. Si se revierte un pago y uno de esos cargos vuelve a tener saldo, la factura vuelve automáticamente a **pendiente**; cada propiedad muestra sólo la parte que le corresponde.
 
-El ingreso automático por correo está apagado. Sólo se procesan los archivos elegidos o arrastrados manualmente.
+El programa no recibe facturas por correo. Sólo procesa los archivos elegidos o arrastrados manualmente.
+
+La función remota histórica `robot-facturas` no forma parte del producto y debe permanecer eliminada de QA y producción. Su stub fail-closed y su bloque de configuración se conservan sin desplegar únicamente como evidencia de la contención F0 ya sellada.
 
 ### Liquidación
 

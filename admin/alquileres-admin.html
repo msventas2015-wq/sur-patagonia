@@ -235,6 +235,8 @@ select.f option{background:#141414}
   <button class="h-out" id="btnOut">Salir</button>
 </header>
 <nav class="quick-nav" aria-label="Navegación del panel">
+  <a href="dashboard.html">← Panel admin</a>
+  <a href="alquileres-franjas.html">Calendario global · Franjas</a>
   <button class="help-btn" id="btnAyuda">ⓘ Cómo usar</button>
   <a href="#altaCompleta">＋ Alta completa</a><a href="#resumen">Resumen</a><a href="#agendaMes">Agenda</a><a href="#propiedades">Propiedades</a>
   <a href="#facturas">Facturas</a><a href="#cajaReal">Caja real</a><a href="#pagosInformados">Pagos informados</a>
@@ -267,7 +269,7 @@ select.f option{background:#141414}
   <div class="section-note" style="margin-bottom:1rem">El filtro se aplica a todo el tablero: indicadores, agenda, propiedades, caja, pagos, rendiciones y comunicados.</div>
   <div class="props" id="props"><div class="loading">Cargando…</div></div>
 
-  <div class="sec-t" id="facturas">Bandeja manual de facturas <span class="info" title="El robot de correo está apagado. Podés arrastrar un PDF y siempre revisás la propuesta antes de confirmar.">i</span></div>
+  <div class="sec-t" id="facturas">Bandeja manual de facturas <span class="info" title="Arrastrá o elegí un PDF y revisá la propuesta antes de confirmar.">i</span></div>
   <div class="card" id="bandeja">
     <div id="dropzone" style="border:1.5px dashed rgba(255,255,255,.18);border-radius:12px;padding:1.6rem;
       text-align:center;cursor:pointer;transition:border-color .15s">
@@ -276,7 +278,7 @@ select.f option{background:#141414}
         Lectura local del PDF · EDERSA · Camuzzi · Aguas Rionegrinas · Coopetel — vos siempre confirmás</div>
       <input type="file" id="pdfInput" accept="application/pdf" multiple style="display:none"/>
     </div>
-    <div class="section-note" style="margin-top:.8rem">El ingreso automático por correo está desactivado. Esta bandeja procesa únicamente los archivos que arrastres o elijas manualmente.</div>
+    <div class="section-note" style="margin-top:.8rem">Esta bandeja procesa únicamente los archivos que arrastres o elijas manualmente.</div>
     <div id="propuestas"></div>
   </div>
 
@@ -943,10 +945,13 @@ function render(){
         <div><div class="pg-l">Obligaciones gestionadas</div><div class="pg-v ${o>0?'deuda':'aldia'}">${fmt(o)}</div></div>
         <div><div class="pg-l">Honorarios administración</div><div class="pg-v ${h>0?'deuda':'aldia'}">${fmt(h)}</div></div>
         ${z>0?`<div><div class="pg-l">Otros pendientes</div><div class="pg-v deuda">${fmt(z)}</div></div>`:''}
-      </div></div>`;
+      </div>
+      <button class="btn-g js-gestionar-prop" data-p="${p.id}" type="button" style="width:100%;margin-top:1rem">Gestionar</button>
+    </div>`;
   }).join('');
   $('props').innerHTML=cards||'<div class="empty">Sin propiedades para este filtro.</div>';
   document.querySelectorAll('.prop').forEach(el=>el.onclick=()=>abrir(el.dataset.p));
+  document.querySelectorAll('.js-gestionar-prop').forEach(btn=>btn.onclick=e=>{e.stopPropagation();abrir(btn.dataset.p)});
   renderAgenda();
   const txs=[...D.tx].filter(t=>t.ambito==='custodiada'&&idsVisibles.has(propiedadTx(t)))
     .sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
@@ -2299,7 +2304,7 @@ async function opRescindirContrato(pid){
   }catch(e){m.className='op-msg op-err';m.textContent=e.message}
   finally{const b=$('btnRescindir');if(b)b.disabled=false}
 }
-/* ══════════ BANDEJA DE FACTURAS · el robot lee, vos confirmás ══════════ */
+/* ══════════ BANDEJA MANUAL DE FACTURAS · elegís el PDF y confirmás ══════════ */
 if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 let BANDEJA=[];
 async function pdfATexto(file){
@@ -2363,39 +2368,21 @@ function matchServicio(f){
   return D.scta.find(s=>{const d2=(s.nro_cliente||'').replace(/\D/g,'');
     return d2&&(d2===dig||d2.includes(dig)||dig.includes(d2))})||null;
 }
-async function procesarPDF(blob,nombre,meta){
+async function procesarPDF(blob,nombre){
   const idx=BANDEJA.length;
-  BANDEJA.push({blob,nombre,meta,estado:'leyendo'});
+  BANDEJA.push({blob,nombre,estado:'leyendo'});
   renderBandeja();
   try{
     const texto=await pdfATexto(blob);
     const f=parseFactura(texto);
     f.match=matchServicio(f);
-    BANDEJA[idx]={blob,nombre,meta,f,estado:'propuesta'};
-  }catch(e){BANDEJA[idx]={blob,nombre,meta,estado:'error',err:e.message}}
+    BANDEJA[idx]={blob,nombre,f,estado:'propuesta'};
+  }catch(e){BANDEJA[idx]={blob,nombre,estado:'error',err:e.message}}
   renderBandeja();
 }
 async function descartarFactura(i){
   const b=BANDEJA[i];b.estado='descartada';
-  if(b.meta&&b.meta.id){await sb.from('alq_mail_entrante').update({estado:'descartada'}).eq('id',b.meta.id)}
   renderBandeja();
-}
-let STAGING_VISTOS=new Set();
-async function cargarStaging(){
-  const q=await sb.from('alq_mail_entrante').select('*').eq('estado','pendiente').order('creado_at');
-  if(q.error||!q.data)return;
-  for(const row of q.data){
-    if(STAGING_VISTOS.has(row.id))continue;
-    STAGING_VISTOS.add(row.id);
-    const d=await sb.storage.from('alq-docs').download(row.storage_path);
-    if(d.error)continue;
-    procesarPDF(d.data,row.adjunto_nombre,{id:row.id,path:row.storage_path,remitente:row.remitente,asunto:row.asunto});
-  }
-}
-async function revisarCasilla(){
-  const info=$('mailInfo');
-  if(info)info.textContent='Ingreso automático por correo desactivado. Cargá el PDF manualmente.';
-  await cargarStaging();
 }
 function renderBandeja(){
   $('propuestas').innerHTML=BANDEJA.map((b,i)=>{
@@ -2413,7 +2400,6 @@ function renderBandeja(){
         ${f.nro?`<span style="font-size:.62rem;color:rgba(245,243,240,.45)">N° ${esc(f.nro)}</span>`:''}
         ${f.periodo?`<span style="font-size:.62rem;color:rgba(245,243,240,.45)">${esc(f.periodo)}</span>`:''}
       </div>
-      ${b.meta?`<div style="font-size:.6rem;color:rgba(245,243,240,.4);margin-top:.3rem">📧 Vino del mail · ${esc(b.meta.remitente||'')} · "${esc(b.meta.asunto||'')}"</div>`:''}
       ${f.alertas.map(a=>`<div style="font-size:.66rem;color:${a.includes('✓')?'var(--verde)':'var(--ambar)'};margin-top:.4rem">${esc(a)}</div>`).join('')}
       <div class="f-grid" style="margin-top:.9rem">
         <div><span class="f-l">Propiedad</span><select class="f" id="bp-${i}">${props}</select></div>
@@ -2438,23 +2424,15 @@ async function confirmarFactura(i){
   let completar=null;
   try{
     m.textContent='Cargando…';m.className='op-msg';
-    // 1 · PDF al archivo del sistema (si vino del mail, YA está guardado: se reusa esa copia)
+    // 1 · PDF elegido por el operador al archivo del sistema.
     const buf=await b.blob.arrayBuffer();
     const sha=[...new Uint8Array(await crypto.subtle.digest('SHA-256',buf))].map(x=>x.toString(16).padStart(2,'0')).join('');
     let doc=(D.doc||[]).find(d=>d.propiedad_id===pid&&d.sha256===sha&&d.tipo==='factura_servicio');
-    if(!doc&&b.meta&&b.meta.path){
-      const path=b.meta.path;
-      try{doc=await rpc('documento_registrar',{tipo:'factura_servicio',path,sha256:sha,
-        mime:'application/pdf',bytes:String(buf.byteLength),propiedad_id:pid,audiencia:'admin'})}
-      catch(e){const q=await sb.from('alq_v_documento').select('*').eq('propiedad_id',pid).eq('sha256',sha).eq('tipo','factura_servicio').limit(1);
-        if(q.data&&q.data[0])doc=q.data[0];else throw e}
-    }
     if(!doc)doc=await documentoArchivo(pid,b.blob,'factura_servicio','facturas-servicio','Adjuntá la factura.');
     if(!doc||!doc.id)throw new Error('No pude verificar el documento de la factura.');
     if(D.sfac.some(x=>x.comprobante_documento_id===doc.id))throw new Error('Esta factura ya fue cargada.');
-    // La identidad v2 usa el ID inmutable real: staging si vino por mail,
-    // documento interno si fue una carga directa. Nunca un UUID manual paralelo.
-    const fuenteId=String((b.meta&&b.meta.id)||doc.id||'').toLowerCase();
+    // La identidad v2 usa el ID inmutable del documento cargado manualmente.
+    const fuenteId=String(doc.id||'').toLowerCase();
     if(!ALQ_F1A_UUID.test(fuenteId))throw new Error('ALQ_F1A_FUENTE_SERVER_OWNED_INVALIDA');
     // 2 · cargo al inquilino (opcional, acreedor = titular) — igual que la pestaña Servicios
     let cargoId=null;
@@ -2466,10 +2444,6 @@ async function confirmarFactura(i){
         monto:String(monto),vence_at:fechaCivilATimestamp(vence),comprobante_documento_id:doc&&doc.id};
       if(idCargo)pf.cargo_id=idCargo;
       await rpc('servicio_factura_registrar',pf);
-      if(b.meta&&b.meta.id){
-        const marca=await sb.from('alq_mail_entrante').update({estado:'confirmada'}).eq('id',b.meta.id);
-        if(marca.error)throw new Error('Confirmando mail: '+marca.error.message);
-      }
       if(cargoSlot)await alqF1aCerrarBorrador('cargo_manual_emitir',cargoSlot);
       b.estado='cargada';b.conCargo=!!idCargo;
       toast('Factura de '+f.emisor+' cargada'+(idCargo?' + cargo al inquilino':''));
@@ -2481,15 +2455,14 @@ async function confirmarFactura(i){
       const titular=D.tit.find(x=>x.propiedad_id===pid);
       const adminParte=D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
       const acreedor=(titular&&titular.parte_id)||(adminParte&&adminParte.id);
-      cargoSlot='bandeja-factura:'+String((b.meta&&b.meta.id)||sha);
+      cargoSlot='bandeja-factura:'+fuenteId;
       const res=await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,
         cargo_fuente_ref:fuenteId,
         deudor_parte_id:cvig.inquilino_parte_id,acreedor_parte_id:acreedor,
         ambito:'custodiada',concepto:'servicio',moneda:'ARS',monto:String(monto),
         vence_at:fechaCivilATimestamp(vence),
-        snapshot_regla:{detalle:'Factura '+f.emisor+(f.periodo?' '+f.periodo:''),origen:'bandeja_robot',
-          comprobante_documento_id:doc&&doc.id,
-          mail_entrante_id:b.meta&&b.meta.id||null}},
+        snapshot_regla:{detalle:'Factura '+f.emisor+(f.periodo?' '+f.periodo:''),origen:'bandeja_manual',
+          comprobante_documento_id:doc&&doc.id}},
         {slot:cargoSlot,retener_hasta_continuacion:true});
       cargoId=res&&res.id;
     }
@@ -2762,12 +2735,11 @@ function altaAbrir(){
 const dz=$('dropzone');
 if(dz){
   dz.onclick=()=>$('pdfInput').click();
-  $('pdfInput').onchange=e=>{[...e.target.files].forEach(f=>procesarPDF(f,f.name,null));e.target.value=''};
+  $('pdfInput').onchange=e=>{[...e.target.files].forEach(f=>procesarPDF(f,f.name));e.target.value=''};
   dz.ondragover=e=>{e.preventDefault();dz.style.borderColor='rgba(215,111,63,.6)'};
   dz.ondragleave=()=>dz.style.borderColor='rgba(255,255,255,.18)';
   dz.ondrop=e=>{e.preventDefault();dz.style.borderColor='rgba(255,255,255,.18)';
-    [...e.dataTransfer.files].filter(f=>f.type==='application/pdf'||f.name.endsWith('.pdf')).forEach(f=>procesarPDF(f,f.name,null))};
-  if($('btnMail'))$('btnMail').onclick=revisarCasilla;
+    [...e.dataTransfer.files].filter(f=>f.type==='application/pdf'||f.name.endsWith('.pdf')).forEach(f=>procesarPDF(f,f.name))};
 }
 $('btnLogin').onclick=login;
 $('inPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
