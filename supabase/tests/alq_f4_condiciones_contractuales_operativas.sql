@@ -32,9 +32,11 @@ begin
   where o.request_id=any(array[
     'f4000000-0000-4000-8000-000000001001',
     'f4000000-0000-4000-8000-000000002001',
+    'f4000000-0000-4000-8000-000000002190',
     'f4000000-0000-4000-8000-000000002101',
     'f4000000-0000-4000-8000-000000002102',
     'f4000000-0000-4000-8000-000000003001',
+    'f4000000-0000-4000-8000-000000003190',
     'f4000000-0000-4000-8000-000000003101',
     'f4000000-0000-4000-8000-000000003102',
     'f4000000-0000-4000-8000-000000004001',
@@ -339,6 +341,31 @@ select set_config('alq_f4.indexed',public.alq_admin_alta_integral(
     'garantia',null,'deposito',null,'servicios',jsonb_build_array(),'documentos',jsonb_build_object()
   ))::text,true);
 
+do $ipc_source_guard$
+declare v_rechazada boolean:=false;
+begin
+  begin
+    perform public.alq_admin_indice_observacion_importar(
+      'f4000000-0000-4000-8000-000000002190',jsonb_build_object(
+        'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
+          where contrato_id=(current_setting('alq_f4.indexed')::jsonb->>'contrato_id')::uuid),
+        'periodo_desde','2026-08-01','periodo_hasta_exclusivo','2026-09-01','valor','100',
+        'publicada_at','2026-09-10T12:00:00Z',
+        'fuente_url','https://apis.datos.gob.ar/series/api/series/?ids=SERIE_EQUIVOCADA&start_date=2026-08-01',
+        'hash_insumo',repeat('e',64),'fecha_descarga','2026-09-10T12:00:00Z','origen','oficial_manual'));
+  exception when sqlstate 'P0001' then
+    if sqlerrm='ALQ_F4_INDICE_FUENTE_IPC_INVALIDA' then
+      v_rechazada:=true;
+    else
+      raise;
+    end if;
+  end;
+  if not v_rechazada then
+    raise exception 'ALQ_F4_FUENTE_IPC_INCORRECTA_ACEPTADA';
+  end if;
+end
+$ipc_source_guard$;
+
 select public.alq_admin_indice_observacion_importar(
   'f4000000-0000-4000-8000-000000002101',jsonb_build_object(
     'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
@@ -387,7 +414,7 @@ select set_config('alq_f4.icl',public.alq_admin_alta_integral(
     'contrato',jsonb_build_object('inicio','2026-09-01','fin_pactado','2027-08-31',
       'monto','450000','moneda','ARS','dia_pago_desde','1','dia_pago_hasta','10',
       'ajuste_tipo','indice','indice_organismo','BCRA','indice_codigo','ICL',
-      'indice_base','Ley 27.551 · variable BCRA 7988','indice_version','bcra_v4',
+      'indice_base','Ley 27.551 · variable BCRA 40','indice_version','bcra_v4',
       'indice_granularidad','diaria','frecuencia_ajuste_meses','3',
       'punitorio_pct_dia','0','punitorio_desde_dia','0','formula_punitorio_version','sin_mora_automatica',
       'metodo_prorrateo','importe_pactado','regla_redondeo','centavos',
@@ -395,19 +422,44 @@ select set_config('alq_f4.icl',public.alq_admin_alta_integral(
     'garantia',null,'deposito',null,'servicios',jsonb_build_array(),'documentos',jsonb_build_object()
   ))::text,true);
 
+do $icl_source_guard$
+declare v_rechazada boolean:=false;
+begin
+  begin
+    perform public.alq_admin_indice_observacion_importar(
+      'f4000000-0000-4000-8000-000000003190',jsonb_build_object(
+        'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
+          where contrato_id=(current_setting('alq_f4.icl')::jsonb->>'contrato_id')::uuid),
+        'periodo_desde','2026-09-01','periodo_hasta_exclusivo','2026-09-02','valor','1.5',
+        'publicada_at','2026-09-01T12:00:00Z',
+        'fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/400?desde=2026-09-01&hasta=2026-09-01',
+        'hash_insumo',repeat('f',64),'fecha_descarga','2026-09-01T12:00:00Z','origen','oficial_manual'));
+  exception when sqlstate 'P0001' then
+    if sqlerrm='ALQ_F4_INDICE_FUENTE_ICL_INVALIDA' then
+      v_rechazada:=true;
+    else
+      raise;
+    end if;
+  end;
+  if not v_rechazada then
+    raise exception 'ALQ_F4_FUENTE_ICL_INCORRECTA_ACEPTADA';
+  end if;
+end
+$icl_source_guard$;
+
 select public.alq_admin_indice_observacion_importar(
   'f4000000-0000-4000-8000-000000003101',jsonb_build_object(
     'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
       where contrato_id=(current_setting('alq_f4.icl')::jsonb->>'contrato_id')::uuid),
     'periodo_desde','2026-09-01','periodo_hasta_exclusivo','2026-09-02','valor','1.5',
-    'publicada_at','2026-09-01T12:00:00Z','fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/7988?desde=2026-09-01&hasta=2026-09-01',
+    'publicada_at','2026-09-01T12:00:00Z','fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/40?desde=2026-09-01&hasta=2026-09-01',
     'hash_insumo',repeat('c',64),'fecha_descarga','2026-09-01T12:00:00Z','origen','oficial_automatico'));
 select public.alq_admin_indice_observacion_importar(
   'f4000000-0000-4000-8000-000000003102',jsonb_build_object(
     'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
       where contrato_id=(current_setting('alq_f4.icl')::jsonb->>'contrato_id')::uuid),
     'periodo_desde','2026-12-01','periodo_hasta_exclusivo','2026-12-02','valor','1.65',
-    'publicada_at','2026-12-01T12:00:00Z','fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/7988?desde=2026-12-01&hasta=2026-12-01',
+    'publicada_at','2026-12-01T12:00:00Z','fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/40?desde=2026-12-01&hasta=2026-12-01',
     'hash_insumo',repeat('d',64),'fecha_descarga','2026-12-01T12:00:00Z','origen','oficial_automatico'));
 
 do $icl_preview$

@@ -18,6 +18,7 @@ const jsonHeaders = Object.freeze({
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const IPC_SERIES_ID = '148.3_INIVELNAL_DICI_M_26'
+const ICL_VARIABLE_ID = 40
 
 type JsonObject = Record<string, unknown>
 
@@ -72,7 +73,7 @@ function iclValue(json: unknown, expectedDate: string): number {
   if (!isObject(json) || !Array.isArray(json.results)) {
     throw new Error('La respuesta oficial de ICL cambió de formato.')
   }
-  const result = json.results.find((item) => isObject(item) && Number(item.idVariable) === 7988)
+  const result = json.results.find((item) => isObject(item) && Number(item.idVariable) === ICL_VARIABLE_ID)
   const detail = isObject(result) && Array.isArray(result.detalle) ? result.detalle : []
   const row = detail.find((item) => isObject(item) && String(item.fecha).slice(0, 10) === expectedDate)
   const value = isObject(row) ? Number(row.valor) : Number.NaN
@@ -150,7 +151,7 @@ Deno.serve(async (req) => {
 
     const sourceUrl = fuente === 'ipc'
       ? `https://apis.datos.gob.ar/series/api/series/?ids=${IPC_SERIES_ID}&start_date=${desde}&end_date=${desde}&format=json&metadata=full`
-      : `https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/7988?desde=${desde}&hasta=${desde}&limit=10`
+      : `https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/${ICL_VARIABLE_ID}?desde=${desde}&hasta=${desde}&limit=10`
     const fetchedAt = new Date().toISOString()
     const official = await fetchRawJson(sourceUrl)
     const value = fuente === 'ipc' ? ipcValue(official.json, desde) : iclValue(official.json, desde)
