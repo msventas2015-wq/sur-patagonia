@@ -809,14 +809,22 @@ async function buscarConIA() {
     clearTimeout(timeoutId)
     if (!res.ok) throw new Error('Error del servidor')
     const filtros = await res.json()
+    // CY-15: validar la respuesta de la IA antes de redirigir. Si viene rota, error visible.
+    if (!filtros || typeof filtros !== 'object' || Array.isArray(filtros)) throw new Error('Respuesta invalida del buscador')
+    const _fTxt = v => (typeof v === 'string' && v.trim().length > 0 && v.length <= 80) ? v.trim() : null
+    const _fNum = v => { const n = parseFloat(v); return (isFinite(n) && n > 0 && n < 100000000) ? n : null }
+    const _OPS_VALIDAS = ['venta', 'alquiler', 'alquiler_temporario']
+    const _TIPOS_VALIDOS = ['casa', 'departamento', 'terreno', 'lote', 'local', 'oficina', 'galpon']
     const params = new URLSearchParams()
-    if (filtros.operacion) params.set('operacion', filtros.operacion)
-    if (filtros.tipo) params.set('tipo', filtros.tipo)
-    if (filtros.ciudad) params.set('ciudad', filtros.ciudad)
-    if (filtros.dormitorios_min) params.set('dormitorios_min', filtros.dormitorios_min)
-    if (filtros.precio_max) params.set('precio_max', filtros.precio_max)
-    if (filtros.amenidades && filtros.amenidades.length) params.set('amenidades', filtros.amenidades.join(','))
-    if (filtros.texto_libre) params.set('q', filtros.texto_libre)
+    const _fOp = _fTxt(filtros.operacion)
+    if (_fOp && _OPS_VALIDAS.includes(_fOp.toLowerCase())) params.set('operacion', _fOp.toLowerCase())
+    const _fTipo = _fTxt(filtros.tipo)
+    if (_fTipo && _TIPOS_VALIDOS.includes(_fTipo.toLowerCase())) params.set('tipo', _fTipo.toLowerCase())
+    if (_fTxt(filtros.ciudad)) params.set('ciudad', _fTxt(filtros.ciudad))
+    if (_fNum(filtros.dormitorios_min)) params.set('dormitorios_min', _fNum(filtros.dormitorios_min))
+    if (_fNum(filtros.precio_max)) params.set('precio_max', _fNum(filtros.precio_max))
+    if (Array.isArray(filtros.amenidades) && filtros.amenidades.length) params.set('amenidades', filtros.amenidades.filter(a => typeof a === 'string' && a.length <= 40).slice(0, 10).join(','))
+    if (_fTxt(filtros.texto_libre)) params.set('q', _fTxt(filtros.texto_libre))
     estado.textContent = filtros.texto_libre ? `Buscando: ${filtros.texto_libre}` : 'Redirigiendo...'
     setTimeout(() => { window.location.href = 'propiedades.html?' + params.toString() }, 600)
   } catch (err) {
@@ -2349,7 +2357,7 @@ input.disabled = !SP_CHAT_ENABLED
 sendBtn.disabled = !SP_CHAT_ENABLED
 
 if (SP_CHAT_ENABLED) {
-let state = { step: 'inicio', operacion: null, tipo: null, presupuesto: null, ciudad: null, nombre: null, telefono: null }
+let state = { step: 'inicio', operacion: null, tipo: null, presupuesto: null, ciudad: null, nombre: null, telefono: null, email: null }
 
 btn.addEventListener('click', () => {
   btn.classList.toggle('open')
@@ -2537,7 +2545,7 @@ async function pedirContacto() {
 }
 
 function reiniciar() {
-  state = { step: 'inicio', operacion: null, tipo: null, presupuesto: null, ciudad: null, nombre: null, telefono: null }
+  state = { step: 'inicio', operacion: null, tipo: null, presupuesto: null, ciudad: null, nombre: null, telefono: null, email: null }
   iniciarChat()
 }
 
@@ -2580,20 +2588,39 @@ async function handleInput(text) {
   }
   if (state.step === 'telefono') {
     state.telefono = text
+    state.step = 'email'
+    await botReply('¿Y tu email? Es el único dato que necesitamos sí o sí para responderte.', 500)
+    return
+  }
+  if (state.step === 'email') {
+    const emailIngresado = text.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailIngresado)) {
+      await botReply('Ese email no parece válido. ¿Me lo pasás de nuevo?', 500)
+      return
+    }
+    state.email = emailIngresado
     state.step = 'guardando'
     addTyping()
+    let contactoGuardado = false
     try {
-      await supabase.from('contactos').insert({
+      const { error } = await supabase.from('contactos').insert({
         nombre: state.nombre,
+        email: state.email,
         telefono: state.telefono,
         mensaje: `Chat web — Busca: ${state.operacion || 'consulta'} / ${state.tipo || 'cualquier tipo'} / presupuesto: ${state.presupuesto ? 'USD ' + state.presupuesto : 'sin límite'}`,
         canal_ref: getRef(),
         canal_via: getRefVia()
       })
+      contactoGuardado = !error
+      if (error) console.warn('Error guardando contacto:', error.message)
     } catch(e) { console.warn('Error guardando contacto') }
     removeTyping()
-    await botReply(`¡Perfecto, ${state.nombre.split(' ')[0]}! Te contactamos a la brevedad por WhatsApp.`, 600)
-    await botReply('Mientras tanto podés ver todas nuestras propiedades en la página.', 800)
+    if (contactoGuardado) {
+      await botReply(`¡Perfecto, ${state.nombre.split(' ')[0]}! Registramos tu consulta y te contactamos a la brevedad.`, 600)
+      await botReply('Mientras tanto podés ver todas nuestras propiedades en la página.', 800)
+    } else {
+      await botReply('No pude registrar tu consulta en este momento. Probá de nuevo en unos minutos, o escribinos desde la sección Contacto.', 600)
+    }
     setQuick([
       { label: 'Ver propiedades', action: () => window.open('propiedades.html', '_blank') },
       { label: 'Nueva búsqueda', action: reiniciar },

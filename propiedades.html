@@ -586,20 +586,35 @@
       navClose.addEventListener('click', () => { menuBtn.classList.remove('open'); navLinks.classList.remove('abierto') })
     }
 
-    // Leer params de URL al cargar
+    // Leer params de URL al cargar — acepta los nombres que manda el home/IA
+    // (operacion, ciudad, dormitorios_min, precio_max, q) y los historicos (op, precioMax).
+    // 'amenidades' no tiene filtro equivalente en esta pantalla y se ignora a proposito.
     const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get('op')) {
+    const _normParam = v => (v || '').trim().toLowerCase()
+    const paramOperacion = _normParam(urlParams.get('operacion') || urlParams.get('op'))
+    if (paramOperacion) {
       document.querySelectorAll('.filtro-op').forEach(cb => {
-        if (cb.value === urlParams.get('op')) cb.checked = true
+        if (cb.value === paramOperacion) cb.checked = true
       })
     }
-    if (urlParams.get('tipo')) {
+    const paramTipo = _normParam(urlParams.get('tipo'))
+    if (paramTipo) {
       document.querySelectorAll('.filtro-tipo').forEach(cb => {
-        if (cb.value === urlParams.get('tipo')) cb.checked = true
+        if (cb.value === paramTipo) cb.checked = true
       })
     }
-    if (urlParams.get('precioMax')) {
-      document.getElementById('precioMax').value = urlParams.get('precioMax')
+    const paramPrecioMax = urlParams.get('precio_max') || urlParams.get('precioMax')
+    if (paramPrecioMax && !isNaN(parseFloat(paramPrecioMax))) {
+      document.getElementById('precioMax').value = parseFloat(paramPrecioMax)
+    }
+    const paramDorm = parseInt(urlParams.get('dormitorios_min'), 10)
+    if (paramDorm >= 1) {
+      const radioDorm = document.querySelector(`.filtro-dorm[value="${Math.min(paramDorm, 4)}"]`)
+      if (radioDorm) radioDorm.checked = true
+    }
+    const paramTexto = ((urlParams.get('ciudad') || urlParams.get('q')) || '').trim()
+    if (paramTexto) {
+      document.getElementById('busquedaTexto').value = paramTexto
     }
 
     function modoInversionActivo() {
