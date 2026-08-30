@@ -931,7 +931,7 @@
 
     <section class="kpi-grid" id="kpiGrid">
       <div class="kpi" style="--c:#c9a84c"><div class="kpi-label">Clics totales</div><div class="kpi-value">—</div><div class="kpi-sub">Últimos 30 días</div></div>
-      <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Consultas</div><div class="kpi-value">—</div><div class="kpi-sub">Leads por QR</div></div>
+      <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Consultas</div><div class="kpi-value">—</div><div class="kpi-sub">Leads por QR y link</div></div>
       <div class="kpi" style="--c:#e8c96a"><div class="kpi-label">Conversión</div><div class="kpi-value">—</div><div class="kpi-sub">Consultas sobre clics</div></div>
       <div class="kpi" style="--c:#8a8a82"><div class="kpi-label">Puntos QR</div><div class="kpi-value">—</div><div class="kpi-sub">Activos / total</div></div>
     </section>
@@ -1311,7 +1311,7 @@ async function cargarMetricas() {
   const desde = hace30()
   const [visitasRes, contactosRes] = await Promise.all([
     supabase.from('visitas').select('canal_ref,created_at,canal_via').in('canal_ref', codigos).gte('created_at', desde).limit(50000),
-    supabase.from('contactos').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).eq('origen', 'web').eq('canal_via', 'qr').limit(10000),
+    supabase.from('contactos').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).eq('origen', 'web').in('canal_via', ['qr', 'link']).limit(10000),
   ])
   if (visitasRes.error) throw visitasRes.error
   if (contactosRes.error) throw contactosRes.error
@@ -1337,7 +1337,7 @@ function renderKpis() {
   const activos = state.refs.filter(r => r.activo !== false).length
   $('#kpiGrid').innerHTML = `
     <div class="kpi" style="--c:#c9a84c"><div class="kpi-label">Clics totales</div><div class="kpi-value">${clics}</div><div class="kpi-sub">Últimos 30 días</div></div>
-    <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Consultas</div><div class="kpi-value">${consultas}</div><div class="kpi-sub">Leads por QR</div></div>
+    <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Consultas</div><div class="kpi-value">${consultas}</div><div class="kpi-sub">Leads por QR y link</div></div>
     <div class="kpi" style="--c:#e8c96a"><div class="kpi-label">Conversión</div><div class="kpi-value">${conversion.toFixed(1)}%</div><div class="kpi-sub">Consultas sobre clics</div></div>
     <div class="kpi" style="--c:#8a8a82"><div class="kpi-label">Puntos QR</div><div class="kpi-value">${activos}<span style="font-size:1rem;color:rgba(245,243,240,.42);-webkit-text-fill-color:rgba(245,243,240,.42)">/${state.refs.length}</span></div><div class="kpi-sub">Activos / total</div></div>
   `
