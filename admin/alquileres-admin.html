@@ -188,8 +188,25 @@ select.f option{background:#141414}
 .cal-chip{font-size:.54rem;line-height:1.2;padding:.16rem .32rem;border-radius:5px;border-left:2px solid var(--cc,var(--gris));
   background:rgba(255,255,255,.04);color:rgba(245,243,240,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cal-more{font-size:.52rem;color:var(--azul);font-weight:700;margin-top:auto}
+.alta-launch{display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center}
+.alta-launch h2{font-size:1.15rem;margin-bottom:.35rem}
+.alta-modal{width:min(1080px,100%)}
+.alta-section{border:1px solid var(--card-border);border-radius:12px;background:var(--glass-t2);margin:.75rem 0;overflow:hidden}
+.alta-section summary{cursor:pointer;list-style:none;padding:.9rem 1rem;font-size:.68rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase;display:flex;justify-content:space-between;gap:1rem}
+.alta-section summary::-webkit-details-marker{display:none}
+.alta-section summary::after{content:'＋';color:var(--accent)}
+.alta-section[open] summary::after{content:'−'}
+.alta-content{padding:0 1rem 1rem}
+.alta-help{font-size:.64rem;line-height:1.5;color:var(--txt-soft);margin:.2rem 0 .8rem}
+.alta-check{display:flex;gap:.55rem;align-items:flex-start;font-size:.7rem;color:rgba(245,243,240,.75);line-height:1.4}
+.alta-check input{margin-top:.15rem;accent-color:var(--accent)}
+.alta-summary{border:1px solid rgba(80,200,120,.25);background:rgba(80,200,120,.035);border-radius:12px;padding:1rem;margin-top:1rem}
+.alta-summary h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.65rem}
+.alta-service{display:grid;grid-template-columns:1fr 1.4fr 1fr auto;gap:.55rem;align-items:end;padding:.65rem 0;border-bottom:1px solid var(--sep)}
+.alta-service:last-child{border-bottom:0}
+.alta-hidden{display:none!important}
 @media(max-width:640px){.cal-cell{height:96px}.cal-chip{font-size:.5rem}}
-@media(max-width:640px){.admin-main{padding:1.6rem 1rem 4rem}header{padding:.8rem 1rem}.modal{padding:1.5rem 1.2rem}.f-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.admin-main{padding:1.6rem 1rem 4rem}header{padding:.8rem 1rem}.modal{padding:1.5rem 1.2rem}.f-grid{grid-template-columns:1fr}.alta-launch{grid-template-columns:1fr}.alta-service{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -219,7 +236,7 @@ select.f option{background:#141414}
 </header>
 <nav class="quick-nav" aria-label="Navegación del panel">
   <button class="help-btn" id="btnAyuda">ⓘ Cómo usar</button>
-  <a href="#resumen">Resumen</a><a href="#agendaMes">Agenda</a><a href="#propiedades">Propiedades</a>
+  <a href="#altaCompleta">＋ Alta completa</a><a href="#resumen">Resumen</a><a href="#agendaMes">Agenda</a><a href="#propiedades">Propiedades</a>
   <a href="#facturas">Facturas</a><a href="#cajaReal">Caja real</a><a href="#pagosInformados">Pagos informados</a>
   <a href="#rendiciones">Rendiciones</a><a href="#comunicados">Comunicados</a>
 </nav>
@@ -229,6 +246,12 @@ select.f option{background:#141414}
   <div class="p-sub">Sur Patagonian Real Estate · administración de alquileres</div>
 
   <div class="kpis" id="kpis"></div>
+
+  <div class="sec-t" id="altaCompleta">Alta y configuración completa</div>
+  <div class="card alta-launch">
+    <div><h2>Cargar un alquiler desde cero</h2><div class="account-caption">Personas, propiedad, mandato, honorarios, contrato, actualización, mora, garantía, depósito, servicios y documentos. Revisás una proforma y confirmás todo con una sola operación.</div></div>
+    <button class="btn" id="btnAbrirAlta" type="button">Iniciar alta completa</button>
+  </div>
 
   <div class="sec-t" id="agendaMes">Agenda del mes — vencimientos y pagos separados <span class="info" title="El calendario resume como máximo dos líneas por día. Tocá una fecha para ver todos sus movimientos.">i</span></div>
   <div class="card" id="agenda"><div class="empty">Cargando…</div></div>
@@ -281,6 +304,121 @@ select.f option{background:#141414}
   <div id="mBody"></div>
 </div></div>
 <div class="toast" id="toast"></div>
+
+<div class="overlay" id="altaOv"><div class="modal alta-modal">
+  <button class="m-close" id="altaClose">✕</button>
+  <div class="m-title">Alta completa de alquiler</div>
+  <div class="m-sub">Una confirmación · todo queda creado o no queda nada</div>
+  <div class="section-note" style="margin-top:1rem">Los importes del inquilino y los honorarios de la administración se muestran separados. Nunca se suman como una sola deuda.</div>
+
+  <details class="alta-section" open><summary>1 · Propiedad administrada</summary><div class="alta-content f-grid">
+    <div class="f-full"><label class="f-l">Publicación existente</label><select class="f" id="altaPublicacion"><option value="">No está publicada / carga manual</option></select></div>
+    <div><label class="f-l">Dirección</label><input class="f" id="altaDireccion" placeholder="Calle, número y unidad"/></div>
+    <div><label class="f-l">Ciudad</label><input class="f" id="altaCiudad" value="El Bolsón"/></div>
+    <div><label class="f-l">Provincia</label><input class="f" id="altaProvincia" value="Río Negro"/></div>
+    <div class="alta-help f-full">Si elegís una publicación, se vincula por UUID sin tocar su título, QR, links ni tracking.</div>
+  </div></details>
+
+  <details class="alta-section" open><summary>2 · Propietario e inquilino</summary><div class="alta-content">
+    <div class="f-grid">
+      <div class="f-full"><div class="pg-l">Propietario</div></div>
+      <div class="f-full"><label class="f-l">Elegir existente o crear nuevo</label><select class="f" id="altaOwnerExistente"></select></div>
+      <div data-persona="owner"><label class="f-l">Nombre completo / razón social</label><input class="f" id="altaOwnerNombre"/></div>
+      <div data-persona="owner"><label class="f-l">Tipo</label><select class="f" id="altaOwnerTipo"><option value="fisica">Persona humana</option><option value="juridica">Persona jurídica</option></select></div>
+      <div data-persona="owner"><label class="f-l">Tipo de documento</label><input class="f" id="altaOwnerDocTipo" placeholder="DNI / CUIT"/></div>
+      <div data-persona="owner"><label class="f-l">Número de documento</label><input class="f" id="altaOwnerDocNumero"/></div>
+      <div data-persona="owner"><label class="f-l">WhatsApp</label><input class="f" id="altaOwnerTel"/></div>
+      <div data-persona="owner"><label class="f-l">Email</label><input class="f" id="altaOwnerEmail" type="email"/></div>
+    </div>
+    <div class="f-grid" style="margin-top:1rem">
+      <div class="f-full"><div class="pg-l">Inquilino</div></div>
+      <div class="f-full"><label class="f-l">Elegir existente o crear nuevo</label><select class="f" id="altaTenantExistente"></select></div>
+      <div data-persona="tenant"><label class="f-l">Nombre completo / razón social</label><input class="f" id="altaTenantNombre"/></div>
+      <div data-persona="tenant"><label class="f-l">Tipo</label><select class="f" id="altaTenantTipo"><option value="fisica">Persona humana</option><option value="juridica">Persona jurídica</option></select></div>
+      <div data-persona="tenant"><label class="f-l">Tipo de documento</label><input class="f" id="altaTenantDocTipo" placeholder="DNI / CUIT"/></div>
+      <div data-persona="tenant"><label class="f-l">Número de documento</label><input class="f" id="altaTenantDocNumero"/></div>
+      <div data-persona="tenant"><label class="f-l">WhatsApp</label><input class="f" id="altaTenantTel"/></div>
+      <div data-persona="tenant"><label class="f-l">Email</label><input class="f" id="altaTenantEmail" type="email"/></div>
+    </div>
+  </div></details>
+
+  <details class="alta-section" open><summary>3 · Mandato y honorarios</summary><div class="alta-content f-grid">
+    <div><label class="f-l">Inicio del mandato</label><input class="f" id="altaMandatoInicio" type="date"/></div>
+    <div><label class="f-l">Fin del mandato (opcional)</label><input class="f" id="altaMandatoFin" type="date"/></div>
+    <div><label class="f-l">Base del honorario</label><select class="f" id="altaHonorarioBase"><option value="devengado">Devengado: el propietario lo debe aunque el inquilino no pague</option></select></div>
+    <div><label class="f-l">Moneda del honorario (igual al alquiler)</label><select class="f" id="altaHonorarioMoneda" disabled title="El honorario usa la misma moneda porque esta regla no contiene una tasa de conversión propia."><option>ARS</option><option>USD</option></select></div>
+    <div><label class="f-l">Porcentaje (%)</label><input class="f" id="altaHonorarioPct" type="number" min="0" step="0.01" value="8"/></div>
+    <div><label class="f-l">Mínimo</label><input class="f" id="altaHonorarioMin" type="number" min="0" step="0.01" value="0"/></div>
+    <div><label class="f-l">Importe fijo adicional</label><input class="f" id="altaHonorarioFijo" type="number" min="0" step="0.01" value="0"/></div>
+    <label class="alta-check"><input id="altaHonorarioPunitorios" type="checkbox"/>Incluir punitorios en la base del honorario</label>
+    <div class="f-full"><label class="f-l">Tratamiento de impuestos / observación</label><input class="f" id="altaHonorarioImpuestos" placeholder="Ej.: IVA no incluido; factura fiscal externa"/></div>
+  </div></details>
+
+  <details class="alta-section" open><summary>4 · Contrato y condiciones económicas</summary><div class="alta-content f-grid">
+    <div><label class="f-l">Inicio</label><input class="f" id="altaContratoInicio" type="date"/></div>
+    <div><label class="f-l">Fin pactado</label><input class="f" id="altaContratoFin" type="date"/></div>
+    <div><label class="f-l">Alquiler contractual</label><input class="f" id="altaContratoMonto" type="number" min="0.01" step="0.01"/></div>
+    <div><label class="f-l">Moneda</label><select class="f" id="altaContratoMoneda"><option>ARS</option><option>USD</option></select></div>
+    <div><label class="f-l">Pago permitido desde el día</label><input class="f" id="altaPagoDesde" type="number" min="1" max="31" value="1"/></div>
+    <div><label class="f-l">Hasta el día</label><input class="f" id="altaPagoHasta" type="number" min="1" max="31" value="10"/></div>
+    <div><label class="f-l">Actualización del alquiler</label><select class="f" id="altaAjusteTipo"><option value="sin_ajuste">Sin actualización</option><option value="porcentaje_fijo">Porcentaje fijo pactado</option><option value="indice_ipc">IPC oficial (INDEC)</option><option value="indice_icl">ICL oficial (BCRA)</option><option value="indice_otro">Otro índice verificable</option></select></div>
+    <div id="altaFrecuenciaBox"><label class="f-l">Cada cuántos meses</label><input class="f" id="altaFrecuencia" type="number" min="1" max="60" value="3"/></div>
+    <div id="altaPctBox" class="alta-hidden"><label class="f-l">Porcentaje de actualización (%)</label><input class="f" id="altaAjustePct" type="number" min="0" step="0.01"/></div>
+    <div id="altaIndiceOrgBox" class="alta-hidden"><label class="f-l">Organismo del índice</label><input class="f" id="altaIndiceOrg" placeholder="Organismo responsable"/></div>
+    <div id="altaIndiceCodBox" class="alta-hidden"><label class="f-l">Código del índice</label><input class="f" id="altaIndiceCodigo" placeholder="Código inequívoco"/></div>
+    <div id="altaIndiceBaseBox" class="alta-hidden"><label class="f-l">Base / alcance</label><input class="f" id="altaIndiceBase" placeholder="Qué serie se usa"/></div>
+    <div id="altaIndiceGranularidadBox" class="alta-hidden"><label class="f-l">Frecuencia de publicación</label><select class="f" id="altaIndiceGranularidad"><option value="mensual">Mensual</option><option value="diaria">Diaria</option></select></div>
+    <div><label class="f-l">Punitorio diario (%)</label><input class="f" id="altaPunitorioPct" type="number" min="0" step="0.001" value="0"/></div>
+    <div><label class="f-l">Días de gracia después del vencimiento</label><input class="f" id="altaPunitorioDesde" type="number" min="0" max="31" value="0"/></div>
+    <div><label class="f-l">Primer y último mes incompletos</label><select class="f" id="altaProrrateo"><option value="dias_reales">Prorratear por días reales del mes</option><option value="base_30">Prorratear sobre base de 30 días</option><option value="importe_pactado">Cobrar el importe mensual completo</option></select></div>
+    <div class="f-full section-note" id="altaProrrateoAyuda">Días reales: alquiler mensual × días activos ÷ días del mes. El honorario se devenga sobre el alquiler contractual completo.</div>
+    <div><label class="f-l">Redondeo</label><select class="f" id="altaRedondeo"><option value="centavos">A centavos</option><option value="entero">A unidad entera</option></select></div>
+    <div><label class="f-l">Pago en otra moneda</label><select class="f" id="altaOtraMoneda"><option value="prohibido">No permitido</option><option value="tasa_pactada">Permitido con tasa pactada</option></select></div>
+    <div id="altaFuenteConversionBox" class="alta-hidden"><label class="f-l">Fuente de conversión</label><input class="f" id="altaFuenteConversion" placeholder="BNA vendedor / tasa pactada"/></div>
+    <div class="f-full"><label class="f-l">Contrato firmado (PDF, opcional)</label><input class="f" id="altaContratoDoc" type="file" accept="application/pdf"/></div>
+  </div></details>
+
+  <details class="alta-section"><summary>5 · Garantía (opcional)</summary><div class="alta-content">
+    <label class="alta-check"><input id="altaGarantiaOn" type="checkbox"/>Registrar garantía al crear el contrato</label>
+    <div class="f-grid" id="altaGarantiaCampos" style="margin-top:.8rem">
+      <div class="f-full"><label class="f-l">Garante existente o nuevo</label><select class="f" id="altaGuarantorExistente"></select></div>
+      <div data-persona="guarantor"><label class="f-l">Nombre / razón social</label><input class="f" id="altaGuarantorNombre"/></div>
+      <div data-persona="guarantor"><label class="f-l">Tipo</label><select class="f" id="altaGuarantorTipo"><option value="fisica">Persona humana</option><option value="juridica">Persona jurídica</option></select></div>
+      <div data-persona="guarantor"><label class="f-l">Tipo de documento</label><input class="f" id="altaGuarantorDocTipo"/></div>
+      <div data-persona="guarantor"><label class="f-l">Número de documento</label><input class="f" id="altaGuarantorDocNumero"/></div>
+      <div><label class="f-l">Tipo de garantía</label><select class="f" id="altaGarantiaTipo"><option value="fiador">Fiador</option><option value="caucion">Seguro de caución</option><option value="aval">Aval</option><option value="otra">Otra</option></select></div>
+      <div><label class="f-l">Póliza / referencia</label><input class="f" id="altaGarantiaPoliza"/></div>
+      <div><label class="f-l">Emisor</label><input class="f" id="altaGarantiaEmisor"/></div>
+      <div><label class="f-l">Cobertura</label><input class="f" id="altaGarantiaCobertura" type="number" min="0" step="0.01"/></div>
+      <div><label class="f-l">Moneda</label><select class="f" id="altaGarantiaMoneda"><option>ARS</option><option>USD</option></select></div>
+      <div class="f-full"><label class="f-l">Documento de garantía (opcional)</label><input class="f" id="altaGarantiaDoc" type="file" accept="application/pdf,image/jpeg,image/png,image/webp"/></div>
+    </div>
+  </div></details>
+
+  <details class="alta-section"><summary>6 · Depósito (opcional)</summary><div class="alta-content">
+    <label class="alta-check"><input id="altaDepositoOn" type="checkbox"/>El depósito ya fue recibido y quiero constituirlo ahora</label>
+    <div class="f-grid" id="altaDepositoCampos" style="margin-top:.8rem">
+      <div><label class="f-l">Monto</label><input class="f" id="altaDepositoMonto" type="number" min="0" step="0.01"/></div>
+      <div><label class="f-l">Moneda</label><select class="f" id="altaDepositoMoneda"><option>ARS</option><option>USD</option></select></div>
+      <div><label class="f-l">Quién lo custodia</label><select class="f" id="altaDepositoCustodia"><option value="propietario">Propietario</option><option value="administracion">Administración</option><option value="inquilino">Inquilino</option></select></div>
+      <div><label class="f-l">Comprobante obligatorio</label><input class="f" id="altaDepositoDoc" type="file" accept="application/pdf,image/jpeg,image/png,image/webp"/></div>
+    </div>
+  </div></details>
+
+  <details class="alta-section"><summary>7 · Servicios y cuentas</summary><div class="alta-content">
+    <div class="alta-help">Cargá cada cuenta que querés administrar y su responsable contractual. Después, en Servicios, una misma factura puede asignarse a una unidad o repartirse entre varias por partes iguales, porcentaje o montos fijos.</div>
+    <div id="altaServicios"></div>
+    <button class="btn-g" id="altaAgregarServicio" type="button">＋ Agregar servicio</button>
+  </div></details>
+
+  <div class="f-grid" style="margin-top:1rem">
+    <div><label class="f-l">Expensas estimadas del primer mes (solo proforma)</label><input class="f" id="altaPrimerMesExpensas" type="number" min="0" step="0.01" value="0"/></div>
+    <div><label class="f-l">Fecha del primer mes</label><input class="f" id="altaPrimerMes" type="month"/></div>
+  </div>
+  <div class="alta-summary" id="altaResumen"><h3>Resumen antes de confirmar</h3><div class="empty">Completá monto y honorario para ver la proforma.</div></div>
+  <label class="alta-check" style="margin-top:1rem"><input id="altaConfirmacion" type="checkbox"/>Revisé personas, propiedad, mandato, contrato y las tres cuentas separadas. Confirmar creará todo en una sola operación.</label>
+  <div style="display:flex;gap:.7rem;align-items:center;margin-top:1rem;flex-wrap:wrap"><button class="btn" id="altaConfirmar" type="button">Confirmar alta completa</button><button class="btn-g" id="altaCancelar" type="button">Cerrar sin guardar</button><div class="op-msg" id="altaMsg"></div></div>
+</div></div>
 
 <div class="overlay" id="helpOv"><div class="modal">
   <button class="m-close" id="helpClose">✕</button>
@@ -353,8 +491,18 @@ function desplazarMesFechaCivil(valor,delta){
   const ultimo=new Date(Date.UTC(y,m+1,0)).getUTCDate(),dia=Math.min(p.d,ultimo);
   return `${String(y).padStart(4,'0')}-${String(m+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
 }
+function desplazarDiaFechaCivil(valor,delta){
+  const p=partesFechaCivil(valor);if(!p)throw new Error('Fecha civil inválida.');
+  const d=new Date(Date.UTC(p.y,p.m,p.d+delta));
+  return `${String(d.getUTCFullYear()).padStart(4,'0')}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+}
 let D={},filtro='todas',propAbierta=null,tabAbierta='Cargos';
+const pagoConversionPreview=new Map(),pagoConversionSecuencia=new Map(),pagoConversionTimers=new Map();
 const liquidacionBorradorCache=new Map();
+let altaProformaSecuencia=0,altaProformaActual=null,altaProformaTimer=null;
+const ajustePreviewCache=new Map();
+const mesPreviewCache=new Map();
+const facturaRepartoPreview=new Map();
 const _hoy=partesFechaCivil(hoyCivil());let mesRef={y:_hoy.y,m:_hoy.m};let calYear=_hoy.y;
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function shiftMes(d){let m=mesRef.m+d,y=mesRef.y;if(m<0){m=11;y--}if(m>11){m=0;y++}mesRef={y,m};renderAgenda()}
@@ -608,18 +756,22 @@ async function start(){
 }
 async function cargar(intento=0){
   const v=n=>sb.from(n).select('*');
-  const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
-    doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion]=await Promise.all([
+  const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,sfrep,tit,
+    doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion,garantia,
+    publicaciones,indices]=await Promise.all([
     v('alq_v_propiedad'),v('alq_v_contrato'),v('alq_v_contrato_version'),v('alq_v_parte'),
     v('alq_v_cargo'),v('alq_v_nota'),v('alq_v_transaccion_caja'),v('alq_v_aplicacion'),
     v('alq_v_rendicion'),v('alq_v_rendicion_linea'),v('alq_v_comunicado'),v('alq_v_comunicado_mensaje'),
-    v('alq_v_mandato_version'),v('alq_v_mandato'),v('alq_v_cuenta_custodia'),v('alq_v_servicio_cuenta'),v('alq_v_servicio_factura'),
+    v('alq_v_mandato_version'),v('alq_v_mandato'),v('alq_v_cuenta_custodia'),v('alq_v_servicio_cuenta'),v('alq_v_servicio_factura'),v('alq_v_servicio_factura_reparto'),
     v('alq_v_titularidad'),v('alq_v_documento'),v('alq_v_mes_generado'),v('alq_v_pago_confirmado'),
     v('alq_v_credito'),v('alq_v_periodo'),v('alq_v_liquidacion_propietario'),
     v('alq_v_liquidacion_envio'),v('alq_v_mora_propuesta'),v('alq_v_ajuste'),
-    v('alq_v_deposito'),v('alq_v_deposito_evento'),v('alq_v_deposito_liquidacion')]);
-  const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
-    doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion].find(r=>r.error);
+    v('alq_v_deposito'),v('alq_v_deposito_evento'),v('alq_v_deposito_liquidacion'),v('alq_v_garantia'),
+    sb.from('propiedades').select('id,titulo,codigo_publico,codigo_interno,ubicacion,ciudad,provincia,operacion,activa').order('titulo'),
+    v('alq_v_indice_serie')]);
+  const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,sfrep,tit,
+    doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion,garantia,
+    publicaciones,indices].find(r=>r.error);
   if(err){
     const mensaje=String(err.error&&err.error.message||'No se pudo leer PRODUCCIÓN');
     if(intento<2){
@@ -636,18 +788,47 @@ async function cargar(intento=0){
   }
   D={prop:prop.data,con:con.data,ver:ver.data,parte:parte.data,cargo:cargo.data,nota:nota.data,
      tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data,mv:mv.data,mand:mand.data,cta:cta.data,
-     scta:scta.data,sfac:sfac.data,tit:tit.data,doc:doc.data,mesgen:mesgen.data,
+     scta:scta.data,sfac:sfac.data,sfrep:sfrep.data,tit:tit.data,doc:doc.data,mesgen:mesgen.data,
      pago:pago.data,credito:credito.data,periodo:periodo.data,liq:liq.data,lenv:lenv.data,
      mora:mora.data,ajuste:ajuste.data,deposito:deposito.data,devento:devento.data,
-     dliquidacion:dliquidacion.data};
+     dliquidacion:dliquidacion.data,garantia:garantia.data,
+     publicaciones:publicaciones.data,indices:indices.data};
   D.pname=Object.fromEntries(D.parte.map(p=>[p.id,p.nombre]));
+  prepararAltaOpciones();
   render();
   if(propAbierta&&$('ov').classList.contains('on'))abrir(propAbierta,tabAbierta);
 }
 const titularParteId=pid=>{const t=D.tit.find(x=>x.propiedad_id===pid);return t&&t.parte_id};
+const repartosFactura=facturaId=>(D.sfrep||[]).filter(x=>x.factura_id===facturaId);
+function vinculoFacturaCargo(cargoId){
+  const directa=(D.sfac||[]).find(f=>f.cargo_id===cargoId);
+  if(directa)return{factura:directa,reparto:null};
+  const reparto=(D.sfrep||[]).find(x=>x.cargo_id===cargoId);
+  if(!reparto)return null;
+  const factura=(D.sfac||[]).find(f=>f.id===reparto.factura_id);
+  return factura?{factura,reparto}:null;
+}
+function facturaSaldadaVisible(f){
+  const lineas=repartosFactura(f.id);
+  if(lineas.length){
+    const cargos=lineas.map(x=>D.cargo.find(c=>c.id===x.cargo_id)).filter(Boolean);
+    return cargos.length===lineas.length&&cargos.every(c=>Number(c.saldo_pendiente)===0);
+  }
+  const cargo=f.cargo_id&&D.cargo.find(c=>c.id===f.cargo_id);
+  return cargo?Number(cargo.saldo_pendiente)===0:f.saldada===true;
+}
+function facturasPropiedad(pid){
+  return (D.sfac||[]).filter(f=>f.propiedad_id===pid||repartosFactura(f.id).some(x=>x.propiedad_id===pid));
+}
+function modoFacturaVisible(f,lineas=repartosFactura(f.id)){
+  return f.distribucion_modo||(lineas[0]&&lineas[0].modo)||(lineas.length?'repartida':'unico');
+}
 const conceptoAmigable=v=>({alquiler_periodo:'Alquiler',honorario_administracion:'Honorario de administración',
   expensas:'Expensas',servicio:'Servicio',extra:'Cargo extraordinario',reparacion:'Reparación',
   penalidad:'Penalidad',mora:'Mora resuelta por la administración',gasto_propietario:'Gasto a reintegrar por el propietario'}[v]||String(v||'Cargo').replaceAll('_',' '));
+const prorrateoAmigable=v=>({dias_reales:'días reales del mes',base_30:'base fija de 30 días',
+  importe_pactado:'importe mensual completo'}[v]||String(v||'—'));
+const redondeoAmigable=v=>({centavos:'a centavos',entero:'a unidad entera'}[v]||String(v||'—'));
 function circuitoCargo(c){
   if(c.concepto==='honorario_administracion')return'honorarios';
   const titular=titularParteId(c.propiedad_id);
@@ -952,6 +1133,15 @@ function descargarBlob(blob,nombre){
   a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+async function descargarFacturaDocumento(id){
+  const doc=(D.doc||[]).find(x=>x.id===id);
+  if(!doc||!doc.path){toast('La factura no tiene un archivo descargable vinculado.');return}
+  try{
+    const descarga=await sb.storage.from('alq-docs').download(doc.path);
+    if(descarga.error)throw new Error(descarga.error.message);
+    descargarBlob(descarga.data,String(doc.path).split('/').pop()||'factura');
+  }catch(e){toast('No se pudo descargar la factura: '+e.message)}
+}
 async function descargarLiquidacionContenido(c,sha,estado){
   const pdf=crearLiquidacionPdf(c,sha,estado);if(!pdf)return;
   descargarBlob(pdf.blob,pdf.nombre);
@@ -1166,25 +1356,84 @@ function tab(pid,t){
   }else if(t==='Cargos'){
     const cs=D.cargo.filter(c=>c.propiedad_id===pid).sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
     h=cs.length?`<table><tr><th>Cuenta</th><th>Concepto / respaldo</th><th>Deudor → acreedor</th><th>Vence</th><th class="num">Monto neto</th><th class="num">Saldo</th><th>Estado</th></tr>`+
-      cs.map(c=>{const e=estadoCargo(c),fac=D.sfac.find(f=>f.cargo_id===c.id),doc=fac&&D.doc.find(d=>d.id===fac.comprobante_documento_id);
-        const detalle=c.snapshot_regla&&c.snapshot_regla.detalle;return `<tr><td>${esc(circuitoNombre(circuitoCargo(c)))}</td><td><b>${esc(conceptoAmigable(c.concepto))}</b>${detalle?`<div class="account-caption">${esc(detalle)}</div>`:''}${fac?`<div class="account-caption">Factura vinculada${doc?' · documento '+esc(String(doc.sha256||'').slice(0,8))+'…':''}</div>`:''}</td><td>${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}</td><td>${fdate(c.vence_at)}</td>
+      cs.map(c=>{const e=estadoCargo(c),vinculo=vinculoFacturaCargo(c.id),fac=vinculo&&vinculo.factura,
+        reparto=vinculo&&vinculo.reparto,doc=fac&&D.doc.find(d=>d.id===fac.comprobante_documento_id);
+        const detalle=c.snapshot_regla&&c.snapshot_regla.detalle;return `<tr><td>${esc(circuitoNombre(circuitoCargo(c)))}</td><td><b>${esc(conceptoAmigable(c.concepto))}</b>${detalle?`<div class="account-caption">${esc(detalle)}</div>`:''}${fac?`<div class="account-caption">Factura vinculada${reparto?' · '+esc(modoFacturaVisible(fac))+' · '+Number(reparto.porcentaje).toLocaleString('es-AR')+' %':''}${doc?' · documento '+esc(String(doc.sha256||'').slice(0,8))+'… <button class="btn-g" type="button" onclick="descargarFacturaDocumento(\''+doc.id+'\')">Descargar</button>':''}</div>`:''}</td><td>${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}</td><td>${fdate(c.vence_at)}</td>
       <td class="num">${fmt(montoNetoCargo(c))}</td><td class="num ${Number(c.saldo_pendiente)>0?'neg':'pos'}">${fmt(c.saldo_pendiente)}</td>
       <td><span class="tag" style="--tc:${e.c}">${e.t}</span></td></tr>`}).join('')+'</table>'
       :'<div class="empty">Sin cargos.</div>';
   }else if(t==='Contratos'){
     const cs=D.con.filter(c=>c.propiedad_id===pid).sort((a,b)=>new Date(a.inicio)-new Date(b.inicio));
+    const cvig=cs.find(c=>['vigente','continuacion_legal'].includes(c.estado));
+    const vv=cvig&&D.ver.filter(x=>x.contrato_id===cvig.id).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
     const man=D.mand.find(x=>x.propiedad_id===pid&&x.estado==='vigente')||D.mand.find(x=>x.propiedad_id===pid);
     const mv=man&&D.mv.filter(x=>x.mandato_id===man.id).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
     const owner=D.pname[titularParteId(pid)]||'—';
-    h=cs.length?`<div class="section-note" style="margin-bottom:.8rem"><b>Propietario:</b> ${esc(owner)} · <b>Honorario de administración:</b> ${mv?(Number(mv.honorario_pct||0)*100).toLocaleString('es-AR')+' %':'—'}</div>
+    const imp=mv&&mv.tratamiento_impuestos&&mv.tratamiento_impuestos.nota;
+    const garantias=(D.garantia||[]).filter(g=>cs.some(c=>c.id===g.contrato_id));
+    h=cs.length?`<div class="section-note" style="margin-bottom:.8rem"><b>Propietario:</b> ${esc(owner)}<br/>
+      <b>Honorario:</b> ${mv?(Number(mv.honorario_pct||0)*100).toLocaleString('es-AR')+' % · mínimo '+fmt(mv.honorario_minimo)+' · fijo adicional '+fmt(mv.honorario_fijo)+' · '+esc(mv.moneda):'—'}<br/>
+      <b>Base:</b> ${mv?esc(mv.honorario_base):'—'} · punitorios ${mv&&mv.incluye_punitorios?'incluidos en la base porcentual':'excluidos'}${imp?`<br/><b>Impuestos / observación:</b> ${esc(imp)}`:''}</div>
       <table><tr><th>Inquilino</th><th>Estado</th><th>Inicio / fin</th><th>Condiciones económicas</th><th>Ajuste y mora</th><th>Documento</th></tr>`+
       cs.map(c=>{const v=D.ver.filter(x=>x.contrato_id===c.id).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
-        const ajuste=v?(v.pct_fijo!=null?'Fijo '+(Number(v.pct_fijo)*100).toLocaleString('es-AR')+' %':v.indice_serie_id?'Por índice':'Sin ajuste definido'):'—';return `<tr><td>${esc(D.pname[c.inquilino_parte_id]||'—')}</td>
+        const serie=v&&D.indices.find(x=>x.id===v.indice_serie_id);
+        const ajuste=v?(v.pct_fijo!=null?'Fijo '+(Number(v.pct_fijo)*100).toLocaleString('es-AR')+' %':v.indice_serie_id?'Índice '+esc(serie?serie.organismo+' · '+serie.codigo:'configurado'):'Sin ajuste'):'—';return `<tr><td>${esc(D.pname[c.inquilino_parte_id]||'—')}</td>
       <td><span class="tag" style="--tc:${{vigente:'var(--activo)',cerrado:'var(--gris)',rescindido:'var(--rojo)',continuacion_legal:'var(--ambar)'}[c.estado]||'var(--gris)'}">${esc(c.estado.replace('_',' '))}</span></td>
       <td>${fdate(c.inicio)} → ${fdate(c.fin_pactado)}${c.fin_efectivo?`<div class="account-caption">fin efectivo ${fdate(c.fin_efectivo)}</div>`:''}</td>
-      <td>${v?fmt(v.monto)+' '+esc(v.moneda||''):'—'}${v?`<div class="account-caption">pago días ${esc(v.dia_pago_desde)} a ${esc(v.dia_pago_hasta)}</div>`:''}</td>
-      <td>${esc(ajuste)}${v?`<div class="account-caption">frecuencia ${esc(v.frecuencia_ajuste||'—')} · mora desde día ${esc(v.punitorio_desde_dia)} (${(Number(v.punitorio_pct_dia||0)*100).toLocaleString('es-AR')} % diario)</div>`:''}</td>
-      <td>${c.pdf_documento_id?'Contrato registrado':'Sin PDF vinculado'}</td></tr>`}).join('')+'</table>'
+      <td>${v?fmt(v.monto)+' '+esc(v.moneda||''):'—'}${v?`<div class="account-caption">pago días ${esc(v.dia_pago_desde)} a ${esc(v.dia_pago_hasta)} · prorrateo ${esc(prorrateoAmigable(v.metodo_prorrateo))} · redondeo ${esc(redondeoAmigable(v.regla_redondeo))}</div><div class="account-caption">otra moneda: ${v.regla_pago_otra_moneda==='tasa_pactada'?'permitida · '+esc(v.fuente_conversion):'prohibida'}</div>`:''}</td>
+      <td>${ajuste}${v?`<div class="account-caption">frecuencia ${esc(v.frecuencia_ajuste||'—')} · mora: ${esc(v.punitorio_desde_dia)} días de gracia, ${(Number(v.punitorio_pct_dia||0)*100).toLocaleString('es-AR')} % diario</div>`:''}</td>
+      <td>${c.pdf_documento_id?'Contrato registrado':'Sin PDF vinculado'}</td></tr>`}).join('')+'</table>'+
+      `<div class="sec-t">Garantías</div>${garantias.length?`<table><tr><th>Garante</th><th>Tipo</th><th>Póliza / emisor</th><th>Cobertura</th><th>Vigencia</th><th>Documento</th></tr>${garantias.map(g=>`<tr><td>${esc(D.pname[g.garante_parte_id]||'—')}</td><td>${esc(g.tipo)}</td><td>${esc(g.poliza||'—')} · ${esc(g.emisor||'—')}</td><td>${g.cobertura==null?'—':fmt(g.cobertura)+' '+esc(g.moneda)}</td><td>${esc(g.vigencia||'—')}</td><td>${g.documento_id?'Registrado':'Sin documento'}</td></tr>`).join('')}</table>`:'<div class="empty">Este contrato no tiene una garantía registrada.</div>'}`+
+      (cvig&&cvig.estado==='vigente'?`<div class="sec-t">Continuación legal sin renovación firmada</div>
+      <div class="section-note">Usá esta acción sólo si venció el plazo pactado y la ocupación continúa sin un contrato nuevo. Conserva las condiciones vigentes y deja el estado visible como <b>continuación legal</b>; después todavía se puede renovar o rescindir.</div>
+      <div class="f-grid">
+        <div><span class="f-l">Continúa desde</span><input class="f" id="contDesde" type="date" value="${desplazarDiaFechaCivil(cvig.fin_pactado,1)}"/></div>
+        <div style="align-self:end"><button class="btn" id="btnContinuacion">Marcar continuación legal</button></div>
+        <div class="f-full"><div class="op-msg" id="msgContinuacion"></div></div>
+      </div>`:'')+
+      (cvig&&vv&&mv?`<div class="sec-t">Renovar contrato</div>
+      <div class="section-note"><b>La renovación crea un contrato nuevo y conserva el anterior.</b> Revisá todas las condiciones; no se copian a ciegas. Para confirmar, el mandato debe extenderse hasta el nuevo fin.</div>
+      <div class="f-grid">
+        <div><span class="f-l">Inicio nuevo</span><input class="f" id="renInicio" type="date" value="${desplazarDiaFechaCivil(cvig.fin_pactado,1)}"/></div>
+        <div><span class="f-l">Fin pactado nuevo</span><input class="f" id="renFin" type="date" value="${desplazarMesFechaCivil(cvig.fin_pactado,12)}"/></div>
+        <div><span class="f-l">Alquiler</span><input class="f" id="renMonto" type="number" min="1" step=".01" value="${Number(vv.monto)}"/></div>
+        <div><span class="f-l">Moneda</span><input class="f" id="renMoneda" maxlength="3" value="${esc(vv.moneda)}"/></div>
+        <div><span class="f-l">Pago desde el día</span><input class="f" id="renPagoDesde" type="number" min="1" max="31" value="${vv.dia_pago_desde}"/></div>
+        <div><span class="f-l">Pago hasta el día</span><input class="f" id="renPagoHasta" type="number" min="1" max="31" value="${vv.dia_pago_hasta}"/></div>
+        <div><span class="f-l">Actualización</span><select class="f" id="renAjusteTipo"><option value="sin_ajuste">Sin ajuste</option><option value="porcentaje_fijo">Porcentaje fijo</option><option value="indice_ipc">IPC · INDEC</option><option value="indice_icl">ICL · BCRA</option><option value="indice_otro">Otro índice verificable</option></select></div>
+        <div id="renFrecuenciaBox"><span class="f-l">Cada cuántos meses</span><input class="f" id="renFrecuencia" type="number" min="1" value="${Number(String(vv.frecuencia_ajuste||'').match(/\d+/)?.[0]||3)}"/></div>
+        <div id="renPctBox"><span class="f-l">Porcentaje fijo (%)</span><input class="f" id="renPct" type="number" min=".0001" step=".0001" value="${vv.pct_fijo==null?'':Number(vv.pct_fijo)*100}"/></div>
+        <div id="renIndiceOrgBox"><span class="f-l">Organismo</span><input class="f" id="renIndiceOrg"/></div>
+        <div id="renIndiceCodBox"><span class="f-l">Código del índice</span><input class="f" id="renIndiceCodigo"/></div>
+        <div id="renIndiceBaseBox"><span class="f-l">Serie / alcance</span><input class="f" id="renIndiceBase"/></div>
+        <div id="renIndiceGranularidadBox"><span class="f-l">Granularidad</span><select class="f" id="renIndiceGranularidad"><option value="mensual">Mensual</option><option value="diaria">Diaria</option></select></div>
+        <div><span class="f-l">Mora diaria (%)</span><input class="f" id="renMoraPct" type="number" min="0" step=".0001" value="${Number(vv.punitorio_pct_dia||0)*100}"/></div>
+        <div><span class="f-l">Días de gracia</span><input class="f" id="renMoraGracia" type="number" min="0" max="31" value="${vv.punitorio_desde_dia||0}"/></div>
+        <div><span class="f-l">Prorrateo</span><select class="f" id="renProrrateo"><option value="dias_reales">Días reales</option><option value="base_30">Base 30</option><option value="importe_pactado">Importe completo</option></select></div>
+        <div><span class="f-l">Redondeo</span><select class="f" id="renRedondeo"><option value="centavos">Centavos</option><option value="entero">Unidad entera</option></select></div>
+        <div><span class="f-l">Pago en otra moneda</span><select class="f" id="renOtraMoneda"><option value="prohibido">No permitido</option><option value="tasa_pactada">Permitido con tasa informada</option></select></div>
+        <div id="renFuenteConversionBox"><span class="f-l">Fuente de conversión</span><input class="f" id="renFuenteConversion" value="${esc(vv.fuente_conversion||'')}"/></div>
+        <div><span class="f-l">Honorario (%)</span><input class="f" id="renHonPct" type="number" min="0" step=".0001" value="${Number(mv.honorario_pct||0)*100}"/></div>
+        <div><span class="f-l">Honorario mínimo</span><input class="f" id="renHonMin" type="number" min="0" step=".01" value="${Number(mv.honorario_minimo||0)}"/></div>
+        <div><span class="f-l">Fijo adicional</span><input class="f" id="renHonFijo" type="number" min="0" step=".01" value="${Number(mv.honorario_fijo||0)}"/></div>
+        <div class="f-full"><span class="f-l">Impuestos / observación</span><input class="f" id="renHonNota" value="${esc(imp||'')}"/></div>
+        <div class="f-full"><label class="ck"><input id="renHonPunitorios" type="checkbox" ${mv.incluye_punitorios?'checked':''}/> Incluir punitorios en la base porcentual del honorario</label></div>
+        <div class="f-full"><label class="ck"><input id="renCopiarGarantia" type="checkbox" ${garantias.length?'checked':''}/> Copiar la garantía vigente al nuevo contrato</label></div>
+        <div class="f-full"><span class="f-l">Contrato renovado firmado (opcional)</span><input class="f" id="renDocumento" type="file" accept="application/pdf,image/*"/></div>
+        <div class="f-full"><label class="ck"><input id="renExtenderMandato" type="checkbox"/> Confirmo extender mandato y titularidad hasta el nuevo fin</label></div>
+        <div class="f-full"><button class="btn" id="btnRenovar">Renovar contrato</button><div class="op-msg" id="msgRenovar"></div></div>
+      </div>
+      <div class="sec-t">Rescindir contrato vigente</div>
+      <div class="section-note">La rescisión cierra el contrato en la fecha efectiva y conserva la historia. No devuelve el depósito ni condona saldos automáticamente.</div>
+      <div class="f-grid">
+        <div><span class="f-l">Notificada el</span><input class="f" id="rescNotificada" type="date" value="${hoy()}"/></div>
+        <div><span class="f-l">Efectiva el</span><input class="f" id="rescEfectiva" type="date" value="${hoy()}"/></div>
+        <div><span class="f-l">Preaviso (días)</span><input class="f" id="rescPreaviso" type="number" min="0" value="0"/></div>
+        <div><span class="f-l">Entrega de llaves (opcional)</span><input class="f" id="rescLlaves" type="date"/></div>
+        <div class="f-full"><span class="f-l">Causal / motivo</span><input class="f" id="rescCausal" placeholder="Ej.: acuerdo de partes"/></div>
+        <div class="f-full"><span class="f-l">Documento de rescisión (opcional)</span><input class="f" id="rescDocumento" type="file" accept="application/pdf,image/*"/></div>
+        <div class="f-full"><button class="btn" id="btnRescindir">Rescindir contrato</button><div class="op-msg" id="msgRescindir"></div></div>
+      </div>`:'<div class="section-note" style="margin-top:1rem">No hay un contrato vigente para renovar o rescindir.</div>')
       :'<div class="empty">Sin contratos.</div>';
   }else if(t==='Notas'){
     const ns=D.nota.filter(n=>D.cargo.some(c=>c.id===n.cargo_id&&c.propiedad_id===pid));
@@ -1194,9 +1443,10 @@ function tab(pid,t){
       :'<div class="empty">Sin notas.</div>';
   }else if(t==='Servicios'){
     const ctas=D.scta.filter(s=>s.propiedad_id===pid);
-    const facs=D.sfac.filter(f=>f.propiedad_id===pid);
+    const facs=facturasPropiedad(pid);
+    const contratosActivos=D.con.filter(c=>['vigente','continuacion_legal'].includes(c.estado));
     const cargosServicio=D.cargo.filter(c=>c.propiedad_id===pid&&c.concepto==='servicio');
-    const cargosSinFactura=cargosServicio.filter(c=>!facs.some(f=>f.cargo_id===c.id));
+    const cargosSinFactura=cargosServicio.filter(c=>!vinculoFacturaCargo(c.id));
     const perio=p=>{const m=(p||'').match(/(\d{4}-\d{2}-\d{2}),(\d{4}-\d{2}-\d{2})/);
       return m?fdate(m[1])+' → '+fdate(m[2]):'—'};
     const tipoCta=id=>{const c=D.scta.find(x=>x.id===id);return c?c.tipo+' · '+(c.nro_cliente||''):'—'};
@@ -1218,10 +1468,13 @@ function tab(pid,t){
       <div class="f-full"><div class="op-msg" id="msgScta"></div></div>
     </div>
     <div class="sec-t">Facturas cargadas</div>`+
-    (facs.length?`<table><tr><th>Servicio</th><th>Período</th><th>Vence</th><th>Documento</th><th>Estado</th><th class="num">Monto</th></tr>`+
-      facs.map(f=>{const doc=D.doc.find(d=>d.id===f.comprobante_documento_id);return `<tr><td>${esc(tipoCta(f.cuenta_id))}</td><td>${perio(f.periodo)}</td><td>${fdate(f.vence_at)}</td>
-      <td>${doc?'Registrado · '+esc(String(doc.sha256||'').slice(0,8))+'…':'Sin respaldo'}</td>
-      <td><span class="tag" style="--tc:${f.saldada?'var(--verde)':(f.cargo_id?'var(--ambar)':'var(--gris)')}">${f.saldada?'saldada':(f.cargo_id?'con cargo':'informativa')}</span></td>
+    (facs.length?`<table><tr><th>Servicio</th><th>Período</th><th>Vence</th><th>Reparto</th><th>Documento</th><th>Estado</th><th class="num">Monto</th></tr>`+
+      facs.map(f=>{const doc=D.doc.find(d=>d.id===f.comprobante_documento_id),lineas=repartosFactura(f.id),
+        lineasProp=lineas.filter(x=>x.propiedad_id===pid),saldada=facturaSaldadaVisible(f),
+        montoProp=lineasProp.reduce((s,x)=>s+Number(x.monto||0),0),modo=modoFacturaVisible(f,lineas);return `<tr><td>${esc(tipoCta(f.cuenta_id))}</td><td>${perio(f.periodo)}</td><td>${fdate(f.vence_at)}</td>
+      <td>${lineas.length?esc(modo)+' · '+lineas.length+' contrato(s)<div class="account-caption">'+(lineasProp.length?'Esta unidad: '+fmt(montoProp)+' '+esc(f.moneda):'Sin cargo para esta unidad')+'</div>':'Una unidad'}</td>
+      <td>${doc?'Registrado · '+esc(String(doc.sha256||'').slice(0,8))+'… <button class="btn-g" type="button" onclick="descargarFacturaDocumento(\''+doc.id+'\')">Descargar</button>':'Sin respaldo'}</td>
+      <td><span class="tag" style="--tc:${saldada?'var(--verde)':(f.cargo_id||lineas.length?'var(--ambar)':'var(--gris)')}">${saldada?'saldada':(f.cargo_id||lineas.length?'con cargo':'informativa')}</span></td>
       <td class="num">${fmt(f.monto)}</td></tr>`}).join('')+'</table>'
       :'<div class="empty">Sin facturas vinculadas.</div>')+
     (cargosSinFactura.length?`<div class="section-note" style="margin-top:.8rem"><b>${cargosSinFactura.length} cargo(s) histórico(s) de servicio sin factura vinculada.</b> Se muestran para no ocultar el antecedente, pero no cuentan como factura cargada.</div>`:'')+`
@@ -1232,10 +1485,16 @@ function tab(pid,t){
       </select></div>
       <div><span class="f-l">Período desde</span><input class="f" id="faDesde" type="date"/></div>
       <div><span class="f-l">Período hasta</span><input class="f" id="faHasta" type="date"/></div>
-      <div><span class="f-l">Monto</span><input class="f" id="faMonto" type="number" min="1" step="1"/></div>
+      <div><span class="f-l">Monto total</span><input class="f" id="faMonto" type="number" min=".01" step=".01"/></div>
+      <div><span class="f-l">Moneda</span><select class="f" id="faMoneda"><option>ARS</option><option>USD</option><option>EUR</option></select></div>
       <div><span class="f-l">Vence</span><input class="f" id="faVence" type="date" value="${hoy()}"/></div>
       <div class="f-full"><span class="f-l">Factura o comprobante (obligatorio)</span><input class="f" id="faDocumento" type="file" accept="application/pdf,image/*"/></div>
-      <div class="f-full"><label class="ck"><input type="checkbox" id="faCargo" checked/>
+      <div><span class="f-l">Distribución</span><select class="f" id="faRepartoModo"><option value="unico">Una sola unidad</option><option value="partes_iguales">Partes iguales</option><option value="porcentaje">Por porcentaje</option><option value="monto_fijo">Montos fijos</option></select></div>
+      <div><span class="f-l">Acreedor de los cargos</span><select class="f" id="faAcreedorTipo"><option value="propietario">Propietario de cada unidad</option><option value="administracion">Administración</option></select></div>
+      <div class="f-full" id="faRepartoLineas">${contratosActivos.map(c=>{const pp=D.prop.find(p=>p.id===c.propiedad_id);return `<div class="section-note" style="display:grid;grid-template-columns:auto 1fr 170px;gap:.65rem;align-items:center;margin:.35rem 0"><input type="checkbox" data-fa-contrato="${c.id}" ${c.propiedad_id===pid?'checked':''}/><span>${esc(pp?pp.direccion:'Propiedad')} · ${esc(D.pname[c.inquilino_parte_id]||'—')}</span><input class="f" data-fa-valor="${c.id}" type="number" min="0" step=".01" placeholder="valor" disabled/></div>`}).join('')}</div>
+      <div class="f-full" id="faRepartoPreview"><div class="empty">Para repartir, elegí contratos y calculá la vista previa exacta.</div></div>
+      <div class="f-full"><button class="btn-g" id="btnFacPreview" type="button">Calcular reparto</button></div>
+      <div class="f-full" id="faCargoBox"><label class="ck"><input type="checkbox" id="faCargo" checked/>
         Generarle el cargo al inquilino (la administración recupera esta plata)</label></div>
       <div class="f-full"><button class="btn" id="btnFac">Cargar factura</button>
         <div class="op-msg" id="msgFac"></div></div>
@@ -1272,6 +1531,7 @@ function tab(pid,t){
     const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
     const version=cvig&&D.ver.filter(v=>v.contrato_id===cvig.id)
       .sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+    const moraConfigurada=!!(version&&Number(version.punitorio_pct_dia)>0&&version.formula_punitorio_version==='simple_diaria_v1');
     const titular=titularParteId(pid),admin=D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
     const cargosMora=D.cargo.filter(c=>c.propiedad_id===pid&&circuitoCargo(c)==='obligaciones'&&Number(c.saldo_pendiente)>0);
     const propuestas=(D.mora||[]).filter(x=>x.propiedad_id===pid).sort((a,b)=>String(b.propuesta_at).localeCompare(String(a.propuesta_at)));
@@ -1279,19 +1539,18 @@ function tab(pid,t){
     const ajustes=(D.ajuste||[]).filter(x=>x.contrato_id===(cvig&&cvig.id)).sort((a,b)=>String(b.aplicado_at).localeCompare(String(a.aplicado_at)));
     h=`<div class="section-note"><b>Bloque 3 · meses excepcionales.</b> Acá se resuelven sólo las excepciones. La mora nunca se carga sola; el pago parcial y el excedente siguen en Operar.</div>
       <div class="sec-t">Mora: proponer primero, decidir después</div>
+      <div class="section-note">${moraConfigurada?`Regla contractual: <b>${(Number(version.punitorio_pct_dia)*100).toLocaleString('es-AR')} % diario</b> sobre el saldo pendiente, después de <b>${Number(version.punitorio_desde_dia)} día(s) de gracia</b>. El porcentaje y la gracia no se vuelven a escribir acá.`:'Este contrato no tiene una regla de mora activa. Para proponerla hay que crear una nueva versión contractual; el programa no inventa un porcentaje.'}</div>
       <div class="f-grid">
         <div class="f-full"><span class="f-l">Cargo impago del inquilino</span><select class="f" id="b3MoraCargo">${cargosMora.map(c=>`<option value="${c.id}">${esc(conceptoAmigable(c.concepto))} · vence ${fdate(c.vence_at)} · saldo ${fmt(c.saldo_pendiente)}</option>`).join('')}</select></div>
         <div><span class="f-l">Calcular hasta</span><input class="f" id="b3MoraHasta" type="date" value="${hoy()}"/></div>
-        <div><span class="f-l">Porcentaje diario (%)</span><input class="f" id="b3MoraPct" type="number" min="0.000001" max="100" step="0.01" placeholder="lo decide la administración"/></div>
-        <div><span class="f-l">Días de gracia</span><input class="f" id="b3MoraGracia" type="number" min="0" step="1" value="0"/></div>
-        <div style="align-self:end"><button class="btn" id="btnB3MoraProponer" ${cargosMora.length?'':'disabled'}>Calcular propuesta</button></div>
+        <div style="align-self:end"><button class="btn" id="btnB3MoraProponer" ${cargosMora.length&&moraConfigurada?'':'disabled'}>Calcular propuesta contractual</button></div>
         <div class="f-full"><div class="op-msg" id="msgB3Mora"></div></div>
       </div>
       ${propuestas.length?propuestas.map(p=>`<div class="account-box obligations" style="margin-top:.7rem"><b>Propuesta ${esc(p.estado)}</b> · capital ${fmt(p.capital)} · ${p.dias_mora} días · ${esc(p.porcentaje_diario)} % diario · <b>${fmt(p.monto_propuesto)}</b>
         ${p.estado==='propuesta'?`<div class="f-grid" style="margin-top:.6rem"><div><span class="f-l">Monto final</span><input class="f" id="b3MoraMonto-${p.id}" type="number" min="0" value="${Number(p.monto_propuesto)}"/></div><div><span class="f-l">Vence</span><input class="f" id="b3MoraVence-${p.id}" type="date" value="${fechaCivil(p.calculada_hasta)}"/></div><div class="f-full"><span class="f-l">Motivo obligatorio</span><input class="f" id="b3MoraMotivo-${p.id}" placeholder="decisión de la administración"/></div><div class="f-full"><button class="btn" onclick="opB3MoraResolver('${pid}','${p.id}','aplicar')">Aplicar mora</button> <button class="btn-g" onclick="opB3MoraResolver('${pid}','${p.id}','condonar')">Condonar</button><div class="op-msg" id="msgB3Mora-${p.id}"></div></div></div>`:`<div class="account-caption">Resuelta: ${fmt(p.monto_resuelto)} · ${esc(p.motivo_resolucion||'')}</div>`}</div>`).join(''):'<div class="empty">Todavía no hay propuestas de mora.</div>'}
       <div class="sec-t">Ajuste contractual</div>
-      <div class="section-note">El programa no inventa el índice ni el porcentaje. Ingresá el nuevo alquiler confirmado y el motivo; la versión anterior queda en la historia.</div>
-      <div class="f-grid"><div><span class="f-l">Vigente desde</span><input class="f" id="b3AjusteDesde" type="month" value="${mesActual()}"/></div><div><span class="f-l">Alquiler actual</span><input class="f" value="${version?Number(version.monto):''}" disabled/></div><div><span class="f-l">Alquiler nuevo</span><input class="f" id="b3AjusteMonto" type="number" min="1" step="1"/></div><div><span class="f-l">Motivo / índice confirmado</span><input class="f" id="b3AjusteMotivo" placeholder="ej. ajuste trimestral acordado"/></div><div class="f-full"><button class="btn" id="btnB3Ajuste" ${cvig?'':'disabled'}>Aplicar nueva versión</button><div class="op-msg" id="msgB3Ajuste"></div></div></div>
+      <div class="section-note">El programa toma la regla guardada en el contrato, calcula el monto en la base y muestra la fuente y la fórmula. Nunca actualiza solo: vos revisás y aprobás antes de generar el mes.</div>
+      <div class="f-grid"><div><span class="f-l">Alquiler vigente</span><input class="f" value="${version?Number(version.monto):''}" disabled/></div><div style="align-self:end"><button class="btn-g" id="btnB3AjusteCalcular" ${cvig?'':'disabled'}>Calcular ajuste contractual</button></div><div class="f-full" id="b3AjustePreview"><div class="empty">Calculá para ver fecha, regla, fuentes y monto nuevo.</div></div><div class="f-full"><span class="f-l">Motivo de la aprobación (obligatorio)</span><input class="f" id="b3AjusteMotivo" placeholder="Ej.: ajuste trimestral revisado y aprobado"/></div><div class="f-full"><button class="btn" id="btnB3Ajuste" disabled>Aprobar y aplicar la nueva versión</button><div class="op-msg" id="msgB3Ajuste"></div></div></div>
       ${ajustes.length?`<div class="account-caption">Último ajuste: ${fmt(ajustes[0].resultado_final)} desde ${fdate(ajustes[0].vigente_desde)} · ${esc(ajustes[0].motivo||'')}</div>`:''}
       <div class="sec-t">Gasto pagado por la administración para recuperar del propietario</div>
       <div class="f-grid"><div><span class="f-l">Monto</span><input class="f" id="b3GastoMonto" type="number" min="1" step="1"/></div><div><span class="f-l">Vence</span><input class="f" id="b3GastoVence" type="date" value="${hoy()}"/></div><div class="f-full"><span class="f-l">Detalle</span><input class="f" id="b3GastoDetalle" placeholder="ej. termotanque pagado por la administración"/></div><div class="f-full"><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="b3GastoDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Gasto" ${cvig&&titular&&admin?'':'disabled'}>Registrar reintegro</button><div class="op-msg" id="msgB3Gasto"></div></div></div>
@@ -1314,20 +1573,30 @@ function tab(pid,t){
       .sort((a,b)=>String(b.mes).localeCompare(String(a.mes))):[];
     const mesBase=cvig&&String(cvig.inicio||'').slice(0,7)>mesActual()
       ?String(cvig.inicio).slice(0,7):mesActual();
-    const pagoCuenta=(grupo,titulo,descripcion,cargos,medios)=>`<div class="account-box ${grupo==='honorarios'?'fees':'obligations'}" style="margin-top:1rem">
+    const pagoCuenta=(grupo,titulo,descripcion,cargos,medios)=>{
+      const moneda=cargos[0]&&cargos[0].moneda||'ARS';
+      const contratoId=cargos[0]&&cargos[0].contrato_id;
+      const version=contratoId&&D.ver.filter(v=>v.contrato_id===contratoId)
+        .sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+      const permiteOtra=!!(version&&version.regla_pago_otra_moneda==='tasa_pactada'&&version.fuente_conversion);
+      return `<div class="account-box ${grupo==='honorarios'?'fees':'obligations'}" style="margin-top:1rem">
       <div class="sec-t" style="margin-top:0">${titulo}</div><div class="account-caption">${descripcion}</div>
       <div class="ck-list" style="margin-top:.7rem">${cargos.length?cargos.map(c=>`<label class="ck"><input type="checkbox" checked data-ck-group="${grupo}" data-ck="${c.id}"/>
         ${esc(conceptoAmigable(c.concepto))} · ${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}
         · vence ${fdate(c.vence_at)} · saldo ${fmt(c.saldo_pendiente)}</label>`).join(''):
         '<div class="empty">No hay cargos pendientes en esta cuenta.</div>'}</div>
       <div class="f-grid" style="margin-top:.7rem">
-        <div><span class="f-l">Monto pagado</span><input class="f" id="opMonto-${grupo}" type="number" min="1" step="1" ${cargos.length?'':'disabled'}/></div>
+        <div><span class="f-l">Monto recibido</span><input class="f" id="opMonto-${grupo}" type="number" min="0.000001" step="0.01" ${cargos.length?'':'disabled'}/></div>
+        <div><span class="f-l">Moneda recibida</span><input class="f" id="opMoneda-${grupo}" value="${esc(moneda)}" maxlength="3" pattern="[A-Z]{3}" ${cargos.length&&permiteOtra?'':'readonly'} title="${permiteOtra?'Podés escribir otra moneda de tres letras; la base usará la fuente pactada en el contrato.':'El contrato sólo permite pagos en '+esc(moneda)+'.'}"/></div>
         <div><span class="f-l">Fecha</span><input class="f" id="opFecha-${grupo}" type="date" value="${hoy()}" ${cargos.length?'':'disabled'}/></div>
         <div><span class="f-l">Medio</span><select class="f" id="opMedio-${grupo}" ${cargos.length?'':'disabled'}>${medios}</select></div>
         <div><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="opComprobante-${grupo}" type="file" accept="application/pdf,image/*" ${cargos.length?'':'disabled'}/></div>
+        <div id="opConversionBox-${grupo}" style="display:none"><span class="f-l">Tasa confirmada</span><input class="f" id="opTasa-${grupo}" type="number" min="0.000000000001" step="0.000001" placeholder="1 moneda recibida = cuántas ${esc(moneda)}"/></div>
+        <div class="f-full section-note" id="opConversionInfo-${grupo}">${permiteOtra?'Este contrato permite otra moneda con fuente pactada: <b>'+esc(version.fuente_conversion)+'</b>. Si cambiás la moneda, el reparto se calcula en la base antes de confirmar.':'Este contrato prohíbe pagar en otra moneda.'}</div>
         <div class="f-full"><button class="btn" id="btnCobro-${grupo}" ${cargos.length?'':'disabled'}>Confirmar este pago</button>
           <div class="op-msg" id="msgCobro-${grupo}"></div></div>
       </div></div>`;
+    };
     h=`
     <div class="sec-t" style="margin-top:.2rem">Generar mes normal</div>
     <div class="f-grid">
@@ -1337,6 +1606,7 @@ function tab(pid,t){
         Este paso crea <b>dos cuentas separadas</b>: obligaciones del inquilino (alquiler y expensas) y honorarios que el propietario debe a la administración. Nunca se suman como una única deuda.
         ${creditoTotal>0?` Hay ${fmt(creditoTotal)} de crédito del inquilino: se aplicará automáticamente.`:''}
       </div>
+      <div class="f-full" id="mesPreview"><div class="empty">Elegí el mes para calcular los importes exactos antes de generarlo.</div></div>
       <div class="f-full"><button class="btn" id="btnMes">Generar el mes</button>
         <div class="op-msg" id="msgMes"></div></div>
     </div>
@@ -1382,11 +1652,34 @@ function tab(pid,t){
   if(t==='Servicios'){
     $('btnScta').onclick=()=>opScta(pid);
     $('btnFac').onclick=()=>opFactura(pid);
+    $('btnFacPreview').onclick=()=>previsualizarFacturaRepartida(pid);
+    $('faRepartoModo').onchange=()=>facturaRepartoModoCambio(pid);
+    $('faMonto').oninput=()=>invalidarFacturaReparto(pid);
+    $('faMoneda').onchange=()=>invalidarFacturaReparto(pid);
+    $('faVence').onchange=()=>invalidarFacturaReparto(pid);
+    $('faAcreedorTipo').onchange=()=>invalidarFacturaReparto(pid);
+    document.querySelectorAll('[data-fa-contrato],[data-fa-valor]').forEach(x=>x.onchange=()=>invalidarFacturaReparto(pid));
     const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
     if(cvig)$('scResp').value=cvig.inquilino_parte_id;
     const d1=hoyCivil().slice(0,7)+'-01';
     $('faDesde').value=d1;
     $('faHasta').value=desplazarMesFechaCivil(d1,1);
+    facturaRepartoModoCambio(pid);
+  }
+  if(t==='Contratos'&&$('btnRenovar')){
+    $('btnRenovar').onclick=()=>opRenovarContrato(pid);
+    $('btnRescindir').onclick=()=>opRescindirContrato(pid);
+    if($('btnContinuacion'))$('btnContinuacion').onclick=()=>opContinuacionLegal(pid);
+    $('renAjusteTipo').onchange=renovacionAjusteCambio;
+    $('renOtraMoneda').onchange=renovacionOtraMonedaCambio;
+    $('renProrrateo').value=(D.ver.filter(v=>D.con.some(c=>c.id===v.contrato_id&&c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado))).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0]||{}).metodo_prorrateo||'dias_reales';
+    $('renRedondeo').value=(D.ver.filter(v=>D.con.some(c=>c.id===v.contrato_id&&c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado))).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0]||{}).regla_redondeo||'centavos';
+    const rv=D.ver.filter(v=>D.con.some(c=>c.id===v.contrato_id&&c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado))).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+    const rs=rv&&D.indices.find(x=>x.id===rv.indice_serie_id);
+    $('renAjusteTipo').value=rv&&rv.pct_fijo!=null?'porcentaje_fijo':rs?(rs.codigo==='IPC'?'indice_ipc':rs.codigo==='ICL'?'indice_icl':'indice_otro'):'sin_ajuste';
+    if(rs){$('renIndiceOrg').value=rs.organismo||'';$('renIndiceCodigo').value=rs.codigo||'';$('renIndiceBase').value=rs.base||'';$('renIndiceGranularidad').value=rs.granularidad||'mensual'}
+    $('renOtraMoneda').value=rv&&rv.regla_pago_otra_moneda||'prohibido';
+    renovacionAjusteCambio();renovacionOtraMonedaCambio();
   }
   if(t==='Liquidación'){
     if($('btnLiqBorrador'))$('btnLiqBorrador').onclick=()=>previsualizarLiquidacion(pid);
@@ -1397,6 +1690,7 @@ function tab(pid,t){
   }
   if(t==='Excepciones'){
     if($('btnB3MoraProponer'))$('btnB3MoraProponer').onclick=()=>opB3MoraProponer(pid);
+    if($('btnB3AjusteCalcular'))$('btnB3AjusteCalcular').onclick=()=>previsualizarAjuste(pid);
     if($('btnB3Ajuste'))$('btnB3Ajuste').onclick=()=>opB3Ajuste(pid);
     if($('btnB3Gasto'))$('btnB3Gasto').onclick=()=>opB3Gasto(pid);
     if($('btnB3Deposito'))$('btnB3Deposito').onclick=()=>opB3Deposito(pid);
@@ -1412,38 +1706,73 @@ function tab(pid,t){
     const recalcular=grupo=>{
       const total=[...document.querySelectorAll(`[data-ck-group="${grupo}"]`)].filter(x=>x.checked)
         .reduce((s,x)=>{const c=D.cargo.find(y=>y.id===x.dataset.ck);return s+Number(c&&c.saldo_pendiente||0)},0);
-      const el=$('opMonto-'+grupo);if(el&&total>0)el.value=String(total);
+      const el=$('opMonto-'+grupo),moneda=$('opMoneda-'+grupo),cargos=cargosSeleccionadosPago(grupo);
+      const destino=cargos[0]&&cargos[0].moneda;
+      if(el&&total>0&&moneda&&moneda.value.toUpperCase()===destino)el.value=String(total);
+      programarPreviewPago(grupo);
     };
     ['obligaciones','honorarios','otros'].forEach(grupo=>{
       document.querySelectorAll(`[data-ck-group="${grupo}"]`).forEach(x=>x.onchange=()=>recalcular(grupo));recalcular(grupo);
+      const moneda=$('opMoneda-'+grupo),monto=$('opMonto-'+grupo),tasa=$('opTasa-'+grupo),fecha=$('opFecha-'+grupo);
+      if(moneda){moneda.onfocus=()=>{moneda.dataset.previa=moneda.value.toUpperCase()};moneda.onchange=()=>{
+        const cargos=cargosSeleccionadosPago(grupo),destino=cargos[0]&&cargos[0].moneda;
+        moneda.value=moneda.value.trim().toUpperCase();
+        if(moneda.dataset.previa===destino&&moneda.value!==destino&&monto)monto.value='';
+        programarPreviewPago(grupo);
+      }}
+      if(monto)monto.oninput=()=>programarPreviewPago(grupo);
+      if(tasa)tasa.oninput=()=>programarPreviewPago(grupo);
+      if(fecha)fecha.onchange=()=>programarPreviewPago(grupo);
     });
-    const actualizarMes=()=>{
+    const actualizarMes=async()=>{
       const generado=meses.find(x=>String(x.mes).slice(0,7)===$('opMes').value);
       $('opExpensas').disabled=!!generado;$('btnMes').disabled=!!generado;
       if(generado){$('opExpensas').value=String(Number(generado.expensas_monto||0));$('msgMes').className='op-msg';
-        $('msgMes').textContent='Este mes ya fue generado. No se vuelve a crear.'}
-      else{$('msgMes').textContent=''}
+        $('msgMes').textContent='Este mes ya fue generado. No se vuelve a crear.';
+        if($('mesPreview'))$('mesPreview').innerHTML=`<div class="section-note">Mes ya generado · alquiler ${fmt(generado.alquiler_monto)} · expensas ${fmt(generado.expensas_monto)} · honorario ${fmt(generado.honorario_monto)}.</div>`}
+      else{$('msgMes').textContent='';await previsualizarMes(pid)}
     };
-    $('opMes').onchange=actualizarMes;actualizarMes();
+    $('opMes').onchange=actualizarMes;$('opExpensas').oninput=actualizarMes;actualizarMes();
     if(cvig&&$('cgDeudor'))$('cgDeudor').value=cvig.inquilino_parte_id;
     if(titular&&$('cgAcreedor'))$('cgAcreedor').value=titular.parte_id;
   }
+}
+async function previsualizarMes(pid){
+  const caja=$('mesPreview'),boton=$('btnMes'),mesEl=$('opMes'),expEl=$('opExpensas');
+  if(!caja||!boton||!mesEl||!expEl)return null;
+  const cvig=contratoVigentePropiedad(pid),mes=mesEl.value,expensas=Number(expEl.value||0);
+  if(!cvig||!/^\d{4}-\d{2}$/.test(mes)||expensas<0){boton.disabled=true;caja.innerHTML='<div class="empty">Revisá contrato, mes y expensas.</div>';return null}
+  const clave=[pid,cvig.id,mes,expensas].join('|');boton.disabled=true;caja.innerHTML='<div class="empty">Calculando en la base…</div>';
+  const {data,error}=await sb.rpc('alq_admin_mes_previsualizar',{p_propiedad_id:pid,p_contrato_id:cvig.id,p_mes:mes+'-01',p_expensas:String(expensas)});
+  if(!$('mesPreview')||$('opMes').value!==mes||Number($('opExpensas').value||0)!==expensas)return null;
+  if(error||!data){caja.innerHTML='<div class="op-msg op-err">'+esc(error&&error.message||'No se pudo calcular el mes.')+'</div>';return null}
+  mesPreviewCache.set(clave,data);
+  if(data.estado==='ajuste_requerido'){
+    caja.innerHTML=`<div class="section-note"><b>Antes de generar este mes hay que aprobar el ajuste contractual.</b> El programa bloqueó la emisión para que no salga con el alquiler anterior. <button class="btn-g" id="irAjustePendiente" type="button">Calcular y aprobar ajuste</button></div>`;
+    $('irAjustePendiente').onclick=()=>abrir(pid,'Excepciones');return data;
+  }
+  const parcial=Number(data.numerador)!==Number(data.denominador);
+  caja.innerHTML=`<div class="account-grid"><div class="account-box obligations"><div class="pg-l">Obligaciones del inquilino</div><div class="amount">${fmt(Number(data.alquiler_monto)+Number(data.expensas_monto))}</div><div class="account-caption">Alquiler ${fmt(data.alquiler_monto)}${Number(data.expensas_monto)?' + expensas '+fmt(data.expensas_monto):''}${parcial?` · ${esc(data.metodo_prorrateo)} ${data.numerador}/${data.denominador} · activo ${fdate(data.activo_desde)} a ${fdate(data.activo_hasta_inclusive)}`:''}.</div></div><div class="account-box fees"><div class="pg-l">Honorario del propietario</div><div class="amount">${fmt(data.honorario_monto)}</div><div class="account-caption">Devengado sobre el alquiler contractual ${fmt(data.alquiler_contractual)}; no depende del pago del inquilino.</div></div></div>`;
+  boton.disabled=false;return data;
 }
 async function opMesNormal(pid){
   const m=$('msgMes');m.className='op-msg';m.textContent='';
   const mes=$('opMes').value,expensas=Number($('opExpensas').value||0);
   const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+  let preview=null;
   if(!cvig){m.textContent='No hay un contrato vigente para generar el mes.';m.className='op-msg op-err';return}
   if(!/^\d{4}-\d{2}$/.test(mes)||expensas<0){m.textContent='Revisá el mes y las expensas.';m.className='op-msg op-err';return}
   try{
-    $('btnMes').disabled=true;m.textContent='Generando el mes…';
+    preview=await previsualizarMes(pid);
+    if(!preview||preview.estado!=='listo')throw new Error('El mes no está listo para generar. Resolvé primero el aviso mostrado arriba.');
+    $('btnMes').disabled=true;m.textContent='Generando exactamente la proforma mostrada…';
     const r=await rpc('mes_normal_generar',{propiedad_id:pid,contrato_id:cvig.id,
       mes:mes+'-01',expensas_monto:String(expensas)});
     toast((r&&r.replay?'Mes ya generado':'Mes generado')+' · alquiler '+fmt(r.alquiler_monto)+
       ' · honorario '+fmt(r.honorario_monto)+(Number(r.credito_aplicado)>0?' · crédito usado '+fmt(r.credito_aplicado):''));
     await cargar();
   }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
-  finally{const b=$('btnMes');if(b)b.disabled=false}
+  finally{const b=$('btnMes');if(b)b.disabled=!!(preview&&preview.estado!=='listo')}
 }
 function contratoVigentePropiedad(pid){return D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado))}
 function adminPartePropiedad(pid){
@@ -1453,13 +1782,12 @@ function adminPartePropiedad(pid){
 function b3Error(id,e){const m=$(id);if(m){m.textContent=e.message;m.className='op-msg op-err'}}
 async function opB3MoraProponer(pid){
   const m=$('msgB3Mora');m.className='op-msg';m.textContent='';
-  const pct=Number($('b3MoraPct').value),cargo=$('b3MoraCargo').value;
-  if(!cargo||!pct||pct<=0){m.textContent='Elegí el cargo y escribí el porcentaje diario decidido.';m.className='op-msg op-err';return}
+  const cargo=$('b3MoraCargo').value;
+  if(!cargo){m.textContent='Elegí un cargo impago.';m.className='op-msg op-err';return}
   try{
     $('btnB3MoraProponer').disabled=true;
-    const r=await rpc('mora_proponer',{cargo_id:cargo,calculada_hasta:$('b3MoraHasta').value,
-      porcentaje_diario:String(pct),gracia_dias:String(Number($('b3MoraGracia').value||0))});
-    toast('Propuesta calculada · '+r.dias_mora+' días · '+fmt(r.monto_propuesto)+' · todavía no es un cargo');await cargar();
+    const r=await rpc('mora_proponer',{cargo_id:cargo,calculada_hasta:$('b3MoraHasta').value});
+    toast('Propuesta contractual · '+r.dias_mora+' días · '+fmt(r.monto_propuesto)+' · todavía no es un cargo');await cargar();
   }catch(e){b3Error('msgB3Mora',e)}finally{const b=$('btnB3MoraProponer');if(b)b.disabled=false}
 }
 async function opB3MoraResolver(pid,id,decision){
@@ -1471,14 +1799,77 @@ async function opB3MoraResolver(pid,id,decision){
     const r=await rpc('mora_resolver',payload);toast(decision==='aplicar'?'Mora aplicada · '+fmt(r.monto_resuelto):'Mora condonada');await cargar();
   }catch(e){b3Error(mid,e)}
 }
+function renderAjusteFaltante(pid,p){
+  const faltan=[];if(!p.observacion_base_id)faltan.push({lado:'base',desde:p.periodo_base_desde,hasta:p.periodo_base_hasta_exclusivo});
+  if(!p.observacion_final_id)faltan.push({lado:'final',desde:p.periodo_final_desde,hasta:p.periodo_final_hasta_exclusivo});
+  const codigo=String(p.indice_codigo||'').toUpperCase(),oficial=['IPC','ICL'].includes(codigo);
+  const urlEjemplo=x=>codigo==='ICL'
+    ?`https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/40?desde=${x.desde}&hasta=${x.desde}&limit=10`
+    :codigo==='IPC'
+      ?`https://apis.datos.gob.ar/series/api/series/?ids=148.3_INIVELNAL_DICI_M_26&start_date=${x.desde}&end_date=${x.desde}&format=json&metadata=full`
+      :'https://…';
+  return `<div class="section-note"><b>Faltan ${faltan.length} valor${faltan.length===1?'':'es'} del índice ${esc(p.indice_organismo||'')} ${esc(p.indice_codigo||'')}.</b> El ajuste no se puede aprobar hasta guardar esos datos con su fuente.</div>
+    ${oficial?`<button class="btn" type="button" onclick="traerIndicesOficiales('${pid}')">Traer datos de la fuente oficial</button>
+      <div class="section-note" style="margin-top:.7rem">Si la fuente automática no responde, cargá abajo los mismos valores publicados y su URL oficial. El programa conserva la fuente y la huella del insumo.</div>`:''}
+    ${faltan.map(x=>`<div class="f-grid" style="margin-top:.7rem"><div><span class="f-l">Valor ${x.lado}</span><input class="f" id="idxValor-${x.lado}" type="number" min="0.000001" step="0.000001"/></div><div><span class="f-l">URL pública de la fuente${oficial?' oficial':''}</span><input class="f" id="idxFuente-${x.lado}" type="url" placeholder="${esc(urlEjemplo(x))}"/></div></div>`).join('')}
+    <button class="btn-g" type="button" onclick="guardarIndicesManuales('${pid}')">Guardar valores verificados manualmente</button>
+    <div class="account-caption">Período base: ${fdate(p.periodo_base_desde)}. Período final: ${fdate(p.periodo_final_desde)}.</div>`;
+}
+async function previsualizarAjuste(pid){
+  const caja=$('b3AjustePreview'),boton=$('btnB3Ajuste'),cvig=contratoVigentePropiedad(pid);
+  if(!caja||!boton||!cvig)return null;boton.disabled=true;caja.innerHTML='<div class="empty">Calculando la regla contractual en la base…</div>';
+  const {data,error}=await sb.rpc('alq_admin_ajuste_previsualizar',{p_contrato_id:cvig.id,p_vigente_desde:null});
+  if(!$('b3AjustePreview'))return null;
+  if(error||!data){caja.innerHTML='<div class="op-msg op-err">'+esc(error&&error.message||'No se pudo calcular el ajuste.')+'</div>';return null}
+  ajustePreviewCache.set(cvig.id,data);
+  if(data.estado==='sin_ajuste'){caja.innerHTML='<div class="section-note">Este contrato fue definido sin actualización periódica.</div>';return data}
+  if(data.estado==='bloqueado_mes_generado'){caja.innerHTML='<div class="op-msg op-err">Ya existe un mes generado desde la fecha del ajuste. No se puede cambiar la regla por detrás de cargos emitidos.</div>';return data}
+  if(data.estado==='faltan_datos'){caja.innerHTML=renderAjusteFaltante(pid,data);return data}
+  if(data.estado!=='listo'){caja.innerHTML='<div class="op-msg op-err">Estado de ajuste no reconocido: '+esc(data.estado)+'</div>';return data}
+  const fuente=data.pct_fijo!=null?`Porcentaje fijo contractual ${Number(data.pct_fijo)*100} %`:
+    `${esc(data.indice_organismo)} ${esc(data.indice_codigo)} · base ${data.observacion_base_valor} · final ${data.observacion_final_valor}`;
+  caja.innerHTML=`<div class="account-box obligations"><div class="pg-l">Propuesta contractual para ${fdate(data.vigente_desde)}</div><div class="amount">${fmt(data.resultado_final)}</div><div class="account-caption">Alquiler anterior ${fmt(data.monto_anterior)} · ${fuente} · fórmula ${esc(data.formula_version)} · redondeo ${esc(data.regla_redondeo)}.</div>${data.observacion_base_fuente?`<div class="account-caption">Fuentes: ${esc(data.observacion_base_fuente)} · ${esc(data.observacion_final_fuente)}</div>`:''}</div>`;
+  boton.disabled=false;return data;
+}
+async function traerIndicesOficiales(pid){
+  const cvig=contratoVigentePropiedad(pid),p=cvig&&ajustePreviewCache.get(cvig.id),caja=$('b3AjustePreview');
+  if(!p||p.estado!=='faltan_datos')return;const fuente=String(p.indice_codigo||'').toLowerCase();
+  try{
+    caja.innerHTML='<div class="empty">Consultando y guardando la fuente oficial…</div>';
+    const pedidos=[];
+    if(!p.observacion_base_id)pedidos.push({serie_id:p.indice_serie_id,fuente,periodo_desde:p.periodo_base_desde,periodo_hasta_exclusivo:p.periodo_base_hasta_exclusivo});
+    if(!p.observacion_final_id)pedidos.push({serie_id:p.indice_serie_id,fuente,periodo_desde:p.periodo_final_desde,periodo_hasta_exclusivo:p.periodo_final_hasta_exclusivo});
+    for(const body of pedidos){const {data,error}=await sb.functions.invoke('alq-indices-oficiales',{body});
+      if(error||!data||data.ok!==true)throw new Error(data&&data.error||error&&error.message||'La fuente oficial no respondió.');}
+    toast('Datos oficiales verificados y guardados');await previsualizarAjuste(pid);
+  }catch(e){caja.innerHTML='<div class="op-msg op-err">'+esc(e.message)+'</div><button class="btn-g" type="button" onclick="previsualizarAjuste(\''+pid+'\')">Volver a calcular</button>'}
+}
+async function guardarIndicesManuales(pid){
+  const cvig=contratoVigentePropiedad(pid),p=cvig&&ajustePreviewCache.get(cvig.id),caja=$('b3AjustePreview');
+  if(!p||p.estado!=='faltan_datos')return;
+  try{
+    const filas=[];if(!p.observacion_base_id)filas.push({lado:'base',desde:p.periodo_base_desde,hasta:p.periodo_base_hasta_exclusivo});
+    if(!p.observacion_final_id)filas.push({lado:'final',desde:p.periodo_final_desde,hasta:p.periodo_final_hasta_exclusivo});
+    for(const x of filas){const valor=Number($('idxValor-'+x.lado).value),url=$('idxFuente-'+x.lado).value.trim();
+      if(!valor||valor<=0||!/^https:\/\//i.test(url))throw new Error('Completá cada valor y una URL https verificable.');
+      const ahora=new Date().toISOString(),insumo={serie_id:p.indice_serie_id,periodo_desde:x.desde,periodo_hasta_exclusivo:x.hasta,valor:String(valor),fuente_url:url};
+      const payload={schema_version:1,...insumo,publicada_at:ahora,hash_insumo:await alqF1aSha256(insumo),fecha_descarga:ahora,origen:'oficial_manual'};
+      const {data,error}=await sb.rpc('alq_admin_indice_observacion_importar',{p_request_id:alqF1aUuidNuevo(),p_payload:payload});
+      if(error||!data)throw new Error(error&&error.message||'No se pudo guardar el índice.');
+    }
+    toast('Valores y fuentes guardados');await previsualizarAjuste(pid);
+  }catch(e){const anterior=caja.innerHTML;caja.innerHTML='<div class="op-msg op-err">'+esc(e.message)+'</div>'+anterior}
+}
 async function opB3Ajuste(pid){
   const m=$('msgB3Ajuste');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
-  const monto=Number($('b3AjusteMonto').value),motivo=$('b3AjusteMotivo').value.trim();
-  if(!cvig||!monto||monto<=0||!motivo){m.textContent='Completá alquiler nuevo y motivo.';m.className='op-msg op-err';return}
-  try{$('btnB3Ajuste').disabled=true;const r=await rpc('ajuste_contractual_aplicar',{contrato_id:cvig.id,
-    vigente_desde:$('b3AjusteDesde').value+'-01',monto_nuevo:String(monto),motivo});
+  const motivo=$('b3AjusteMotivo').value.trim();
+  if(!cvig||!motivo){m.textContent='Escribí el motivo de la aprobación.';m.className='op-msg op-err';return}
+  try{$('btnB3Ajuste').disabled=true;const preview=await previsualizarAjuste(pid);
+    if(!preview||preview.estado!=='listo')throw new Error('El ajuste contractual no está listo para aprobar.');
+    const r=await rpc('ajuste_contractual_aplicar',{contrato_id:cvig.id,vigente_desde:preview.vigente_desde,
+      motivo,preview_sha256:preview.preview_sha256});
     toast('Ajuste aplicado · '+fmt(r.monto_anterior)+' → '+fmt(r.monto_nuevo));await cargar();
-  }catch(e){b3Error('msgB3Ajuste',e)}finally{const b=$('btnB3Ajuste');if(b)b.disabled=false}
+  }catch(e){b3Error('msgB3Ajuste',e)}finally{const b=$('btnB3Ajuste');if(b)b.disabled=true}
 }
 async function opB3Gasto(pid){
   const m=$('msgB3Gasto');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
@@ -1558,6 +1949,53 @@ async function documentoArchivo(pid,file,tipo,carpeta,mensaje,opciones={}){
   return q.data[0];
 }
 const documentoComprobante=(pid,file)=>documentoArchivo(pid,file,'comprobante_pago','comprobantes-pago','Adjuntá el comprobante del pago.');
+function cargosSeleccionadosPago(grupo){
+  return [...document.querySelectorAll(`[data-ck-group="${grupo}"]`)]
+    .filter(x=>x.checked).map(x=>D.cargo.find(c=>c.id===x.dataset.ck)).filter(Boolean)
+    .sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
+}
+function programarPreviewPago(grupo){
+  clearTimeout(pagoConversionTimers.get(grupo));
+  pagoConversionTimers.set(grupo,setTimeout(()=>previsualizarPagoOtraMoneda(grupo),220));
+}
+async function previsualizarPagoOtraMoneda(grupo,forzar=false){
+  const monedaEl=$('opMoneda-'+grupo),montoEl=$('opMonto-'+grupo),fechaEl=$('opFecha-'+grupo);
+  const tasaEl=$('opTasa-'+grupo),box=$('opConversionBox-'+grupo),info=$('opConversionInfo-'+grupo);
+  const boton=$('btnCobro-'+grupo);if(!monedaEl||!montoEl||!fechaEl||!tasaEl||!box||!info||!boton)return null;
+  const cargos=cargosSeleccionadosPago(grupo),destino=cargos[0]&&String(cargos[0].moneda||'').toUpperCase();
+  const origen=String(monedaEl.value||'').trim().toUpperCase();monedaEl.value=origen;
+  const contratoId=cargos[0]&&cargos[0].contrato_id;
+  const version=contratoId&&D.ver.filter(v=>v.contrato_id===contratoId)
+    .sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+  const permite=!!(version&&version.regla_pago_otra_moneda==='tasa_pactada'&&version.fuente_conversion);
+  pagoConversionPreview.delete(grupo);
+  if(!cargos.length){boton.disabled=true;box.style.display='none';return null}
+  if(origen===destino){box.style.display='none';boton.disabled=false;
+    info.innerHTML='Pago en <b>'+esc(destino)+'</b>: se imputa sin conversión.';return null}
+  box.style.display='block';boton.disabled=true;
+  if(!permite){info.textContent='Este contrato prohíbe pagos en otra moneda.';return null}
+  if(!/^[A-Z]{3}$/.test(origen)){info.textContent='La moneda recibida debe tener tres letras, por ejemplo USD.';return null}
+  if(cargos.some(c=>c.contrato_id!==contratoId||c.moneda!==destino||
+      c.deudor_parte_id!==cargos[0].deudor_parte_id||c.acreedor_parte_id!==cargos[0].acreedor_parte_id)){
+    info.textContent='Elegí cargos del mismo contrato, moneda, pagador y beneficiario.';return null;
+  }
+  const monto=Number(montoEl.value),tasa=Number(tasaEl.value);
+  if(!(monto>0)||!(tasa>0)||!fechaEl.value){
+    info.innerHTML=`Conversión autorizada por <b>${esc(version.fuente_conversion)}</b>. Completá monto recibido y tasa: 1 ${esc(origen)} = cuántos ${esc(destino)}.`;
+    return null;
+  }
+  const sec=(pagoConversionSecuencia.get(grupo)||0)+1;pagoConversionSecuencia.set(grupo,sec);
+  info.textContent='Calculando el reparto exacto en la base…';
+  const {data,error}=await sb.rpc('alq_admin_pago_otra_moneda_previsualizar',{
+    p_cargo_ids:cargos.map(c=>c.id),p_moneda_origen:origen,
+    p_monto_origen:String(monto),p_tasa:String(tasa),p_fecha:fechaEl.value});
+  if(pagoConversionSecuencia.get(grupo)!==sec)return null;
+  if(error||!data){info.textContent=String(error&&error.message||'No se pudo calcular la conversión.');return null}
+  const clave=[cargos.map(c=>c.id).join(','),origen,monto,tasa,fechaEl.value].join('|');
+  pagoConversionPreview.set(grupo,{clave,data});boton.disabled=false;
+  info.innerHTML=`La base aplicará <b>${fmt(data.monto_destino)} ${esc(data.moneda_destino)}</b> por ${fmt(data.monto_origen)} ${esc(data.moneda_origen)} · tasa ${esc(data.tasa)} · fuente <b>${esc(data.fuente)}</b> · ${data.aplicaciones.length} cargo(s).`;
+  return data;
+}
 async function opCobro(pid,grupo){
   const m=$('msgCobro-'+grupo);m.className='op-msg';m.textContent='';
   const monto=Number($('opMonto-'+grupo).value);
@@ -1583,14 +2021,34 @@ async function opCobro(pid,grupo){
   const cvig=D.con.find(c=>c.id===primero.contrato_id&&c.propiedad_id===pid&&
     ['vigente','continuacion_legal'].includes(c.estado));
   if(!cvig){m.textContent='No encontré el contrato vigente de esos cargos.';m.className='op-msg op-err';return}
+  const monedaOrigen=String($('opMoneda-'+grupo).value||'').trim().toUpperCase();
+  if(!/^[A-Z]{3}$/.test(monedaOrigen)){m.textContent='Revisá la moneda recibida.';m.className='op-msg op-err';return}
   try{
-    $('btnCobro-'+grupo).disabled=true;m.textContent='Guardando comprobante y confirmando…';
+    $('btnCobro-'+grupo).disabled=true;
+    let preview=null;
+    if(monedaOrigen!==primero.moneda){
+      m.textContent='Verificando la conversión exacta…';
+      preview=await previsualizarPagoOtraMoneda(grupo,true);
+      if(!preview||preview.estado!=='listo')throw new Error('La conversión no está lista. Revisá moneda, tasa y reparto.');
+    }
+    m.textContent='Guardando comprobante y confirmando…';
     const doc=await documentoComprobante(pid,file);
-    const r=await rpc('pago_comprobante_confirmar',{propiedad_id:pid,contrato_id:cvig.id,
-      documento_id:doc.id,cargo_ids:cargos.map(c=>c.id),monto:String(monto),
-      fecha:$('opFecha-'+grupo).value+'T12:00:00Z',medio:$('opMedio-'+grupo).value});
-    toast((r&&r.replay?'Pago ya confirmado':'Pago confirmado')+' · aplicado '+fmt(r.monto_aplicado)+
-      (Number(r.monto_credito)>0?' · crédito '+fmt(r.monto_credito):''));
+    let r;
+    if(monedaOrigen===primero.moneda){
+      r=await rpc('pago_comprobante_confirmar',{propiedad_id:pid,contrato_id:cvig.id,
+        documento_id:doc.id,cargo_ids:cargos.map(c=>c.id),monto:String(monto),
+        fecha:$('opFecha-'+grupo).value+'T12:00:00Z',medio:$('opMedio-'+grupo).value});
+      toast((r&&r.replay?'Pago ya confirmado':'Pago confirmado')+' · aplicado '+fmt(r.monto_aplicado)+
+        (Number(r.monto_credito)>0?' · crédito '+fmt(r.monto_credito):''));
+    }else{
+      const aplicaciones=preview.aplicaciones.map(a=>Object.assign({},a,{conversion:Object.assign({},a.conversion,{evidencia_documento_id:doc.id})}));
+      r=await rpc('pago_multimoneda',{pago_fuente_ref:doc.id,ambito:'externa_informativa',
+        contraparte_parte_id:primero.deudor_parte_id,beneficiario_parte_id:primero.acreedor_parte_id,
+        moneda:monedaOrigen,monto:String(preview.monto_origen),
+        fecha:$('opFecha-'+grupo).value+'T12:00:00Z',medio:$('opMedio-'+grupo).value,
+        comprobante_documento_id:doc.id,aplicaciones},{slot:'pago-multimoneda:'+doc.id});
+      toast((r&&r.replay?'Pago ya confirmado':'Pago en otra moneda confirmado')+' · aplicado '+fmt(preview.monto_destino)+' '+preview.moneda_destino);
+    }
     await cargar();
   }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
   finally{const b=$('btnCobro-'+grupo);if(b)b.disabled=false}
@@ -1638,6 +2096,42 @@ async function opScta(pid){
   }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
   finally{const b=$('btnScta');if(b)b.disabled=false}
 }
+function facturaRepartoSeleccion(){
+  const modo=$('faRepartoModo').value;
+  const contratos=[...document.querySelectorAll('[data-fa-contrato]:checked')].map(x=>x.dataset.faContrato);
+  const valores=modo==='partes_iguales'?[]:contratos.map(id=>Number(document.querySelector(`[data-fa-valor="${id}"]`).value));
+  return{modo,contratos,valores};
+}
+function invalidarFacturaReparto(pid){
+  facturaRepartoPreview.delete(pid);
+  if($('faRepartoModo').value!=='unico')$('faRepartoPreview').innerHTML='<div class="empty">El reparto cambió. Calculalo de nuevo antes de cargar la factura.</div>';
+  document.querySelectorAll('[data-fa-contrato]').forEach(c=>{const v=document.querySelector(`[data-fa-valor="${c.dataset.faContrato}"]`);if(v)v.disabled=!c.checked||$('faRepartoModo').value==='partes_iguales'||$('faRepartoModo').value==='unico'});
+}
+function facturaRepartoModoCambio(pid){
+  const compartida=$('faRepartoModo').value!=='unico';
+  $('faRepartoLineas').style.display=compartida?'block':'none';
+  $('faRepartoPreview').style.display=compartida?'block':'none';
+  $('btnFacPreview').style.display=compartida?'inline-block':'none';
+  $('faAcreedorTipo').disabled=!compartida;
+  $('faCargoBox').style.display=compartida?'none':'block';
+  document.querySelectorAll('[data-fa-valor]').forEach(v=>{v.placeholder=$('faRepartoModo').value==='porcentaje'?'%':$('faRepartoModo').value==='monto_fijo'?'monto':'automático'});
+  invalidarFacturaReparto(pid);
+}
+async function previsualizarFacturaRepartida(pid){
+  const box=$('faRepartoPreview'),monto=Number($('faMonto').value),sel=facturaRepartoSeleccion();
+  try{
+    if(!$('faCta').value||!monto||monto<=0||!$('faVence').value)throw new Error('Completá servicio, monto total y vencimiento.');
+    if(sel.contratos.length<2)throw new Error('Elegí al menos dos contratos para repartir la factura.');
+    if(sel.modo!=='partes_iguales'&&sel.valores.some(x=>!Number.isFinite(x)||x<=0))throw new Error('Completá un valor mayor que cero para cada contrato elegido.');
+    box.innerHTML='<div class="empty">Calculando reparto exacto en la base…</div>';
+    const params={p_cuenta_id:$('faCta').value,p_contrato_ids:sel.contratos,p_modo:sel.modo,
+      p_valores:sel.valores,p_total:String(monto),p_moneda:$('faMoneda').value,
+      p_vence:$('faVence').value,p_acreedor_tipo:$('faAcreedorTipo').value};
+    const {data,error}=await sb.rpc('alq_admin_factura_reparto_previsualizar',params);if(error)throw new Error(error.message);
+    facturaRepartoPreview.set(pid,{preview:data,params});
+    box.innerHTML=`<div class="section-note"><b>Reparto exacto · ${esc(data.modo)}</b><br>${data.lineas.map(x=>{const p=D.prop.find(y=>y.id===x.propiedad_id);return `${esc(p?p.direccion:'Propiedad')} · ${esc(D.pname[x.deudor_parte_id]||'—')} → ${fmt(x.monto)} ${esc(x.moneda)} (${Number(x.porcentaje).toLocaleString('es-AR')} %)`}).join('<br>')}<br><b>Total: ${fmt(data.total)} ${esc(data.moneda)}</b></div>`;
+  }catch(e){facturaRepartoPreview.delete(pid);box.innerHTML='<div class="op-msg op-err">'+esc(e.message)+'</div>'}
+}
 async function opFactura(pid){
   const m=$('msgFac');m.className='op-msg';m.textContent='';
   const monto=Number($('faMonto').value);
@@ -1645,13 +2139,14 @@ async function opFactura(pid){
   if(!$('faCta').value){m.textContent='Primero agregá el servicio.';m.className='op-msg op-err';return}
   if(!monto||monto<=0){m.textContent='Poné el monto.';m.className='op-msg op-err';return}
   if(!file){m.textContent='Adjuntá la factura o comprobante.';m.className='op-msg op-err';return}
-  const conCargo=$('faCargo').checked;
+  const sel=facturaRepartoSeleccion(),compartida=sel.modo!=='unico';
+  const conCargo=compartida||$('faCargo').checked;
   const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
   let cargoSlot=null;
   let documento=null;
   const completar=async cargoId=>{
     const pf={cuenta_id:$('faCta').value,desde:$('faDesde').value,hasta:$('faHasta').value,
-      moneda:'ARS',monto:String(monto),vence_at:fechaCivilATimestamp($('faVence').value),
+      moneda:$('faMoneda').value,monto:String(monto),vence_at:fechaCivilATimestamp($('faVence').value),
       comprobante_documento_id:documento&&documento.id};
     if(cargoId)pf.cargo_id=cargoId;
     await rpc('servicio_factura_registrar',pf);
@@ -1661,8 +2156,30 @@ async function opFactura(pid){
   };
   try{
     $('btnFac').disabled=true;
+    if(compartida){
+      const guardado=facturaRepartoPreview.get(pid);
+      if(!guardado)throw new Error('Calculá y revisá el reparto exacto antes de cargar la factura.');
+      const actual={cuenta:$('faCta').value,monto,moneda:$('faMoneda').value,vence:$('faVence').value,
+        acreedor:$('faAcreedorTipo').value,modo:sel.modo,contratos:sel.contratos,valores:sel.valores};
+      const previo={cuenta:guardado.params.p_cuenta_id,monto:Number(guardado.params.p_total),moneda:guardado.params.p_moneda,
+        vence:guardado.params.p_vence,acreedor:guardado.params.p_acreedor_tipo,modo:guardado.params.p_modo,
+        contratos:guardado.params.p_contrato_ids,valores:guardado.params.p_valores};
+      if(alqF1aJsonCanonico(actual)!==alqF1aJsonCanonico(previo))throw new Error('El reparto cambió: calculalo de nuevo.');
+    }
     documento=await documentoArchivo(pid,file,'factura_servicio','facturas-servicio','Adjuntá la factura o comprobante.');
     if(D.sfac.some(f=>f.comprobante_documento_id===documento.id))throw new Error('Esta factura ya fue cargada.');
+    if(compartida){
+      const pr=facturaRepartoPreview.get(pid),clave='alq:f4:factura-repartida:'+documento.id;
+      let requestId=localStorage.getItem(clave);if(!requestId){requestId=crypto.randomUUID();localStorage.setItem(clave,requestId)}
+      const payload={schema_version:1,cuenta_id:$('faCta').value,desde:$('faDesde').value,hasta:$('faHasta').value,
+        moneda:$('faMoneda').value,monto:String(monto),vence_at:$('faVence').value,
+        comprobante_documento_id:documento.id,modo:sel.modo,contrato_ids:sel.contratos,valores:sel.valores,
+        acreedor_tipo:$('faAcreedorTipo').value,preview_sha256:pr.preview.preview_sha256};
+      const {data,error}=await sb.rpc('alq_admin_factura_repartida_registrar',{p_request_id:requestId,p_payload:payload});
+      if(error)throw new Error(error.message);
+      localStorage.removeItem(clave);facturaRepartoPreview.delete(pid);
+      toast('Factura repartida: '+data.cantidad_cargos+' cargos exactos');await cargar();return;
+    }
     let cargoId=null;
     if(conCargo){
       if(!cvig)throw new Error('No hay contrato vigente: no puedo generarle el cargo al inquilino.');
@@ -1675,7 +2192,7 @@ async function opFactura(pid){
       const res=await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,
         cargo_fuente_ref:documento.id,
         deudor_parte_id:cvig.inquilino_parte_id,acreedor_parte_id:acreedor,
-        ambito:'custodiada',concepto:'servicio',moneda:'ARS',monto:String(monto),
+        ambito:'custodiada',concepto:'servicio',moneda:$('faMoneda').value,monto:String(monto),
         vence_at:fechaCivilATimestamp($('faVence').value),
         snapshot_regla:{detalle:'Factura '+(cta?cta.tipo:'servicio')+' '+$('faDesde').value+' → '+$('faHasta').value}},
         {slot:cargoSlot,retener_hasta_continuacion:true});
@@ -1685,6 +2202,102 @@ async function opFactura(pid){
     await completar(cargoId);
   }catch(e){alqF1aMostrarError(m,e,async resultado=>completar(resultado&&resultado.id))}
   finally{const b=$('btnFac');if(b)b.disabled=false}
+}
+function requestDirectoDurable(clave,payload){
+  let x;try{x=JSON.parse(localStorage.getItem(clave)||'null')}catch(_){x=null}
+  const canon=alqF1aJsonCanonico(payload);
+  if(!x||x.payload!==canon){x={id:crypto.randomUUID(),payload:canon};localStorage.setItem(clave,JSON.stringify(x))}
+  return x.id;
+}
+function renovacionAjusteCambio(){
+  const tipo=$('renAjusteTipo').value,sin=tipo==='sin_ajuste',fijo=tipo==='porcentaje_fijo',indice=tipo.startsWith('indice_');
+  $('renFrecuenciaBox').style.display=sin?'none':'block';$('renPctBox').style.display=fijo?'block':'none';
+  ['renIndiceOrgBox','renIndiceCodBox','renIndiceBaseBox','renIndiceGranularidadBox'].forEach(id=>$(id).style.display=indice?'block':'none');
+  const presets={indice_ipc:{o:'INDEC',c:'IPC',b:'Nivel general nacional · serie 148.3_INIVELNAL_DICI_M_26',g:'mensual'},
+    indice_icl:{o:'BCRA',c:'ICL',b:'Ley 27.551 · variable BCRA 40',g:'diaria'}},p=presets[tipo];
+  if(p){$('renIndiceOrg').value=p.o;$('renIndiceCodigo').value=p.c;$('renIndiceBase').value=p.b;$('renIndiceGranularidad').value=p.g}
+  ['renIndiceOrg','renIndiceCodigo','renIndiceBase','renIndiceGranularidad'].forEach(id=>$(id).disabled=!!p);
+}
+function renovacionOtraMonedaCambio(){$('renFuenteConversionBox').style.display=$('renOtraMoneda').value==='tasa_pactada'?'block':'none'}
+async function opContinuacionLegal(pid){
+  const m=$('msgContinuacion');m.className='op-msg';m.textContent='';
+  const contrato=D.con.find(c=>c.propiedad_id===pid&&c.estado==='vigente');
+  try{
+    const desde=$('contDesde').value;
+    if(!contrato)throw new Error('El contrato ya no está vigente o ya fue marcado en continuación legal.');
+    if(!desde||desde<=contrato.fin_pactado)throw new Error('La continuación debe comenzar después del fin pactado.');
+    $('btnContinuacion').disabled=true;m.textContent='Registrando la continuidad sin borrar el contrato…';
+    await rpc('contrato_continuacion_marcar',{contrato_id:contrato.id,continuacion_desde:desde});
+    toast('Continuación legal registrada');await cargar();
+  }catch(e){m.className='op-msg op-err';m.textContent=e.message}
+  finally{const b=$('btnContinuacion');if(b)b.disabled=false}
+}
+async function opRenovarContrato(pid){
+  const m=$('msgRenovar');m.className='op-msg';m.textContent='';
+  const viejo=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+  const inicio=$('renInicio').value,fin=$('renFin').value,monto=Number($('renMonto').value),moneda=$('renMoneda').value.trim().toUpperCase();
+  try{
+    if(!viejo)throw new Error('No hay contrato vigente para renovar.');
+    if(!inicio||!fin||fin<inicio||inicio<=viejo.inicio)throw new Error('Revisá las fechas del nuevo contrato.');
+    if(!monto||monto<=0||!/^[A-Z]{3}$/.test(moneda))throw new Error('Revisá monto y moneda.');
+    if(!$('renExtenderMandato').checked)throw new Error('Confirmá la extensión del mandato y la titularidad.');
+    const desde=Number($('renPagoDesde').value),hasta=Number($('renPagoHasta').value),mora=Number($('renMoraPct').value),gracia=Number($('renMoraGracia').value);
+    if(!Number.isInteger(desde)||!Number.isInteger(hasta)||desde<1||hasta<desde||hasta>31)throw new Error('Revisá los días permitidos de pago.');
+    if(!Number.isFinite(mora)||mora<0||mora>100||!Number.isInteger(gracia)||gracia<0||gracia>31||(mora===0&&gracia!==0))throw new Error('Revisá la mora y los días de gracia.');
+    const tipo=$('renAjusteTipo').value,contrato={inicio,fin_pactado:fin,monto:String(monto),moneda,
+      dia_pago_desde:String(desde),dia_pago_hasta:String(hasta),ajuste_tipo:tipo.startsWith('indice_')?'indice':tipo,
+      punitorio_pct_dia:String(mora/100),punitorio_desde_dia:String(gracia),
+      formula_punitorio_version:mora>0?'simple_diaria_v1':'sin_mora_automatica',
+      metodo_prorrateo:$('renProrrateo').value,regla_redondeo:$('renRedondeo').value,
+      regla_pago_otra_moneda:$('renOtraMoneda').value,fallback_indice:{}};
+    if(tipo!=='sin_ajuste'){
+      const frecuencia=Number($('renFrecuencia').value);if(!Number.isInteger(frecuencia)||frecuencia<1)throw new Error('Definí la frecuencia de actualización.');
+      contrato.frecuencia_ajuste_meses=String(frecuencia);
+    }
+    if(tipo==='porcentaje_fijo'){
+      const pct=Number($('renPct').value);if(!pct||pct<=0)throw new Error('Definí el porcentaje fijo.');contrato.pct_fijo=String(pct/100);
+    }
+    if(tipo.startsWith('indice_')){
+      contrato.indice_organismo=$('renIndiceOrg').value.trim();contrato.indice_codigo=$('renIndiceCodigo').value.trim();
+      contrato.indice_base=$('renIndiceBase').value.trim();contrato.indice_granularidad=$('renIndiceGranularidad').value;
+      contrato.indice_version=tipo==='indice_ipc'?'datos_argentina_v1':tipo==='indice_icl'?'bcra_v4':'fuente_verificada_v1';
+      if(!contrato.indice_organismo||!contrato.indice_codigo||!contrato.indice_base)throw new Error('Completá organismo, código y serie del índice.');
+    }
+    if(contrato.regla_pago_otra_moneda==='tasa_pactada'){
+      contrato.fuente_conversion=$('renFuenteConversion').value.trim();if(!contrato.fuente_conversion)throw new Error('Indicá la fuente de conversión.');
+    }
+    const hp=Number($('renHonPct').value),hm=Number($('renHonMin').value),hf=Number($('renHonFijo').value);
+    if([hp,hm,hf].some(x=>!Number.isFinite(x)||x<0)||(hp===0&&hm===0&&hf===0))throw new Error('Definí un honorario válido.');
+    const mandato={honorario_base:'devengado',honorario_pct:String(hp/100),honorario_minimo:String(hm),honorario_fijo:String(hf),
+      incluye_punitorios:$('renHonPunitorios').checked,moneda,tratamiento_impuestos:$('renHonNota').value.trim()?{nota:$('renHonNota').value.trim()}: {},extender_hasta:fin};
+    let documentoId=null,file=$('renDocumento').files&&$('renDocumento').files[0];
+    if(file){const d=await documentoArchivo(pid,file,'contrato','contratos','Adjuntá el contrato renovado.');documentoId=d.id}
+    const payload={schema_version:1,predecesor_id:viejo.id,contrato,mandato,pdf_documento_id:documentoId,
+      copiar_garantia:$('renCopiarGarantia').checked};
+    const clave='alq:f4:renovar:'+viejo.id,requestId=requestDirectoDurable(clave,payload);
+    $('btnRenovar').disabled=true;m.textContent='Renovando en una sola operación…';
+    const {data,error}=await sb.rpc('alq_admin_contrato_renovar_integral',{p_request_id:requestId,p_payload:payload});if(error)throw new Error(error.message);
+    localStorage.removeItem(clave);toast('Contrato renovado · anterior conservado');await cargar();return data;
+  }catch(e){m.className='op-msg op-err';m.textContent=e.message}
+  finally{const b=$('btnRenovar');if(b)b.disabled=false}
+}
+async function opRescindirContrato(pid){
+  const m=$('msgRescindir');m.className='op-msg';m.textContent='';
+  const contrato=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+  try{
+    const notificada=$('rescNotificada').value,efectiva=$('rescEfectiva').value,causal=$('rescCausal').value.trim(),preaviso=Number($('rescPreaviso').value);
+    if(!contrato)throw new Error('No hay contrato vigente para rescindir.');
+    if(!notificada||!efectiva||efectiva<notificada||!causal||!Number.isInteger(preaviso)||preaviso<0)throw new Error('Completá fechas, causal y preaviso.');
+    let documentoId=null,file=$('rescDocumento').files&&$('rescDocumento').files[0];
+    if(file){const d=await documentoArchivo(pid,file,'rescision','rescisiones','Adjuntá el documento de rescisión.');documentoId=d.id}
+    const payload={contrato_id:contrato.id,notificada_at:fechaCivilATimestamp(notificada),efectiva_at:fechaCivilATimestamp(efectiva),
+      causal,preaviso_dias:String(preaviso)};
+    if($('rescLlaves').value)payload.entrega_llaves_at=fechaCivilATimestamp($('rescLlaves').value);
+    if(documentoId)payload.documento_id=documentoId;
+    $('btnRescindir').disabled=true;m.textContent='Rescindiendo y conservando la historia…';
+    await rpc('contrato_rescindir',payload);toast('Contrato rescindido');await cargar();
+  }catch(e){m.className='op-msg op-err';m.textContent=e.message}
+  finally{const b=$('btnRescindir');if(b)b.disabled=false}
 }
 /* ══════════ BANDEJA DE FACTURAS · el robot lee, vos confirmás ══════════ */
 if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1888,6 +2501,264 @@ async function confirmarFactura(i){
     });
   }
 }
+
+/* ── Alta integral: todas las decisiones comerciales visibles, una transacción ── */
+const ALTA_STORAGE_KEY='alq:alta-integral:pendiente:v1';
+let altaServicioN=0;
+const altaNum=id=>Number($(id).value||0);
+const altaTxt=id=>String($(id).value||'').trim();
+const altaFile=id=>$(id).files&&$(id).files[0]||null;
+function altaOpcionesParte(seleccion){
+  return '<option value="">Crear una persona nueva</option>'+D.parte
+    .slice().sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es'))
+    .map(p=>`<option value="${p.id}" ${p.id===seleccion?'selected':''}>${esc(p.nombre)}${p.documento_numero?' · '+esc(p.documento_numero):''}</option>`).join('');
+}
+function prepararAltaOpciones(){
+  if(!$('altaPublicacion')||!D.parte)return;
+  const actual=$('altaPublicacion').value,usadas=new Set(D.prop.map(p=>p.publicacion_propiedad_id).filter(Boolean));
+  $('altaPublicacion').innerHTML='<option value="">No está publicada / carga manual</option>'+D.publicaciones
+    .filter(p=>!usadas.has(p.id)).map(p=>`<option value="${p.id}">${esc(p.codigo_publico||p.codigo_interno||'Sin código')} · ${esc(p.titulo||p.ubicacion||'Propiedad')}</option>`).join('');
+  if([...$('altaPublicacion').options].some(o=>o.value===actual))$('altaPublicacion').value=actual;
+  for(const [rol,id] of [['owner','altaOwnerExistente'],['tenant','altaTenantExistente'],['guarantor','altaGuarantorExistente']]){
+    const previo=$(id).value;$(id).innerHTML=altaOpcionesParte(previo);altaPersonaVisibilidad(rol);
+  }
+}
+function altaPersonaVisibilidad(rol){
+  const mapa={owner:'altaOwnerExistente',tenant:'altaTenantExistente',guarantor:'altaGuarantorExistente'};
+  const nueva=!$(mapa[rol]).value;
+  document.querySelectorAll(`[data-persona="${rol}"]`).forEach(el=>el.classList.toggle('alta-hidden',!nueva));
+}
+function altaPublicacionCambio(){
+  const p=D.publicaciones.find(x=>x.id===$('altaPublicacion').value);
+  if(p){$('altaDireccion').value=p.ubicacion||'';$('altaCiudad').value=p.ciudad||'';$('altaProvincia').value=p.provincia||''}
+  ['altaDireccion','altaCiudad','altaProvincia'].forEach(id=>$(id).disabled=!!p);
+  altaActualizarResumen();
+}
+function altaAjusteCambio(){
+  const tipo=$('altaAjusteTipo').value,sin=tipo==='sin_ajuste',fijo=tipo==='porcentaje_fijo',indice=tipo.startsWith('indice_'),otro=tipo==='indice_otro';
+  $('altaFrecuenciaBox').classList.toggle('alta-hidden',sin);
+  $('altaPctBox').classList.toggle('alta-hidden',!fijo);
+  ['altaIndiceOrgBox','altaIndiceCodBox','altaIndiceBaseBox'].forEach(id=>$(id).classList.toggle('alta-hidden',!indice));
+  $('altaIndiceGranularidadBox').classList.toggle('alta-hidden',!indice);
+  const presets={
+    indice_ipc:{organismo:'INDEC',codigo:'IPC',base:'Nivel general nacional · serie 148.3_INIVELNAL_DICI_M_26',granularidad:'mensual'},
+    indice_icl:{organismo:'BCRA',codigo:'ICL',base:'Ley 27.551 · variable BCRA 40',granularidad:'diaria'}
+  },preset=presets[tipo];
+  if(preset){$('altaIndiceOrg').value=preset.organismo;$('altaIndiceCodigo').value=preset.codigo;
+    $('altaIndiceBase').value=preset.base;$('altaIndiceGranularidad').value=preset.granularidad}
+  ['altaIndiceOrg','altaIndiceCodigo','altaIndiceBase','altaIndiceGranularidad'].forEach(id=>$(id).disabled=!!preset);
+  if(otro&&['INDEC','BCRA'].includes($('altaIndiceOrg').value)&&['IPC','ICL'].includes($('altaIndiceCodigo').value)){
+    $('altaIndiceOrg').value='';$('altaIndiceCodigo').value='';$('altaIndiceBase').value='';$('altaIndiceGranularidad').value='mensual';
+  }
+  const reglas={dias_reales:'Días reales: alquiler mensual × días activos ÷ días del mes.',base_30:'Base 30: alquiler mensual × días activos convencionales ÷ 30.',importe_pactado:'Importe pactado: se cobra el alquiler mensual completo aunque el primer o último mes sea incompleto.'};
+  $('altaProrrateoAyuda').textContent=(reglas[$('altaProrrateo').value]||'')+' El honorario se devenga sobre el alquiler contractual completo.';
+  altaActualizarResumen();
+}
+function altaOtraMonedaCambio(){
+  $('altaFuenteConversionBox').classList.toggle('alta-hidden',$('altaOtraMoneda').value!=='tasa_pactada');
+}
+function altaAgregarServicio(valor={}){
+  const n=++altaServicioN,row=document.createElement('div');row.className='alta-service';row.dataset.altaServicio=String(n);
+  row.innerHTML=`<div><label class="f-l">Tipo</label><select class="f" data-s="tipo"><option value="electricidad">Electricidad</option><option value="gas">Gas</option><option value="agua">Agua</option><option value="internet">Internet</option><option value="expensas">Expensas</option><option value="otro">Otro</option></select></div>
+    <div><label class="f-l">N° cliente / cuenta</label><input class="f" data-s="numero"/></div>
+    <div><label class="f-l">Responsable</label><select class="f" data-s="responsable"><option value="inquilino">Inquilino</option><option value="propietario">Propietario</option><option value="administracion">Administración</option><option value="garante">Garante</option></select></div>
+    <button class="btn-g" type="button" title="Quitar servicio">Quitar</button>`;
+  row.querySelector('[data-s="tipo"]').value=valor.tipo||'electricidad';
+  row.querySelector('[data-s="numero"]').value=valor.nro_cliente||'';
+  row.querySelector('[data-s="responsable"]').value=valor.responsable||'inquilino';
+  row.querySelector('button').onclick=()=>row.remove();$('altaServicios').appendChild(row);
+}
+function altaPersona(rol){
+  const pref={owner:'Owner',tenant:'Tenant',guarantor:'Guarantor'}[rol];
+  const existente=$('alta'+pref+'Existente').value;
+  if(existente)return{parte_id:existente};
+  const nombre=altaTxt('alta'+pref+'Nombre'),docTipo=altaTxt('alta'+pref+'DocTipo'),docNumero=altaTxt('alta'+pref+'DocNumero');
+  if(!nombre)throw new Error('Completá el nombre de '+({owner:'la persona propietaria',tenant:'la persona inquilina',guarantor:'la persona garante'}[rol])+'.');
+  if(Boolean(docTipo)!==Boolean(docNumero))throw new Error('Completá tipo y número de documento juntos.');
+  const p={tipo_persona:$('alta'+pref+'Tipo').value,nombre};
+  if(docTipo){p.documento_tipo=docTipo;p.documento_numero=docNumero}
+  if(rol!=='guarantor'){
+    const tel=altaTxt('alta'+pref+'Tel'),email=altaTxt('alta'+pref+'Email');if(tel)p.tel_whatsapp=tel;if(email)p.email=email;
+  }
+  return p;
+}
+function altaServiciosPayload(){
+  return [...document.querySelectorAll('[data-alta-servicio]')].map(row=>({
+    tipo:row.querySelector('[data-s="tipo"]').value,
+    nro_cliente:String(row.querySelector('[data-s="numero"]').value||'').trim(),
+    responsable:row.querySelector('[data-s="responsable"]').value
+  })).filter(x=>x.nro_cliente);
+}
+function altaPayloadBase(){
+  const publicacion=altaTxt('altaPublicacion'),monto=altaNum('altaContratoMonto'),moneda=$('altaContratoMoneda').value;
+  const inicio=altaTxt('altaContratoInicio'),fin=altaTxt('altaContratoFin'),mdInicio=altaTxt('altaMandatoInicio')||inicio,mdFin=altaTxt('altaMandatoFin');
+  if(!publicacion&&(!altaTxt('altaDireccion')||!altaTxt('altaCiudad')||!altaTxt('altaProvincia')))throw new Error('Elegí una publicación o completá dirección, ciudad y provincia.');
+  if(!inicio||!fin||!monto||monto<=0)throw new Error('Completá inicio, fin y monto del contrato.');
+  if(fin<inicio)throw new Error('El fin del contrato no puede ser anterior al inicio.');
+  if(mdInicio>inicio||mdFin&&mdFin<fin)throw new Error('El mandato debe cubrir todo el período del contrato.');
+  const desde=altaNum('altaPagoDesde'),hasta=altaNum('altaPagoHasta');if(desde<1||hasta<desde||hasta>31)throw new Error('Revisá los días permitidos de pago.');
+  const pctHonorario=altaNum('altaHonorarioPct'),minimo=altaNum('altaHonorarioMin'),fijo=altaNum('altaHonorarioFijo');
+  if(pctHonorario<0||minimo<0||fijo<0||(pctHonorario===0&&minimo===0&&fijo===0))throw new Error('Definí un honorario mayor que cero.');
+  if($('altaHonorarioMoneda').value!==moneda)throw new Error('En el motor mensual actual, alquiler y honorario deben usar la misma moneda.');
+  const moraPct=altaNum('altaPunitorioPct'),moraGracia=altaNum('altaPunitorioDesde');
+  if(moraPct<0||moraPct>100||moraGracia<0||moraGracia>31||!Number.isInteger(moraGracia))throw new Error('Revisá el porcentaje de mora y los días de gracia.');
+  if(moraPct===0&&moraGracia!==0)throw new Error('Sin porcentaje de mora, los días de gracia deben quedar en cero.');
+  const ajusteUi=$('altaAjusteTipo').value,ajuste=ajusteUi.startsWith('indice_')?'indice':ajusteUi,contrato={inicio,fin_pactado:fin,monto:String(monto),moneda,
+    dia_pago_desde:String(desde),dia_pago_hasta:String(hasta),ajuste_tipo:ajuste,
+    punitorio_pct_dia:String(moraPct/100),punitorio_desde_dia:String(moraGracia),
+    formula_punitorio_version:moraPct>0?'simple_diaria_v1':'sin_mora_automatica',
+    metodo_prorrateo:$('altaProrrateo').value,regla_redondeo:$('altaRedondeo').value,
+    regla_pago_otra_moneda:$('altaOtraMoneda').value,fallback_indice:{}};
+  if(ajuste!=='sin_ajuste'){
+    const frecuencia=altaNum('altaFrecuencia');if(!frecuencia||frecuencia<1)throw new Error('Definí cada cuántos meses se actualiza.');
+    contrato.frecuencia_ajuste_meses=String(frecuencia);
+  }
+  if(ajuste==='porcentaje_fijo'){
+    const pct=altaNum('altaAjustePct');if(pct<=0||!Number.isFinite(pct))throw new Error('El porcentaje de actualización debe ser mayor que cero.');contrato.pct_fijo=String(pct/100);
+  }
+  if(ajuste==='indice'){
+    contrato.indice_organismo=altaTxt('altaIndiceOrg');contrato.indice_codigo=altaTxt('altaIndiceCodigo');
+    contrato.indice_base=altaTxt('altaIndiceBase');contrato.indice_version=ajusteUi==='indice_ipc'?'datos_argentina_v1':ajusteUi==='indice_icl'?'bcra_v4':'fuente_verificada_v1';
+    contrato.indice_granularidad=$('altaIndiceGranularidad').value;
+    if(!contrato.indice_organismo||!contrato.indice_codigo||!contrato.indice_base)throw new Error('Completá organismo, código y alcance del índice.');
+  }
+  if(contrato.regla_pago_otra_moneda==='tasa_pactada'){
+    contrato.fuente_conversion=altaTxt('altaFuenteConversion');if(!contrato.fuente_conversion)throw new Error('Indicá la fuente de conversión.');
+  }
+  const payload={schema_version:1,propietario:altaPersona('owner'),inquilino:altaPersona('tenant'),
+    propiedad:{publicacion_propiedad_id:publicacion||null,direccion:altaTxt('altaDireccion'),ciudad:altaTxt('altaCiudad'),provincia:altaTxt('altaProvincia')},
+    mandato:{inicio:mdInicio,fin:mdFin||null,honorario_base:'devengado',
+      honorario_pct:String(pctHonorario/100),honorario_minimo:String(minimo),honorario_fijo:String(fijo),
+      incluye_punitorios:$('altaHonorarioPunitorios').checked,moneda:$('altaHonorarioMoneda').value,
+      tratamiento_impuestos:altaTxt('altaHonorarioImpuestos')?{nota:altaTxt('altaHonorarioImpuestos')}:{}}
+    ,contrato,garantia:null,deposito:null,servicios:altaServiciosPayload(),documentos:{}};
+  if($('altaGarantiaOn').checked){
+    const cobertura=altaTxt('altaGarantiaCobertura');
+    if(cobertura&&altaNum('altaGarantiaCobertura')<=0)throw new Error('La cobertura de la garantía debe ser mayor que cero.');
+    payload.garantia={habilitada:true,garante:altaPersona('guarantor'),tipo:$('altaGarantiaTipo').value,
+      poliza:altaTxt('altaGarantiaPoliza')||null,emisor:altaTxt('altaGarantiaEmisor')||null,
+      cobertura:cobertura||null,moneda:$('altaGarantiaMoneda').value,regla_notificacion_mora:{}};
+  }
+  if($('altaDepositoOn').checked){
+    const dm=altaNum('altaDepositoMonto');if(!dm||dm<=0)throw new Error('Completá el monto del depósito.');
+    if(!altaFile('altaDepositoDoc'))throw new Error('Adjuntá el comprobante del depósito.');
+    payload.deposito={registrar_ahora:true,monto:String(dm),moneda:$('altaDepositoMoneda').value,custodia:$('altaDepositoCustodia').value};
+  }
+  return payload;
+}
+function altaParametrosProforma(){
+  const monto=altaNum('altaContratoMonto'),inicio=altaTxt('altaContratoInicio'),fin=altaTxt('altaContratoFin');
+  const mes=altaTxt('altaPrimerMes'),pct=altaNum('altaHonorarioPct');
+  if(!monto||monto<=0||!inicio||!fin||!/^\d{4}-\d{2}$/.test(mes))throw new Error('Completá monto, fechas del contrato y primer mes.');
+  return{p_monto:String(monto),p_inicio:inicio,p_fin_inclusive:fin,p_mes:mes+'-01',
+    p_metodo:$('altaProrrateo').value,p_redondeo:$('altaRedondeo').value,
+    p_honorario_pct:String(pct/100),p_honorario_minimo:String(altaNum('altaHonorarioMin')),
+    p_honorario_fijo:String(altaNum('altaHonorarioFijo')),
+    p_expensas:String(altaNum('altaPrimerMesExpensas'))};
+}
+async function altaCalcularProformaExacta(mostrarError=false){
+  if(!$('altaResumen'))return null;const sec=++altaProformaSecuencia;altaProformaActual=null;
+  let params;try{params=altaParametrosProforma()}catch(e){
+    $('altaResumen').innerHTML='<h3>Resumen antes de confirmar</h3><div class="empty">'+esc(e.message)+'</div>';return null;
+  }
+  $('altaResumen').innerHTML='<h3>Resumen antes de confirmar</h3><div class="empty">Calculando en la base con las reglas del contrato…</div>';
+  const {data,error}=await sb.rpc('alq_admin_alta_proforma',params);
+  if(sec!==altaProformaSecuencia)return null;
+  if(error||!data){const mensaje='No se pudo calcular la proforma exacta: '+String(error&&error.message||'sin respuesta');
+    $('altaResumen').innerHTML='<h3>Resumen antes de confirmar</h3><div class="empty">'+esc(mensaje)+'</div>';
+    if(mostrarError)throw new Error(mensaje);return null;
+  }
+  altaProformaActual={params,data};const parcial=Number(data.numerador)!==Number(data.denominador);
+  $('altaResumen').innerHTML=`<h3>Proforma exacta de ${esc(String(data.mes).slice(0,7))}</h3><div class="account-grid">
+    <div class="account-box obligations"><div class="pg-l">Obligaciones del inquilino</div><div class="amount">${fmt(data.obligaciones_inquilino)}</div><div class="account-caption">Alquiler ${fmt(data.alquiler_monto)}${Number(data.expensas_monto)?' + expensas '+fmt(data.expensas_monto):''}. ${parcial?`Período activo ${fdate(data.activo_desde)} a ${fdate(data.activo_hasta_inclusive)} · ${esc(data.metodo_prorrateo)} ${data.numerador}/${data.denominador}.`:'Mes contractual completo.'}</div></div>
+    <div class="account-box fees"><div class="pg-l">Honorario de administración</div><div class="amount">${fmt(data.honorario_monto)}</div><div class="account-caption">Se calcula sobre el alquiler contractual completo ${fmt(data.alquiler_contractual)} y queda a cargo del propietario, aunque el inquilino todavía no haya pagado.</div></div>
+    <div class="account-box"><div class="pg-l">Liquidación / caja</div><div class="amount">$0 al alta</div><div class="account-caption">No se presume ningún cobro ni giro. La caja real y los pagos entre partes son circuitos separados.</div></div>
+  </div>`;return altaProformaActual;
+}
+function altaActualizarResumen(){
+  clearTimeout(altaProformaTimer);altaProformaActual=null;
+  altaProformaTimer=setTimeout(()=>altaCalcularProformaExacta(false),180);
+}
+async function altaHuellaArchivos(){
+  const salida={};for(const [clave,id] of [['contrato','altaContratoDoc'],['garantia','altaGarantiaDoc'],['deposito','altaDepositoDoc']]){
+    const f=altaFile(id);if(f)salida[clave]={sha256:await shaArchivo(f),mime:f.type||'application/octet-stream',bytes:f.size,nombre:f.name||clave};
+  }return salida;
+}
+function altaRutaArchivo(requestId,clave,file,huella){
+  const ext=((file.name||'').match(/\.([a-z0-9]{1,8})$/i)||[])[1]||((file.type||'').includes('pdf')?'pdf':'bin');
+  return `altas/${requestId}/${clave}-${huella.sha256}.${ext.toLowerCase()}`;
+}
+async function altaSubirArchivo(requestId,clave,file,huella){
+  if(!file)return null;const path=altaRutaArchivo(requestId,clave,file,huella);
+  const r=await sb.storage.from('alq-docs').upload(path,file,{upsert:false,contentType:huella.mime});
+  if(r.error){
+    if(!/already exists|duplicate/i.test(r.error.message))throw new Error('Guardando '+clave+': '+r.error.message);
+    const previa=await sb.storage.from('alq-docs').download(path);
+    if(previa.error||await shaArchivo(previa.data)!==huella.sha256)throw new Error('El archivo ya existente no coincide con '+clave+'.');
+  }
+  return{path,sha256:huella.sha256,mime:huella.mime,bytes:String(huella.bytes)};
+}
+async function altaEstadoRemoto(requestId){
+  const {data,error}=await sb.rpc('alq_admin_alta_estado',{p_request_id:requestId});
+  if(error||!data)throw new Error('No pude resolver el estado del intento anterior: '+String(error&&error.message||'sin respuesta'));
+  return data;
+}
+async function altaLimpiarSubidasNoVinculadas(estado){
+  const paths=[...new Set((estado&&estado.paths||[]).filter(Boolean))];if(!paths.length)return;
+  const q=await sb.from('alq_v_documento').select('path').in('path',paths);
+  if(q.error)throw new Error('No pude verificar si los archivos anteriores estaban vinculados; no borré nada.');
+  const ligados=new Set((q.data||[]).map(x=>x.path)),huerfanos=paths.filter(p=>!ligados.has(p));
+  if(!huerfanos.length)return;
+  const rm=await sb.storage.from('alq-docs').remove(huerfanos);
+  if(rm.error)throw new Error('El alta no se creó y no pude limpiar sus archivos huérfanos: '+rm.error.message);
+}
+async function altaResolverIntentoAnterior(estado){
+  if(!estado||!estado.request_id)return null;const remoto=await altaEstadoRemoto(estado.request_id);
+  if(remoto.estado==='aplicada'&&remoto.resultado&&remoto.resultado.propiedad_id){
+    alqF1aEliminarEstado(ALTA_STORAGE_KEY);$('altaOv').classList.remove('on');await cargar();abrir(remoto.resultado.propiedad_id,'Contratos');
+    return remoto.resultado;
+  }
+  if(remoto.estado==='ausente'){await altaLimpiarSubidasNoVinculadas(estado);alqF1aEliminarEstado(ALTA_STORAGE_KEY);return null}
+  throw new Error('El intento anterior quedó en estado '+remoto.estado+'. No se creará otro hasta resolverlo.');
+}
+async function altaConfirmar(){
+  const msg=$('altaMsg');msg.textContent='';msg.className='op-msg';
+  if(!$('altaConfirmacion').checked){msg.textContent='Marcá la confirmación después de revisar el resumen.';msg.className='op-msg op-err';return}
+  try{
+    $('altaConfirmar').disabled=true;msg.textContent='Validando y preparando documentos…';
+    const base=altaPayloadBase(),proforma=await altaCalcularProformaExacta(true);
+    if(!proforma||proforma.data.estado!=='listo')throw new Error('La proforma exacta no está lista para confirmar.');
+    const archivos=await altaHuellaArchivos();
+    const fingerprint=await alqF1aSha256({base,archivos});let estado=alqF1aLeerEstado(ALTA_STORAGE_KEY);
+    if(estado&&estado.fingerprint!==fingerprint){msg.textContent='Resolviendo el intento anterior antes de aceptar cambios…';
+      const resuelto=await altaResolverIntentoAnterior(estado);if(resuelto){toast('El alta anterior ya estaba creada; se recuperó sin duplicar.');return}
+      estado=null;
+    }
+    if(!estado)estado={version:1,request_id:alqF1aUuidNuevo(),fingerprint,paths:[]};
+    estado.paths=Object.entries(archivos).map(([clave,huella])=>altaRutaArchivo(estado.request_id,clave,altaFile({contrato:'altaContratoDoc',garantia:'altaGarantiaDoc',deposito:'altaDepositoDoc'}[clave]),huella));
+    alqF1aGuardarEstado(ALTA_STORAGE_KEY,estado);
+    for(const [clave,id] of [['contrato','altaContratoDoc'],['garantia','altaGarantiaDoc'],['deposito','altaDepositoDoc']]){
+      if(archivos[clave])base.documentos[clave]=await altaSubirArchivo(estado.request_id,clave,altaFile(id),archivos[clave]);
+    }
+    msg.textContent='Creando el alquiler completo…';
+    let data,error;for(let intento=0;intento<2;intento++){
+      ({data,error}=await sb.rpc('alq_admin_alta_integral',{p_request_id:estado.request_id,p_payload:base}));
+      if(!error&&data&&data.propiedad_id)break;if(intento===0){msg.textContent='La respuesta fue incierta. Verificando con el mismo pedido, sin duplicar…';await pausa(600)}
+    }
+    if(error||!data||!data.propiedad_id){const remoto=await altaEstadoRemoto(estado.request_id);
+      if(remoto.estado==='aplicada'&&remoto.resultado&&remoto.resultado.propiedad_id)data=remoto.resultado;
+      else{if(remoto.estado==='ausente')await altaLimpiarSubidasNoVinculadas(estado);throw new Error(error&&error.message||'La base no devolvió el alta completa.')}}
+    alqF1aEliminarEstado(ALTA_STORAGE_KEY);toast(data.replay?'Alta verificada sin duplicar':'Alquiler creado completamente');
+    $('altaOv').classList.remove('on');await cargar();abrir(data.propiedad_id,'Contratos');
+  }catch(e){msg.textContent=e.message;msg.className='op-msg op-err'}finally{$('altaConfirmar').disabled=false}
+}
+function altaAbrir(){
+  prepararAltaOpciones();const d=hoyCivil();if(!$('altaContratoInicio').value)$('altaContratoInicio').value=d;
+  if(!$('altaMandatoInicio').value)$('altaMandatoInicio').value=$('altaContratoInicio').value;
+  if(!$('altaPrimerMes').value)$('altaPrimerMes').value=$('altaContratoInicio').value.slice(0,7);
+  if(!$('altaServicios').children.length)altaAgregarServicio({tipo:'electricidad',responsable:'inquilino'});
+  altaPublicacionCambio();altaAjusteCambio();altaOtraMonedaCambio();altaActualizarResumen();$('altaOv').classList.add('on');
+}
 const dz=$('dropzone');
 if(dz){
   dz.onclick=()=>$('pdfInput').click();
@@ -1906,6 +2777,30 @@ $('ov').onclick=e=>{if(e.target===$('ov')){$('ov').classList.remove('on');propAb
 $('btnAyuda').onclick=()=>$('helpOv').classList.add('on');
 $('helpClose').onclick=()=>$('helpOv').classList.remove('on');
 $('helpOv').onclick=e=>{if(e.target===$('helpOv'))$('helpOv').classList.remove('on')};
+$('btnAbrirAlta').onclick=altaAbrir;
+$('altaClose').onclick=$('altaCancelar').onclick=()=>$('altaOv').classList.remove('on');
+$('altaOv').onclick=e=>{if(e.target===$('altaOv'))$('altaOv').classList.remove('on')};
+$('altaConfirmar').onclick=altaConfirmar;
+$('altaAgregarServicio').onclick=()=>altaAgregarServicio();
+$('altaPublicacion').onchange=altaPublicacionCambio;
+for(const [rol,id] of [['owner','altaOwnerExistente'],['tenant','altaTenantExistente'],['guarantor','altaGuarantorExistente']])
+  $(id).onchange=()=>altaPersonaVisibilidad(rol);
+$('altaAjusteTipo').onchange=altaAjusteCambio;
+$('altaProrrateo').onchange=altaAjusteCambio;
+$('altaOtraMoneda').onchange=altaOtraMonedaCambio;
+$('altaContratoMoneda').onchange=()=>{
+  $('altaHonorarioMoneda').value=$('altaContratoMoneda').value;
+  $('altaGarantiaMoneda').value=$('altaContratoMoneda').value;
+  $('altaDepositoMoneda').value=$('altaContratoMoneda').value;altaActualizarResumen();
+};
+$('altaContratoInicio').onchange=()=>{
+  if(!$('altaMandatoInicio').value)$('altaMandatoInicio').value=$('altaContratoInicio').value;
+  $('altaPrimerMes').value=$('altaContratoInicio').value.slice(0,7);altaActualizarResumen();
+};
+$('altaGarantiaOn').onchange=()=>$('altaGarantiaCampos').classList.toggle('alta-hidden',!$('altaGarantiaOn').checked);
+$('altaDepositoOn').onchange=()=>$('altaDepositoCampos').classList.toggle('alta-hidden',!$('altaDepositoOn').checked);
+$('altaGarantiaCampos').classList.add('alta-hidden');$('altaDepositoCampos').classList.add('alta-hidden');
+$('altaOv').addEventListener('input',e=>{if(e.target.matches('input,select'))altaActualizarResumen()});
 $('chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
   $('chips').querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
   c.classList.add('on');filtro=c.dataset.f;render();

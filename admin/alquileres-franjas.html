@@ -547,18 +547,62 @@ async function arrancar(){
 
 async function cargar(){
   const q=(t,sel='*')=>sb.from(t).select(sel);
-  const [props,contratos,versiones,cargos,cuentas,facturas,titul,mails]=await Promise.all([
+  const [props,contratos,versiones,cargos,cuentas,facturas,repartos,titul,mails]=await Promise.all([
     q('alq_v_propiedad'),q('alq_v_contrato'),q('alq_v_contrato_version'),
     q('alq_v_cargo'),q('alq_v_servicio_cuenta'),q('alq_v_servicio_factura'),
+    q('alq_v_servicio_factura_reparto'),
     q('alq_v_titularidad'),
     sb.from('alq_mail_entrante').select('*').order('recibido_at',{ascending:false})
   ]);
   DATA={props:props.data||[],contratos:contratos.data||[],versiones:versiones.data||[],
-    cargos:cargos.data||[],cuentas:cuentas.data||[],facturas:facturas.data||[],
+    cargos:cargos.data||[],cuentas:cuentas.data||[],facturas:facturas.data||[],repartos:repartos.data||[],
     titul:titul.data||[],mails:mails.data||[],
-    err:[props,contratos,versiones,cargos,cuentas,facturas,titul,mails]
+    err:[props,contratos,versiones,cargos,cuentas,facturas,repartos,titul,mails]
       .map(r=>r.error?.message).filter(Boolean)};
 }
+
+const repartosDeFactura=facturaId=>(DATA?.repartos||[]).filter(x=>x.factura_id===facturaId);
+function vinculoFacturaCargo(cargoId){
+  const directa=(DATA?.facturas||[]).find(f=>f.cargo_id===cargoId);
+  if(directa)return{factura:directa,reparto:null};
+  const reparto=(DATA?.repartos||[]).find(x=>x.cargo_id===cargoId);
+  if(!reparto)return null;
+  const factura=DATA.facturas.find(f=>f.id===reparto.factura_id);
+  return factura?{factura,reparto}:null;
+}
+function cargosDeFactura(f){
+  const lineas=repartosDeFactura(f.id),ids=lineas.length?lineas.map(x=>x.cargo_id):(f.cargo_id?[f.cargo_id]:[]);
+  return ids.map(id=>DATA.cargos.find(c=>c.id===id)).filter(Boolean);
+}
+function saldoFactura(f){
+  const cargos=cargosDeFactura(f);
+  return cargos.length?cargos.reduce((s,c)=>s+Number(c.saldo_pendiente||0),0):(f.saldada===true?0:Number(f.monto||0));
+}
+function facturaSaldada(f){
+  const lineas=repartosDeFactura(f.id),cargos=cargosDeFactura(f);
+  if(lineas.length)return cargos.length===lineas.length&&cargos.every(c=>Number(c.saldo_pendiente)===0);
+  if(f.cargo_id)return cargos.length===1?Number(cargos[0].saldo_pendiente)===0:f.saldada===true;
+  return f.saldada===true;
+}
+function cuentasServicioPropiedad(pid){
+  const porId=new Map();
+  const agregar=id=>{const cu=DATA.cuentas.find(x=>x.id===id);if(cu)porId.set(cu.id,cu)};
+  DATA.cuentas.filter(cu=>cu.propiedad_id===pid&&cu.activa).forEach(cu=>porId.set(cu.id,cu));
+  DATA.facturas.filter(f=>f.propiedad_id===pid&&!repartosDeFactura(f.id).length).forEach(f=>agregar(f.cuenta_id));
+  DATA.repartos.filter(x=>x.propiedad_id===pid).forEach(x=>{const f=DATA.facturas.find(y=>y.id===x.factura_id);if(f)agregar(f.cuenta_id)});
+  DATA.cargos.filter(c=>c.propiedad_id===pid&&c.snapshot_regla?.cuenta_id).forEach(c=>agregar(c.snapshot_regla.cuenta_id));
+  return [...porId.values()];
+}
+const facturasCabeceraCuentaProp=(cuentaId,pid)=>DATA.facturas.filter(f=>
+  f.cuenta_id===cuentaId&&f.propiedad_id===pid&&!repartosDeFactura(f.id).length);
+function cargosCuentaProp(cuentaId,pid){
+  const directos=new Set(DATA.facturas.filter(f=>f.cuenta_id===cuentaId&&f.cargo_id).map(f=>f.cargo_id));
+  const repartidos=new Set(DATA.repartos.filter(x=>x.propiedad_id===pid&&
+    DATA.facturas.some(f=>f.id===x.factura_id&&f.cuenta_id===cuentaId)).map(x=>x.cargo_id));
+  return DATA.cargos.filter(c=>c.propiedad_id===pid&&(repartidos.has(c.id)||
+    (c.snapshot_regla?.cuenta_id===cuentaId&&!directos.has(c.id))));
+}
+const cargoRepresentadoEnServicio=c=>!!vinculoFacturaCargo(c.id)||!!c.snapshot_regla?.cuenta_id;
 
 function pintarRegistro(){
   $('#registro').innerHTML=Object.entries(HEX).map(([k,h])=>
@@ -590,8 +634,9 @@ function render(){
 
   /* ── ARRASTRE ── */
   const cAtras=DATA.cargos.filter(c=>antes(c.vence_at)&&Number(c.saldo_pendiente)>0);
-  const fAtras=DATA.facturas.filter(f=>antes(f.vence_at)&&!f.saldada);
-  const totalAtras=cAtras.reduce((a,c)=>a+Number(c.saldo_pendiente),0)+fAtras.reduce((a,f)=>a+Number(f.monto),0);
+  const fAtras=DATA.facturas.filter(f=>antes(f.vence_at)&&saldoFactura(f)>0);
+  const fAtrasSinCargo=fAtras.filter(f=>cargosDeFactura(f).length===0);
+  const totalAtras=cAtras.reduce((a,c)=>a+Number(c.saldo_pendiente),0)+fAtrasSinCargo.reduce((a,f)=>a+saldoFactura(f),0);
   const moras=cAtras.filter(esAlquiler).length;
   const sinCargar=DATA.cuentas.filter(cu=>cu.activa&&!DATA.facturas.some(f=>f.cuenta_id===cu.id&&enMes(f.vence_at))).length;
   const masViejo=[...cAtras,...fAtras].reduce((a,x)=>Math.min(a,D(x.vence_at)),Infinity);
@@ -627,7 +672,8 @@ function render(){
     const vig=ctr.find(c=>c.estado==='vigente');
     const cg=DATA.cargos.filter(c=>c.propiedad_id===p.id);
     const cgMes=cg.filter(c=>enMes(c.vence_at));
-    const cuentas=DATA.cuentas.filter(c=>c.propiedad_id===p.id&&c.activa);
+    const cuentasPropias=DATA.cuentas.filter(c=>c.propiedad_id===p.id&&c.activa);
+    const cuentas=cuentasServicioPropiedad(p.id);
     const ver = (vig && DATA.versiones.filter(v=>v.contrato_id===vig.id).slice(-1)[0]) || null;
     /* punitorio_desde_dia es DÍA DEL MES: la gracia real es punitorio_desde_dia - dia_pago_hasta */
     const diasMora = (ver && ver.punitorio_desde_dia && ver.dia_pago_hasta)
@@ -641,7 +687,7 @@ function render(){
     const tags=[];
     if(!vig) tags.push(['--via-directo','sin contrato vigente']);
     if(cg.filter(c=>esAlquiler(c)&&Number(c.saldo_pendiente)>0).length) tags.push(['--e-mora-txt','alquiler impago']);
-    cuentas.filter(cu=>!DATA.facturas.some(f=>f.cuenta_id===cu.id&&D(f.vence_at)>=ini)
+    cuentasPropias.filter(cu=>!DATA.facturas.some(f=>f.cuenta_id===cu.id&&D(f.vence_at)>=ini)
                      &&!DATA.cargos.some(c=>c.snapshot_regla&&c.snapshot_regla.cuenta_id===cu.id&&D(c.vence_at)>=ini))
       .forEach(cu=>tags.push([COLOR[cu.tipo]||'--k-otros',(NOMBRE[cu.tipo]||cu.tipo)+' sin cargar']));
     const _sv=pendientes.filter(c=>!esAlquiler(c))
@@ -675,16 +721,23 @@ function render(){
     /* un carril por cuenta de servicio */
     for(const cu of cuentas){
       const col=COLOR[cu.tipo]||'--k-otros';
-      const fs=DATA.facturas.filter(f=>f.cuenta_id===cu.id&&enMes(f.vence_at));
-      // cargos emitidos al confirmar una factura de ESTA cuenta (van a alq_cargo, no a facturas)
-      const cgCuentaTodos=DATA.cargos.filter(c=>c.snapshot_regla&&c.snapshot_regla.cuenta_id===cu.id);
+      const fsTodos=facturasCabeceraCuentaProp(cu.id,p.id);
+      const fs=fsTodos.filter(f=>enMes(f.vence_at));
+      const cgCuentaTodos=cargosCuentaProp(cu.id,p.id);
       const cgCuenta=cgCuentaTodos.filter(c=>enMes(c.vence_at));
+      const prox=[...fsTodos.filter(f=>saldoFactura(f)>0&&D(f.vence_at)>=ini),
+                  ...cgCuentaTodos.filter(c=>Number(c.saldo_pendiente)>0&&D(c.vence_at)>=ini)]
+                 .sort((a,b)=>D(a.vence_at)-D(b.vence_at))[0];
+      const compartida=DATA.facturas.filter(f=>f.cuenta_id===cu.id&&f.propiedad_id===p.id&&
+        repartosDeFactura(f.id).length&&D(f.vence_at)>=ini).sort((a,b)=>D(a.vence_at)-D(b.vence_at))[0];
+      const esperaFactura=cu.propiedad_id===p.id&&cu.activa;
+      if(!esperaFactura&&!fs.length&&!cgCuenta.length&&!prox&&!compartida)continue;
       h+=`<div class="row lane-row" style="--nd:${nd}">
         <div class="klbl" style="--k:var(${col})"><i class="kdot"></i>${H(NOMBRE[cu.tipo]||cu.tipo)}<span class="knro">${H(cu.nro_cliente)}</span></div>
         <div class="track" style="--nd:${nd}">`;
       if(fs.length||cgCuenta.length){
         for(const f of fs){
-          const st=estadoDe(f.vence_at,f.monto,f.saldada);
+          const saldo=saldoFactura(f),st=estadoDe(f.vence_at,saldo,facturaSaldada(f));
           const b=D(f.vence_at), a=new Date(MES.y,MES.m,Math.max(1,b.getDate()-7));
           h+=`<div class="franja ${st==='ok'?'':'f-'+st}" style="--k:var(${col});left:${L(a)};width:${W(a,b)}"
             title="vence ${b.toLocaleDateString('es-AR')} · ${plata(f.monto)}${f.cargo_id?'':' · SIN CARGO GENERADO'}">
@@ -692,21 +745,22 @@ function render(){
         }
         for(const c of cgCuenta){
           const st=estadoDe(c.vence_at,c.saldo_pendiente,false,null);
+          const vinculo=vinculoFacturaCargo(c.id),reparto=vinculo&&vinculo.reparto;
           const b=D(c.vence_at), a=new Date(MES.y,MES.m,Math.max(1,b.getDate()-7));
           h+=`<div class="franja ${st==='ok'?'':'f-'+st}" style="--k:var(${col});left:${L(a)};width:${W(a,b)}"
-            title="confirmada desde la bandeja · ${H(c.snapshot_regla?.emisor||'')}">
+            title="${reparto?'factura repartida · '+Number(reparto.porcentaje).toLocaleString('es-AR')+' % · contrato '+H(reparto.contrato_id):'confirmada desde la bandeja · '+H(c.snapshot_regla?.emisor||'')}">
             ${st==='venc'?'<span class="stchip v">✕ VENCIDA</span>':st==='mora'?'<span class="stchip m">▪ EN MORA</span>':''}${H(NOMBRE[cu.tipo]||cu.tipo)} · ${plata(c.monto)} · vence ${b.getDate()}</div>`;
         }
       } else {
-        const prox=[...DATA.facturas.filter(f=>f.cuenta_id===cu.id&&!f.saldada&&D(f.vence_at)>=ini),
-                    ...cgCuentaTodos.filter(c=>Number(c.saldo_pendiente)>0&&D(c.vence_at)>=ini)]
-                   .sort((a,b)=>D(a.vence_at)-D(b.vence_at))[0];
         const _pl=L(new Date(MES.y,MES.m,Math.min(15,nd))), _pw=W(new Date(MES.y,MES.m,Math.min(15,nd)),new Date(MES.y,MES.m,Math.min(24,nd)));
         if(prox){
-          const pv=D(prox.vence_at);
+          const pv=D(prox.vence_at),saldo=Object.prototype.hasOwnProperty.call(prox,'saldo_pendiente')?Number(prox.saldo_pendiente):saldoFactura(prox);
           h+=`<div class="franja f-prox" style="--k:var(${col});left:${_pl};width:${_pw}"
-            title="Ya está en el sistema. Se paga en ${MESES[pv.getMonth()]} — este mes no se debe nada de este servicio.">Ya cargada ✓ · vence ${String(pv.getDate()).padStart(2,'0')}/${String(pv.getMonth()+1).padStart(2,'0')} · ${plata(prox.saldo_pendiente??prox.monto)}</div>`;
-        } else {
+            title="Ya está en el sistema. Se paga en ${MESES[pv.getMonth()]} — este mes no se debe nada de este servicio.">Ya cargada ✓ · vence ${String(pv.getDate()).padStart(2,'0')}/${String(pv.getMonth()+1).padStart(2,'0')} · ${plata(saldo)}</div>`;
+        } else if(compartida){
+          const pv=D(compartida.vence_at);
+          h+=`<div class="franja f-prox" style="--k:var(${col});left:${_pl};width:${_pw}" title="La factura fue repartida y esta unidad no tiene un cargo en ella.">Factura repartida · sin cargo en esta unidad · vence ${String(pv.getDate()).padStart(2,'0')}/${String(pv.getMonth()+1).padStart(2,'0')}</div>`;
+        } else if(esperaFactura) {
           h+=`<div class="franja f-sin" style="--k:var(${col});left:${_pl};width:${_pw}">Factura sin cargar</div>`;
         }
       }
@@ -714,7 +768,7 @@ function render(){
     }
 
     /* carril otros cargos */
-    const otros=cgMes.filter(c=>!esAlquiler(c) && !(c.snapshot_regla&&c.snapshot_regla.cuenta_id));
+    const otros=cgMes.filter(c=>!esAlquiler(c)&&!cargoRepresentadoEnServicio(c));
     if(otros.length){
       h+=`<div class="row lane-row" style="--nd:${nd}">
         <div class="klbl" style="--k:var(--k-otros)"><i class="kdot"></i>Otros<span class="knro">${otros.length} cargo(s)</span></div>
@@ -774,20 +828,22 @@ function renderAnio(){
   const ver=(vig&&DATA.versiones.filter(v=>v.contrato_id===vig.id).slice(-1)[0])||null;
   const diasMora=(ver&&ver.punitorio_desde_dia&&ver.dia_pago_hasta)?Math.max(0,Number(ver.punitorio_desde_dia)-Number(ver.dia_pago_hasta)):null;
   const cg=DATA.cargos.filter(c=>c.propiedad_id===p.id);
-  const cuentas=DATA.cuentas.filter(c=>c.propiedad_id===p.id&&c.activa);
+  const cuentas=cuentasServicioPropiedad(p.id);
   const enM=(d,m)=>{const x=D(d);return x.getFullYear()===anio&&x.getMonth()===m;};
+  const saldoItem=it=>DATA.cargos.some(c=>c.id===it.id)?Number(it.saldo_pendiente||0):saldoFactura(it);
+  const saldadoItem=it=>DATA.cargos.some(c=>c.id===it.id)?Number(it.saldo_pendiente)===0:facturaSaldada(it);
   const peor=(list,dm)=>{
     if(!list.length) return null;
     let r='ok';
     for(const it of list){
-      const st=estadoDe(it.vence_at, it.saldo_pendiente??(it.saldada?0:it.monto), it.saldada===true, dm);
+      const st=estadoDe(it.vence_at,saldoItem(it),saldadoItem(it),dm);
       if(st==='mora') return 'mora';
       if(st==='venc') r='venc';
       else if(st==='pend'&&r==='ok') r='pend';
     }
     return r;
   };
-  const pendDe=list=>list.reduce((a,it)=>a+Number(it.saldo_pendiente??(it.saldada?0:it.monto)??0),0);
+  const pendDe=list=>list.reduce((a,it)=>a+saldoItem(it),0);
   const celda=(list,m,dm)=>{
     const st=peor(list,dm);
     if(!st) return `<div class="ac ac-na" onclick="verMes(${anio},${m})">·</div>`;
@@ -803,10 +859,10 @@ function renderAnio(){
   fila('Alquiler','','var(--k-alquiler)',m=>cg.filter(c=>esAlquiler(c)&&enM(c.vence_at,m)),diasMora);
   for(const cu of cuentas){
     fila(NOMBRE[cu.tipo]||cu.tipo, cu.nro_cliente, `var(${COLOR[cu.tipo]||'--k-otros'})`, m=>[
-      ...DATA.facturas.filter(f=>f.cuenta_id===cu.id&&enM(f.vence_at,m)),
-      ...cg.filter(c=>c.snapshot_regla&&c.snapshot_regla.cuenta_id===cu.id&&enM(c.vence_at,m))]);
+      ...facturasCabeceraCuentaProp(cu.id,p.id).filter(f=>enM(f.vence_at,m)),
+      ...cargosCuentaProp(cu.id,p.id).filter(c=>enM(c.vence_at,m))]);
   }
-  fila('Otros','','var(--k-otros)',m=>cg.filter(c=>!esAlquiler(c)&&!(c.snapshot_regla&&c.snapshot_regla.cuenta_id)&&enM(c.vence_at,m)));
+  fila('Otros','','var(--k-otros)',m=>cg.filter(c=>!esAlquiler(c)&&!cargoRepresentadoEnServicio(c)&&enM(c.vence_at,m)));
   $('#mesTit').textContent=`${p.direccion} — ${anio}`;
   $('#mesSub').textContent='el año mes a mes · tocá un mes para abrirlo en franjas · ‹ › cambia el año';
   const MESN=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
