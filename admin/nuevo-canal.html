@@ -1947,6 +1947,16 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
   const colaboradorEmailCanal = titularSinCambio
     ? _colaboradorEmailOriginal
     : (sinTitular ? (preservarEmailLegacy ? _colaboradorEmailOriginal : null) : emailAcceso)
+  // Regla general de ciudades: escribas como escribas, guarda la forma canonica.
+  const CIUDADES_CANONICAS = ['El Bolsón', 'El Hoyo', 'Lago Puelo', 'Epuyén', 'El Maitén', 'Cholila', 'Esquel', 'Bariloche']
+  const _aplanarCiudad = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim()
+  const normalizarCiudad = valor => {
+    const plano = _aplanarCiudad(valor)
+    if (!plano) return ''
+    const canonica = CIUDADES_CANONICAS.find(c => _aplanarCiudad(c) === plano)
+    if (canonica) return canonica
+    return plano.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+  }
   const payload = {
     nombre, codigo, tipo,
     activo:   document.getElementById('activo').checked,
@@ -1954,7 +1964,7 @@ document.getElementById('btnGuardar').addEventListener('click', async () => {
     colaborador_email: colaboradorEmailCanal,
     telefono: document.getElementById('telefono').value.trim() || null,
     notas:    document.getElementById('notas').value.trim()    || null,
-    ciudad:    document.getElementById('ciudad').value.trim()   || null,
+    ciudad:    normalizarCiudad(document.getElementById('ciudad').value) || null,
     provincia: document.getElementById('provincia').value      || null,
     latitud, longitud,
     destino,

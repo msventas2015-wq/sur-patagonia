@@ -1026,6 +1026,17 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
         tour360Url = await subirImagen(archivo360, 'propiedades/360')
       }
 
+      // Regla general de ciudades: escribas como escribas, guarda la forma canonica.
+      const CIUDADES_CANONICAS = ['El Bolsón', 'El Hoyo', 'Lago Puelo', 'Epuyén', 'El Maitén', 'Cholila', 'Esquel', 'Bariloche']
+      const _aplanarCiudad = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim()
+      const normalizarCiudad = valor => {
+        const plano = _aplanarCiudad(valor)
+        if (!plano) return ''
+        const canonica = CIUDADES_CANONICAS.find(c => _aplanarCiudad(c) === plano)
+        if (canonica) return canonica
+        return plano.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+      }
+
       const datos = {
         titulo: document.getElementById('titulo').value,
         codigo_interno: document.getElementById('codigoInterno').value.trim() || null,
@@ -1035,7 +1046,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
         moneda: document.getElementById('moneda').value,
         descripcion: document.getElementById('descripcion').value,
         ubicacion: document.getElementById('ubicacion').value,
-        ciudad: document.getElementById('ciudad').value,
+        ciudad: normalizarCiudad(document.getElementById('ciudad').value),
         provincia: document.getElementById('provincia').value,
         dormitorios: parseInt(document.getElementById('dormitorios').value) || 0,
         banos: parseInt(document.getElementById('banos').value) || 0,
