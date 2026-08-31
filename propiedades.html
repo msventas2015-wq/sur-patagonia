@@ -612,7 +612,11 @@
       const radioDorm = document.querySelector(`.filtro-dorm[value="${Math.min(paramDorm, 4)}"]`)
       if (radioDorm) radioDorm.checked = true
     }
-    const paramTexto = ((urlParams.get('ciudad') || urlParams.get('q')) || '').trim()
+    const _CIUDADES_CANONICAS = ['El Bolsón', 'El Hoyo', 'Lago Puelo', 'Epuyén', 'El Maitén', 'Cholila', 'Esquel', 'Bariloche']
+    const _aplanarCiudad = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim()
+    const paramCiudadCruda = (urlParams.get('ciudad') || '').trim()
+    const paramCiudadCanonica = paramCiudadCruda ? (_CIUDADES_CANONICAS.find(c => _aplanarCiudad(c) === _aplanarCiudad(paramCiudadCruda)) || paramCiudadCruda) : ''
+    const paramTexto = (paramCiudadCanonica || (urlParams.get('q') || '')).trim()
     if (paramTexto) {
       document.getElementById('busquedaTexto').value = paramTexto
     }
