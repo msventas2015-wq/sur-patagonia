@@ -153,7 +153,10 @@ select.f option{background:#141414}
   <div class="sec-t">Tus propiedades</div>
   <div class="props" id="props"><div class="loading">Cargando…</div></div>
 
-  <div class="sec-t">Tus rendiciones — qué se cobró, qué se gastó, qué te giramos</div>
+  <div class="sec-t">Tus liquidaciones mensuales</div>
+  <div class="card" id="liqs"><div class="empty">—</div></div>
+
+  <div class="sec-t">Rendiciones — qué se cobró, qué se gastó, qué te giramos</div>
   <div class="card" id="rends"><div class="empty">—</div></div>
 
   <div class="sec-t">Conversaciones con la administración</div>
@@ -179,9 +182,40 @@ const SB_KEY='sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s';
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
 const $=id=>document.getElementById(id);
 const fmt=n=>'$'+Number(n||0).toLocaleString('es-AR',{maximumFractionDigits:0});
+const money=(n,moneda)=>Number(n||0).toLocaleString('es-AR',{style:'currency',currency:moneda||'ARS'});
 const fdate=s=>s?new Date(s).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
 const esc=s=>(s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function totalesPorMoneda(items,valor=x=>x.monto,moneda=x=>x.moneda){
+  const totales=new Map();
+  (items||[]).forEach(x=>{const m=String(moneda(x)||'—').toUpperCase();totales.set(m,(totales.get(m)||0)+Number(valor(x)||0))});
+  return [...totales.entries()].sort(([a],[b])=>a.localeCompare(b));
+}
+function textoTotalesPorMoneda(items,valor,moneda){
+  const totales=totalesPorMoneda(items,valor,moneda);
+  return totales.length?totales.map(([codigo,monto])=>`${fmt(monto)} ${codigo}`).join(' + '):fmt(0);
+}
 let D={};
+function rangoTstzLimites(valor){
+  const s=String(valor||'').trim();if(s.length<3||!['[','('].includes(s[0])||![']',')'].includes(s.at(-1)))return null;
+  const cuerpo=s.slice(1,-1),coma=cuerpo.indexOf(',');if(coma<0)return null;
+  const marca=(raw,lado)=>{let x=raw.trim();if(x.startsWith('"')&&x.endsWith('"'))x=x.slice(1,-1).replace(/\\"/g,'"');
+    if(!x||x==='infinity')return lado==='desde'?-Infinity:Infinity;if(x==='-infinity')return-Infinity;
+    x=x.replace(/^(\d{4}-\d{2}-\d{2})\s/,'$1T').replace(/([+-]\d{2})$/,'$1:00').replace(/([+-]\d{2})(\d{2})$/,'$1:$2');return Date.parse(x)};
+  return{desde:marca(cuerpo.slice(0,coma),'desde'),hasta:marca(cuerpo.slice(coma+1),'hasta'),incluyeDesde:s[0]==='[',incluyeHasta:s.at(-1)===']'};
+}
+function rangoTstzContieneAhora(valor){const r=rangoTstzLimites(valor),ahora=Date.now();return!!r&&!Number.isNaN(r.desde)&&!Number.isNaN(r.hasta)&&(r.incluyeDesde?ahora>=r.desde:ahora>r.desde)&&(r.incluyeHasta?ahora<=r.hasta:ahora<r.hasta)}
+const rangoTstzDesdeMs=valor=>{const r=rangoTstzLimites(valor);return r&&!Number.isNaN(r.desde)?r.desde:NaN};
+const contratoVersionVigente=contratoId=>D.ver.filter(v=>v.contrato_id===contratoId&&rangoTstzContieneAhora(v.vigencia)).sort((a,b)=>rangoTstzDesdeMs(b.vigencia)-rangoTstzDesdeMs(a.vigencia))[0]||null;
+const contratoVersionUltima=contratoId=>D.ver.filter(v=>v.contrato_id===contratoId).sort((a,b)=>rangoTstzDesdeMs(b.vigencia)-rangoTstzDesdeMs(a.vigencia))[0]||null;
+function reaperturasPortalTexto(items){
+  const totales=new Map();(items||[]).forEach(x=>{const moneda=x.moneda_destino||'—';totales.set(moneda,(totales.get(moneda)||0)+Number(x.importe_destino_reabierto||0))});
+  return [...totales].map(([moneda,monto])=>`${fmt(monto)} ${moneda}`).join(' + ')||'—';
+}
+function estadoPagosLiquidacionPortal(contenido){
+  const c=contenido||{},directos=c.pagos_informados_entre_partes||[],custodiados=c.cobros_custodiados||[],revertidos=c.pagos_revertidos||[];
+  const parciales=[...directos,...custodiados].filter(x=>x.estado==='parcialmente_revertido');
+  return `<div class="section-note" style="margin-top:.8rem"><b>Cobros vigentes:</b> ${custodiados.length} en caja de la administración · ${directos.length} directos entre las partes.${parciales.length?`<br><b>${parciales.length} pago(s) parcialmente revertido(s):</b> los importes mostrados son netos.`:''}</div>${revertidos.length?`<div class="pg-l" style="margin:.8rem 0 .35rem;color:var(--rojo)">Reversiones registradas · no computadas como cobro adicional</div>${revertidos.map(x=>`<div class="section-note" style="margin-bottom:.45rem"><b>${fdate(x.fecha_original)} · ${esc(x.pagador)} → ${esc(x.beneficiario)}</b><br>Evento por ${fmt(x.monto_revertido)} ${esc(x.moneda_reversa||x.moneda_original||'')} el ${fdate(x.fecha_reversa)} · deuda reabierta ${esc(reaperturasPortalTexto(x.reaperturas))}<br>Motivo: ${esc(x.motivo||'Sin motivo visible')}</div>`).join('')}`:'<div class="account-caption" style="margin-top:.6rem">No hay reversiones registradas en esta liquidación.</div>'}`;
+}
 function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';
   setTimeout(()=>el.style.display='none',3200)}
 
@@ -200,58 +234,100 @@ async function start(){
 }
 async function cargar(){
   const v=n=>sb.from(n).select('*');
-  const [prop,con,ver,parte,cargo,tx,apl,rend,rlin,com,cmsg]=await Promise.all([
-    v('alq_v_propiedad'),v('alq_v_contrato'),v('alq_v_contrato_version'),v('alq_v_parte'),
+  const [prop,con,ver,cargo,tx,apl,rend,rlin,com,cmsg,liq,giroF5,rendF5]=await Promise.all([
+    v('alq_v_propiedad'),v('alq_v_contrato'),v('alq_v_contrato_version'),
     v('alq_v_cargo'),v('alq_v_transaccion_caja'),v('alq_v_aplicacion'),
-    v('alq_v_rendicion'),v('alq_v_rendicion_linea'),v('alq_v_comunicado'),v('alq_v_comunicado_mensaje')]);
-  const err=[prop,con,ver,parte,cargo,tx,apl,rend,rlin,com,cmsg].find(r=>r.error);
+    v('alq_v_rendicion'),v('alq_v_rendicion_linea'),v('alq_v_comunicado'),v('alq_v_comunicado_mensaje'),
+    v('alq_v_liquidacion_propietario'),v('alq_v_giro_propietario_f5'),v('alq_v_rendicion_propietario_f5')]);
+  const err=[prop,con,ver,cargo,tx,apl,rend,rlin,com,cmsg,liq,giroF5,rendF5].find(r=>r.error);
   if(err){$('props').innerHTML='<div class="empty">Error: '+esc(err.error.message)+'</div>';return}
-  D={prop:prop.data,con:con.data,ver:ver.data,parte:parte.data,cargo:cargo.data,
-     tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data};
-  D.pname=Object.fromEntries(D.parte.map(p=>[p.id,p.nombre]));
+  D={prop:prop.data,con:con.data,ver:ver.data,cargo:cargo.data,
+     tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data,liq:liq.data,
+     giroF5:giroF5.data,rendF5:rendF5.data};
   render();
 }
 function render(){
   if(!D.prop.length){
     $('props').innerHTML='<div class="empty">Tu usuario no tiene propiedades vinculadas todavía. Hablá con la administración.</div>';
-    $('kpis').innerHTML='';return;
+    $('kpis').innerHTML='';$('liqs').innerHTML='<div class="empty">Sin acceso a propiedades.</div>';return;
   }
-  const deudaInq=D.cargo.filter(c=>{
+  const cargosInquilino=D.cargo.filter(c=>{
     const con=D.con.find(x=>x.id===c.contrato_id);
     return con&&c.deudor_parte_id===con.inquilino_parte_id;
-  }).reduce((s,c)=>s+Number(c.saldo_pendiente),0);
-  const girado=D.apl.filter(a=>a.rendicion_id).reduce((s,a)=>s+Number(a.importe_destino),0);
-  const gastos=D.cargo.filter(c=>{
+  });
+  const deudaInq=textoTotalesPorMoneda(cargosInquilino,c=>c.saldo_pendiente,c=>c.moneda);
+  const girosLegado=D.apl.filter(a=>a.rendicion_id).map(a=>({monto:a.importe_destino,moneda:a.moneda_destino}));
+  const girado=textoTotalesPorMoneda([...girosLegado,...(D.giroF5||[]).filter(g=>g.estado==='confirmada')]);
+  const cargosPropietario=D.cargo.filter(c=>{
     const con=D.con.find(x=>x.id===c.contrato_id);
     return !con||c.deudor_parte_id!==con.inquilino_parte_id;
-  }).reduce((s,c)=>s+Number(c.monto),0);
+  });
+  const gastos=textoTotalesPorMoneda(cargosPropietario,c=>c.monto,c=>c.moneda);
   $('kpis').innerHTML=[
     ['var(--accent)',D.prop.length,'Propiedades','a tu nombre'],
-    ['var(--azul)',fmt(girado),'Te giramos','vía rendición'],
-    ['var(--rojo)',fmt(deudaInq),'Debe el inquilino','saldos pendientes'],
-    ['var(--ambar)',fmt(gastos),'Gastos a tu cargo','reparaciones · honorarios'],
-  ].map(([c,n,l,s])=>`<div class="kpi" style="--c:${c}"><div class="kpi-num">${n}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`).join('');
+    ['var(--verde)',D.liq.length,'Liquidaciones','versiones emitidas'],
+    ['var(--azul)',girado,'Te giramos','giros confirmados'],
+    ['var(--rojo)',deudaInq,'Debe el inquilino','saldos pendientes'],
+    ['var(--ambar)',gastos,'Gastos a tu cargo','reparaciones · honorarios'],
+  ].map(([c,n,l,s])=>`<div class="kpi" style="--c:${c}"><div class="kpi-num">${esc(n)}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`).join('');
   $('props').innerHTML=D.prop.map(p=>{
     const cvig=D.con.find(c=>c.propiedad_id===p.id&&['vigente','continuacion_legal'].includes(c.estado));
     const cult=cvig||D.con.filter(c=>c.propiedad_id===p.id).sort((a,b)=>new Date(b.inicio)-new Date(a.inicio))[0];
-    const vv=cult?D.ver.filter(x=>x.contrato_id===cult.id).sort((a,b)=>b.vigencia.localeCompare(a.vigencia))[0]:null;
-    const d=D.cargo.filter(c=>c.propiedad_id===p.id&&(()=>{const con=D.con.find(x=>x.id===c.contrato_id);
-      return con&&c.deudor_parte_id===con.inquilino_parte_id})()).reduce((s,c)=>s+Number(c.saldo_pendiente),0);
-    const e=d<=0?{c:'var(--verde)',t:'Inquilino al día'}:{c:'var(--ambar)',t:'Inquilino con saldo'};
+    const vv=cvig?contratoVersionVigente(cvig.id):(cult&&contratoVersionUltima(cult.id));
+    const cargosDeuda=D.cargo.filter(c=>c.propiedad_id===p.id&&(()=>{const con=D.con.find(x=>x.id===c.contrato_id);
+      return con&&c.deudor_parte_id===con.inquilino_parte_id})());
+    const d=cargosDeuda.reduce((s,c)=>s+Number(c.saldo_pendiente),0),deudaTexto=textoTotalesPorMoneda(cargosDeuda,c=>c.saldo_pendiente,c=>c.moneda);
+    const e=d<=0?{c:'var(--verde)',t:'Al día'}:{c:'var(--ambar)',t:'Con saldo pendiente'};
     return `<div class="card">
       <div class="prop-top"><div class="dot" style="--dc:${e.c}"></div>
         <div><div class="prop-dir">${esc(p.direccion)}</div>
         <div class="prop-city">${esc(p.ciudad||'')} · ${e.t}</div></div></div>
       <div class="prop-grid">
-        <div><div class="pg-l">Inquilino</div><div class="pg-v">${esc(cult?D.pname[cult.inquilino_parte_id]||'—':'—')}</div></div>
         <div><div class="pg-l">Contrato</div><div class="pg-v">${cult?esc(cult.estado.replace('_',' ')):'—'}</div></div>
         <div><div class="pg-l">Alquiler</div><div class="pg-v">${vv?fmt(vv.monto)+' '+vv.moneda:'—'}</div></div>
-        <div><div class="pg-l">Saldo del inquilino</div><div class="pg-v" style="color:${d>0?'var(--ambar)':'var(--verde)'}">${fmt(d)}</div></div>
+        <div><div class="pg-l">Saldo del inquilino</div><div class="pg-v" style="color:${d>0?'var(--ambar)':'var(--verde)'}">${esc(deudaTexto)}</div></div>
       </div></div>`;
   }).join('');
   $('ncProp').innerHTML=D.prop.map(p=>`<option value="${p.id}">${esc(p.direccion)}</option>`).join('');
-  $('rends').innerHTML=D.rend.length?D.rend.map(r=>{
-    const g=D.apl.filter(a=>a.rendicion_id===r.id).reduce((s,a)=>s+Number(a.importe_destino),0);
+  const liquidaciones=[...D.liq].sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))||
+    Number(b.version_documento)-Number(a.version_documento));
+  $('liqs').innerHTML=liquidaciones.length?liquidaciones.map(x=>{
+    const pr=D.prop.find(p=>p.id===x.propiedad_id),saldo=Number(x.saldo_cierre_admin||0);
+    const sucesora=D.liq.find(y=>y.sucesora_de===x.id);
+    const sentido=saldo>0?`Debés ${money(saldo,x.moneda)} a la administración`:
+      saldo<0?`La administración te debe ${money(Math.abs(saldo),x.moneda)}`:
+      'La cuenta con la administración quedó saldada';
+    const pdf=x.documento_id&&x.pdf_path&&x.pdf_sha256;
+    return `<div style="margin-bottom:1rem">
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <b style="font-size:.9rem">${esc(pr?pr.direccion:'')}</b>
+        <span class="tag" style="--tc:var(--azul)">${esc(String(x.periodo).slice(0,7))} · ${esc(x.moneda)} · v${Number(x.version_documento)}</span>
+        <span class="tag" style="--tc:${sucesora?'var(--gris)':'var(--verde)'}">${sucesora?'Reemplazada por v'+Number(sucesora.version_documento):'Versión vigente'}</span>
+        <span class="tag" style="--tc:${pdf?'var(--verde)':'var(--rojo)'}">${pdf?'PDF archivado':'PDF faltante'}</span>
+      </div>
+      <div class="prop-grid">
+        <div><div class="pg-l">Estado</div><div class="pg-v">${esc(x.estado)}</div></div>
+        <div><div class="pg-l">Saldo final</div><div class="pg-v">${esc(sentido)}</div></div>
+        <div><div class="pg-l">Emitida</div><div class="pg-v">${fdate(x.emitida_at)}</div></div>
+        <div><div class="pg-l">Huella del archivo</div><div class="pg-v">${pdf?esc(String(x.pdf_sha256).slice(0,12))+'…':'—'}</div></div>
+      </div>
+      ${estadoPagosLiquidacionPortal(x.contenido)}
+      ${pdf?`<button class="btn" type="button" onclick="descargarLiquidacion('${x.id}')" style="margin-top:.8rem">Descargar PDF guardado</button>`:
+        '<div class="op-msg op-err">La administración todavía no vinculó el PDF. El portal no lo regenera.</div>'}
+    </div>`;
+  }).join('<div style="height:.2rem;border-top:1px solid var(--sep);margin:1rem 0"></div>'):
+    '<div class="empty">Todavía no hay liquidaciones mensuales emitidas.</div>';
+  const giros=(D.giroF5||[]).slice().sort((a,b)=>String(b.registrado_at||b.fecha).localeCompare(String(a.registrado_at||a.fecha))||String(b.id).localeCompare(String(a.id)));
+  const formalesHtml=giros.length?`<div class="pg-l" style="margin-bottom:.8rem">Giros confirmados y sus rendiciones formales</div>`+giros.map(g=>{
+    const pr=D.prop.find(p=>p.id===g.propiedad_id),raiz=g.liquidacion_raiz_id||g.liquidacion_id;
+    const hermanos=giros.filter(x=>(x.liquidacion_raiz_id||x.liquidacion_id)===raiz).sort((a,b)=>String(a.registrado_at||a.fecha).localeCompare(String(b.registrado_at||b.fecha))||String(a.id).localeCompare(String(b.id)));
+    const numero=hermanos.findIndex(x=>x.id===g.id)+1;
+    const rendiciones=(D.rendF5||[]).filter(r=>r.giro_id===g.id).sort((a,b)=>Number(a.version_documento)-Number(b.version_documento));
+    const rendicionesHtml=rendiciones.length?rendiciones.map(r=>{const sucesora=rendiciones.find(x=>x.sucesora_de===r.id),revertidos=r.contenido&&Array.isArray(r.contenido.pagos_revertidos)?r.contenido.pagos_revertidos:[];return `<div class="section-note" style="margin-top:.7rem"><span class="tag" style="--tc:${sucesora?'var(--gris)':'var(--verde)'}">Rendición v${Number(r.version_documento)} · ${sucesora?'reemplazada':'vigente'}</span><div class="account-caption" style="margin-top:.45rem">Emitida ${fdate(r.emitida_at)} · contenido ${esc(String(r.contenido_sha256).slice(0,12))}… · PDF ${esc(String(r.pdf_sha256).slice(0,12))}…</div>${revertidos.length?`<div class="account-caption">${revertidos.length} reversión(es) informativa(s), no sumadas al giro.</div>`:''}<button class="btn" type="button" onclick="descargarRendicionF5('${r.id}')" style="margin-top:.55rem">Descargar rendición v${Number(r.version_documento)}</button></div>`}).join(''):'<div class="empty" style="margin-top:.7rem">La administración todavía no emitió la rendición formal de este giro.</div>';
+    return `<div style="margin-bottom:1rem"><div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap"><b style="font-size:.9rem">${esc(pr?pr.direccion:'')}</b><span class="tag" style="--tc:var(--azul)">${esc(String(g.periodo).slice(0,7))} · ${esc(g.moneda)} · giro ${numero} · ${esc(String(g.id).slice(0,8))}…</span><span class="tag" style="--tc:var(--verde)">${esc(g.estado)}</span></div><div class="prop-grid"><div><div class="pg-l">Monto girado</div><div class="pg-v">${money(g.monto,g.moneda)}</div></div><div><div class="pg-l">Fecha y medio</div><div class="pg-v">${fdate(g.fecha)} · ${esc(String(g.medio||'—').replaceAll('_',' '))}</div></div><div><div class="pg-l">Fondos fuente</div><div class="pg-v">${Number(g.fuentes||0)} aplicación(es)</div></div></div>${rendicionesHtml}</div>`;
+  }).join('<div style="height:.2rem;border-top:1px solid var(--sep);margin:1rem 0"></div>'):'';
+  const legadoHtml=D.rend.length?`<div class="pg-l" style="margin:${giros.length?'1.5rem':'0'} 0 .8rem">Rendiciones históricas anteriores</div>`+D.rend.map(r=>{
+    const aplicaciones=D.apl.filter(a=>a.rendicion_id===r.id),g=textoTotalesPorMoneda(aplicaciones,a=>a.importe_destino,a=>a.moneda_destino);
     const lin=D.rlin.filter(l=>l.rendicion_id===r.id);
     const pr=D.prop.find(p=>p.id===r.propiedad_id);
     return `<div style="margin-bottom:.4rem"><b style="font-size:.9rem">${esc(pr?pr.direccion:'')}</b>
@@ -259,11 +335,12 @@ function render(){
       <table><tr><th>Concepto</th><th>Detalle</th><th class="num">Monto</th></tr>`+
       lin.map(l=>`<tr><td>${esc({cobro:'Cobro',honorario:'Honorarios',gasto_duenio:'Gasto',retencion:'Retención',aporte:'Aporte',credito:'Crédito'}[l.categoria]||l.categoria)}</td>
         <td>${esc(l.snapshot?.detalle||'')}</td>
-        <td class="num ${l.signo>0?'pos':'neg'}">${l.signo>0?'+':'−'}${fmt(l.monto)}</td></tr>`).join('')+
+        <td class="num ${l.signo>0?'pos':'neg'}">${l.signo>0?'+':'−'}${fmt(l.monto)} ${esc(l.moneda||r.moneda||'')}</td></tr>`).join('')+
       `<tr><td colspan="2" style="font-weight:700;color:var(--blanco)">Tu saldo del período</td>
-       <td class="num" style="font-weight:700;color:var(--blanco)">${fmt(r.saldo_final)}</td></tr>
-       <tr><td colspan="2">Girado a tu cuenta</td><td class="num pos">${fmt(g)}</td></tr></table>`;
-  }).join('<div style="height:1.4rem"></div>'):'<div class="empty">Todavía no hay rendiciones.</div>';
+       <td class="num" style="font-weight:700;color:var(--blanco)">${fmt(r.saldo_final)} ${esc(r.moneda||'')}</td></tr>
+       <tr><td colspan="2">Girado a tu cuenta</td><td class="num pos">${esc(g)}</td></tr></table>`;
+  }).join('<div style="height:1.4rem"></div>'):'';
+  $('rends').innerHTML=formalesHtml+legadoHtml||'<div class="empty">Todavía no hay rendiciones.</div>';
   $('coms').innerHTML=D.com.length?D.com.map(c=>{
     const pr=D.prop.find(p=>p.id===c.propiedad_id);
     const msgs=D.cmsg.filter(m=>m.comunicado_id===c.id).sort((a,b)=>new Date(a.creado_at)-new Date(b.creado_at));
@@ -277,6 +354,40 @@ function render(){
         <button class="btn" onclick="responder('${c.id}')">Responder</button>
       </div><div class="op-msg" id="commsg-${c.id}"></div>`:'');
   }).join('<div style="height:1.6rem"></div>'):'<div class="empty">Sin conversaciones todavía. Abrí tu primera consulta abajo.</div>';
+}
+async function shaBlob(blob){
+  const bytes=new Uint8Array(await blob.arrayBuffer());
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
+    .map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function descargarBlob(blob,nombre){
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function descargarLiquidacion(id){
+  const x=D.liq.find(l=>l.id===id);
+  if(!x||!x.documento_id||!x.pdf_path||!x.pdf_sha256){
+    toast('El PDF guardado no está disponible. Avisá a la administración.');return;
+  }
+  try{
+    const {data,error}=await sb.storage.from('alq-docs').download(x.pdf_path);
+    if(error)throw new Error(error.message);
+    if(await shaBlob(data)!==x.pdf_sha256)throw new Error('La huella del archivo no coincide.');
+    const pr=D.prop.find(p=>p.id===x.propiedad_id),base=String(pr&&pr.direccion||'propiedad')
+      .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    descargarBlob(data,`liquidacion-${base}-${String(x.periodo).slice(0,7)}-${String(x.moneda).toLowerCase()}-v${x.version_documento}.pdf`);
+  }catch(e){toast('No se pudo descargar el PDF guardado: '+e.message)}
+}
+async function descargarRendicionF5(id){
+  const x=(D.rendF5||[]).find(r=>r.id===id);
+  if(!x||!x.pdf_path||!x.pdf_sha256){toast('El PDF guardado no está disponible. Avisá a la administración.');return}
+  try{
+    const {data,error}=await sb.storage.from('alq-docs').download(x.pdf_path);if(error)throw new Error(error.message);
+    if(await shaBlob(data)!==x.pdf_sha256)throw new Error('La huella del archivo no coincide.');
+    const pr=D.prop.find(p=>p.id===x.propiedad_id),base=String(pr&&pr.direccion||'propiedad').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    descargarBlob(data,`rendicion-${base}-${String(x.periodo).slice(0,7)}-${String(x.moneda).toLowerCase()}-giro-${String(x.giro_id).slice(0,8)}-v${x.version_documento}.pdf`);
+  }catch(e){toast('No se pudo descargar la rendición guardada: '+e.message)}
 }
 async function responder(cid){
   const t=$('resp-'+cid).value.trim();const m=$('commsg-'+cid);

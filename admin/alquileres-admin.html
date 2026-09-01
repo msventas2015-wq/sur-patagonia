@@ -305,6 +305,12 @@ select.f option{background:#141414}
   <div class="tabs" id="mTabs"></div>
   <div id="mBody"></div>
 </div></div>
+<div class="overlay" id="f5Ov"><div class="modal">
+  <button class="m-close" id="f5Close">✕</button>
+  <div class="m-title" id="f5Title"></div>
+  <div class="m-sub" id="f5Sub"></div>
+  <div id="f5Body" style="margin-top:1.2rem"></div>
+</div></div>
 <div class="toast" id="toast"></div>
 
 <div class="overlay" id="altaOv"><div class="modal alta-modal">
@@ -442,6 +448,15 @@ const sb=window.supabase.createClient(SB_URL,SB_KEY);
 const $=id=>document.getElementById(id);
 const fmt=n=>'$'+Number(n||0).toLocaleString('es-AR',{maximumFractionDigits:0});
 const esc=s=>(s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function totalesPorMoneda(items,valor=x=>x.monto,moneda=x=>x.moneda){
+  const totales=new Map();
+  (items||[]).forEach(x=>{const m=String(moneda(x)||'—').toUpperCase();totales.set(m,(totales.get(m)||0)+Number(valor(x)||0))});
+  return [...totales.entries()].sort(([a],[b])=>a.localeCompare(b));
+}
+function textoTotalesPorMoneda(items,valor,moneda){
+  const totales=totalesPorMoneda(items,valor,moneda);
+  return totales.length?totales.map(([montoMoneda,monto])=>`${fmt(monto)} ${montoMoneda}`).join(' + '):fmt(0);
+}
 
 /*
  * CONTRATO DE FECHA CIVIL ALQ_F3_V1
@@ -473,6 +488,11 @@ function fechaCivilATimestamp(valor){
   const k=fechaCivil(valor);if(!k)throw new Error('Fecha civil inválida.');
   return k+'T00:00:00Z';
 }
+function fechaOperacionTimestamp(valor){
+  const k=fechaCivil(valor),actual=hoyCivil();if(!k)throw new Error('Fecha de operación inválida.');
+  if(k>actual)throw new Error('La fecha de la operación no puede ser futura.');
+  return k===actual?new Date().toISOString():k+'T23:59:59-03:00';
+}
 const fdate=valor=>{const k=fechaCivil(valor);return k?`${k.slice(8,10)}/${k.slice(5,7)}/${k.slice(2,4)}`:'—'};
 const fdateInstante=valor=>valor?new Intl.DateTimeFormat('es-AR',{timeZone:ALQ_F3_TZ,
   day:'2-digit',month:'2-digit',year:'2-digit'}).format(new Date(valor)):'—';
@@ -498,13 +518,23 @@ function desplazarDiaFechaCivil(valor,delta){
   const d=new Date(Date.UTC(p.y,p.m,p.d+delta));
   return `${String(d.getUTCFullYear()).padStart(4,'0')}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 }
-let D={},filtro='todas',propAbierta=null,tabAbierta='Cargos';
+let D={},filtro='todas',propAbierta=null,tabAbierta='Cargos',authUserId=null;
 const pagoConversionPreview=new Map(),pagoConversionSecuencia=new Map(),pagoConversionTimers=new Map();
 const liquidacionBorradorCache=new Map();
 let altaProformaSecuencia=0,altaProformaActual=null,altaProformaTimer=null;
 const ajustePreviewCache=new Map();
 const mesPreviewCache=new Map();
 const facturaRepartoPreview=new Map();
+const mandatoCambioPreview=new Map();
+const accesoPropietarioPreview=new Map();
+const cobroF5Preview=new Map();
+const cobroConfigSeleccion=new Map();
+const reversaF5Preview=new Map();
+const giroF5Preview=new Map();
+const rendicionF5Preview=new Map();
+const creditoF5Preview=new Map();
+const depositoF5Preview=new Map();
+let movimientoF5Preview=null;
 const _hoy=partesFechaCivil(hoyCivil());let mesRef={y:_hoy.y,m:_hoy.m};let calYear=_hoy.y;
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function shiftMes(d){let m=mesRef.m+d,y=mesRef.y;if(m<0){m=11;y--}if(m>11){m=0;y++}mesRef={y,m};renderAgenda()}
@@ -752,28 +782,30 @@ async function login(){
 async function start(){
   const {data:{session}}=await sb.auth.getSession();
   if(!session)return;
+  authUserId=session.user.id;
   $('vLogin').style.display='none';$('vApp').style.display='block';
   $('hUser').textContent=session.user.email;
   await cargar();
 }
 async function cargar(intento=0){
   const v=n=>sb.from(n).select('*');
-  const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,sfrep,tit,
+  const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,cobroCfg,scta,sfac,sfrep,tit,op,
     doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion,garantia,
-    publicaciones,indices]=await Promise.all([
+    parteUsuario,accesoPropiedad,giroF5,rendF5,publicaciones,indices]=await Promise.all([
     v('alq_v_propiedad'),v('alq_v_contrato'),v('alq_v_contrato_version'),v('alq_v_parte'),
     v('alq_v_cargo'),v('alq_v_nota'),v('alq_v_transaccion_caja'),v('alq_v_aplicacion'),
     v('alq_v_rendicion'),v('alq_v_rendicion_linea'),v('alq_v_comunicado'),v('alq_v_comunicado_mensaje'),
-    v('alq_v_mandato_version'),v('alq_v_mandato'),v('alq_v_cuenta_custodia'),v('alq_v_servicio_cuenta'),v('alq_v_servicio_factura'),v('alq_v_servicio_factura_reparto'),
-    v('alq_v_titularidad'),v('alq_v_documento'),v('alq_v_mes_generado'),v('alq_v_pago_confirmado'),
+    v('alq_v_mandato_version'),v('alq_v_mandato'),v('alq_v_cuenta_custodia'),v('alq_v_contrato_cobro_config'),v('alq_v_servicio_cuenta'),v('alq_v_servicio_factura'),v('alq_v_servicio_factura_reparto'),
+    v('alq_v_titularidad'),v('alq_v_operacion'),v('alq_v_documento'),v('alq_v_mes_generado'),v('alq_v_pago_confirmado'),
     v('alq_v_credito'),v('alq_v_periodo'),v('alq_v_liquidacion_propietario'),
     v('alq_v_liquidacion_envio'),v('alq_v_mora_propuesta'),v('alq_v_ajuste'),
     v('alq_v_deposito'),v('alq_v_deposito_evento'),v('alq_v_deposito_liquidacion'),v('alq_v_garantia'),
+    v('alq_v_parte_usuario'),v('alq_v_acceso_propiedad'),v('alq_v_giro_propietario_f5'),v('alq_v_rendicion_propietario_f5'),
     sb.from('propiedades').select('id,titulo,codigo_publico,codigo_interno,ubicacion,ciudad,provincia,operacion,activa').order('titulo'),
     v('alq_v_indice_serie')]);
-  const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,sfrep,tit,
+  const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,cobroCfg,scta,sfac,sfrep,tit,op,
     doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion,garantia,
-    publicaciones,indices].find(r=>r.error);
+    parteUsuario,accesoPropiedad,giroF5,rendF5,publicaciones,indices].find(r=>r.error);
   if(err){
     const mensaje=String(err.error&&err.error.message||'No se pudo leer PRODUCCIÓN');
     if(intento<2){
@@ -789,18 +821,69 @@ async function cargar(intento=0){
     return;
   }
   D={prop:prop.data,con:con.data,ver:ver.data,parte:parte.data,cargo:cargo.data,nota:nota.data,
-     tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data,mv:mv.data,mand:mand.data,cta:cta.data,
-     scta:scta.data,sfac:sfac.data,sfrep:sfrep.data,tit:tit.data,doc:doc.data,mesgen:mesgen.data,
+     tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data,mv:mv.data,mand:mand.data,cta:cta.data,cobroCfg:cobroCfg.data,
+     scta:scta.data,sfac:sfac.data,sfrep:sfrep.data,tit:tit.data,op:op.data,doc:doc.data,mesgen:mesgen.data,
      pago:pago.data,credito:credito.data,periodo:periodo.data,liq:liq.data,lenv:lenv.data,
      mora:mora.data,ajuste:ajuste.data,deposito:deposito.data,devento:devento.data,
      dliquidacion:dliquidacion.data,garantia:garantia.data,
+     parteUsuario:parteUsuario.data,accesoPropiedad:accesoPropiedad.data,giroF5:giroF5.data,rendF5:rendF5.data,
      publicaciones:publicaciones.data,indices:indices.data};
   D.pname=Object.fromEntries(D.parte.map(p=>[p.id,p.nombre]));
   prepararAltaOpciones();
   render();
   if(propAbierta&&$('ov').classList.contains('on'))abrir(propAbierta,tabAbierta);
 }
-const titularParteId=pid=>{const t=D.tit.find(x=>x.propiedad_id===pid);return t&&t.parte_id};
+function rangoTstzLimites(valor){
+  const s=String(valor||'').trim();if(s.length<3||!['[','('].includes(s[0])||![']',')'].includes(s.at(-1)))return null;
+  const cuerpo=s.slice(1,-1),coma=cuerpo.indexOf(',');if(coma<0)return null;
+  const marca=(raw,lado)=>{let x=raw.trim();if(x.startsWith('"')&&x.endsWith('"'))x=x.slice(1,-1).replace(/\\"/g,'"');
+    if(!x||x==='infinity')return lado==='desde'?-Infinity:Infinity;if(x==='-infinity')return-Infinity;
+    x=x.replace(/^(\d{4}-\d{2}-\d{2})\s/,'$1T').replace(/([+-]\d{2})$/,'$1:00').replace(/([+-]\d{2})(\d{2})$/,'$1:$2');
+    return Date.parse(x)};
+  return{desde:marca(cuerpo.slice(0,coma),'desde'),hasta:marca(cuerpo.slice(coma+1),'hasta'),
+    incluyeDesde:s[0]==='[',incluyeHasta:s.at(-1)===']'};
+}
+function rangoTstzContieneAhora(valor,ahora=Date.now()){
+  const r=rangoTstzLimites(valor);if(!r||Number.isNaN(r.desde)||Number.isNaN(r.hasta))return false;
+  return(r.incluyeDesde?ahora>=r.desde:ahora>r.desde)&&(r.incluyeHasta?ahora<=r.hasta:ahora<r.hasta);
+}
+const rangoTstzDesdeMs=valor=>{const r=rangoTstzLimites(valor);return r&&!Number.isNaN(r.desde)?r.desde:NaN};
+const contratoVersionVigente=contratoId=>D.ver.filter(v=>v.contrato_id===contratoId&&rangoTstzContieneAhora(v.vigencia))
+  .sort((a,b)=>rangoTstzDesdeMs(b.vigencia)-rangoTstzDesdeMs(a.vigencia))[0]||null;
+const contratoVersionUltima=contratoId=>D.ver.filter(v=>v.contrato_id===contratoId)
+  .sort((a,b)=>rangoTstzDesdeMs(b.vigencia)-rangoTstzDesdeMs(a.vigencia))[0]||null;
+const contratoVersionParaConfigurarCobro=contrato=>{
+  if(!contrato)return null;const inicio=Date.parse(String(contrato.inicio).slice(0,10)+'T00:00:00Z'),instante=Math.max(Date.now(),Number.isNaN(inicio)?Date.now():inicio);
+  return D.ver.filter(v=>v.contrato_id===contrato.id&&rangoTstzContieneAhora(v.vigencia,instante))
+    .sort((a,b)=>rangoTstzDesdeMs(b.vigencia)-rangoTstzDesdeMs(a.vigencia))[0]||null;
+};
+const configuracionCobro=(contratoId,moneda)=>(D.cobroCfg||[]).find(x=>
+  x.contrato_id===contratoId&&String(x.moneda||'').toUpperCase()===String(moneda||'').toUpperCase())||null;
+function opcionesConfiguracionCobro(pid){
+  const opciones=new Map(),agregar=(contrato,moneda)=>{
+    const codigo=String(moneda||'').trim().toUpperCase();if(!contrato||!/^[A-Z]{3}$/.test(codigo))return;
+    const clave=contrato.id+'|'+codigo;
+    opciones.set(clave,{clave,contrato,moneda:codigo});
+  };
+  D.cargo.filter(c=>c.propiedad_id===pid&&Number(c.saldo_pendiente)>0&&c.contrato_id&&circuitoCargo(c)==='obligaciones')
+    .forEach(c=>agregar(D.con.find(x=>x.id===c.contrato_id),c.moneda));
+  const vigente=contratoVigentePropiedad(pid),version=contratoVersionParaConfigurarCobro(vigente);
+  if(vigente&&version)agregar(vigente,version.moneda);
+  return [...opciones.values()].sort((a,b)=>{
+    const av=['vigente','continuacion_legal'].includes(a.contrato.estado)?0:1;
+    const bv=['vigente','continuacion_legal'].includes(b.contrato.estado)?0:1;
+    return av-bv||String(b.contrato.inicio).localeCompare(String(a.contrato.inicio))||a.moneda.localeCompare(b.moneda);
+  });
+}
+const titularParteIdEn=(pid,instante)=>{const t=D.tit.filter(x=>x.propiedad_id===pid&&rangoTstzContieneAhora(x.vigencia,instante))
+  .sort((a,b)=>rangoTstzDesdeMs(b.vigencia)-rangoTstzDesdeMs(a.vigencia))[0];return t&&t.parte_id};
+const titularParteId=pid=>titularParteIdEn(pid,Date.now());
+const mandatoActivoPropiedad=pid=>{const ahora=Date.now();return D.mand.filter(x=>x.propiedad_id===pid&&x.estado==='activo'&&rangoTstzContieneAhora(x.vigencia,ahora))
+  .sort((a,b)=>rangoTstzDesdeMs(b.vigencia)-rangoTstzDesdeMs(a.vigencia))[0]};
+const mandatoVersionVigente=mandatoId=>{const ahora=Date.now();return D.mv.filter(x=>x.mandato_id===mandatoId&&rangoTstzContieneAhora(x.vigencia,ahora))
+  .sort((a,b)=>rangoTstzDesdeMs(b.vigencia)-rangoTstzDesdeMs(a.vigencia))[0]};
+const mandatoVersionesProgramadas=mandatoId=>{const ahora=Date.now();return D.mv.filter(x=>x.mandato_id===mandatoId&&rangoTstzDesdeMs(x.vigencia)>ahora)
+  .sort((a,b)=>rangoTstzDesdeMs(a.vigencia)-rangoTstzDesdeMs(b.vigencia))};
 const repartosFactura=facturaId=>(D.sfrep||[]).filter(x=>x.factura_id===facturaId);
 function vinculoFacturaCargo(cargoId){
   const directa=(D.sfac||[]).find(f=>f.cargo_id===cargoId);
@@ -831,11 +914,98 @@ const conceptoAmigable=v=>({alquiler_periodo:'Alquiler',honorario_administracion
 const prorrateoAmigable=v=>({dias_reales:'días reales del mes',base_30:'base fija de 30 días',
   importe_pactado:'importe mensual completo'}[v]||String(v||'—'));
 const redondeoAmigable=v=>({centavos:'a centavos',entero:'a unidad entera'}[v]||String(v||'—'));
+function rangoFechaLimites(valor){
+  const s=String(valor||'').trim();if(s.length<3||!['[','('].includes(s[0])||![']',')'].includes(s.at(-1)))return null;
+  const cuerpo=s.slice(1,-1),coma=cuerpo.indexOf(',');if(coma<0)return null;
+  const marca=(raw,lado)=>{let x=raw.trim();if(x.startsWith('"')&&x.endsWith('"'))x=x.slice(1,-1);
+    if(!x||x==='infinity')return lado==='desde'?-Infinity:Infinity;if(x==='-infinity')return-Infinity;
+    const k=fechaCivil(x);return k?Date.parse(k+'T00:00:00Z'):NaN};
+  return{desde:marca(cuerpo.slice(0,coma),'desde'),hasta:marca(cuerpo.slice(coma+1),'hasta'),
+    incluyeDesde:s[0]==='[',incluyeHasta:s.at(-1)===']'};
+}
+function rangoFechaContieneMs(valor,instante){
+  const r=rangoFechaLimites(valor);if(!r||Number.isNaN(r.desde)||Number.isNaN(r.hasta))return false;
+  return(r.incluyeDesde?instante>=r.desde:instante>r.desde)&&(r.incluyeHasta?instante<=r.hasta:instante<r.hasta);
+}
+const inicioMesUtc=ms=>{const d=new Date(ms);return Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)};
+const moverMesUtc=(ms,delta)=>{const d=new Date(ms);return Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+delta,1)};
+function fechaEconomicaPeriodoMs(periodo,contrato){
+  if(!periodo||!contrato||periodo.contrato_id!==contrato.id)return NaN;
+  const snapshot=periodo.snapshot_regla&&typeof periodo.snapshot_regla==='object'?periodo.snapshot_regla:{};
+  const raw=String(snapshot.activo_desde??'').trim(),r=rangoFechaLimites(periodo.rango);if(!r)return NaN;
+  let k;if(raw){k=fechaCivil(raw);if(!k)return NaN}else{k=Number.isFinite(r.desde)?new Date(r.desde).toISOString().slice(0,10):null}
+  if(!k)return NaN;const ms=Date.parse(k+'T00:00:00Z');
+  const inicio=fechaCivil(contrato.inicio),finEfectivo=fechaCivil(contrato.fin_efectivo),finPactado=fechaCivil(contrato.fin_pactado);
+  const fines=[finEfectivo,finPactado].filter(Boolean).sort(),fin=fines[0]||null;
+  if(!rangoFechaContieneMs(periodo.rango,ms)||inicioMesUtc(ms)!==inicioMesUtc(r.desde)||
+      (inicio&&k<inicio)||(fin&&k>fin))return NaN;
+  return ms;
+}
+function facturaFuenteCargo(c){
+  if(!c||c.concepto!=='servicio')return null;
+  const directas=(D.sfac||[]).filter(f=>f.cargo_id===c.id),repartos=(D.sfrep||[]).filter(x=>x.cargo_id===c.id);
+  if(directas.length+repartos.length!==1)return null;
+  if(directas.length===1){const f=directas[0];return f.propiedad_id===c.propiedad_id&&f.moneda===c.moneda&&
+    Number(f.monto)===Number(c.monto)&&f.operacion_id===c.operacion_id&&f.distribucion_modo==='unico'?f:null}
+  const reparto=repartos[0],f=(D.sfac||[]).find(x=>x.id===reparto.factura_id);if(!f)return null;
+  return reparto.propiedad_id===c.propiedad_id&&reparto.contrato_id===c.contrato_id&&
+    reparto.deudor_parte_id===c.deudor_parte_id&&reparto.acreedor_parte_id===c.acreedor_parte_id&&
+    reparto.moneda===c.moneda&&Number(reparto.monto)===Number(c.monto)&&reparto.operacion_id===c.operacion_id&&
+    f.operacion_id===c.operacion_id&&f.moneda===c.moneda&&f.distribucion_modo!=='unico'?f:null;
+}
+function corteTitularidadMes(titularidad,contrato,objetivoMs,noAntesMs=null){
+  if(!titularidad||!contrato||Number.isNaN(objetivoMs))return null;
+  const rt=rangoTstzLimites(titularidad.vigencia);if(!rt)return null;
+  const inicio=Date.parse(String(contrato.inicio).slice(0,10)+'T00:00:00Z');
+  const finCivil=[fechaCivil(contrato.fin_efectivo),fechaCivil(contrato.fin_pactado)].filter(Boolean).sort()[0];
+  const fin=finCivil?Date.parse(finCivil+'T00:00:00Z')+86400000:Infinity;
+  const objetivo=inicioMesUtc(objetivoMs),ancla=noAntesMs==null?null:inicioMesUtc(noAntesMs);let mejor=null,distanciaMejor=Infinity;
+  (D.ver||[]).filter(v=>v.contrato_id===contrato.id).forEach(version=>{
+    const rv=rangoTstzLimites(version.vigencia);if(!rv)return;
+    (D.mand||[]).filter(m=>m.propiedad_id===titularidad.propiedad_id&&m.titularidad_id===titularidad.id).forEach(mandato=>{
+      const rm=rangoTstzLimites(mandato.vigencia);if(!rm)return;
+      (D.mv||[]).filter(v=>v.mandato_id===mandato.id).forEach(mv=>{
+        const rmv=rangoTstzLimites(mv.vigencia);if(!rmv)return;
+        const desde=Math.max(rt.desde,inicio,rv.desde,rm.desde,rmv.desde),hasta=Math.min(rt.hasta,rv.hasta,rm.hasta,rmv.hasta,fin);
+        if(!(hasta>desde))return;let primero=inicioMesUtc(desde);if(primero<desde)primero=moverMesUtc(primero,1);
+        if(ancla!=null)primero=Math.max(primero,ancla);if(primero<desde)primero=moverMesUtc(primero,1);
+        let ultimo=Infinity;if(Number.isFinite(hasta)){ultimo=inicioMesUtc(hasta-1);if(ultimo<desde||ultimo>=hasta)ultimo=moverMesUtc(ultimo,-1)}
+        if(Number.isFinite(ultimo)&&ultimo<primero)return;let candidato=Math.max(objetivo,primero);if(Number.isFinite(ultimo))candidato=Math.min(candidato,ultimo);
+        if(candidato<primero||(Number.isFinite(ultimo)&&candidato>ultimo)||candidato<desde||candidato>=hasta)return;
+        const distancia=Math.abs(candidato-objetivo);if(mejor==null||distancia<distanciaMejor||(distancia===distanciaMejor&&candidato<mejor)){mejor=candidato;distanciaMejor=distancia}
+      });
+    });
+  });
+  return mejor;
+}
+function titularidadPeriodoValida(titularidad,contrato,periodo,fechaMs){
+  const rango=rangoFechaLimites(periodo.rango),mg=(D.mesgen||[]).find(x=>x.periodo_id===periodo.id&&x.contrato_id===contrato.id);
+  if(!rango)return false;const mesK=mg?fechaCivil(mg.mes):(Number.isFinite(rango.desde)?new Date(rango.desde).toISOString().slice(0,10):null);
+  if(!mesK)return false;const mesMs=inicioMesUtc(Date.parse(mesK+'T00:00:00Z'));
+  const exacto=!!mg&&rangoTstzContieneAhora(titularidad.vigencia,fechaMs)&&
+    (D.ver||[]).some(v=>v.contrato_id===contrato.id&&rangoTstzContieneAhora(v.vigencia,fechaMs)&&
+      (D.mand||[]).some(m=>m.propiedad_id===contrato.propiedad_id&&m.titularidad_id===titularidad.id&&rangoTstzContieneAhora(m.vigencia,fechaMs)&&
+        (D.mv||[]).some(mv=>mv.mandato_id===m.id&&rangoTstzContieneAhora(mv.vigencia,fechaMs))));
+  return exacto||corteTitularidadMes(titularidad,contrato,mesMs,mesMs)===mesMs;
+}
+function fechaEconomicaCargoMs(c){
+  if(c.periodo_id){const p=(D.periodo||[]).find(x=>x.id===c.periodo_id),contrato=(D.con||[]).find(x=>x.id===c.contrato_id);return fechaEconomicaPeriodoMs(p,contrato)}
+  if(c.concepto==='servicio'){const f=facturaFuenteCargo(c);return f&&f.vence_at?Date.parse(f.vence_at):NaN}
+  return c.vence_at?Date.parse(c.vence_at):NaN;
+}
 function circuitoCargo(c){
   if(c.concepto==='honorario_administracion')return'honorarios';
-  const titular=titularParteId(c.propiedad_id);
-  if(titular&&c.acreedor_parte_id===titular&&c.deudor_parte_id!==titular)return'obligaciones';
-  return'otros';
+  const contrato=(D.con||[]).find(x=>x.id===c.contrato_id);
+  if(!contrato||contrato.propiedad_id!==c.propiedad_id||contrato.inquilino_parte_id!==c.deudor_parte_id)return'otros';
+  const operacion=(D.op||[]).find(x=>x.id===c.operacion_id),payload=operacion&&operacion.payload_normalizado;
+  if(c.concepto==='servicio'&&operacion&&operacion.operacion==='servicio_factura_registrar'&&
+      payload&&payload.acreedor_tipo==='administracion')return'otros';
+  const instante=fechaEconomicaCargoMs(c);if(Number.isNaN(instante))return'otros';
+  const titularidades=(D.tit||[]).filter(x=>x.propiedad_id===c.propiedad_id&&
+    x.parte_id===c.acreedor_parte_id&&rangoTstzContieneAhora(x.vigencia,instante));
+  if(titularidades.length!==1)return'otros';const titularidad=titularidades[0];
+  if(c.periodo_id){const periodo=(D.periodo||[]).find(x=>x.id===c.periodo_id);return titularidadPeriodoValida(titularidad,contrato,periodo,instante)?'obligaciones':'otros'}
+  return corteTitularidadMes(titularidad,contrato,instante)!=null?'obligaciones':'otros';
 }
 const circuitoNombre=k=>({obligaciones:'Obligación administrada',honorarios:'Honorario de la administración',
   otros:'Otro movimiento'}[k]||'Otro movimiento');
@@ -863,16 +1033,71 @@ function propCumpleFiltro(pid){
 }
 function propiedadTx(t){
   const pago=D.pago.find(x=>x.transaccion_id===t.id);if(pago)return pago.propiedad_id;
+  const giro=(D.giroF5||[]).find(x=>x.transaccion_id===t.id);if(giro)return giro.propiedad_id;
+  if(t.reversa_de){const original=D.tx.find(x=>x.id===t.reversa_de);if(original)return propiedadTx(original)}
   const ap=D.apl.find(x=>x.transaccion_id===t.id);if(!ap)return t.propiedad_id||null;
   const cargo=D.cargo.find(c=>c.id===ap.cargo_id);if(cargo)return cargo.propiedad_id;
+  const credito=ap.credito_id&&D.credito.find(c=>c.id===ap.credito_id);
+  if(credito){const contrato=D.con.find(c=>c.id===credito.contrato_id);if(contrato)return contrato.propiedad_id}
+  const evento=ap.deposito_evento_id&&D.devento.find(e=>e.id===ap.deposito_evento_id);
+  if(evento)return evento.propiedad_id;
   const rend=D.rend.find(r=>r.id===ap.rendicion_id);return rend&&rend.propiedad_id||null;
 }
+function f5Abrir(titulo,subtitulo,html){
+  $('f5Title').textContent=titulo;$('f5Sub').textContent=subtitulo||'';$('f5Body').innerHTML=html;
+  $('f5Ov').classList.add('on');
+}
+function f5Cerrar(){$('f5Ov').classList.remove('on');$('f5Body').innerHTML=''}
+async function f5Mutar(nombre,clave,payload){
+  const requestId=requestDirectoDurable(clave,payload);
+  const {data,error}=await sb.rpc(nombre,{p_request_id:requestId,p_payload:payload});
+  if(error)throw new Error(error.message);
+  localStorage.removeItem(clave);return data;
+}
+const cuentaNombre=c=>c?`${c.banco_billetera} · ${c.identificador} · ${c.moneda}`:'Cuenta custodiada';
+function cuentasActivas(moneda){return (D.cta||[]).filter(c=>c.activa&&(!moneda||c.moneda===moneda))}
+function opcionesCuenta(moneda,seleccion){
+  const xs=cuentasActivas(moneda);return `<option value="">Elegir cuenta custodiada</option>`+
+    xs.map(c=>`<option value="${c.id}" ${c.id===seleccion?'selected':''}>${esc(cuentaNombre(c))} · saldo ${fmt(c.saldo)}</option>`).join('');
+}
+function pagoTieneReversa(t){return D.tx.some(x=>x.reversa_de===t.id&&x.estado==='confirmada')}
+function pagoReversible(t){return t&&t.estado==='confirmada'&&t.direccion==='entrada'&&
+  D.pago.some(p=>p.transaccion_id===t.id)&&!pagoTieneReversa(t)}
+function accionesTransaccionHtml(t){
+  const acciones=[];
+  if(t.comprobante_documento_id)acciones.push(`<button class="btn-g" type="button" onclick="descargarDocumentoVerificado('${t.comprobante_documento_id}','el comprobante')">Comprobante</button>`);
+  if(pagoReversible(t))acciones.push(`<button class="btn-g" type="button" onclick="abrirReversaF5('${t.id}')">Revertir pago</button>`);
+  return acciones.join(' ')||'—';
+}
+function girosLiquidacionF5(liquidacionId){
+  return (D.giroF5||[]).filter(g=>g.liquidacion_id===liquidacionId)
+    .sort((a,b)=>String(a.registrado_at||a.fecha||'').localeCompare(String(b.registrado_at||b.fecha||''))||String(a.id).localeCompare(String(b.id)));
+}
+function girosLiquidacionHtml(liquidacion){
+  const giros=girosLiquidacionF5(liquidacion.id),sucesora=(D.liq||[]).find(x=>x.sucesora_de===liquidacion.id);
+  const lista=giros.map((g,i)=>{
+    const rendiciones=(D.rendF5||[]).filter(r=>r.giro_id===g.id)
+      .sort((a,b)=>Number(a.version_documento)-Number(b.version_documento));
+    const vigente=rendicionVigenteGiro(g.id);
+    return `<div class="section-note" style="margin-top:.65rem"><b>Giro ${i+1} · ${esc(String(g.id).slice(0,8))}…</b> · ${fmt(g.monto)} ${esc(g.moneda)} · ${fdateInstante(g.fecha)} · ${esc(String(g.medio||'—').replaceAll('_',' '))}<br><span class="account-caption">${Number(g.fuentes||0)} fuente(s) custodiada(s) · ${vigente?'rendición vigente v'+Number(vigente.version_documento):'rendición pendiente'}${rendiciones.length>1?' · '+rendiciones.length+' versiones':''}</span><div style="margin-top:.45rem"><button class="btn-g" type="button" onclick="descargarDocumentoVerificado('${g.comprobante_documento_id}','el comprobante del giro')">Comprobante del giro</button> <button class="btn-g" type="button" onclick="abrirRendicionF5('${g.id}','${vigente&&vigente.id||''}')">${vigente?'Corregir rendición v'+Number(vigente.version_documento):'Emitir rendición formal'}</button></div></div>`;
+  }).join('');
+  const accion=sucesora
+    ?`<span class="tag" style="--tc:var(--gris);margin-top:.65rem">Reemplazada por v${sucesora.version_documento}</span>`
+    :`<button class="btn" type="button" onclick="abrirGiroF5('${liquidacion.id}')" style="margin-top:.65rem" ${liquidacion.documento_id?'':'disabled'}>${giros.length?'Registrar giro adicional':'Registrar giro al propietario'}</button>`;
+  return lista+accion;
+}
 function medioPagoVisible(t){
-  const p=D.pago.find(x=>x.transaccion_id===t.id),ids=p&&p.cargo_ids||[];
-  const cargos=ids.map(id=>D.cargo.find(c=>c.id===id)).filter(Boolean);
-  if(cargos.length&&cargos.every(c=>circuitoCargo(c)==='honorarios'))return'Transferencia a la administración';
-  if(cargos.length&&cargos.every(c=>circuitoCargo(c)==='obligaciones'))return'Transferencia al propietario';
-  return String(t.medio||'—').replaceAll('_',' ');
+  const etiquetas={
+    transferencia_directa_al_propietario:'Transferencia al propietario',
+    efectivo_directo_al_propietario:'Efectivo al propietario',
+    transferencia_a_cuenta_custodiada:'Transferencia a cuenta custodiada',
+    efectivo_en_administracion:'Efectivo recibido por la administración',
+    transferencia_a_administracion:'Transferencia a la administración',
+    efectivo_a_administracion:'Efectivo a la administración',
+    transferencia_directa:'Transferencia directa',efectivo_directo:'Efectivo directo'
+  };
+  if(t&&t.medio&&etiquetas[t.medio])return etiquetas[t.medio];
+  return String(t&&t.medio||'—').replaceAll('_',' ');
 }
 let ajusteKpiPendiente=0;
 function ajustarNumeroKpi(el){
@@ -910,41 +1135,44 @@ observadorContenidoKpis.observe($('kpis'),{childList:true,subtree:true,character
 function render(){
   const propsVisibles=D.prop.filter(p=>propCumpleFiltro(p.id)),idsVisibles=new Set(propsVisibles.map(p=>p.id));
   const cargosVisibles=D.cargo.filter(c=>idsVisibles.has(c.propiedad_id));
-  const obligaciones=cargosVisibles.filter(c=>circuitoCargo(c)==='obligaciones').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
-  const honorarios=cargosVisibles.filter(c=>circuitoCargo(c)==='honorarios').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
-  const otros=cargosVisibles.filter(c=>circuitoCargo(c)==='otros').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+  const obligaciones=textoTotalesPorMoneda(cargosVisibles.filter(c=>circuitoCargo(c)==='obligaciones'),c=>c.saldo_pendiente,c=>c.moneda);
+  const honorarios=textoTotalesPorMoneda(cargosVisibles.filter(c=>circuitoCargo(c)==='honorarios'),c=>c.saldo_pendiente,c=>c.moneda);
+  const otros=textoTotalesPorMoneda(cargosVisibles.filter(c=>circuitoCargo(c)==='otros'),c=>c.saldo_pendiente,c=>c.moneda);
   const conf=D.tx.filter(t=>t.estado==='confirmada'&&t.ambito==='custodiada'&&idsVisibles.has(propiedadTx(t)));
-  const caja=conf.reduce((s,t)=>s+(t.direccion==='entrada'?1:-1)*Number(t.monto),0);
-  const girado=D.apl.filter(a=>{const r=D.rend.find(x=>x.id===a.rendicion_id);return r&&idsVisibles.has(r.propiedad_id)})
-    .reduce((s,a)=>s+Number(a.importe_destino),0);
+  const caja=textoTotalesPorMoneda(conf,t=>(t.direccion==='entrada'?1:-1)*Number(t.monto),t=>t.moneda);
+  const girosLegado=D.apl.filter(a=>{const r=D.rend.find(x=>x.id===a.rendicion_id);return r&&idsVisibles.has(r.propiedad_id)})
+    .map(a=>({monto:a.importe_destino,moneda:a.moneda_destino}));
+  const girosF5=(D.giroF5||[]).filter(g=>idsVisibles.has(g.propiedad_id)&&g.estado==='confirmada');
+  const girado=textoTotalesPorMoneda([...girosLegado,...girosF5]);
   $('kpis').innerHTML=[
     ['var(--accent)',propsVisibles.length,'Propiedades','en la vista actual'],
-    ['var(--rojo)',fmt(obligaciones),'Obligaciones','inquilinos y servicios'],
-    ['var(--ambar)',fmt(honorarios),'Honorarios','a cobrar por la administración'],
-    ['var(--gris)',fmt(otros),'Otros movimientos','cuentas no clasificadas arriba'],
-    ['var(--verde)',fmt(caja),'En caja','dinero realmente custodiado'],
-    ['var(--azul)',fmt(girado),'Girado a propietarios','vía rendición'],
-  ].map(([c,n,l,s])=>{const texto=String(n);return `<div class="kpi" style="--c:${c}"><div class="kpi-num" title="${esc(texto)}">${texto}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`}).join('');
+    ['var(--rojo)',obligaciones,'Obligaciones','inquilinos y servicios'],
+    ['var(--ambar)',honorarios,'Honorarios','a cobrar por la administración'],
+    ['var(--gris)',otros,'Otros movimientos','cuentas no clasificadas arriba'],
+    ['var(--verde)',caja,'En caja','dinero realmente custodiado'],
+    ['var(--azul)',girado,'Girado a propietarios','giros confirmados'],
+  ].map(([c,n,l,s])=>{const texto=String(n);return `<div class="kpi" style="--c:${c}"><div class="kpi-num" title="${esc(texto)}">${esc(texto)}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`}).join('');
   programarAjusteKpis();
   const cards=propsVisibles
   .map(p=>{
     const e=estadoProp(p.id);
     const cvig=D.con.find(c=>c.propiedad_id===p.id&&['vigente','continuacion_legal'].includes(c.estado));
     const cult=cvig||D.con.filter(c=>c.propiedad_id===p.id).sort((a,b)=>new Date(b.inicio)-new Date(a.inicio))[0];
-    const vv=cult?D.ver.filter(x=>x.contrato_id===cult.id).sort((a,b)=>b.vigencia.localeCompare(a.vigencia))[0]:null;
+    const vv=cvig?contratoVersionVigente(cvig.id):(cult&&contratoVersionUltima(cult.id));
+    const cargosO=cargosProp(p.id,'obligaciones'),cargosH=cargosProp(p.id,'honorarios'),cargosZ=cargosProp(p.id,'otros');
     const o=saldoProp(p.id,'obligaciones'),h=saldoProp(p.id,'honorarios'),z=saldoProp(p.id,'otros');
     return `<div class="card prop" data-p="${p.id}">
       <div class="prop-top"><div class="dot" style="--dc:${e.c}"></div>
         <div><div class="prop-dir">${esc(p.direccion)}</div>
         <div class="prop-city">${esc(p.ciudad||'')} · ${e.t}</div></div></div>
       <div class="prop-grid">
-        <div><div class="pg-l">Dueño</div><div class="pg-v">${esc((()=>{const t=D.tit.find(x=>x.propiedad_id===p.id);return t?D.pname[t.parte_id]||'—':'—'})())}</div></div>
+        <div><div class="pg-l">Dueño</div><div class="pg-v">${esc(D.pname[titularParteId(p.id)]||'—')}</div></div>
         <div><div class="pg-l">Inquilino</div><div class="pg-v">${esc(cult?D.pname[cult.inquilino_parte_id]||'—':'—')}</div></div>
         <div><div class="pg-l">Contrato</div><div class="pg-v">${cult?esc(cult.estado.replace('_',' ')):'—'}</div></div>
         <div><div class="pg-l">Alquiler</div><div class="pg-v">${vv?fmt(vv.monto)+' '+vv.moneda:'—'}</div></div>
-        <div><div class="pg-l">Obligaciones gestionadas</div><div class="pg-v ${o>0?'deuda':'aldia'}">${fmt(o)}</div></div>
-        <div><div class="pg-l">Honorarios administración</div><div class="pg-v ${h>0?'deuda':'aldia'}">${fmt(h)}</div></div>
-        ${z>0?`<div><div class="pg-l">Otros pendientes</div><div class="pg-v deuda">${fmt(z)}</div></div>`:''}
+        <div><div class="pg-l">Obligaciones gestionadas</div><div class="pg-v ${o>0?'deuda':'aldia'}">${esc(textoTotalesPorMoneda(cargosO,c=>c.saldo_pendiente,c=>c.moneda))}</div></div>
+        <div><div class="pg-l">Honorarios administración</div><div class="pg-v ${h>0?'deuda':'aldia'}">${esc(textoTotalesPorMoneda(cargosH,c=>c.saldo_pendiente,c=>c.moneda))}</div></div>
+        ${z>0?`<div><div class="pg-l">Otros pendientes</div><div class="pg-v deuda">${esc(textoTotalesPorMoneda(cargosZ,c=>c.saldo_pendiente,c=>c.moneda))}</div></div>`:''}
       </div>
       <button class="btn-g js-gestionar-prop" data-p="${p.id}" type="button" style="width:100%;margin-top:1rem">Gestionar</button>
     </div>`;
@@ -955,19 +1183,24 @@ function render(){
   renderAgenda();
   const txs=[...D.tx].filter(t=>t.ambito==='custodiada'&&idsVisibles.has(propiedadTx(t)))
     .sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
-  $('caja').innerHTML=txs.length?`<table><tr><th>Fecha</th><th>Dirección</th><th>Contraparte</th><th>Medio</th><th class="num">Monto</th></tr>`+
+  const cuentasHtml=`<div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+    <button class="btn" type="button" onclick="abrirCuentasF5()">Configurar cuentas</button>
+    <button class="btn-g" type="button" onclick="abrirMovimientoF5()" ${cuentasActivas().length?'':'disabled'}>Registrar movimiento e imputación</button>
+    <span class="account-caption">${(D.cta||[]).length?(D.cta||[]).map(c=>`${esc(cuentaNombre(c))}: <b>${fmt(c.saldo)} ${esc(c.moneda)}</b>${c.activa?'':' · inactiva'}`).join(' · '):'Todavía no hay una cuenta custodiada configurada.'}</span>
+  </div>`;
+  $('caja').innerHTML=cuentasHtml+(txs.length?`<table><tr><th>Fecha</th><th>Dirección</th><th>Contraparte</th><th>Medio</th><th class="num">Monto</th><th>Acción</th></tr>`+
     txs.map(t=>`<tr><td>${fdateInstante(t.fecha)}</td>
       <td><span class="tag" style="--tc:${t.direccion==='entrada'?'var(--verde)':'var(--rojo)'}">${t.direccion}${t.reversa_de?' · reversa':''}${t.ambito==='externa_informativa'?' · directo':''}</span></td>
       <td>${esc(D.pname[t.contraparte_parte_id]||'—')}</td><td>${esc(t.medio||'—')}</td>
-      <td class="num ${t.direccion==='entrada'?'pos':'neg'}">${t.direccion==='entrada'?'+':'−'}${fmt(t.monto)}</td></tr>`).join('')+'</table>'
-    :'<div class="empty">Sin movimientos.</div>';
+      <td class="num ${t.direccion==='entrada'?'pos':'neg'}">${t.direccion==='entrada'?'+':'−'}${fmt(t.monto)} ${esc(t.moneda)}</td><td>${accionesTransaccionHtml(t)}</td></tr>`).join('')+'</table>'
+    :'<div class="empty">Sin movimientos.</div>');
   const directos=[...D.tx].filter(t=>t.ambito==='externa_informativa'&&idsVisibles.has(propiedadTx(t)))
     .sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
-  $('pagosDirectos').innerHTML=directos.length?`<table><tr><th>Fecha</th><th>Pagador</th><th>Beneficiario</th><th>Medio</th><th class="num">Monto informado</th></tr>`+
+  $('pagosDirectos').innerHTML=directos.length?`<table><tr><th>Fecha</th><th>Pagador</th><th>Beneficiario</th><th>Medio</th><th class="num">Monto informado</th><th>Acción</th></tr>`+
     directos.map(t=>{const p=D.pago.find(x=>x.transaccion_id===t.id)||{};return `<tr><td>${fdateInstante(t.fecha)}</td>
       <td>${esc(D.pname[p.pagador_parte_id]||D.pname[t.contraparte_parte_id]||'—')}</td>
       <td>${esc(D.pname[p.beneficiario_parte_id]||'—')}</td><td>${esc(medioPagoVisible(t))}</td>
-      <td class="num pos">${fmt(t.monto)}</td></tr>`}).join('')+'</table>'
+      <td class="num pos">${fmt(t.monto)} ${esc(t.moneda)}</td><td>${accionesTransaccionHtml(t)}</td></tr>`}).join('')+'</table>'
     :'<div class="empty">Sin pagos directos informados.</div>';
   const liquidacionesVisibles=(D.liq||[]).filter(r=>idsVisibles.has(r.propiedad_id))
     .sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))||b.version_documento-a.version_documento);
@@ -977,19 +1210,30 @@ function render(){
       saldo<0?'La administración debe al propietario':'Cuenta propietario ↔ administración saldada';
     return `<div class="account-box fees" style="margin-bottom:.8rem"><div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
       <b>${esc(pr?pr.direccion:'')}</b><span class="tag" style="--tc:var(--azul)">${esc(r.estado)} · v${r.version_documento}</span>
-      <span class="tag" style="--tc:${saldo===0?'var(--verde)':'var(--ambar)'}">${esc(String(r.periodo).slice(0,7))}</span></div>
-      <div class="account-grid"><div><div class="pg-l">Saldo anterior</div><div class="pg-v">${fmt(r.saldo_apertura_admin)}</div></div>
-      <div><div class="pg-l">Saldo final</div><div class="pg-v ${saldo===0?'aldia':'deuda'}">${fmt(Math.abs(saldo))}</div></div>
+      <span class="tag" style="--tc:${saldo===0?'var(--verde)':'var(--ambar)'}">${esc(String(r.periodo).slice(0,7))} · ${esc(r.moneda)}</span></div>
+      <div class="account-grid"><div><div class="pg-l">Saldo anterior</div><div class="pg-v">${fmt(r.saldo_apertura_admin)} ${esc(r.moneda)}</div></div>
+      <div><div class="pg-l">Saldo final</div><div class="pg-v ${saldo===0?'aldia':'deuda'}">${fmt(Math.abs(saldo))} ${esc(r.moneda)}</div></div>
       <div><div class="pg-l">Interpretación</div><div class="pg-v">${esc(sentido)}</div></div>
       <div><div class="pg-l">Email</div><div class="pg-v">${envios.length?envios.length+' intento(s)':'Todavía no registrado'}</div></div></div>
       ${r.documento_id?`<button class="btn-g" onclick="descargarLiquidacionGuardada('${r.id}')">Descargar PDF guardado</button>`:
         `<button class="btn-g" onclick="vincularPdfLiquidacion('${r.id}')">Guardar PDF emitido</button>`}
+      ${girosLiquidacionHtml(r)}
       <button class="btn-g" onclick="abrir('${r.propiedad_id}','Liquidación')" style="margin-left:.4rem">Abrir liquidación</button></div>`;
   }).join('');
+  const formales=(D.rendF5||[]).filter(r=>idsVisibles.has(r.propiedad_id))
+    .sort((a,b)=>String(b.emitida_at).localeCompare(String(a.emitida_at)));
+  const formalesHtml=formales.length?`<div class="sec-t" style="margin-top:.2rem">Rendiciones formales de giros</div>`+
+    formales.map(r=>{const pr=D.prop.find(p=>p.id===r.propiedad_id),sucesora=formales.find(x=>x.sucesora_de===r.id);return `<div class="account-box obligations" style="margin-bottom:.8rem">
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap"><b>${esc(pr?pr.direccion:'')}</b><span class="tag" style="--tc:${sucesora?'var(--gris)':'var(--verde)'}">${esc(String(r.periodo).slice(0,7))} · ${esc(r.moneda)} · giro ${esc(String(r.giro_id).slice(0,8))}… · v${r.version_documento} · ${sucesora?'reemplazada':'vigente'}</span></div>
+      <div class="account-caption">Giro ${fmt(r.monto)} ${esc(r.moneda)} · contenido ${esc(String(r.contenido_sha256).slice(0,12))}… · PDF ${esc(String(r.pdf_sha256).slice(0,12))}…</div>
+      <button class="btn-g" type="button" onclick="descargarRendicionF5('${r.id}')">Descargar PDF verificado</button>
+      ${sucesora?'':`<button class="btn-g" type="button" onclick="abrirRendicionF5('${r.giro_id}','${r.id}')" style="margin-left:.4rem">Corregir rendición</button>`}</div>`}).join(''):'';
   const rendicionesVisibles=D.rend.filter(r=>idsVisibles.has(r.propiedad_id));
   const legadoHtml=rendicionesVisibles.length?`<details style="margin-top:1rem"><summary class="section-note" style="cursor:pointer">Rendiciones históricas anteriores al Bloque 2</summary><div style="margin-top:1rem">`+rendicionesVisibles.map(r=>{
-    const g=D.apl.filter(a=>a.rendicion_id===r.id).reduce((s,a)=>s+Number(a.importe_destino),0);
-    const cuadra=Number(r.saldo_final)===g;
+    const aplicaciones=D.apl.filter(a=>a.rendicion_id===r.id);
+    const g=aplicaciones.reduce((s,a)=>s+Number(a.importe_destino),0);
+    const giradoTexto=textoTotalesPorMoneda(aplicaciones,a=>a.importe_destino,a=>a.moneda_destino);
+    const cuadra=Number(r.saldo_final)===g&&aplicaciones.every(a=>!r.moneda||a.moneda_destino===r.moneda);
     const lin=D.rlin.filter(l=>l.rendicion_id===r.id);
     const pr=D.prop.find(p=>p.id===r.propiedad_id);
     return `<div style="margin-bottom:.4rem"><b style="font-size:.9rem">${esc(pr?pr.direccion:'')}</b>
@@ -998,14 +1242,14 @@ function render(){
       <button class="btn-g" style="margin-bottom:.6rem" onclick="imprimirRendicion('${r.id}')">Vista imprimible / guardar PDF</button>
       <table><tr><th>Categoría</th><th>Detalle</th><th class="num">Monto</th></tr>`+
       lin.map(l=>`<tr><td>${esc(l.categoria)}</td><td>${esc(l.snapshot?.detalle||'')}</td>
-        <td class="num ${l.signo>0?'pos':'neg'}">${l.signo>0?'+':'−'}${fmt(l.monto)}</td></tr>`).join('')+
+        <td class="num ${l.signo>0?'pos':'neg'}">${l.signo>0?'+':'−'}${fmt(l.monto)} ${esc(l.moneda||r.moneda||'')}</td></tr>`).join('')+
       `<tr><td colspan="2" style="font-weight:700;color:var(--blanco)">Saldo rendido al propietario</td>
-       <td class="num" style="font-weight:700;color:var(--blanco)">${fmt(r.saldo_final)}</td></tr>
-       <tr><td colspan="2">Girado (transferencias ligadas)</td><td class="num">${fmt(g)}</td></tr></table>`;
+       <td class="num" style="font-weight:700;color:var(--blanco)">${fmt(r.saldo_final)} ${esc(r.moneda||'')}</td></tr>
+       <tr><td colspan="2">Girado (transferencias ligadas)</td><td class="num">${esc(giradoTexto)}</td></tr></table>`;
   }).join('<div style="height:1.4rem"></div>')+'</div></details>':'';
-  $('rends').innerHTML=liquidacionesHtml+legadoHtml||'<div class="empty">Sin liquidaciones aún. Abrí una propiedad → Liquidación para preparar la primera.</div>';
+  $('rends').innerHTML=formalesHtml+liquidacionesHtml+legadoHtml||'<div class="empty">Sin liquidaciones aún. Abrí una propiedad → Liquidación para preparar la primera.</div>';
   const comunicadosVisibles=D.com.filter(c=>idsVisibles.has(c.propiedad_id));
-  $('coms').innerHTML=comunicadosVisibles.length?comunicadosVisibles.map(c=>{
+  const hilosComunicados=comunicadosVisibles.length?comunicadosVisibles.map(c=>{
     const pr=D.prop.find(p=>p.id===c.propiedad_id);
     const msgs=D.cmsg.filter(m=>m.comunicado_id===c.id).sort((a,b)=>new Date(a.creado_at)-new Date(b.creado_at));
     const abierto=c.estado==='abierto';
@@ -1020,45 +1264,75 @@ function render(){
         <button class="btn-g" onclick="resolver('${c.id}')">Resolver</button>
       </div><div class="op-msg" id="commsg-${c.id}"></div>`:'');
   }).join('<div style="height:1.6rem"></div>'):'<div class="empty">Sin comunicados.</div>';
+  $('coms').innerHTML=`<div class="sec-t" style="margin-top:.2rem">Abrir un comunicado</div>
+    <div class="f-grid" style="margin-bottom:1.4rem">
+      <div><span class="f-l">Propiedad</span><select class="f" id="comNuevaPropiedad">${propsVisibles.map(p=>`<option value="${p.id}">${esc(p.direccion)}</option>`).join('')}</select></div>
+      <div class="f-full"><span class="f-l">Mensaje inicial</span><textarea class="f" id="comNuevaTexto" rows="3" placeholder="Escribí el asunto o la consulta completa"></textarea></div>
+      <div class="f-full"><button class="btn" id="btnComunicadoAbrir" ${propsVisibles.length?'':'disabled'}>Abrir comunicado</button><div class="op-msg" id="msgComunicadoAbrir"></div></div>
+    </div><div class="sec-t">Historial</div>${hilosComunicados}`;
+  if($('btnComunicadoAbrir'))$('btnComunicadoAbrir').onclick=abrirComunicado;
 }
 
 function imprimirRendicion(id){
   const r=D.rend.find(x=>x.id===id);if(!r)return;
-  const p=D.prop.find(x=>x.id===r.propiedad_id),tit=D.tit.find(x=>x.propiedad_id===r.propiedad_id);
+  const p=D.prop.find(x=>x.id===r.propiedad_id),titularId=titularParteId(r.propiedad_id);
   const lineas=D.rlin.filter(x=>x.rendicion_id===id);
   const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Liquidación · ${esc(p&&p.direccion||'')}</title>
   <style>body{font:14px Arial,sans-serif;color:#181818;margin:40px}h1{font-size:24px;margin:0}h2{font-size:16px;margin:8px 0 28px;color:#555}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left}.n{text-align:right}.total{font-weight:bold;font-size:16px}.note{margin-top:28px;color:#666;font-size:12px}@media print{button{display:none}}</style></head><body>
   <h1>SUR PATAGONIAN REAL ESTATE</h1><h2>Liquidación de propietario · ${esc(p&&p.direccion||'')}</h2>
-  <div><b>Propietario:</b> ${esc(D.pname[tit&&tit.parte_id]||'—')}</div><div><b>Estado:</b> ${esc(r.estado||'—')}</div>
-  <table><tr><th>Categoría</th><th>Detalle</th><th class="n">Importe</th></tr>${lineas.map(l=>`<tr><td>${esc(l.categoria)}</td><td>${esc(l.snapshot&&l.snapshot.detalle||'')}</td><td class="n">${l.signo>0?'+':'−'}${fmt(l.monto)}</td></tr>`).join('')}
-  <tr class="total"><td colspan="2">Saldo liquidado al propietario</td><td class="n">${fmt(r.saldo_final)}</td></tr></table>
+  <div><b>Propietario:</b> ${esc(D.pname[titularId]||'—')}</div><div><b>Estado:</b> ${esc(r.estado||'—')}</div>
+  <table><tr><th>Categoría</th><th>Detalle</th><th class="n">Importe</th></tr>${lineas.map(l=>`<tr><td>${esc(l.categoria)}</td><td>${esc(l.snapshot&&l.snapshot.detalle||'')}</td><td class="n">${l.signo>0?'+':'−'}${fmt(l.monto)} ${esc(l.moneda||r.moneda||'')}</td></tr>`).join('')}
+  <tr class="total"><td colspan="2">Saldo liquidado al propietario</td><td class="n">${fmt(r.saldo_final)} ${esc(r.moneda||'')}</td></tr></table>
   <div class="note">Documento generado desde PRODUCCIÓN para revisión. Usá Imprimir → Guardar como PDF.</div><button onclick="window.print()">Imprimir / guardar PDF</button></body></html>`;
   const w=window.open('','_blank');if(!w){toast('Habilitá las ventanas emergentes para abrir la liquidación.');return}w.document.write(html);w.document.close();
 }
 
 function signoImporte(linea){return Number(linea.signo||0)<0?'−':'+'}
-function saldoLiquidacionTexto(valor){
-  const n=Number(valor||0);
-  if(n>0)return`El propietario debe ${fmt(n)} a la administración`;
-  if(n<0)return`La administración debe ${fmt(Math.abs(n))} al propietario`;
+function pagoLiquidacionEstadoHtml(x){
+  return x&&x.estado==='parcialmente_revertido'?`<span class="tag" style="--tc:var(--ambar)">Neto tras reversa parcial · original ${fmt(x.monto_original)} ${esc(x.moneda)} · revertido ${fmt(x.monto_revertido)} ${esc(x.moneda)}</span>`:'';
+}
+function reaperturasLiquidacionTexto(items){
+  const totales=new Map();(items||[]).forEach(x=>{const moneda=x.moneda_destino||'—';totales.set(moneda,(totales.get(moneda)||0)+Number(x.importe_destino_reabierto||0))});
+  return [...totales].map(([moneda,monto])=>`${fmt(monto)} ${moneda}`).join(' + ')||'—';
+}
+function filasPagosLiquidacionHtml(items,vacio){
+  return(items||[]).length?items.map(x=>`<tr><td>${fdateInstante(x.fecha)}</td><td>${esc(x.pagador)} → ${esc(x.beneficiario)}</td><td>${esc(String(x.medio||'').replaceAll('_',' '))}${pagoLiquidacionEstadoHtml(x)}</td><td class="num pos">${fmt(x.monto)} ${esc(x.moneda||'')}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">${esc(vacio)}</td></tr>`;
+}
+function filasPagosRevertidosHtml(items){
+  return(items||[]).length?items.map(x=>`<tr><td>${fdateInstante(x.fecha_original)}<div class="account-caption">reversa ${fdateInstante(x.fecha_reversa)}</div></td><td>${esc(x.pagador)} → ${esc(x.beneficiario)}<div class="account-caption">${esc(x.motivo||'Sin motivo visible')}</div></td><td>${fmt(x.monto_revertido)} ${esc(x.moneda_reversa||x.moneda_original||'')}<div class="account-caption">pago original ${fmt(x.monto_original)} ${esc(x.moneda_original||'')}</div></td><td class="num neg">${esc(reaperturasLiquidacionTexto(x.reaperturas))}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">No hay reversiones registradas en esta liquidación.</td></tr>';
+}
+function resumenPagosLiquidacionEmitidaHtml(contenido){
+  const c=contenido||{},directos=c.pagos_informados_entre_partes||[],custodiados=c.cobros_custodiados||[],revertidos=c.pagos_revertidos||[];
+  const parciales=[...directos,...custodiados].filter(x=>x.estado==='parcialmente_revertido');
+  return `<div class="account-caption" style="margin-top:.6rem"><b>Cobros vigentes:</b> ${custodiados.length} custodiado(s) · ${directos.length} directo(s)${parciales.length?' · '+parciales.length+' parcialmente revertido(s), mostrados por su neto':''}.</div>${revertidos.length?`<div class="pg-l" style="margin:.7rem 0 .3rem;color:var(--rojo)">Reversiones registradas · no computadas como cobro adicional</div><table><tr><th>Pago / reversa</th><th>Partes y motivo</th><th>Importe del evento</th><th class="num">Deuda reabierta</th></tr>${filasPagosRevertidosHtml(revertidos)}</table>`:''}`;
+}
+function saldoLiquidacionTexto(valor,moneda){
+  const n=Number(valor||0),sufijo=moneda?' '+String(moneda).toUpperCase():'';
+  if(n>0)return`El propietario debe ${fmt(n)}${sufijo} a la administración`;
+  if(n<0)return`La administración debe ${fmt(Math.abs(n))}${sufijo} al propietario`;
   return'La cuenta propietario ↔ administración está saldada';
 }
 function htmlBorradorLiquidacion(wrapper){
   const c=wrapper.contenido||wrapper,o=c.obligaciones_inquilino||[],p=c.pagos_informados_entre_partes||[],
-    a=c.cuenta_propietario_administracion||[];
+    pc=c.cobros_custodiados||[],pr=c.pagos_revertidos||[],a=c.cuenta_propietario_administracion||[];
   const filas=(xs,campos)=>xs.length?xs.map(campos).join(''):'<tr><td colspan="5" class="empty">Sin movimientos en esta sección.</td></tr>';
   return `<div class="account-box" style="margin-top:1rem;border-left:2px solid var(--azul)">
-    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b>Borrador · ${esc(String(c.periodo).slice(0,7))} · versión ${c.version_documento}</b><span class="tag" style="--tc:var(--ambar)">revisar antes de emitir</span></div>
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b>Borrador · ${esc(String(c.periodo).slice(0,7))} · ${esc(c.moneda||'—')} · versión ${c.version_documento}</b><span class="tag" style="--tc:var(--ambar)">revisar antes de emitir</span></div>
     <div class="account-caption">Propietario: ${esc(c.propietario&&c.propietario.nombre||'—')} · Propiedad: ${esc(c.propiedad&&c.propiedad.direccion||'—')} · huella ${esc(String(wrapper.contenido_sha256).slice(0,12))}…</div>
     <div class="sec-t" style="margin-top:1rem">1 · Obligaciones del inquilino administradas</div>
-    <table><tr><th>Concepto</th><th>Deudor → acreedor</th><th class="num">Monto</th><th class="num">Pagado</th><th class="num">Saldo</th></tr>${filas(o,x=>`<tr><td>${esc(x.detalle)}</td><td>${esc(x.deudor)} → ${esc(x.acreedor)}</td><td class="num">${fmt(x.monto)}</td><td class="num pos">${fmt(x.pagado)}</td><td class="num">${fmt(x.saldo)}</td></tr>`)}</table>
-    <div class="sec-t" style="margin-top:1rem">2 · Pagos informados entre las partes</div>
-    <table><tr><th>Fecha</th><th>Pagador → beneficiario</th><th>Medio</th><th class="num">Monto</th></tr>${p.length?p.map(x=>`<tr><td>${fdateInstante(x.fecha)}</td><td>${esc(x.pagador)} → ${esc(x.beneficiario)}</td><td>${esc(String(x.medio||'').replaceAll('_',' '))}</td><td class="num pos">${fmt(x.monto)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Sin pagos informados para estas obligaciones.</td></tr>'}</table>
+    <table><tr><th>Concepto</th><th>Deudor → acreedor</th><th class="num">Monto</th><th class="num">Pagado</th><th class="num">Saldo</th></tr>${filas(o,x=>`<tr><td>${esc(x.detalle)}</td><td>${esc(x.deudor)} → ${esc(x.acreedor)}</td><td class="num">${fmt(x.monto)} ${esc(c.moneda||'')}</td><td class="num pos">${fmt(x.pagado)} ${esc(c.moneda||'')}</td><td class="num">${fmt(x.saldo)} ${esc(c.moneda||'')}</td></tr>`)}</table>
+    <div class="sec-t" style="margin-top:1rem">2 · Cobros vigentes y reversiones registradas</div>
+    <div class="pg-l" style="margin:.8rem 0 .35rem">Cobros en caja custodiada de la administración</div>
+    <table><tr><th>Fecha</th><th>Pagador → beneficiario</th><th>Medio</th><th class="num">Monto neto vigente</th></tr>${filasPagosLiquidacionHtml(pc,'Sin cobros custodiados vigentes para estas obligaciones.')}</table>
+    <div class="pg-l" style="margin:.8rem 0 .35rem">Pagos directos informados entre las partes</div>
+    <table><tr><th>Fecha</th><th>Pagador → beneficiario</th><th>Medio</th><th class="num">Monto neto vigente</th></tr>${filasPagosLiquidacionHtml(p,'Sin pagos directos vigentes para estas obligaciones.')}</table>
+    <div class="pg-l" style="margin:.8rem 0 .35rem;color:var(--rojo)">Reversiones registradas · no computadas como cobro adicional</div>
+    <table><tr><th>Pago / reversa</th><th>Partes y motivo</th><th>Importe revertido</th><th class="num">Deuda reabierta</th></tr>${filasPagosRevertidosHtml(pr)}</table>
     <div class="sec-t" style="margin-top:1rem">3 · Cuenta propietario ↔ administración</div>
-    <div class="account-caption">Saldo anterior: ${fmt(c.saldo_apertura_admin)}. Esta cuenta no se suma a la deuda del inquilino.</div>
-    <table><tr><th>Concepto</th><th>Mes de origen</th><th class="num">Movimiento</th></tr>${a.length?a.map(x=>`<tr><td>${esc(x.detalle)}</td><td>${esc(x.mes_origen?String(x.mes_origen).slice(0,7):'períodos anteriores')}</td><td class="num ${Number(x.signo)<0?'pos':'neg'}">${signoImporte(x)}${fmt(x.monto)}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Sin movimientos.</td></tr>'}
-      <tr><td colspan="2"><b>Saldo final propietario ↔ administración</b></td><td class="num"><b>${fmt(Math.abs(Number(c.saldo_cierre_admin)))}</b></td></tr></table>
-    <div class="section-note" style="margin-top:.8rem">${esc(saldoLiquidacionTexto(c.saldo_cierre_admin))}. ${esc(c.leyenda_no_fiscal)}</div>
+    <div class="account-caption">Saldo anterior: ${fmt(c.saldo_apertura_admin)} ${esc(c.moneda||'')}. Esta cuenta no se suma a la deuda del inquilino.</div>
+    <table><tr><th>Concepto</th><th>Mes de origen</th><th class="num">Movimiento</th></tr>${a.length?a.map(x=>`<tr><td>${esc(x.detalle)}</td><td>${esc(x.mes_origen?String(x.mes_origen).slice(0,7):'períodos anteriores')}</td><td class="num ${Number(x.signo)<0?'pos':'neg'}">${signoImporte(x)}${fmt(x.monto)} ${esc(c.moneda||'')}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Sin movimientos.</td></tr>'}
+      <tr><td colspan="2"><b>Saldo final propietario ↔ administración</b></td><td class="num"><b>${fmt(Math.abs(Number(c.saldo_cierre_admin)))} ${esc(c.moneda||'')}</b></td></tr></table>
+    <div class="section-note" style="margin-top:.8rem">${esc(saldoLiquidacionTexto(c.saldo_cierre_admin,c.moneda))}. ${esc(c.leyenda_no_fiscal)}</div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem"><button class="btn-g" id="btnLiqPdfBorrador">Descargar PDF del borrador</button><button class="btn" id="btnLiqEmitir">Emitir y sellar esta versión</button></div>
     <div class="op-msg" id="msgLiqEmitir"></div></div>`;
 }
@@ -1103,7 +1377,7 @@ function pdfLinea(doc,texto,x,y,ancho,estilo){
   doc.text(lineas.map(textoPdfSeguro),x,y);return y+lineas.length*5;
 }
 function nombreLiquidacionPdf(c){
-  return `liquidacion-${String(c.propiedad.direccion).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${String(c.periodo).slice(0,7)}-v${c.version_documento}.pdf`;
+  return `liquidacion-${String(c.propiedad.direccion).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${String(c.periodo).slice(0,7)}-${String(c.moneda||'').toLowerCase()}-v${c.version_documento}.pdf`;
 }
 function crearLiquidacionPdf(c,sha,estado){
   if(!window.jspdf||!window.jspdf.jsPDF){toast('No se pudo cargar el generador de PDF. Reintentá.');return}
@@ -1116,18 +1390,22 @@ function crearLiquidacionPdf(c,sha,estado){
   const fila=(detalle,monto)=>{asegurar(12);doc.setFontSize(9);doc.setTextColor(55,55,55);const antes=y;y=pdfLinea(doc,detalle,18,y,135,'normal');doc.text(textoPdfSeguro(monto),194,antes,{align:'right'});y+=2;doc.setDrawColor(225);doc.line(18,y,194,y);y+=4};
   doc.setTextColor(20,20,20);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.text('SUR PATAGONIAN REAL ESTATE',16,y);y+=8;
   doc.setFontSize(12);doc.text('Liquidación mensual del propietario',16,y);y+=7;doc.setFont('helvetica','normal');doc.setFontSize(9);
-  y=pdfLinea(doc,`${estado||'EMITIDA'} · ${String(c.periodo).slice(0,7)} · versión ${c.version_documento}`,16,y,178,'normal');
+  y=pdfLinea(doc,`${estado||'EMITIDA'} · ${String(c.periodo).slice(0,7)} · ${c.moneda} · versión ${c.version_documento}`,16,y,178,'normal');
   y=pdfLinea(doc,`${c.propiedad.direccion} · ${c.propiedad.ciudad} · Propietario: ${c.propietario.nombre}`,16,y,178,'normal');y+=3;
   titulo('1 · Obligaciones del inquilino administradas');
-  (c.obligaciones_inquilino||[]).forEach(x=>fila(`${x.detalle} · ${x.deudor} a ${x.acreedor} · pagado ${fmt(x.pagado)} · saldo ${fmt(x.saldo)}`,fmt(x.monto)));
+  (c.obligaciones_inquilino||[]).forEach(x=>fila(`${x.detalle} · ${x.deudor} a ${x.acreedor} · pagado ${fmt(x.pagado)} ${c.moneda||''} · saldo ${fmt(x.saldo)} ${c.moneda||''}`,`${fmt(x.monto)} ${c.moneda||''}`));
   if(!(c.obligaciones_inquilino||[]).length)fila('Sin obligaciones registradas','—');
-  titulo('2 · Pagos informados entre las partes');
-  (c.pagos_informados_entre_partes||[]).forEach(x=>fila(`${fdateInstante(x.fecha)} · ${x.pagador} a ${x.beneficiario} · ${String(x.medio||'').replaceAll('_',' ')}`,fmt(x.monto)));
-  if(!(c.pagos_informados_entre_partes||[]).length)fila('Sin pagos informados','—');
+  titulo('2 · Cobros vigentes y reversiones registradas');
+  (c.cobros_custodiados||[]).forEach(x=>fila(`Caja custodiada · ${fdateInstante(x.fecha)} · ${x.pagador} a ${x.beneficiario} · ${String(x.medio||'').replaceAll('_',' ')}${x.estado==='parcialmente_revertido'?' · neto tras reversa parcial':''}`,`${fmt(x.monto)} ${x.moneda||''}`));
+  if(!(c.cobros_custodiados||[]).length)fila('Sin cobros custodiados vigentes','—');
+  (c.pagos_informados_entre_partes||[]).forEach(x=>fila(`Pago directo · ${fdateInstante(x.fecha)} · ${x.pagador} a ${x.beneficiario} · ${String(x.medio||'').replaceAll('_',' ')}${x.estado==='parcialmente_revertido'?' · neto tras reversa parcial':''}`,`${fmt(x.monto)} ${x.moneda||''}`));
+  if(!(c.pagos_informados_entre_partes||[]).length)fila('Sin pagos directos vigentes','—');
+  (c.pagos_revertidos||[]).forEach(x=>fila(`REVERSA REGISTRADA · pago ${fdateInstante(x.fecha_original)} · evento ${fdateInstante(x.fecha_reversa)} · ${x.pagador} a ${x.beneficiario} · motivo: ${x.motivo||'sin motivo visible'} · deuda reabierta ${reaperturasLiquidacionTexto(x.reaperturas)}`,`${fmt(x.monto_revertido)} ${x.moneda_reversa||x.moneda_original||''} · NO ES COBRO ADICIONAL`));
+  if(!(c.pagos_revertidos||[]).length)fila('Sin reversiones registradas','—');
   titulo('3 · Cuenta propietario / administración');
-  fila('Saldo de apertura',fmt(c.saldo_apertura_admin));
-  (c.cuenta_propietario_administracion||[]).forEach(x=>fila(`${x.detalle}${x.mes_origen?' · '+String(x.mes_origen).slice(0,7):''}`,`${signoImporte(x)}${fmt(x.monto)}`));
-  asegurar(18);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(textoPdfSeguro(saldoLiquidacionTexto(c.saldo_cierre_admin)),18,y);y+=8;
+  fila('Saldo de apertura',`${fmt(c.saldo_apertura_admin)} ${c.moneda||''}`);
+  (c.cuenta_propietario_administracion||[]).forEach(x=>fila(`${x.detalle}${x.mes_origen?' · '+String(x.mes_origen).slice(0,7):''}`,`${signoImporte(x)}${fmt(x.monto)} ${c.moneda||''}`));
+  asegurar(18);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(textoPdfSeguro(saldoLiquidacionTexto(c.saldo_cierre_admin,c.moneda)),18,y);y+=8;
   doc.setFont('helvetica','normal');doc.setFontSize(8);y=pdfLinea(doc,c.leyenda_no_fiscal,18,y,176,'normal');
   y=pdfLinea(doc,`Huella de contenido: ${sha}`,18,y+2,176,'normal');
   const paginas=doc.getNumberOfPages();for(let i=1;i<=paginas;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(110);doc.text(`Sur Patagonian Real Estate · página ${i} de ${paginas}`,105,291,{align:'center'})}
@@ -1138,15 +1416,19 @@ function descargarBlob(blob,nombre){
   a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-async function descargarFacturaDocumento(id){
+async function descargarDocumentoVerificado(id,etiqueta='documento'){
   const doc=(D.doc||[]).find(x=>x.id===id);
-  if(!doc||!doc.path){toast('La factura no tiene un archivo descargable vinculado.');return}
+  if(!doc||!doc.path){toast('No hay un archivo descargable vinculado.');return}
   try{
-    const descarga=await sb.storage.from('alq-docs').download(doc.path);
+    const descarga=await sb.storage.from(doc.bucket||'alq-docs').download(doc.path);
     if(descarga.error)throw new Error(descarga.error.message);
-    descargarBlob(descarga.data,String(doc.path).split('/').pop()||'factura');
-  }catch(e){toast('No se pudo descargar la factura: '+e.message)}
+    const sha=await shaArchivo(descarga.data);
+    if(!doc.sha256||sha!==String(doc.sha256).toLowerCase())throw new Error('la huella SHA-256 no coincide; no se descargó el archivo');
+    descargarBlob(descarga.data,String(doc.path).split('/').pop()||etiqueta);
+    toast('Documento verificado · '+sha.slice(0,12)+'…');
+  }catch(e){toast('No se pudo descargar '+etiqueta+': '+e.message)}
 }
+const descargarFacturaDocumento=id=>descargarDocumentoVerificado(id,'la factura');
 async function descargarLiquidacionContenido(c,sha,estado){
   const pdf=crearLiquidacionPdf(c,sha,estado);if(!pdf)return;
   descargarBlob(pdf.blob,pdf.nombre);
@@ -1201,7 +1483,7 @@ async function prepararEmailLiquidacion(id){
   try{descargarBlob(await obtenerPdfLiquidacionGuardada(x),nombreLiquidacionPdf(c))}
   catch(e){toast(e.message);return}
   const asunto=`Liquidación ${String(x.periodo).slice(0,7)} · ${c.propiedad&&c.propiedad.direccion||''}`;
-  const cuerpo=`Hola ${c.propietario&&c.propietario.nombre||''},\n\nAdjunto la liquidación de ${String(x.periodo).slice(0,7)} de ${c.propiedad&&c.propiedad.direccion||''}.\n\n${saldoLiquidacionTexto(x.saldo_cierre_admin)}.\n\nRecordatorio: adjuntá el PDF descargado desde el programa.\n\nSur Patagonian Real Estate`;
+  const cuerpo=`Hola ${c.propietario&&c.propietario.nombre||''},\n\nAdjunto la liquidación de ${String(x.periodo).slice(0,7)} de ${c.propiedad&&c.propiedad.direccion||''}.\n\n${saldoLiquidacionTexto(x.saldo_cierre_admin,x.moneda)}.\n\nRecordatorio: adjuntá el PDF descargado desde el programa.\n\nSur Patagonian Real Estate`;
   window.location.href=`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
 }
 async function registrarEnvioLiquidacion(id){
@@ -1223,6 +1505,20 @@ async function registrarEnvioLiquidacion(id){
 }
 
 /* ── OPERACIONES ── */
+async function abrirComunicado(){
+  const m=$('msgComunicadoAbrir'),boton=$('btnComunicadoAbrir');
+  const propiedadId=$('comNuevaPropiedad')&&$('comNuevaPropiedad').value;
+  const texto=String($('comNuevaTexto')&&$('comNuevaTexto').value||'').trim();
+  if(!propiedadId||!texto){m.textContent='Elegí la propiedad y escribí el mensaje inicial.';m.className='op-msg op-err';return}
+  const actor=(D.parteUsuario||[]).find(x=>x.auth_user_id===authUserId);
+  try{
+    boton.disabled=true;m.textContent='Abriendo comunicado…';m.className='op-msg';
+    await rpc('comunicado_abrir',{propiedad_id:propiedadId,abierto_por_tipo:'admin',
+      abierto_por_parte_id:null,autor_tipo:'admin',autor_parte_usuario_id:actor&&actor.id||null,texto});
+    toast('Comunicado abierto');await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnComunicadoAbrir');if(b)b.disabled=false}
+}
 async function responder(cid){
   const t=$('resp-'+cid).value.trim();const m=$('commsg-'+cid);
   if(!t){m.textContent='Escribí la respuesta.';m.className='op-msg op-err';return}
@@ -1248,9 +1544,10 @@ function renderAgenda(){
   const y=mesRef.y,m=mesRef.m;
   const cargos=D.cargo.filter(c=>fechaCivilEnMes(c.vence_at,y,m)&&montoNetoCargo(c)>0&&propCumpleFiltro(c.propiedad_id));
   const pagos=(D.tx||[]).filter(t=>t.direccion==='entrada'&&propCumpleFiltro(propiedadTx(t))&&(()=>{const v=partesInstanteCivil(t.fecha);return v&&v.y===y&&v.m===m})());
-  const saldoOb=cargos.filter(c=>circuitoCargo(c)==='obligaciones').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
-  const saldoHon=cargos.filter(c=>circuitoCargo(c)==='honorarios').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
-  const saldoOtro=cargos.filter(c=>circuitoCargo(c)==='otros').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+  const cargosOb=cargos.filter(c=>circuitoCargo(c)==='obligaciones'),cargosHon=cargos.filter(c=>circuitoCargo(c)==='honorarios'),cargosOtro=cargos.filter(c=>circuitoCargo(c)==='otros');
+  const saldoOb=textoTotalesPorMoneda(cargosOb,c=>c.saldo_pendiente,c=>c.moneda);
+  const saldoHon=textoTotalesPorMoneda(cargosHon,c=>c.saldo_pendiente,c=>c.moneda);
+  const saldoOtro=textoTotalesPorMoneda(cargosOtro,c=>c.saldo_pendiente,c=>c.moneda);
   // eventos por día
   const evDia={};
   for(const c of cargos){const d=diaFechaCivil(c.vence_at);(evDia[d]=evDia[d]||[]).push({tipo:'cargo',c})}
@@ -1266,7 +1563,7 @@ function renderAgenda(){
     const chips=evs.slice(0,2).map(ev=>{
       if(ev.tipo==='pago'){
         const p=D.pago.find(x=>x.transaccion_id===ev.t.id)||{},pagador=D.pname[p.pagador_parte_id]||D.pname[ev.t.contraparte_parte_id]||'Pago';
-        return `<div class="cal-chip" style="--cc:var(--azul)" title="${esc(pagador)} · ${esc(medioPagoVisible(ev.t))}">▸ ${esc(pagador).slice(0,9)} ${fmt(ev.t.monto)}</div>`;
+        return `<div class="cal-chip" style="--cc:var(--azul)" title="${esc(pagador)} · ${esc(medioPagoVisible(ev.t))}">▸ ${esc(pagador).slice(0,9)} ${fmt(ev.t.monto)} ${esc(ev.t.moneda)}</div>`;
       }
       const pr=D.prop.find(p=>p.id===ev.c.propiedad_id);const e=estadoCargo(ev.c);
       const cuenta=circuitoCargo(ev.c)==='honorarios'?'Honor.':conceptoAmigable(ev.c.concepto);
@@ -1282,9 +1579,9 @@ function renderAgenda(){
     <button class="btn-g" id="mesNext">›</button>
     </div></div>
     <div class="account-grid" style="margin-bottom:1rem">
-      <div class="account-box obligations"><div class="pg-l">Obligaciones pendientes</div><div class="amount">${fmt(saldoOb)}</div><div class="account-caption">inquilinos y servicios administrados</div></div>
-      <div class="account-box fees"><div class="pg-l">Honorarios pendientes</div><div class="amount">${fmt(saldoHon)}</div><div class="account-caption">deuda con la administración</div></div>
-      ${saldoOtro>0?`<div class="account-box"><div class="pg-l">Otros pendientes</div><div class="amount">${fmt(saldoOtro)}</div></div>`:''}
+      <div class="account-box obligations"><div class="pg-l">Obligaciones pendientes</div><div class="amount">${esc(saldoOb)}</div><div class="account-caption">inquilinos y servicios administrados</div></div>
+      <div class="account-box fees"><div class="pg-l">Honorarios pendientes</div><div class="amount">${esc(saldoHon)}</div><div class="account-caption">deuda con la administración</div></div>
+      ${cargosOtro.some(c=>Number(c.saldo_pendiente)>0)?`<div class="account-box"><div class="pg-l">Otros pendientes</div><div class="amount">${esc(saldoOtro)}</div></div>`:''}
     </div>`;
   const cab=dias.map(d=>`<div class="cal-dow">${d}</div>`).join('');
   const leyenda=`<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.8rem;font-size:.58rem;color:rgba(245,243,240,.5)">
@@ -1303,9 +1600,9 @@ function renderAgendaDia(y,m,d){
   const filas=cargos.map(c=>{const p=D.prop.find(x=>x.id===c.propiedad_id),e=estadoCargo(c);return `<tr>
     <td>${esc(p&&p.direccion||'—')}</td><td>${esc(circuitoNombre(circuitoCargo(c)))}</td><td>${esc(conceptoAmigable(c.concepto))}</td>
     <td>${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}</td>
-    <td class="num">${fmt(montoNetoCargo(c))}</td><td><span class="tag" style="--tc:${e.c}">${e.t}</span></td></tr>`}).join('');
+    <td class="num">${fmt(montoNetoCargo(c))} ${esc(c.moneda)}</td><td><span class="tag" style="--tc:${e.c}">${e.t}</span></td></tr>`}).join('');
   const filasPagos=pagos.map(t=>{const p=D.pago.find(x=>x.transaccion_id===t.id)||{};return `<tr><td>—</td><td>Pago informado</td><td>${esc(medioPagoVisible(t))}</td>
-    <td>${esc(D.pname[p.pagador_parte_id]||D.pname[t.contraparte_parte_id]||'—')} → ${esc(D.pname[p.beneficiario_parte_id]||'—')}</td><td class="num">${fmt(t.monto)}</td><td><span class="tag" style="--tc:var(--azul)">informado</span></td></tr>`}).join('');
+    <td>${esc(D.pname[p.pagador_parte_id]||D.pname[t.contraparte_parte_id]||'—')} → ${esc(D.pname[p.beneficiario_parte_id]||'—')}</td><td class="num">${fmt(t.monto)} ${esc(t.moneda)}</td><td><span class="tag" style="--tc:var(--azul)">informado</span></td></tr>`}).join('');
   el.innerHTML=`<div class="sec-t">${d} de ${MESES[m]} de ${y} — todos los movimientos</div><div class="card"><table>
     <tr><th>Propiedad</th><th>Cuenta</th><th>Concepto</th><th>Partes</th><th class="num">Monto</th><th>Estado</th></tr>${filas}${filasPagos}</table></div>`;
 }
@@ -1314,7 +1611,7 @@ function abrir(pid,tabIni){
   propAbierta=pid;
   $('mTitle').textContent=p.direccion;
   $('mSub').textContent=(p.ciudad||'')+' · '+estadoProp(pid).t;
-  const tabs=['Calendario','Cargos','Contratos','Notas','Servicios','Liquidación','Operar','Excepciones'];
+  const tabs=['Calendario','Cargos','Contratos','Personas','Notas','Servicios','Liquidación','Operar','Excepciones'];
   const ini=tabIni&&tabs.includes(tabIni)?tabIni:'Calendario';
   $('mTabs').innerHTML=tabs.map(t=>`<button class="tab${t===ini?' on':''}" data-t="${t}">${t}</button>`).join('');
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');tab(pid,b.dataset.t)});
@@ -1328,27 +1625,59 @@ function renderCalMes(pid,m){
   det.innerHTML=`<div class="pg-l" style="margin-bottom:.5rem">${MESES[m]} ${calYear} — al detalle</div>
     <table><tr><th>Cuenta</th><th>Vence</th><th>Concepto</th><th>Deudor → acreedor</th><th class="num">Monto neto</th><th class="num">Saldo</th><th>Estado</th></tr>`+
     cs.map(c=>{const e=estadoCargo(c);return `<tr><td>${esc(circuitoNombre(circuitoCargo(c)))}</td><td>${fdate(c.vence_at)}</td><td>${esc(conceptoAmigable(c.concepto))}</td>
-      <td>${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}</td><td class="num">${fmt(montoNetoCargo(c))}</td>
-      <td class="num ${Number(c.saldo_pendiente)>0?'neg':'pos'}">${fmt(c.saldo_pendiente)}</td>
+      <td>${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}</td><td class="num">${fmt(montoNetoCargo(c))} ${esc(c.moneda)}</td>
+      <td class="num ${Number(c.saldo_pendiente)>0?'neg':'pos'}">${fmt(c.saldo_pendiente)} ${esc(c.moneda)}</td>
       <td><span class="tag" style="--tc:${e.c}">${e.t}</span></td></tr>`}).join('')+'</table>';
 }
+function partesVinculadasPropiedad(pid){
+  const ids=new Set();
+  const titular=titularParteId(pid);if(titular)ids.add(titular);
+  const contratos=D.con.filter(c=>c.propiedad_id===pid);contratos.forEach(c=>ids.add(c.inquilino_parte_id));
+  (D.garantia||[]).filter(g=>contratos.some(c=>c.id===g.contrato_id)).forEach(g=>ids.add(g.garante_parte_id));
+  (D.scta||[]).filter(s=>s.propiedad_id===pid).forEach(s=>ids.add(s.responsable_parte_id));
+  return D.parte.filter(p=>ids.has(p.id)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+}
+function htmlPersonas(pid){
+  const vinculadas=partesVinculadasPropiedad(pid),vinculadasIds=new Set(vinculadas.map(p=>p.id));
+  const otras=D.parte.filter(p=>!vinculadasIds.has(p.id)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const ownerId=titularParteId(pid),owner=D.parte.find(p=>p.id===ownerId);
+  return `<div class="sec-t" style="margin-top:.2rem">Editar datos de contacto</div>
+    <div class="section-note">Estos campos son datos de contacto del alquiler. Cambiar el email acá <b>no cambia el email de inicio de sesión</b>.</div>
+    <div class="f-grid" style="margin-top:1rem">
+      <div class="f-full"><span class="f-l">Persona</span><select class="f" id="personaEditar">${vinculadas.length?`<optgroup label="Vinculadas a esta propiedad">${vinculadas.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}</optgroup>`:''}${otras.length?`<optgroup label="Otras personas registradas">${otras.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}</optgroup>`:''}</select></div>
+      <div><span class="f-l">Teléfono / WhatsApp</span><input class="f" id="personaTel"/></div>
+      <div><span class="f-l">Email de contacto</span><input class="f" id="personaEmail" type="email"/></div>
+      <div class="f-full"><span class="f-l">Notas</span><textarea class="f" id="personaNotas" rows="3"></textarea></div>
+      <div class="f-full"><button class="btn" id="btnPersonaGuardar">Guardar datos de contacto</button><div class="op-msg" id="msgPersonaGuardar"></div></div>
+    </div>
+    <div class="sec-t">Acceso del propietario al portal</div>
+    ${owner?`<div class="section-note"><b>${esc(owner.nombre)}</b> · ${esc(owner.email||'sin email de contacto')}. Primero verificá si existe un usuario de acceso con ese mismo email.</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem"><a class="btn-g" href="alquileres-propietario.html" target="_blank" rel="noopener">Abrir portal del propietario</a><button class="btn-g" type="button" onclick="copiarEnlacePortalPropietario()">Copiar enlace</button></div>
+      <div class="f-grid" style="margin-top:1rem">
+        <div><span class="f-l">Email que debe coincidir</span><input class="f" id="accesoEmail" type="email" value="${esc(owner.email||'')}" readonly/></div>
+        <div style="align-self:end"><button class="btn-g" id="btnAccesoVerificar" ${owner.email?'':'disabled'}>Verificar acceso</button></div>
+        <div class="f-full"><span class="f-l">Motivo obligatorio para otorgar o revocar</span><input class="f" id="accesoMotivo" placeholder="Ej.: acceso solicitado por el propietario"/></div>
+        <div class="f-full" id="accesoPreviewBox"><div class="empty">Verificá el acceso antes de otorgarlo o revocarlo.</div></div>
+        <div class="f-full"><div class="op-msg" id="msgAccesoPropietario"></div></div>
+      </div>`:'<div class="empty">No hay una titularidad vigente para administrar accesos.</div>'}`;
+}
 function tab(pid,t){
-  tabAbierta=t;let h='';
+  tabAbierta=t;let h='',gruposPago=[];
   if(t==='Calendario'){
     const cy=calYear;const cells=[];
     for(let m=0;m<12;m++){
       const cs=D.cargo.filter(c=>c.propiedad_id===pid&&fechaCivilEnMes(c.vence_at,cy,m));
-      const ob=cs.filter(c=>circuitoCargo(c)==='obligaciones').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
-      const ho=cs.filter(c=>circuitoCargo(c)==='honorarios').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
-      const saldo=ob+ho;let st,col;
+      const obs=cs.filter(c=>circuitoCargo(c)==='obligaciones'),hos=cs.filter(c=>circuitoCargo(c)==='honorarios');
+      const ob=textoTotalesPorMoneda(obs,c=>c.saldo_pendiente,c=>c.moneda),ho=textoTotalesPorMoneda(hos,c=>c.saldo_pendiente,c=>c.moneda);
+      const tieneSaldo=[...obs,...hos].some(c=>Number(c.saldo_pendiente)>0);let st,col;
       if(!cs.length){st='—';col='rgba(255,255,255,.12)'}
-      else if(saldo<=0){st='Sin pendientes ✓';col='var(--verde)'}
+      else if(!tieneSaldo){st='Sin pendientes ✓';col='var(--verde)'}
       else{const venc=cs.some(c=>Number(c.saldo_pendiente)>0&&fechaCivilVencida(c.vence_at));st=venc?'Hay vencidos':'Hay pendientes';col=venc?'var(--rojo)':'var(--ambar)'}
       cells.push(`<div onclick="renderCalMes('${pid}',${m})" style="cursor:pointer;border:1px solid var(--card-border);border-top:2px solid ${col};border-radius:10px;padding:.7rem .8rem;background:var(--glass-t2)">
         <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,243,240,.5)">${MESES[m]}</div>
         <div style="font-size:.82rem;font-weight:700;color:${col};margin-top:.25rem">${st}</div>
-        <div style="font-size:.58rem;color:rgba(245,243,240,.55);margin-top:.2rem">Obligaciones: ${fmt(ob)}</div>
-        <div style="font-size:.58rem;color:rgba(245,243,240,.55);margin-top:.1rem">Honorarios: ${fmt(ho)}</div></div>`);
+        <div style="font-size:.58rem;color:rgba(245,243,240,.55);margin-top:.2rem">Obligaciones: ${esc(ob)}</div>
+        <div style="font-size:.58rem;color:rgba(245,243,240,.55);margin-top:.1rem">Honorarios: ${esc(ho)}</div></div>`);
     }
     h=`<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
         <button class="btn-g" id="calPrev">‹ ${cy-1}</button>
@@ -1364,31 +1693,51 @@ function tab(pid,t){
       cs.map(c=>{const e=estadoCargo(c),vinculo=vinculoFacturaCargo(c.id),fac=vinculo&&vinculo.factura,
         reparto=vinculo&&vinculo.reparto,doc=fac&&D.doc.find(d=>d.id===fac.comprobante_documento_id);
         const detalle=c.snapshot_regla&&c.snapshot_regla.detalle;return `<tr><td>${esc(circuitoNombre(circuitoCargo(c)))}</td><td><b>${esc(conceptoAmigable(c.concepto))}</b>${detalle?`<div class="account-caption">${esc(detalle)}</div>`:''}${fac?`<div class="account-caption">Factura vinculada${reparto?' · '+esc(modoFacturaVisible(fac))+' · '+Number(reparto.porcentaje).toLocaleString('es-AR')+' %':''}${doc?' · documento '+esc(String(doc.sha256||'').slice(0,8))+'… <button class="btn-g" type="button" onclick="descargarFacturaDocumento(\''+doc.id+'\')">Descargar</button>':''}</div>`:''}</td><td>${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}</td><td>${fdate(c.vence_at)}</td>
-      <td class="num">${fmt(montoNetoCargo(c))}</td><td class="num ${Number(c.saldo_pendiente)>0?'neg':'pos'}">${fmt(c.saldo_pendiente)}</td>
+      <td class="num">${fmt(montoNetoCargo(c))} ${esc(c.moneda)}</td><td class="num ${Number(c.saldo_pendiente)>0?'neg':'pos'}">${fmt(c.saldo_pendiente)} ${esc(c.moneda)}</td>
       <td><span class="tag" style="--tc:${e.c}">${e.t}</span></td></tr>`}).join('')+'</table>'
       :'<div class="empty">Sin cargos.</div>';
   }else if(t==='Contratos'){
     const cs=D.con.filter(c=>c.propiedad_id===pid).sort((a,b)=>new Date(a.inicio)-new Date(b.inicio));
     const cvig=cs.find(c=>['vigente','continuacion_legal'].includes(c.estado));
-    const vv=cvig&&D.ver.filter(x=>x.contrato_id===cvig.id).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
-    const man=D.mand.find(x=>x.propiedad_id===pid&&x.estado==='vigente')||D.mand.find(x=>x.propiedad_id===pid);
-    const mv=man&&D.mv.filter(x=>x.mandato_id===man.id).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+    const vv=cvig&&contratoVersionVigente(cvig.id);
+    const man=mandatoActivoPropiedad(pid);
+    const mv=man&&mandatoVersionVigente(man.id);
+    const mvProgramadas=man?mandatoVersionesProgramadas(man.id):[];
     const owner=D.pname[titularParteId(pid)]||'—';
     const imp=mv&&mv.tratamiento_impuestos&&mv.tratamiento_impuestos.nota;
     const garantias=(D.garantia||[]).filter(g=>cs.some(c=>c.id===g.contrato_id));
+    const docsDeposito=[...(D.devento||[]).filter(x=>x.propiedad_id===pid).map(x=>({id:x.evidencia_documento_id,tipo:'Evento de depósito'})),
+      ...(D.dliquidacion||[]).filter(x=>x.propiedad_id===pid).map(x=>({id:x.documento_id,tipo:'Liquidación de depósito'}))]
+      .filter(x=>x.id).map(x=>({tipo:x.tipo,doc:D.doc.find(d=>d.id===x.id)})).filter(x=>x.doc);
     h=cs.length?`<div class="section-note" style="margin-bottom:.8rem"><b>Propietario:</b> ${esc(owner)}<br/>
       <b>Honorario:</b> ${mv?(Number(mv.honorario_pct||0)*100).toLocaleString('es-AR')+' % · mínimo '+fmt(mv.honorario_minimo)+' · fijo adicional '+fmt(mv.honorario_fijo)+' · '+esc(mv.moneda):'—'}<br/>
       <b>Base:</b> ${mv?esc(mv.honorario_base):'—'} · punitorios ${mv&&mv.incluye_punitorios?'incluidos en la base porcentual':'excluidos'}${imp?`<br/><b>Impuestos / observación:</b> ${esc(imp)}`:''}</div>
+      ${mvProgramadas.length?`<div class="section-note" style="margin-bottom:.8rem"><b>Comisiones programadas — todavía no vigentes</b><br>${mvProgramadas.map(x=>`${fdate(new Date(rangoTstzDesdeMs(x.vigencia)).toISOString())}: ${(Number(x.honorario_pct||0)*100).toLocaleString('es-AR')} % · mínimo ${fmt(x.honorario_minimo)} · fijo ${fmt(x.honorario_fijo)} ${esc(x.moneda)}`).join('<br>')}</div>`:''}
       <table><tr><th>Inquilino</th><th>Estado</th><th>Inicio / fin</th><th>Condiciones económicas</th><th>Ajuste y mora</th><th>Documento</th></tr>`+
-      cs.map(c=>{const v=D.ver.filter(x=>x.contrato_id===c.id).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+      cs.map(c=>{const esContratoActual=['vigente','continuacion_legal'].includes(c.estado),versionActual=esContratoActual&&contratoVersionVigente(c.id),v=esContratoActual?versionActual:contratoVersionUltima(c.id);
         const serie=v&&D.indices.find(x=>x.id===v.indice_serie_id);
         const ajuste=v?(v.pct_fijo!=null?'Fijo '+(Number(v.pct_fijo)*100).toLocaleString('es-AR')+' %':v.indice_serie_id?'Índice '+esc(serie?serie.organismo+' · '+serie.codigo:'configurado'):'Sin ajuste'):'—';return `<tr><td>${esc(D.pname[c.inquilino_parte_id]||'—')}</td>
       <td><span class="tag" style="--tc:${{vigente:'var(--activo)',cerrado:'var(--gris)',rescindido:'var(--rojo)',continuacion_legal:'var(--ambar)'}[c.estado]||'var(--gris)'}">${esc(c.estado.replace('_',' '))}</span></td>
       <td>${fdate(c.inicio)} → ${fdate(c.fin_pactado)}${c.fin_efectivo?`<div class="account-caption">fin efectivo ${fdate(c.fin_efectivo)}</div>`:''}</td>
-      <td>${v?fmt(v.monto)+' '+esc(v.moneda||''):'—'}${v?`<div class="account-caption">pago días ${esc(v.dia_pago_desde)} a ${esc(v.dia_pago_hasta)} · prorrateo ${esc(prorrateoAmigable(v.metodo_prorrateo))} · redondeo ${esc(redondeoAmigable(v.regla_redondeo))}</div><div class="account-caption">otra moneda: ${v.regla_pago_otra_moneda==='tasa_pactada'?'permitida · '+esc(v.fuente_conversion):'prohibida'}</div>`:''}</td>
+      <td>${v?fmt(v.monto)+' '+esc(v.moneda||''):'—'}${v?`<div class="account-caption">${versionActual?'versión vigente':'última versión histórica'} · pago días ${esc(v.dia_pago_desde)} a ${esc(v.dia_pago_hasta)} · prorrateo ${esc(prorrateoAmigable(v.metodo_prorrateo))} · redondeo ${esc(redondeoAmigable(v.regla_redondeo))}</div><div class="account-caption">otra moneda: ${v.regla_pago_otra_moneda==='tasa_pactada'?'permitida · '+esc(v.fuente_conversion):'prohibida'}</div>`:''}</td>
       <td>${ajuste}${v?`<div class="account-caption">frecuencia ${esc(v.frecuencia_ajuste||'—')} · mora: ${esc(v.punitorio_desde_dia)} días de gracia, ${(Number(v.punitorio_pct_dia||0)*100).toLocaleString('es-AR')} % diario</div>`:''}</td>
-      <td>${c.pdf_documento_id?'Contrato registrado':'Sin PDF vinculado'}</td></tr>`}).join('')+'</table>'+
-      `<div class="sec-t">Garantías</div>${garantias.length?`<table><tr><th>Garante</th><th>Tipo</th><th>Póliza / emisor</th><th>Cobertura</th><th>Vigencia</th><th>Documento</th></tr>${garantias.map(g=>`<tr><td>${esc(D.pname[g.garante_parte_id]||'—')}</td><td>${esc(g.tipo)}</td><td>${esc(g.poliza||'—')} · ${esc(g.emisor||'—')}</td><td>${g.cobertura==null?'—':fmt(g.cobertura)+' '+esc(g.moneda)}</td><td>${esc(g.vigencia||'—')}</td><td>${g.documento_id?'Registrado':'Sin documento'}</td></tr>`).join('')}</table>`:'<div class="empty">Este contrato no tiene una garantía registrada.</div>'}`+
+      <td>${(()=>{const d=c.pdf_documento_id&&D.doc.find(x=>x.id===c.pdf_documento_id);return d?`SHA ${esc(String(d.sha256).slice(0,12))}… <button class="btn-g" type="button" onclick="descargarDocumentoVerificado('${d.id}','el contrato')">Descargar</button>`:'Sin PDF vinculado'})()}</td></tr>`}).join('')+'</table>'+
+      `<div class="sec-t">Garantías</div>${garantias.length?`<table><tr><th>Garante</th><th>Tipo</th><th>Póliza / emisor</th><th>Cobertura</th><th>Vigencia</th><th>Documento</th></tr>${garantias.map(g=>{const d=g.documento_id&&D.doc.find(x=>x.id===g.documento_id);return `<tr><td>${esc(D.pname[g.garante_parte_id]||'—')}</td><td>${esc(g.tipo)}</td><td>${esc(g.poliza||'—')} · ${esc(g.emisor||'—')}</td><td>${g.cobertura==null?'—':fmt(g.cobertura)+' '+esc(g.moneda)}</td><td>${esc(g.vigencia||'—')}</td><td>${d?`SHA ${esc(String(d.sha256).slice(0,12))}… <button class="btn-g" type="button" onclick="descargarDocumentoVerificado('${d.id}','la garantía')">Descargar</button>`:'Sin documento'}</td></tr>`}).join('')}</table>`:'<div class="empty">Este contrato no tiene una garantía registrada.</div>'}`+
+      (docsDeposito.length?`<div class="sec-t">Documentos de depósito</div><table><tr><th>Tipo</th><th>Huella</th><th>Archivo</th></tr>${docsDeposito.map(x=>`<tr><td>${esc(x.tipo)}</td><td>${esc(String(x.doc.sha256).slice(0,12))}…</td><td><button class="btn-g" type="button" onclick="descargarDocumentoVerificado('${x.doc.id}','el depósito')">Descargar</button></td></tr>`).join('')}</table>`:'')+
+      (cvig?`<div class="sec-t">Agregar garantía al contrato vigente</div><div class="f-grid">
+        <div class="f-full"><span class="f-l">Garante existente o nuevo</span><select class="f" id="garParte"><option value="">Crear garante nuevo</option>${D.parte.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}</select></div>
+        <div><span class="f-l">Nombre del garante nuevo</span><input class="f" id="garNombre"/></div><div><span class="f-l">Tipo de persona</span><select class="f" id="garPersonaTipo"><option value="fisica">Persona humana</option><option value="juridica">Persona jurídica</option></select></div>
+        <div><span class="f-l">Documento tipo</span><input class="f" id="garDocTipo" placeholder="DNI / CUIT"/></div><div><span class="f-l">Documento número</span><input class="f" id="garDocNumero"/></div>
+        <div><span class="f-l">Tipo de garantía</span><select class="f" id="garTipo"><option value="fiador">Fiador</option><option value="caucion">Caución</option><option value="aval">Aval</option><option value="otra">Otra</option></select></div><div><span class="f-l">Póliza</span><input class="f" id="garPoliza"/></div>
+        <div><span class="f-l">Emisor</span><input class="f" id="garEmisor"/></div><div><span class="f-l">Cobertura</span><input class="f" id="garCobertura" type="number" min=".01" step=".01"/></div>
+        <div><span class="f-l">Moneda de cobertura</span><select class="f" id="garMoneda"><option>ARS</option><option>USD</option><option>EUR</option></select></div><div><span class="f-l">Desde</span><input class="f" id="garDesde" type="date" value="${hoy()}"/></div>
+        <div><span class="f-l">Hasta inclusive (opcional)</span><input class="f" id="garHasta" type="date"/></div><div><span class="f-l">Documento (opcional)</span><input class="f" id="garDocumento" type="file" accept="application/pdf,image/*"/></div>
+        <div class="f-full"><button class="btn" id="btnGarantiaAlta">Agregar garantía</button><div class="op-msg" id="msgGarantiaAlta"></div></div></div>`:'')+
+      (man&&mv?`<div class="sec-t">Cambiar comisión futura del mandato</div><div class="section-note">Sólo desde el primer día de un mes futuro todavía no generado. Primero calculá la vista previa y después confirmá.</div><div class="f-grid" style="margin-top:1rem">
+        <div><span class="f-l">Vigente desde</span><input class="f" id="mandCambioDesde" type="date" value="${desplazarMesFechaCivil(hoy().slice(0,7)+'-01',1)}"/></div><div><span class="f-l">Porcentaje (%)</span><input class="f" id="mandCambioPct" type="number" min="0" step=".0001" value="${Number(mv.honorario_pct||0)*100}"/></div>
+        <div><span class="f-l">Mínimo</span><input class="f" id="mandCambioMin" type="number" min="0" step=".01" value="${Number(mv.honorario_minimo||0)}"/></div><div><span class="f-l">Fijo adicional</span><input class="f" id="mandCambioFijo" type="number" min="0" step=".01" value="${Number(mv.honorario_fijo||0)}"/></div>
+        <div class="f-full"><label class="ck"><input id="mandCambioPunitorios" type="checkbox" ${mv.incluye_punitorios?'checked':''}/> Incluir punitorios en la base porcentual</label></div><div class="f-full"><span class="f-l">Motivo</span><input class="f" id="mandCambioMotivo"/></div>
+        <div class="f-full"><button class="btn-g" id="btnMandatoPreview">Calcular cambio</button></div><div class="f-full" id="mandatoPreviewBox"><div class="empty">La nueva comisión todavía no fue calculada.</div></div><div class="f-full"><button class="btn" id="btnMandatoAplicar" disabled>Aplicar cambio de comisión</button><div class="op-msg" id="msgMandatoCambio"></div></div></div>`:'')+
       (cvig&&cvig.estado==='vigente'?`<div class="sec-t">Continuación legal sin renovación firmada</div>
       <div class="section-note">Usá esta acción sólo si venció el plazo pactado y la ocupación continúa sin un contrato nuevo. Conserva las condiciones vigentes y deja el estado visible como <b>continuación legal</b>; después todavía se puede renovar o rescindir.</div>
       <div class="f-grid">
@@ -1440,6 +1789,8 @@ function tab(pid,t){
         <div class="f-full"><button class="btn" id="btnRescindir">Rescindir contrato</button><div class="op-msg" id="msgRescindir"></div></div>
       </div>`:'<div class="section-note" style="margin-top:1rem">No hay un contrato vigente para renovar o rescindir.</div>')
       :'<div class="empty">Sin contratos.</div>';
+  }else if(t==='Personas'){
+    h=htmlPersonas(pid);
   }else if(t==='Notas'){
     const ns=D.nota.filter(n=>D.cargo.some(c=>c.id===n.cargo_id&&c.propiedad_id===pid));
     h=ns.length?`<table><tr><th>Cargo</th><th>Tipo</th><th>Motivo</th><th>Fecha / autor</th><th class="num">Monto</th></tr>`+
@@ -1520,13 +1871,15 @@ function tab(pid,t){
       <div id="liqPreview"></div>
       <div class="sec-t">Liquidaciones emitidas</div>
       ${liquidaciones.length?liquidaciones.map(x=>{const envios=(D.lenv||[]).filter(e=>e.liquidacion_id===x.id).sort((a,b)=>b.intento_n-a.intento_n);return `<div class="account-box fees" style="margin-bottom:.8rem">
-        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap"><b>${esc(String(x.periodo).slice(0,7))} · versión ${x.version_documento}</b><span class="tag" style="--tc:var(--azul)">${esc(x.estado)}</span></div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap"><b>${esc(String(x.periodo).slice(0,7))} · ${esc(x.moneda)} · versión ${x.version_documento}</b><span class="tag" style="--tc:var(--azul)">${esc(x.estado)}</span></div>
         <div class="account-caption">Emitida ${fdateInstante(x.emitida_at)} · contenido ${esc(String(x.contenido_sha256).slice(0,12))}… · ${x.documento_id?'PDF guardado '+esc(String(x.pdf_sha256).slice(0,12))+'… · '+(x.pdf_origen==='reconstruido_antes_primer_envio'?'reconstruido antes del primer envío':'archivado al emitir'):'PDF emitido pendiente de guardar'}</div>
-        <div class="account-grid"><div><div class="pg-l">Saldo anterior</div><div class="pg-v">${fmt(x.saldo_apertura_admin)}</div></div>
-        <div><div class="pg-l">Saldo propietario ↔ administración</div><div class="pg-v">${fmt(Math.abs(Number(x.saldo_cierre_admin)))}</div></div></div>
+        <div class="account-grid"><div><div class="pg-l">Saldo anterior</div><div class="pg-v">${fmt(x.saldo_apertura_admin)} ${esc(x.moneda)}</div></div>
+        <div><div class="pg-l">Saldo propietario ↔ administración</div><div class="pg-v">${fmt(Math.abs(Number(x.saldo_cierre_admin)))} ${esc(x.moneda)}</div></div></div>
+        ${resumenPagosLiquidacionEmitidaHtml(x.contenido)}
         ${x.documento_id?`<button class="btn-g" onclick="descargarLiquidacionGuardada('${x.id}')">Descargar PDF guardado</button>`:
           `<button class="btn" onclick="vincularPdfLiquidacion('${x.id}')">Guardar PDF emitido</button>`}
         <button class="btn-g" onclick="prepararEmailLiquidacion('${x.id}')" style="margin-left:.35rem" ${x.documento_id?'':'disabled'}>Preparar email</button>
+        ${girosLiquidacionHtml(x)}
         <div class="op-msg" id="liqPdfMsg-${x.id}"></div>
         <div class="f-grid" style="margin-top:.8rem"><div><span class="f-l">Email del propietario</span><input class="f" id="liqEmail-${x.id}" type="email" value="${esc(owner&&owner.email||'')}"/></div>
         <div><span class="f-l">Resultado real del envío</span><select class="f" id="liqEstado-${x.id}"><option value="enviado">Enviado</option><option value="fallido">Falló</option><option value="rebotado">Rebotó</option></select></div>
@@ -1534,13 +1887,21 @@ function tab(pid,t){
         <div class="account-caption">${envios.length?'Último intento: '+esc(envios[0].estado)+' · '+esc(envios[0].destinatario_email)+' · '+fdateInstante(envios[0].registrado_at):'Todavía no hay un envío registrado.'}</div></div>`}).join(''):'<div class="empty">Todavía no se emitió ninguna liquidación.</div>'}`;
   }else if(t==='Excepciones'){
     const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
-    const version=cvig&&D.ver.filter(v=>v.contrato_id===cvig.id)
-      .sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+    const version=cvig&&contratoVersionVigente(cvig.id);
     const moraConfigurada=!!(version&&Number(version.punitorio_pct_dia)>0&&version.formula_punitorio_version==='simple_diaria_v1');
-    const titular=titularParteId(pid),admin=D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
+    const titular=titularParteId(pid),adminUsuario=(D.parteUsuario||[]).find(x=>x.auth_user_id===authUserId&&rangoTstzContieneAhora(x.vigencia));
+    const admin=D.parte.find(p=>p.id===(adminUsuario&&adminUsuario.parte_id))||D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
     const cargosMora=D.cargo.filter(c=>c.propiedad_id===pid&&circuitoCargo(c)==='obligaciones'&&Number(c.saldo_pendiente)>0);
     const propuestas=(D.mora||[]).filter(x=>x.propiedad_id===pid).sort((a,b)=>String(b.propuesta_at).localeCompare(String(a.propuesta_at)));
-    const deposito=(D.deposito||[]).find(x=>x.contrato_id===(cvig&&cvig.id))||(D.deposito||[]).find(x=>x.propiedad_id===pid);
+    const depositosPropiedad=(D.deposito||[]).filter(x=>x.propiedad_id===pid);
+    const deposito=cvig?depositosPropiedad.find(x=>x.contrato_id===cvig.id):depositosPropiedad
+      .sort((a,b)=>{const ca=D.con.find(c=>c.id===a.contrato_id),cb=D.con.find(c=>c.id===b.contrato_id);return String(cb&&cb.inicio||'').localeCompare(String(ca&&ca.inicio||''))})[0];
+    const contratoDeposito=deposito&&D.con.find(c=>c.id===deposito.contrato_id);
+    const depositoCerrado=contratoDeposito&&['cerrado','rescindido'].includes(contratoDeposito.estado);
+    const titularDeposito=contratoDeposito&&titularParteIdEn(pid,Date.parse(String(contratoDeposito.inicio).slice(0,10)+'T12:00:00Z'))||titular;
+    const depositoEnAdministracion=!!(deposito&&deposito.custodia_parte_id!==titularDeposito&&deposito.custodia_parte_id!==(contratoDeposito&&contratoDeposito.inquilino_parte_id));
+    const depositoCustodiaTipo=!deposito?'':deposito.custodia_parte_id===titularDeposito?'propietario':deposito.custodia_parte_id===(contratoDeposito&&contratoDeposito.inquilino_parte_id)?'inquilino':'administración';
+    const depositoVencidoNatural=!!(contratoDeposito&&['vigente','continuacion_legal'].includes(contratoDeposito.estado)&&contratoDeposito.fin_pactado&&hoyCivil()>String(contratoDeposito.fin_pactado).slice(0,10));
     const ajustes=(D.ajuste||[]).filter(x=>x.contrato_id===(cvig&&cvig.id)).sort((a,b)=>String(b.aplicado_at).localeCompare(String(a.aplicado_at)));
     h=`<div class="section-note"><b>Bloque 3 · meses excepcionales.</b> Acá se resuelven sólo las excepciones. La mora nunca se carga sola; el pago parcial y el excedente siguen en Operar.</div>
       <div class="sec-t">Mora: proponer primero, decidir después</div>
@@ -1558,33 +1919,53 @@ function tab(pid,t){
       <div class="f-grid"><div><span class="f-l">Alquiler vigente</span><input class="f" value="${version?Number(version.monto):''}" disabled/></div><div style="align-self:end"><button class="btn-g" id="btnB3AjusteCalcular" ${cvig?'':'disabled'}>Calcular ajuste contractual</button></div><div class="f-full" id="b3AjustePreview"><div class="empty">Calculá para ver fecha, regla, fuentes y monto nuevo.</div></div><div class="f-full"><span class="f-l">Motivo de la aprobación (obligatorio)</span><input class="f" id="b3AjusteMotivo" placeholder="Ej.: ajuste trimestral revisado y aprobado"/></div><div class="f-full"><button class="btn" id="btnB3Ajuste" disabled>Aprobar y aplicar la nueva versión</button><div class="op-msg" id="msgB3Ajuste"></div></div></div>
       ${ajustes.length?`<div class="account-caption">Último ajuste: ${fmt(ajustes[0].resultado_final)} desde ${fdate(ajustes[0].vigente_desde)} · ${esc(ajustes[0].motivo||'')}</div>`:''}
       <div class="sec-t">Gasto pagado por la administración para recuperar del propietario</div>
-      <div class="f-grid"><div><span class="f-l">Monto</span><input class="f" id="b3GastoMonto" type="number" min="1" step="1"/></div><div><span class="f-l">Vence</span><input class="f" id="b3GastoVence" type="date" value="${hoy()}"/></div><div class="f-full"><span class="f-l">Detalle</span><input class="f" id="b3GastoDetalle" placeholder="ej. termotanque pagado por la administración"/></div><div class="f-full"><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="b3GastoDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Gasto" ${cvig&&titular&&admin?'':'disabled'}>Registrar reintegro</button><div class="op-msg" id="msgB3Gasto"></div></div></div>
-      <div class="sec-t">Depósito en poder del propietario</div>
-      ${deposito?`<div class="section-note">Depósito registrado: ${fmt(deposito.monto_constituido)} · saldo disponible ${fmt(deposito.saldo_disponible)} · custodia del propietario.</div>`:`<div class="f-grid"><div><span class="f-l">Monto entregado</span><input class="f" id="b3DepMonto" type="number" min="1" step="1" value="${version?Number(version.monto):''}"/></div><div><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="b3DepDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Deposito" ${cvig?'':'disabled'}>Registrar depósito</button><div class="op-msg" id="msgB3Deposito"></div></div></div>`}
-      ${deposito&&cvig?`<div class="sec-t">Cerrar contrato y registrar devolución total del depósito</div><div class="f-grid"><div><span class="f-l">Fecha efectiva</span><input class="f" id="b3CierreFecha" type="date" value="${fechaCivil(cvig.fin_pactado)||hoy()}"/></div><div><span class="f-l">Monto devuelto</span><input class="f" id="b3CierreMonto" type="number" min="1" value="${Number(deposito.saldo_disponible)}"/></div><div class="f-full"><span class="f-l">Comprobante de devolución</span><input class="f" id="b3CierreDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Cerrar">Cerrar contrato</button><div class="op-msg" id="msgB3Cerrar"></div></div></div>`:''}
+      <div class="f-grid"><div><span class="f-l">Monto</span><input class="f" id="b3GastoMonto" type="number" min="1" step="1"/></div><div><span class="f-l">Moneda</span><input class="f" id="b3GastoMoneda" maxlength="3" value="${esc(version&&version.moneda||'ARS')}"/></div><div><span class="f-l">Vence</span><input class="f" id="b3GastoVence" type="date" value="${hoy()}"/></div><div class="f-full"><span class="f-l">Detalle</span><input class="f" id="b3GastoDetalle" placeholder="ej. termotanque pagado por la administración"/></div><div class="f-full"><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="b3GastoDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Gasto" ${cvig&&titular&&admin?'':'disabled'}>Registrar reintegro</button><div class="op-msg" id="msgB3Gasto"></div></div></div>
+      <div class="sec-t">Depósito y custodia</div>
+      ${deposito?`<div class="section-note">Depósito registrado: ${fmt(deposito.monto_constituido)} · saldo disponible ${fmt(deposito.saldo_disponible)} · custodia: <b>${esc(D.pname[deposito.custodia_parte_id]||'no identificada')}</b> (${esc(depositoCustodiaTipo)}).</div>`:`<div class="section-note">Este alta rápida registra el depósito en poder del propietario. Para elegir administración o inquilino como custodio, usá el alta integral del contrato.</div><div class="f-grid"><div><span class="f-l">Monto entregado</span><input class="f" id="b3DepMonto" type="number" min="1" step="1" value="${version?Number(version.monto):''}"/></div><div><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="b3DepDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Deposito" ${cvig?'':'disabled'}>Registrar depósito en poder del propietario</button><div class="op-msg" id="msgB3Deposito"></div></div></div>`}
+      ${deposito&&contratoDeposito&&['vigente','continuacion_legal'].includes(contratoDeposito.estado)&&!depositoEnAdministracion?`<div class="sec-t">Cerrar contrato y registrar devolución total del depósito</div><div class="section-note">Este circuito corresponde a un depósito que no está en la caja de la administración.</div><div class="f-grid"><div><span class="f-l">Fecha efectiva</span><input class="f" id="b3CierreFecha" type="date" value="${fechaCivil(contratoDeposito.fin_pactado)||hoy()}"/></div><div><span class="f-l">Monto devuelto</span><input class="f" id="b3CierreMonto" type="number" min="1" value="${Number(deposito.saldo_disponible)}"/></div><div class="f-full"><span class="f-l">Comprobante de devolución</span><input class="f" id="b3CierreDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Cerrar">Cerrar contrato</button><div class="op-msg" id="msgB3Cerrar"></div></div></div>`:''}
+      ${deposito&&depositoEnAdministracion&&cvig&&!depositoVencidoNatural?`<div class="section-note" style="margin-top:.8rem">Este depósito está en la administración: el cierre lógico anterior no se muestra porque no registraría la salida real de caja. La devolución compuesta se habilita tras una rescisión o desde el día posterior al fin pactado (${fdate(contratoDeposito.fin_pactado)}).</div>`:''}
+      ${deposito&&depositoEnAdministracion&&(depositoCerrado||depositoVencidoNatural)&&Number(deposito.saldo_disponible)>0?`<div class="sec-t">${depositoVencidoNatural?'Cerrar contrato y devolver depósito desde caja':'Devolver depósito desde caja custodiada'}</div><div class="section-note">La base verifica que el dinero ingresó efectivamente en una cuenta de la administración y que no quedan obligaciones del inquilino. ${depositoVencidoNatural?'Por vencimiento natural, el mismo botón cierra el contrato en su fin pactado y registra la salida real: todo o nada.':'La devolución registra la salida real y el saldo total.'}</div><button class="btn" type="button" style="margin-top:.8rem" onclick="abrirDepositoF5('${deposito.id}')" ${cuentasActivas(deposito.moneda).length?'':'disabled'}>Previsualizar ${depositoVencidoNatural?'cierre y devolución':'devolución del depósito'}</button>${cuentasActivas(deposito.moneda).length?'':'<div class="op-msg op-err">No hay una cuenta custodiada activa en '+esc(deposito.moneda)+'.</div>'}`:''}
       <div class="sec-t">Pago parcial y pago de más</div><div class="section-note">Se hacen en <b>Operar → Pago de obligaciones administradas</b>. Abril: cargá el pago parcial; mayo: cargá el total recibido. El saldo anterior se cancela primero y el excedente queda como crédito del inquilino.</div>`;
   }else{ /* OPERAR */
     const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
-    const titular=D.tit.find(x=>x.propiedad_id===pid);
+    const monedaOperacion=(contratoVersionParaConfigurarCobro(cvig)||{}).moneda||'ARS';
+    const titularActualId=titularParteId(pid),titular=titularActualId&&D.tit.find(x=>x.propiedad_id===pid&&x.parte_id===titularActualId&&rangoTstzContieneAhora(x.vigencia));
     const cs=D.cargo.filter(c=>c.propiedad_id===pid&&Number(c.saldo_pendiente)>0)
       .sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
     const csObligaciones=cs.filter(c=>circuitoCargo(c)==='obligaciones');
     const csHonorarios=cs.filter(c=>circuitoCargo(c)==='honorarios');
     const csOtros=cs.filter(c=>circuitoCargo(c)==='otros');
     const partesOpts=D.parte.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
-    const creditos=cvig?D.credito.filter(c=>c.contrato_id===cvig.id&&Number(c.saldo_pendiente)>0):[];
-    const creditoTotal=creditos.reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+    const creditos=D.credito.filter(c=>Number(c.saldo_pendiente)>0&&D.con.some(ct=>ct.id===c.contrato_id&&ct.propiedad_id===pid));
+    const creditosMes=cvig?creditos.filter(c=>c.contrato_id===cvig.id):[];
+    const creditoMesTexto=textoTotalesPorMoneda(creditosMes,c=>c.saldo_pendiente,c=>c.moneda);
     const meses=cvig?D.mesgen.filter(x=>x.contrato_id===cvig.id)
       .sort((a,b)=>String(b.mes).localeCompare(String(a.mes))):[];
+    const configurablesCobro=opcionesConfiguracionCobro(pid),preferida=cobroConfigSeleccion.get(pid);
+    const seleccionCobro=configurablesCobro.find(x=>x.clave===preferida)||configurablesCobro[0]||null;
+    if(seleccionCobro)cobroConfigSeleccion.set(pid,seleccionCobro.clave);
+    const contratoCobro=seleccionCobro&&seleccionCobro.contrato,monedaCobro=seleccionCobro&&seleccionCobro.moneda||'ARS';
+    const cfgCobro=contratoCobro&&configuracionCobro(contratoCobro.id,monedaCobro);
+    const csObligacionesCobro=contratoCobro?csObligaciones.filter(c=>c.contrato_id===contratoCobro.id&&String(c.moneda).toUpperCase()===monedaCobro):[];
+    const agruparCargosPago=(items,prefijo)=>{
+      const lotes=new Map();items.forEach(c=>{const clave=[c.contrato_id,c.moneda,c.deudor_parte_id,c.acreedor_parte_id].join('|');if(!lotes.has(clave))lotes.set(clave,[]);lotes.get(clave).push(c)});
+      return [...lotes.values()].map((cargos,i)=>({grupo:prefijo+'-'+i,cargos}));
+    };
+    const lotesObligaciones=agruparCargosPago(csObligacionesCobro,'obligaciones');
+    const lotesHonorarios=agruparCargosPago(csHonorarios,'honorarios');
+    const lotesOtros=agruparCargosPago(csOtros,'otros');
+    gruposPago=[...lotesObligaciones,...lotesHonorarios,...lotesOtros].map(x=>x.grupo);
+    const mediosObligaciones=cfgCobro&&cfgCobro.modalidad==='custodiado'
+      ?'<option value="transferencia_a_cuenta_custodiada">Transferencia a cuenta custodiada</option><option value="efectivo_en_administracion">Efectivo recibido por la administración</option><option value="otro">Otro</option>'
+      :'<option value="transferencia_directa_al_propietario">Transferencia directa al propietario</option><option value="efectivo_directo_al_propietario">Efectivo al propietario</option><option value="otro">Otro</option>';
     const mesBase=cvig&&String(cvig.inicio||'').slice(0,7)>mesActual()
       ?String(cvig.inicio).slice(0,7):mesActual();
     const pagoCuenta=(grupo,titulo,descripcion,cargos,medios)=>{
       const moneda=cargos[0]&&cargos[0].moneda||'ARS';
       const contratoId=cargos[0]&&cargos[0].contrato_id;
-      const version=contratoId&&D.ver.filter(v=>v.contrato_id===contratoId)
-        .sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+      const version=contratoId&&(contratoVersionVigente(contratoId)||contratoVersionUltima(contratoId));
       const permiteOtra=!!(version&&version.regla_pago_otra_moneda==='tasa_pactada'&&version.fuente_conversion);
-      return `<div class="account-box ${grupo==='honorarios'?'fees':'obligations'}" style="margin-top:1rem">
+      return `<div class="account-box ${grupo.startsWith('honorarios-')?'fees':'obligations'}" style="margin-top:1rem">
       <div class="sec-t" style="margin-top:0">${titulo}</div><div class="account-caption">${descripcion}</div>
       <div class="ck-list" style="margin-top:.7rem">${cargos.length?cargos.map(c=>`<label class="ck"><input type="checkbox" checked data-ck-group="${grupo}" data-ck="${c.id}"/>
         ${esc(conceptoAmigable(c.concepto))} · ${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}
@@ -1598,7 +1979,9 @@ function tab(pid,t){
         <div><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="opComprobante-${grupo}" type="file" accept="application/pdf,image/*" ${cargos.length?'':'disabled'}/></div>
         <div id="opConversionBox-${grupo}" style="display:none"><span class="f-l">Tasa confirmada</span><input class="f" id="opTasa-${grupo}" type="number" min="0.000000000001" step="0.000001" placeholder="1 moneda recibida = cuántas ${esc(moneda)}"/></div>
         <div class="f-full section-note" id="opConversionInfo-${grupo}">${permiteOtra?'Este contrato permite otra moneda con fuente pactada: <b>'+esc(version.fuente_conversion)+'</b>. Si cambiás la moneda, el reparto se calcula en la base antes de confirmar.':'Este contrato prohíbe pagar en otra moneda.'}</div>
-        <div class="f-full"><button class="btn" id="btnCobro-${grupo}" ${cargos.length?'':'disabled'}>Confirmar este pago</button>
+        ${grupo.startsWith('obligaciones-')?`<div class="f-full" id="opCobroF5-${grupo}"><div class="empty">Calculá el pago para revisar modalidad, cuenta, imputaciones y eventual crédito antes de confirmar.</div></div>
+        <div class="f-full" style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn-g" type="button" id="btnCobroPreview-${grupo}" ${cargos.length?'':'disabled'}>Calcular pago</button><button class="btn" id="btnCobro-${grupo}" disabled>Confirmar este pago</button>`:
+        `<div class="f-full"><button class="btn" id="btnCobro-${grupo}" ${cargos.length?'':'disabled'}>Confirmar este pago</button>`}
           <div class="op-msg" id="msgCobro-${grupo}"></div></div>
       </div></div>`;
     };
@@ -1609,25 +1992,29 @@ function tab(pid,t){
       <div><span class="f-l">Expensas del mes</span><input class="f" id="opExpensas" type="number" min="0" step="1" value="0"/></div>
       <div class="f-full section-note">
         Este paso crea <b>dos cuentas separadas</b>: obligaciones del inquilino (alquiler y expensas) y honorarios que el propietario debe a la administración. Nunca se suman como una única deuda.
-        ${creditoTotal>0?` Hay ${fmt(creditoTotal)} de crédito del inquilino: se aplicará automáticamente.`:''}
+        ${creditosMes.length?` Hay ${esc(creditoMesTexto)} de crédito del contrato vigente: se aplicará por su moneda.`:''}
       </div>
       <div class="f-full" id="mesPreview"><div class="empty">Elegí el mes para calcular los importes exactos antes de generarlo.</div></div>
       <div class="f-full"><button class="btn" id="btnMes">Generar el mes</button>
         <div class="op-msg" id="msgMes"></div></div>
     </div>
     ${meses.length?`<table style="margin-top:1rem"><tr><th>Mes</th><th class="num">Alquiler</th><th class="num">Expensas</th><th class="num">Honorario</th><th class="num">Crédito usado</th></tr>${meses.slice(0,6).map(x=>`<tr><td>${esc(String(x.mes).slice(0,7))}</td><td class="num">${fmt(x.alquiler_monto)}</td><td class="num">${fmt(x.expensas_monto)}</td><td class="num">${fmt(x.honorario_monto)}</td><td class="num">${fmt(x.credito_aplicado)}</td></tr>`).join('')}</table>`:''}
+    <div class="sec-t">Modalidad del cobro del inquilino</div>
+    ${seleccionCobro?`<div class="f-grid"><div class="f-full"><span class="f-l">Contrato y moneda</span><select class="f" id="cobroContratoMoneda">${configurablesCobro.map(x=>`<option value="${x.clave}" ${x.clave===seleccionCobro.clave?'selected':''}>${esc(D.pname[x.contrato.inquilino_parte_id]||'Inquilino')} · desde ${fdate(x.contrato.inicio)} · ${esc(x.contrato.estado.replace('_',' '))} · ${esc(x.moneda)}</option>`).join('')}</select></div><div><span class="f-l">Modalidad para ${esc(monedaCobro)}</span><select class="f" id="cobroModalidad"><option value="directo" ${!cfgCobro||cfgCobro.modalidad==='directo'?'selected':''}>Pago directo al propietario · no entra en caja</option><option value="custodiado" ${cfgCobro&&cfgCobro.modalidad==='custodiado'?'selected':''}>Cobro en cuenta de la administración</option></select></div><div id="cobroCuentaBox"><span class="f-l">Cuenta custodiada en ${esc(monedaCobro)}</span><select class="f" id="cobroCuenta">${opcionesCuenta(monedaCobro,cfgCobro&&cfgCobro.cuenta_custodia_id)}</select></div><div style="align-self:end"><button class="btn" type="button" id="btnCobroModalidad">Guardar modalidad</button></div><div class="f-full section-note">La modalidad pertenece a este contrato y a esta moneda. Los contratos cerrados con deuda pendiente siguen disponibles para cobrar. Los honorarios del propietario a la administración son una cuenta separada.</div><div class="f-full"><div class="op-msg" id="msgCobroModalidad"></div></div></div>`:'<div class="empty">No hay un contrato configurable ni obligaciones pendientes para cobrar.</div>'}
     <div class="sec-t">Confirmar pagos con comprobante</div>
     <div class="section-note">Elegí la cuenta correcta. El pago del inquilino al propietario y el pago del propietario a la administración son operaciones distintas.</div>
-    ${pagoCuenta('obligaciones','Pago de obligaciones administradas','Lo paga el inquilino al propietario. No cancela honorarios.',csObligaciones,
-      '<option value="transferencia_directa_al_propietario">Transferencia directa al propietario</option><option value="efectivo_directo_al_propietario">Efectivo al propietario</option><option value="otro">Otro</option>')}
-    ${pagoCuenta('honorarios','Pago de honorarios de administración','Lo paga el propietario a Sur Patagonian Real Estate.',csHonorarios,
-      '<option value="transferencia_a_administracion">Transferencia a la administración</option><option value="efectivo_a_administracion">Efectivo a la administración</option><option value="otro">Otro</option>')}
-    ${csOtros.length?pagoCuenta('otros','Pago de otra cuenta','Verificá especialmente deudor y acreedor antes de confirmar.',csOtros,
-      '<option value="transferencia_directa">Transferencia directa</option><option value="efectivo_directo">Efectivo directo</option><option value="otro">Otro</option>'):''}
+    ${lotesObligaciones.length?lotesObligaciones.map((l,i)=>pagoCuenta(l.grupo,'Pago de obligaciones administradas'+(lotesObligaciones.length>1?' · lote '+(i+1):''),cfgCobro&&cfgCobro.modalidad==='custodiado'?'Lo paga el inquilino a la cuenta custodiada elegida. No cancela honorarios.':'Lo paga el inquilino al propietario. No cancela honorarios.',l.cargos,mediosObligaciones)).join(''):`<div class="empty">No hay obligaciones pendientes para el contrato y la moneda elegidos.</div>`}
+    ${lotesHonorarios.map((l,i)=>pagoCuenta(l.grupo,'Pago de honorarios de administración'+(lotesHonorarios.length>1?' · lote '+(i+1):''),'Lo paga el propietario a Sur Patagonian Real Estate.',l.cargos,
+      '<option value="transferencia_a_administracion">Transferencia a la administración</option><option value="efectivo_a_administracion">Efectivo a la administración</option><option value="otro">Otro</option>')).join('')}
+    ${lotesOtros.map((l,i)=>pagoCuenta(l.grupo,'Pago de otra cuenta'+(lotesOtros.length>1?' · lote '+(i+1):''),'Verificá especialmente deudor y acreedor antes de confirmar.',l.cargos,
+      '<option value="transferencia_directa">Transferencia directa</option><option value="efectivo_directo">Efectivo directo</option><option value="otro">Otro</option>')).join('')}
+    ${creditos.length?`<div class="sec-t">Créditos del inquilino</div><div class="section-note">Todo crédito puede devolverse, total o parcialmente, sólo por este botón y con comprobante. Si nació en caja, registra la salida de esa misma cuenta; si nació en un pago directo, deja una devolución informativa entre las partes y no toca Caja.</div>${creditos.map(cr=>{const origen=D.tx.find(t=>t.id===cr.transaccion_origen_id),custodiado=origen&&origen.ambito==='custodiada',ct=D.con.find(c=>c.id===cr.contrato_id);return `<div class="account-box obligations" style="margin-top:.7rem"><b>${esc(D.pname[cr.parte_id]||'Inquilino')}</b> · saldo ${fmt(cr.saldo_pendiente)} ${esc(cr.moneda)} <button class="btn-g" type="button" onclick="abrirCreditoF5('${cr.id}')" style="margin-left:.5rem">Devolver crédito</button><div class="account-caption">${custodiado?'Origen custodiado · la devolución sale de la misma cuenta':'Origen directo · devolución informativa, sin movimiento de Caja'}${ct&&['cerrado','rescindido'].includes(ct.estado)?' · contrato '+esc(ct.estado):''}</div></div>`}).join('')}`:''}
     <div class="sec-t">Emitir cargo</div>
+    <div class="section-note">Emitir un cargo crea una obligación entre las partes. No registra por sí mismo una entrada ni una salida de la caja custodiada.</div>
     <div class="f-grid">
       <div><span class="f-l">Concepto</span><input class="f" id="cgConcepto" value="extra" placeholder="extra · reparacion · penalidad…"/></div>
       <div><span class="f-l">Monto</span><input class="f" id="cgMonto" type="number" min="1" step="1"/></div>
+      <div><span class="f-l">Moneda</span><input class="f" id="cgMoneda" maxlength="3" value="${esc(monedaOperacion)}"/></div>
       <div><span class="f-l">Deudor</span><select class="f" id="cgDeudor">${partesOpts}</select></div>
       <div><span class="f-l">Acreedor</span><select class="f" id="cgAcreedor">${partesOpts}</select></div>
       <div><span class="f-l">Vence</span><input class="f" id="cgVence" type="date" value="${hoy()}"/></div>
@@ -1638,7 +2025,7 @@ function tab(pid,t){
     <div class="sec-t">Nota de crédito / débito (con motivo — la historia no se edita)</div>
     <div class="f-grid">
       <div class="f-full"><span class="f-l">Sobre el cargo</span><select class="f" id="ntCargo">
-        ${D.cargo.filter(c=>c.propiedad_id===pid).map(c=>`<option value="${c.id}">${esc(c.concepto)} · ${fmt(c.monto)} · saldo ${fmt(c.saldo_pendiente)}</option>`).join('')}
+        ${D.cargo.filter(c=>c.propiedad_id===pid).map(c=>`<option value="${c.id}">${esc(c.concepto)} · ${fmt(c.monto)} ${esc(c.moneda)} · saldo ${fmt(c.saldo_pendiente)} ${esc(c.moneda)}</option>`).join('')}
       </select></div>
       <div><span class="f-l">Tipo</span><select class="f" id="ntTipo"><option value="credito">crédito (a favor del deudor)</option><option value="debito">débito (suma deuda)</option></select></div>
       <div><span class="f-l">Monto</span><input class="f" id="ntMonto" type="number" min="1" step="1"/></div>
@@ -1653,6 +2040,12 @@ function tab(pid,t){
     if($('calNext'))$('calNext').onclick=()=>{calYear++;tab(pid,'Calendario')};
     const mAhora=(mesRef.y===calYear)?mesRef.m:_hoy.m;
     renderCalMes(pid,mAhora);
+  }
+  if(t==='Personas'){
+    const selector=$('personaEditar');
+    if(selector){selector.onchange=cargarPersonaSeleccionada;cargarPersonaSeleccionada()}
+    if($('btnPersonaGuardar'))$('btnPersonaGuardar').onclick=()=>guardarPersonaContacto(pid);
+    if($('btnAccesoVerificar'))$('btnAccesoVerificar').onclick=()=>previsualizarAccesoPropietario(pid);
   }
   if(t==='Servicios'){
     $('btnScta').onclick=()=>opScta(pid);
@@ -1677,14 +2070,23 @@ function tab(pid,t){
     if($('btnContinuacion'))$('btnContinuacion').onclick=()=>opContinuacionLegal(pid);
     $('renAjusteTipo').onchange=renovacionAjusteCambio;
     $('renOtraMoneda').onchange=renovacionOtraMonedaCambio;
-    $('renProrrateo').value=(D.ver.filter(v=>D.con.some(c=>c.id===v.contrato_id&&c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado))).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0]||{}).metodo_prorrateo||'dias_reales';
-    $('renRedondeo').value=(D.ver.filter(v=>D.con.some(c=>c.id===v.contrato_id&&c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado))).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0]||{}).regla_redondeo||'centavos';
-    const rv=D.ver.filter(v=>D.con.some(c=>c.id===v.contrato_id&&c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado))).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+    const contratoRenovado=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+    const rv=contratoRenovado&&contratoVersionVigente(contratoRenovado.id);
+    $('renProrrateo').value=(rv||{}).metodo_prorrateo||'dias_reales';
+    $('renRedondeo').value=(rv||{}).regla_redondeo||'centavos';
     const rs=rv&&D.indices.find(x=>x.id===rv.indice_serie_id);
     $('renAjusteTipo').value=rv&&rv.pct_fijo!=null?'porcentaje_fijo':rs?(rs.codigo==='IPC'?'indice_ipc':rs.codigo==='ICL'?'indice_icl':'indice_otro'):'sin_ajuste';
     if(rs){$('renIndiceOrg').value=rs.organismo||'';$('renIndiceCodigo').value=rs.codigo||'';$('renIndiceBase').value=rs.base||'';$('renIndiceGranularidad').value=rs.granularidad||'mensual'}
     $('renOtraMoneda').value=rv&&rv.regla_pago_otra_moneda||'prohibido';
     renovacionAjusteCambio();renovacionOtraMonedaCambio();
+  }
+  if(t==='Contratos'){
+    if($('btnGarantiaAlta')){$('btnGarantiaAlta').onclick=()=>altaGarantiaPosterior(pid);$('garParte').onchange=garantiaPersonaCambio;garantiaPersonaCambio()}
+    if($('btnMandatoPreview')){
+      $('btnMandatoPreview').onclick=()=>previsualizarCambioMandato(pid);
+      $('btnMandatoAplicar').onclick=()=>aplicarCambioMandato(pid);
+      ['mandCambioDesde','mandCambioPct','mandCambioMin','mandCambioFijo','mandCambioPunitorios'].forEach(id=>$(id).onchange=()=>invalidarCambioMandato(pid));
+    }
   }
   if(t==='Liquidación'){
     if($('btnLiqBorrador'))$('btnLiqBorrador').onclick=()=>previsualizarLiquidacion(pid);
@@ -1703,9 +2105,17 @@ function tab(pid,t){
   }
   if(t==='Operar'){
     $('btnMes').onclick=()=>opMesNormal(pid);
-    if($('btnCobro-obligaciones'))$('btnCobro-obligaciones').onclick=()=>opCobro(pid,'obligaciones');
-    if($('btnCobro-honorarios'))$('btnCobro-honorarios').onclick=()=>opCobro(pid,'honorarios');
-    if($('btnCobro-otros'))$('btnCobro-otros').onclick=()=>opCobro(pid,'otros');
+    if($('btnCobroModalidad')){
+      $('btnCobroModalidad').onclick=()=>guardarModalidadCobroF5(pid);
+      $('cobroContratoMoneda').onchange=()=>{cobroConfigSeleccion.set(pid,$('cobroContratoMoneda').value);tab(pid,'Operar')};
+      $('cobroModalidad').onchange=actualizarModalidadCobroUi;
+      $('cobroCuenta').onchange=()=>invalidarCobroF5('obligaciones');
+      actualizarModalidadCobroUi();
+    }
+    gruposPago.forEach(grupo=>{
+      if($('btnCobroPreview-'+grupo))$('btnCobroPreview-'+grupo).onclick=()=>previsualizarCobroF5(pid,grupo);
+      if($('btnCobro-'+grupo))$('btnCobro-'+grupo).onclick=()=>opCobro(pid,grupo);
+    });
     $('btnCargo').onclick=()=>opCargo(pid);
     $('btnNota').onclick=()=>opNota(pid);
     const recalcular=grupo=>{
@@ -1714,20 +2124,25 @@ function tab(pid,t){
       const el=$('opMonto-'+grupo),moneda=$('opMoneda-'+grupo),cargos=cargosSeleccionadosPago(grupo);
       const destino=cargos[0]&&cargos[0].moneda;
       if(el&&total>0&&moneda&&moneda.value.toUpperCase()===destino)el.value=String(total);
+      invalidarCobroF5(grupo);
       programarPreviewPago(grupo);
     };
-    ['obligaciones','honorarios','otros'].forEach(grupo=>{
+    gruposPago.forEach(grupo=>{
       document.querySelectorAll(`[data-ck-group="${grupo}"]`).forEach(x=>x.onchange=()=>recalcular(grupo));recalcular(grupo);
       const moneda=$('opMoneda-'+grupo),monto=$('opMonto-'+grupo),tasa=$('opTasa-'+grupo),fecha=$('opFecha-'+grupo);
       if(moneda){moneda.onfocus=()=>{moneda.dataset.previa=moneda.value.toUpperCase()};moneda.onchange=()=>{
         const cargos=cargosSeleccionadosPago(grupo),destino=cargos[0]&&cargos[0].moneda;
         moneda.value=moneda.value.trim().toUpperCase();
         if(moneda.dataset.previa===destino&&moneda.value!==destino&&monto)monto.value='';
+        invalidarCobroF5(grupo);
         programarPreviewPago(grupo);
       }}
-      if(monto)monto.oninput=()=>programarPreviewPago(grupo);
+      if(monto)monto.oninput=()=>{invalidarCobroF5(grupo);programarPreviewPago(grupo)};
       if(tasa)tasa.oninput=()=>programarPreviewPago(grupo);
-      if(fecha)fecha.onchange=()=>programarPreviewPago(grupo);
+      if(fecha)fecha.onchange=()=>{invalidarCobroF5(grupo);programarPreviewPago(grupo)};
+      const medio=$('opMedio-'+grupo),archivo=$('opComprobante-'+grupo);
+      if(medio)medio.onchange=()=>invalidarCobroF5(grupo);
+      if(archivo)archivo.onchange=()=>invalidarCobroF5(grupo);
     });
     const actualizarMes=async()=>{
       const generado=meses.find(x=>String(x.mes).slice(0,7)===$('opMes').value);
@@ -1741,6 +2156,70 @@ function tab(pid,t){
     if(cvig&&$('cgDeudor'))$('cgDeudor').value=cvig.inquilino_parte_id;
     if(titular&&$('cgAcreedor'))$('cgAcreedor').value=titular.parte_id;
   }
+}
+function cargarPersonaSeleccionada(){
+  const selector=$('personaEditar');if(!selector)return;
+  const p=D.parte.find(x=>x.id===selector.value);if(!p)return;
+  $('personaTel').value=p.tel_whatsapp||'';$('personaEmail').value=p.email||'';$('personaNotas').value=p.notas||'';
+  const m=$('msgPersonaGuardar');if(m){m.textContent='';m.className='op-msg'}
+}
+async function guardarPersonaContacto(pid){
+  const m=$('msgPersonaGuardar'),boton=$('btnPersonaGuardar'),parteId=$('personaEditar').value;
+  const email=$('personaEmail').value.trim().toLowerCase();
+  if(email&&!$('personaEmail').checkValidity()){m.textContent='Revisá el formato del email.';m.className='op-msg op-err';return}
+  try{
+    boton.disabled=true;m.textContent='Guardando…';m.className='op-msg';
+    await rpc('parte_editar',{parte_id:parteId,tel_whatsapp:$('personaTel').value.trim()||null,
+      email:email||null,notas:$('personaNotas').value.trim()||null});
+    accesoPropietarioPreview.delete(pid);toast('Datos de contacto actualizados');await cargar();abrir(pid,'Personas');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnPersonaGuardar');if(b)b.disabled=false}
+}
+async function previsualizarAccesoPropietario(pid){
+  const m=$('msgAccesoPropietario'),box=$('accesoPreviewBox'),boton=$('btnAccesoVerificar');
+  const parteId=titularParteId(pid),email=String($('accesoEmail')&&$('accesoEmail').value||'').trim().toLowerCase();
+  try{
+    if(!parteId||!email)throw new Error('El propietario debe tener un email de contacto antes de verificar el acceso.');
+    boton.disabled=true;m.textContent='Verificando usuario y permisos…';m.className='op-msg';
+    const {data,error}=await sb.rpc('alq_admin_propietario_acceso_previsualizar',{
+      p_propiedad_id:pid,p_parte_id:parteId,p_email:email});
+    if(error)throw new Error(error.message);accesoPropietarioPreview.set(pid,data);m.textContent='';
+    if(data.requiere_invitacion){
+      box.innerHTML=`<div class="section-note">Todavía no existe un usuario de acceso para <b>${esc(email)}</b>. Crealo en Usuarios con <b>Rol Colaborador</b> y <b>Tipo Propietario</b>; después volvé acá y verificá de nuevo. El panel de alquileres no inventa ni invita usuarios.</div><a class="btn" href="usuarios.html" style="display:inline-block;margin-top:.7rem;text-decoration:none">Abrir Usuarios</a>`;
+    }else if(data.acceso_id){
+      box.innerHTML=`<div class="section-note">El usuario existe y ya tiene acceso vigente a esta propiedad.</div><button class="btn-g" id="btnAccesoRevocar" style="margin-top:.7rem">Revocar acceso</button>`;
+      $('btnAccesoRevocar').onclick=()=>revocarAccesoPropietario(pid);
+    }else{
+      box.innerHTML=`<div class="section-note">El usuario existe y está habilitado. Todavía no tiene acceso vigente a esta propiedad.</div><button class="btn" id="btnAccesoOtorgar" style="margin-top:.7rem">Otorgar acceso</button>`;
+      $('btnAccesoOtorgar').onclick=()=>otorgarAccesoPropietario(pid);
+    }
+  }catch(e){accesoPropietarioPreview.delete(pid);box.innerHTML='<div class="empty">No se pudo verificar el acceso.</div>';m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnAccesoVerificar');if(b)b.disabled=false}
+}
+async function otorgarAccesoPropietario(pid){
+  const m=$('msgAccesoPropietario'),preview=accesoPropietarioPreview.get(pid),motivo=$('accesoMotivo').value.trim();
+  try{
+    if(!preview||preview.requiere_invitacion||preview.acceso_id)throw new Error('Verificá nuevamente el acceso antes de otorgarlo.');
+    if(!motivo)throw new Error('Escribí el motivo del acceso.');
+    const payload={schema_version:1,propiedad_id:pid,parte_id:preview.parte_id,email:preview.email,motivo};
+    const clave='alq:f5:acceso-otorgar:'+pid+':'+preview.parte_id,requestId=requestDirectoDurable(clave,payload);
+    $('btnAccesoOtorgar').disabled=true;m.textContent='Otorgando acceso…';m.className='op-msg';
+    const {data,error}=await sb.rpc('alq_admin_propietario_acceso_otorgar',{p_request_id:requestId,p_payload:payload});
+    if(error)throw new Error(error.message);localStorage.removeItem(clave);accesoPropietarioPreview.delete(pid);
+    toast(data&&data.replay?'Acceso verificado sin duplicar':'Acceso otorgado');await cargar();abrir(pid,'Personas');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnAccesoOtorgar');if(b)b.disabled=false}
+}
+async function revocarAccesoPropietario(pid){
+  const m=$('msgAccesoPropietario'),preview=accesoPropietarioPreview.get(pid),motivo=$('accesoMotivo').value.trim();
+  try{
+    if(!preview||!preview.acceso_id)throw new Error('Verificá nuevamente el acceso antes de revocarlo.');
+    if(!motivo)throw new Error('Escribí el motivo de la revocación.');
+    $('btnAccesoRevocar').disabled=true;m.textContent='Revocando acceso…';m.className='op-msg';
+    await rpc('acceso_revocar',{acceso_id:preview.acceso_id,motivo});accesoPropietarioPreview.delete(pid);
+    toast('Acceso revocado');await cargar();abrir(pid,'Personas');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnAccesoRevocar');if(b)b.disabled=false}
 }
 async function previsualizarMes(pid){
   const caja=$('mesPreview'),boton=$('btnMes'),mesEl=$('opMes'),expEl=$('opExpensas');
@@ -1878,14 +2357,14 @@ async function opB3Ajuste(pid){
 }
 async function opB3Gasto(pid){
   const m=$('msgB3Gasto');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
-  const monto=Number($('b3GastoMonto').value),detalle=$('b3GastoDetalle').value.trim(),file=$('b3GastoDoc').files&&$('b3GastoDoc').files[0];
+  const monto=Number($('b3GastoMonto').value),moneda=$('b3GastoMoneda').value.trim().toUpperCase(),detalle=$('b3GastoDetalle').value.trim(),file=$('b3GastoDoc').files&&$('b3GastoDoc').files[0];
   const owner=titularParteId(pid),admin=adminPartePropiedad(pid);
-  if(!cvig||!owner||!admin||!monto||monto<=0||!detalle||!file){m.textContent='Completá monto, detalle y comprobante.';m.className='op-msg op-err';return}
+  if(!cvig||!owner||!admin||!monto||monto<=0||!/^[A-Z]{3}$/.test(moneda)||!detalle||!file){m.textContent='Completá monto, moneda, detalle y comprobante.';m.className='op-msg op-err';return}
   try{$('btnB3Gasto').disabled=true;m.textContent='Guardando comprobante y reintegro…';
     const doc=await documentoArchivo(pid,file,'gasto_propietario_comprobante','gastos-propietario','Adjuntá el comprobante del gasto.');
     await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,cargo_fuente_ref:doc.id,
       deudor_parte_id:owner,acreedor_parte_id:admin,ambito:'externa',concepto:'gasto_propietario',
-      moneda:'ARS',monto:String(monto),vence_at:fechaCivilATimestamp($('b3GastoVence').value),
+      moneda,monto:String(monto),vence_at:fechaCivilATimestamp($('b3GastoVence').value),
       snapshot_regla:{detalle,evidencia_documento_id:doc.id}},{slot:'gasto-propietario:'+doc.id});
     toast('Reintegro registrado en la cuenta propietario → administración');await cargar();
   }catch(e){b3Error('msgB3Gasto',e)}finally{const b=$('btnB3Gasto');if(b)b.disabled=false}
@@ -1954,6 +2433,264 @@ async function documentoArchivo(pid,file,tipo,carpeta,mensaje,opciones={}){
   return q.data[0];
 }
 const documentoComprobante=(pid,file)=>documentoArchivo(pid,file,'comprobante_pago','comprobantes-pago','Adjuntá el comprobante del pago.');
+function copiarEnlacePortalPropietario(){
+  const url=new URL('alquileres-propietario.html',location.href).href;
+  navigator.clipboard.writeText(url).then(()=>toast('Enlace del portal copiado')).catch(()=>toast('No se pudo copiar. Abrí el portal y copiá la dirección.'));
+}
+function abrirCuentasF5(){
+  const filas=(D.cta||[]).map(c=>`<div class="account-box ${c.activa?'obligations':''}" style="margin-bottom:.6rem"><b>${esc(cuentaNombre(c))}</b><div class="account-caption">Saldo real ${fmt(c.saldo)} · ${c.activa?'activa':'inactiva'}</div><button class="btn-g" type="button" onclick="configurarCuentaF5('${c.activa?'desactivar':'activar'}','${c.id}')" ${c.activa&&Number(c.saldo)!==0?'disabled':''}>${c.activa?'Desactivar':'Activar'}</button></div>`).join('');
+  f5Abrir('Cuentas custodiadas','Dinero que ingresa o sale realmente de la administración',`${filas||'<div class="empty">Todavía no hay cuentas.</div>'}<div class="sec-t">Crear cuenta</div><div class="f-grid"><div><span class="f-l">Banco o billetera</span><input class="f" id="f5CuentaBanco"/></div><div><span class="f-l">CBU, alias o identificación</span><input class="f" id="f5CuentaIdent"/></div><div><span class="f-l">Moneda</span><input class="f" id="f5CuentaMoneda" value="ARS" maxlength="3"/></div><div style="align-self:end"><button class="btn" type="button" id="btnF5CuentaCrear" onclick="configurarCuentaF5('crear','')">Crear cuenta</button></div><div class="f-full"><div class="op-msg" id="msgF5Cuenta"></div></div></div><div class="section-note" style="margin-top:1rem">Una cuenta activa con saldo o usada por un contrato no puede desactivarse.</div>`);
+}
+async function configurarCuentaF5(accion,cuentaId){
+  const m=$('msgF5Cuenta');try{
+    const payload={schema_version:1,accion};
+    if(accion==='crear'){
+      payload.banco_billetera=$('f5CuentaBanco').value.trim();payload.identificador=$('f5CuentaIdent').value.trim();
+      payload.moneda=$('f5CuentaMoneda').value.trim().toUpperCase();
+      if(!payload.banco_billetera||!payload.identificador||!/^[A-Z]{3}$/.test(payload.moneda))throw new Error('Completá banco, identificación y una moneda de tres letras.');
+    }else payload.cuenta_id=cuentaId;
+    if(m){m.textContent='Guardando…';m.className='op-msg'}
+    const r=await f5Mutar('alq_admin_cuenta_custodia_configurar','alq:f5:cuenta:'+accion+':'+(cuentaId||payload.identificador),payload);
+    toast((r&&r.replay?'Cuenta verificada':'Cuenta actualizada')+' · '+r.moneda);await cargar();abrirCuentasF5();
+  }catch(e){if(m){m.textContent=e.message;m.className='op-msg op-err'}else toast(e.message)}
+}
+function abrirReversaF5(txId){
+  const t=D.tx.find(x=>x.id===txId),p=D.pago.find(x=>x.transaccion_id===txId);if(!t||!p)return;
+  reversaF5Preview.delete(txId);
+  f5Abrir('Revertir pago','La reversa es total y vuelve a abrir exactamente las deudas pagadas',`<div class="section-note"><b>${fmt(t.monto)} ${esc(t.moneda)}</b> · ${esc(D.pname[p.pagador_parte_id]||'Pagador')} → ${esc(D.pname[p.beneficiario_parte_id]||'Beneficiario')} · ${fdateInstante(t.fecha)}</div><div class="f-grid" style="margin-top:1rem"><div class="f-full"><span class="f-l">Motivo obligatorio</span><textarea class="f" id="f5ReversaMotivo" rows="3" placeholder="Por qué se revierte este pago"></textarea></div><div class="f-full"><button class="btn-g" type="button" id="btnF5ReversaPreview" onclick="previsualizarReversaF5('${txId}')">Calcular qué se reabre</button></div><div class="f-full" id="f5ReversaPreview"><div class="empty">Todavía no calculado.</div></div><div class="f-full"><button class="btn" type="button" id="btnF5ReversaConfirmar" onclick="confirmarReversaF5('${txId}')" disabled>Confirmar reversa total</button><div class="op-msg" id="msgF5Reversa"></div></div></div>`);
+  $('f5ReversaMotivo').oninput=()=>{reversaF5Preview.delete(txId);$('btnF5ReversaConfirmar').disabled=true;$('f5ReversaPreview').innerHTML='<div class="empty">El motivo cambió. Calculá nuevamente.</div>'};
+}
+async function previsualizarReversaF5(txId){
+  const motivo=$('f5ReversaMotivo').value.trim(),box=$('f5ReversaPreview'),m=$('msgF5Reversa');
+  try{if(!motivo)throw new Error('Escribí el motivo de la reversa.');box.innerHTML='<div class="empty">Calculando…</div>';
+    const {data,error}=await sb.rpc('alq_admin_pago_reversa_previsualizar',{p_transaccion_id:txId,p_motivo:motivo});if(error)throw new Error(error.message);
+    const deuda=data.deudas_reabiertas||{},detalle=Array.isArray(deuda.detalle)?deuda.detalle:[];
+    const totalesDestino=new Map();detalle.forEach(x=>{const moneda=x.moneda_destino||'—';totalesDestino.set(moneda,(totalesDestino.get(moneda)||0)+Number(x.importe_destino_reabierto||0))});
+    const totalDestino=deuda.moneda?`${fmt(deuda.monto)} ${esc(deuda.moneda)}`:[...totalesDestino].map(([moneda,monto])=>`${fmt(monto)} ${esc(moneda)}`).join(' + ')||'—';
+    const detalleHtml=detalle.length?`<table style="margin-top:.8rem"><tr><th>Deuda</th><th>Pago que se revierte</th><th>Saldo que se reabre</th></tr>${detalle.map(x=>{const cargo=D.cargo.find(c=>c.id===x.cargo_id);return `<tr><td>${esc(conceptoAmigable(cargo&&cargo.concepto))}${cargo&&cargo.vence_at?`<div class="account-caption">vence ${fdate(cargo.vence_at)}</div>`:''}</td><td>${fmt(x.importe_origen_revertido)} ${esc(x.moneda_origen)}</td><td><b>${fmt(x.importe_destino_reabierto)} ${esc(x.moneda_destino)}</b></td></tr>`}).join('')}</table>`:'<div class="empty">No se recibió el detalle de las aplicaciones.</div>';
+    reversaF5Preview.set(txId,{motivo,data});box.innerHTML=`<div class="account-grid"><div class="account-box obligations"><div class="pg-l">Deudas que se reabren</div><div class="amount">${deuda.cantidad}</div><div class="account-caption">Total en moneda de las deudas: ${totalDestino}</div></div><div class="account-box fees"><div class="pg-l">Crédito que se neutraliza</div><div class="amount">${fmt(data.monto_credito)} ${esc(data.moneda)}</div><div class="account-caption">Moneda recibida originalmente</div></div></div>${detalleHtml}<div class="section-note" style="margin-top:.8rem">La caja registra una salida por <b>${fmt(data.monto)} ${esc(data.moneda)}</b>, en la moneda recibida. Las deudas se reabren por los importes de destino detallados arriba. Si el pago ya fue girado o el crédito fue usado, la base lo bloquea.</div>`;$('btnF5ReversaConfirmar').disabled=false;m.textContent='';
+  }catch(e){reversaF5Preview.delete(txId);box.innerHTML='<div class="empty">No se pudo calcular.</div>';m.textContent=e.message;m.className='op-msg op-err'}
+}
+async function confirmarReversaF5(txId){
+  const p=reversaF5Preview.get(txId),m=$('msgF5Reversa');try{
+    if(!p||p.motivo!==$('f5ReversaMotivo').value.trim())throw new Error('Calculá nuevamente la reversa.');
+    $('btnF5ReversaConfirmar').disabled=true;m.textContent='Revirtiendo…';m.className='op-msg';
+    const payload={schema_version:1,transaccion_id:txId,motivo:p.motivo,preview_sha256:p.data.preview_sha256};
+    const r=await f5Mutar('alq_admin_pago_revertir','alq:f5:reversa:'+txId,payload);
+    toast((r&&r.replay?'Reversa verificada':'Pago revertido')+' · deudas reabiertas '+r.deudas_reabiertas.cantidad);f5Cerrar();await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err';const b=$('btnF5ReversaConfirmar');if(b)b.disabled=false}
+}
+function actualizarModalidadCobroUi(){
+  const custodiado=$('cobroModalidad')&&$('cobroModalidad').value==='custodiado';if($('cobroCuentaBox'))$('cobroCuentaBox').style.display=custodiado?'block':'none';invalidarCobroF5('obligaciones');
+}
+async function guardarModalidadCobroF5(pid){
+  const m=$('msgCobroModalidad');try{
+    const [contratoId,moneda]=String($('cobroContratoMoneda')&&$('cobroContratoMoneda').value||'').split('|');
+    const contrato=D.con.find(c=>c.id===contratoId&&c.propiedad_id===pid);
+    if(!contrato||!/^[A-Z]{3}$/.test(moneda||''))throw new Error('Elegí el contrato y la moneda que querés configurar.');const modalidad=$('cobroModalidad').value;
+    const payload={schema_version:1,contrato_id:contrato.id,moneda,modalidad,cuenta_custodia_id:modalidad==='custodiado'?$('cobroCuenta').value:null};
+    if(modalidad==='custodiado'&&!payload.cuenta_custodia_id)throw new Error('Elegí la cuenta donde se recibe el dinero.');
+    $('btnCobroModalidad').disabled=true;m.textContent='Guardando…';m.className='op-msg';
+    const r=await f5Mutar('alq_admin_cobro_modalidad_configurar','alq:f5:modalidad:'+contrato.id+':'+moneda,payload);
+    toast((r&&r.replay?'Modalidad verificada':'Modalidad guardada')+' · '+r.modalidad+' · '+r.moneda);await cargar();abrir(pid,'Operar');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}finally{const b=$('btnCobroModalidad');if(b)b.disabled=false}
+}
+function invalidarCobroF5(grupo){
+  if(grupo==='obligaciones'){
+    document.querySelectorAll('[id^="btnCobro-obligaciones-"]').forEach(b=>invalidarCobroF5(b.id.replace('btnCobro-','')));return;
+  }
+  if(!grupo.startsWith('obligaciones-'))return;cobroF5Preview.delete(grupo);const b=$('btnCobro-'+grupo),box=$('opCobroF5-'+grupo);
+  if(b)b.disabled=true;if(box)box.innerHTML='<div class="empty">Calculá el pago para revisar modalidad, cuenta, imputaciones y eventual crédito antes de confirmar.</div>';
+}
+function huellaFormularioCobro(grupo,file){
+  return alqF1aJsonCanonico({cargos:cargosSeleccionadosPago(grupo).map(c=>c.id),monto:$('opMonto-'+grupo).value,
+    fecha:$('opFecha-'+grupo).value,medio:$('opMedio-'+grupo).value,moneda:$('opMoneda-'+grupo).value.trim().toUpperCase(),
+    archivo:file?{nombre:file.name,tamano:file.size,modificado:file.lastModified}:null});
+}
+async function previsualizarCobroF5(pid,grupo){
+  const m=$('msgCobro-'+grupo),box=$('opCobroF5-'+grupo),file=$('opComprobante-'+grupo).files&&$('opComprobante-'+grupo).files[0];
+  try{
+    const cargos=cargosSeleccionadosPago(grupo),monto=Number($('opMonto-'+grupo).value),contrato=cargos[0]&&D.con.find(c=>c.id===cargos[0].contrato_id);
+    if(!cargos.length||!monto||monto<=0||!contrato)throw new Error('Elegí cargos y completá el monto.');
+    if(!file)throw new Error('Adjuntá el comprobante del pago.');
+    if(cargos.some(c=>c.contrato_id!==contrato.id||c.deudor_parte_id!==cargos[0].deudor_parte_id||c.acreedor_parte_id!==cargos[0].acreedor_parte_id||c.moneda!==cargos[0].moneda))throw new Error('Los cargos deben compartir contrato, pagador, beneficiario y moneda.');
+    const moneda=$('opMoneda-'+grupo).value.trim().toUpperCase();
+    if(moneda!==cargos[0].moneda){
+      const cfg=configuracionCobro(contrato.id,cargos[0].moneda);
+      if(cfg&&cfg.modalidad==='custodiado')throw new Error('El cobro custodiado se registra en la moneda de la cuenta. Cambiá la modalidad a pago directo o recibí la moneda contractual.');
+      const conversion=await previsualizarPagoOtraMoneda(grupo,true);
+      if(!conversion||conversion.estado!=='listo')throw new Error('Completá la moneda recibida y la tasa pactada para calcular la conversión.');
+      cobroF5Preview.delete(grupo);box.innerHTML=`<div class="account-grid"><div class="account-box obligations"><div class="pg-l">Modalidad</div><div class="amount">Pago directo</div><div class="account-caption">No ingresa en la caja custodiada</div></div><div class="account-box"><div class="pg-l">Dinero recibido</div><div class="amount">${fmt(conversion.monto_origen)} ${esc(conversion.moneda_origen)}</div></div><div class="account-box fees"><div class="pg-l">Deudas que cancela</div><div class="amount">${fmt(conversion.monto_destino)} ${esc(conversion.moneda_destino)}</div><div class="account-caption">${conversion.aplicaciones.length} cargo(s) · tasa ${esc(conversion.tasa)}</div></div></div>`;
+      m.textContent='';m.className='op-msg';return;
+    }
+    box.innerHTML='<div class="empty">Guardando el comprobante y calculando en la base…</div>';m.textContent='';m.className='op-msg';
+    const doc=await documentoComprobante(pid,file),input={schema_version:1,cargo_ids:cargos.map(c=>c.id),monto:String(monto),fecha:fechaOperacionTimestamp($('opFecha-'+grupo).value),medio:$('opMedio-'+grupo).value,documento_id:doc.id};
+    const {data,error}=await sb.rpc('alq_admin_cobro_previsualizar',{p_contrato_id:contrato.id,p_payload:input});if(error)throw new Error(error.message);
+    const fingerprint=huellaFormularioCobro(grupo,file);cobroF5Preview.set(grupo,{fingerprint,input,contrato_id:contrato.id,data});
+    box.innerHTML=`<div class="account-grid"><div class="account-box obligations"><div class="pg-l">Modalidad</div><div class="amount">${data.modalidad==='custodiado'?'En caja de administración':'Pago directo'}</div><div class="account-caption">${data.cuenta_custodia_id?'Cuenta '+esc(cuentaNombre(D.cta.find(c=>c.id===data.cuenta_custodia_id)||{})):'No entra en la caja custodiada'}</div></div><div class="account-box"><div class="pg-l">Imputado</div><div class="amount">${fmt(data.monto_aplicado)} ${esc(data.moneda)}</div><div class="account-caption">${data.aplicaciones.length} cargo(s), por vencimiento</div></div><div class="account-box fees"><div class="pg-l">Crédito por excedente</div><div class="amount">${fmt(data.monto_credito)} ${esc(data.moneda)}</div></div></div>`;
+    $('btnCobro-'+grupo).disabled=false;
+  }catch(e){cobroF5Preview.delete(grupo);box.innerHTML='<div class="empty">No se pudo calcular el pago.</div>';m.textContent=e.message;m.className='op-msg op-err'}
+}
+function destinosMovimientoF5(){
+  const xs=[];
+  D.cargo.filter(c=>Number(c.saldo_pendiente)>0).forEach(c=>{const p=D.prop.find(x=>x.id===c.propiedad_id);xs.push({tipo:'cargo',id:c.id,moneda:c.moneda,monto:Number(c.saldo_pendiente),label:`Cobrar cargo · ${p?p.direccion:'Propiedad'} · ${conceptoAmigable(c.concepto)} · ${fmt(c.saldo_pendiente)}`})});
+  D.credito.filter(c=>Number(c.saldo_pendiente)>0&&D.tx.some(t=>t.id===c.transaccion_origen_id&&t.ambito==='custodiada'&&t.estado==='confirmada')).forEach(c=>{const ct=D.con.find(x=>x.id===c.contrato_id),p=ct&&D.prop.find(x=>x.id===ct.propiedad_id);xs.push({tipo:'credito',id:c.id,moneda:c.moneda,monto:Number(c.saldo_pendiente),label:`Salida contra crédito custodiado · ${p?p.direccion:'Propiedad'} · ${fmt(c.saldo_pendiente)}`})});
+  D.devento.filter(e=>['constitucion','actualizacion'].includes(e.tipo)).forEach(e=>{
+    const deposito=D.deposito.find(d=>d.id===e.deposito_id),contrato=deposito&&D.con.find(c=>c.id===deposito.contrato_id);
+    const owner=deposito&&contrato&&titularParteIdEn(deposito.propiedad_id,Date.parse(String(contrato.inicio).slice(0,10)+'T12:00:00Z')),custodiaAdministracion=deposito&&contrato&&
+      deposito.custodia_parte_id!==owner&&deposito.custodia_parte_id!==contrato.inquilino_parte_id;
+    if(!custodiaAdministracion)return;
+    const aplicado=D.apl.filter(a=>a.deposito_evento_id===e.id).reduce((s,a)=>s+Number(a.importe_destino||0),0),restante=Math.max(0,Number(e.monto)-aplicado);
+    if(restante<=0)return;
+    const p=D.prop.find(x=>x.id===e.propiedad_id);xs.push({tipo:'deposito_evento',id:e.id,moneda:e.moneda,monto:restante,label:`Ingreso de depósito custodiado · ${p?p.direccion:'Propiedad'} · pendiente ${fmt(restante)}`});
+  });
+  return xs;
+}
+function abrirMovimientoF5(){
+  movimientoF5Preview=null;const destinos=destinosMovimientoF5();
+  f5Abrir('Movimiento de caja e imputación','Una sola confirmación registra el dinero y su destino',`<div class="section-note">No uses esta pantalla para un pago normal del inquilino: ese circuito está en la propiedad → Operar. Acá se registra un movimiento manual real y se lo imputa atómicamente a un cargo, crédito o evento de depósito.</div><div class="f-grid" style="margin-top:1rem"><div class="f-full"><span class="f-l">Destino exacto</span><select class="f" id="f5MovDestino"><option value="">Elegir destino</option>${destinos.map(x=>`<option value="${x.tipo}|${x.id}">${esc(x.label)} ${esc(x.moneda)}</option>`).join('')}</select></div><div><span class="f-l">Cuenta custodiada de la misma moneda</span><select class="f" id="f5MovCuenta">${opcionesCuenta('---')}</select></div><div><span class="f-l">Monto</span><input class="f" id="f5MovMonto" type="number" min=".01" step=".01"/></div><div><span class="f-l">Fecha</span><input class="f" id="f5MovFecha" type="date" value="${hoy()}"/></div><div><span class="f-l">Medio</span><select class="f" id="f5MovMedio"><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="deposito">Depósito</option><option value="otro">Otro</option></select></div><div class="f-full"><span class="f-l">Comprobante obligatorio</span><input class="f" id="f5MovDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn-g" type="button" id="btnF5MovPreview" onclick="previsualizarMovimientoF5()" disabled>Calcular movimiento</button></div><div class="f-full" id="f5MovPreview"><div class="empty">Elegí un destino para mostrar sólo sus cuentas compatibles.</div></div><div class="f-full"><button class="btn" type="button" id="btnF5MovConfirmar" onclick="confirmarMovimientoF5()" disabled>Registrar movimiento e imputación</button><div class="op-msg" id="msgF5Mov"></div></div></div>`);
+  ['f5MovDestino','f5MovCuenta','f5MovMonto','f5MovFecha','f5MovMedio','f5MovDoc'].forEach(id=>$(id).onchange=()=>{movimientoF5Preview=null;$('btnF5MovConfirmar').disabled=true;$('f5MovPreview').innerHTML='<div class="empty">Los datos cambiaron. Calculá nuevamente.</div>'});
+  $('f5MovDestino').onchange=()=>{const [tipo,id]=String($('f5MovDestino').value).split('|'),x=destinos.find(y=>y.tipo===tipo&&y.id===id),cuentas=x?cuentasActivas(x.moneda):[];
+    $('f5MovCuenta').innerHTML=opcionesCuenta(x&&x.moneda||'---');$('f5MovMonto').value=x?String(x.monto):'';
+    if(cuentas[0])$('f5MovCuenta').value=cuentas[0].id;$('btnF5MovPreview').disabled=!x||!cuentas.length;
+    $('f5MovPreview').innerHTML=!x?'<div class="empty">Elegí un destino para mostrar sólo sus cuentas compatibles.</div>':cuentas.length?'<div class="empty">Destino y moneda compatibles. Calculá el movimiento.</div>':`<div class="empty">No hay una cuenta custodiada activa en ${esc(x.moneda)}.</div>`;
+    movimientoF5Preview=null;$('btnF5MovConfirmar').disabled=true};
+}
+function datosMovimientoF5(){
+  const [tipo,id]=String($('f5MovDestino').value||'').split('|');return{tipo,id,cuenta:$('f5MovCuenta').value,monto:Number($('f5MovMonto').value)};
+}
+async function previsualizarMovimientoF5(){
+  const x=datosMovimientoF5(),box=$('f5MovPreview'),m=$('msgF5Mov');try{
+    if(!x.tipo||!x.id||!x.cuenta||!(x.monto>0))throw new Error('Elegí destino, cuenta y monto.');box.innerHTML='<div class="empty">Calculando…</div>';
+    const {data,error}=await sb.rpc('alq_admin_movimiento_caja_previsualizar',{p_destino_tipo:x.tipo,p_destino_id:x.id,p_cuenta_custodia_id:x.cuenta,p_monto:String(x.monto)});if(error)throw new Error(error.message);
+    movimientoF5Preview={entrada:x,data};box.innerHTML=`<div class="account-grid"><div class="account-box obligations"><div class="pg-l">Dirección</div><div class="amount">${data.direccion==='entrada'?'Entrada':'Salida'}</div></div><div class="account-box"><div class="pg-l">Monto e imputación</div><div class="amount">${fmt(data.monto)} ${esc(data.moneda)}</div><div class="account-caption">100 % imputado a ${esc(data.destino_tipo)}</div></div><div class="account-box fees"><div class="pg-l">Impacto a favor del propietario</div><div class="amount">${fmt(data.impacto_propietario)} ${esc(data.moneda)}</div></div></div>`;$('btnF5MovConfirmar').disabled=false;m.textContent='';
+  }catch(e){movimientoF5Preview=null;box.innerHTML='<div class="empty">No se pudo calcular.</div>';m.textContent=e.message;m.className='op-msg op-err'}
+}
+async function confirmarMovimientoF5(){
+  const p=movimientoF5Preview,m=$('msgF5Mov'),file=$('f5MovDoc').files&&$('f5MovDoc').files[0];try{
+    if(!p||alqF1aJsonCanonico(p.entrada)!==alqF1aJsonCanonico(datosMovimientoF5()))throw new Error('Calculá nuevamente el movimiento.');
+    if(!file)throw new Error('Adjuntá el comprobante del movimiento.');$('btnF5MovConfirmar').disabled=true;m.textContent='Guardando comprobante y movimiento…';m.className='op-msg';
+    const doc=await documentoArchivo(p.data.propiedad_id,file,'movimiento_caja_comprobante','movimientos-caja','Adjuntá el comprobante.',{audiencia:'admin'});
+    const payload={schema_version:1,destino_tipo:p.data.destino_tipo,destino_id:p.data.destino_id,cuenta_custodia_id:p.data.cuenta_custodia_id,monto:String(p.data.monto),preview_sha256:p.data.preview_sha256,fecha:fechaOperacionTimestamp($('f5MovFecha').value),medio:$('f5MovMedio').value,comprobante_documento_id:doc.id};
+    const r=await f5Mutar('alq_admin_movimiento_caja_registrar','alq:f5:movimiento:'+doc.id,payload);toast((r&&r.replay?'Movimiento verificado':'Movimiento registrado')+' · '+r.direccion+' '+fmt(r.monto));f5Cerrar();await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err';const b=$('btnF5MovConfirmar');if(b)b.disabled=false}
+}
+function abrirCreditoF5(creditoId){
+  const cr=D.credito.find(x=>x.id===creditoId),ct=cr&&D.con.find(x=>x.id===cr.contrato_id),p=ct&&D.prop.find(x=>x.id===ct.propiedad_id),origen=cr&&D.tx.find(t=>t.id===cr.transaccion_origen_id),custodiado=origen&&origen.ambito==='custodiada';if(!cr||!p)return;
+  creditoF5Preview.delete(creditoId);f5Abrir('Devolver crédito al inquilino',p.direccion,`<div class="section-note">Saldo disponible: <b>${fmt(cr.saldo_pendiente)} ${esc(cr.moneda)}</b>. ${custodiado?'El dinero saldrá de la misma cuenta custodiada donde nació el crédito.':'El crédito nació en un pago directo: la devolución quedará informada entre las partes y no moverá la Caja de la administración.'}</div><div class="f-grid" style="margin-top:1rem"><div><span class="f-l">Monto a devolver</span><input class="f" id="f5CreditoMonto" type="number" min=".01" max="${Number(cr.saldo_pendiente)}" step=".01" value="${Number(cr.saldo_pendiente)}"/></div><div><span class="f-l">Fecha</span><input class="f" id="f5CreditoFecha" type="date" value="${hoy()}"/></div><div><span class="f-l">Medio</span><select class="f" id="f5CreditoMedio"><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="otro">Otro</option></select></div><div><span class="f-l">Comprobante obligatorio</span><input class="f" id="f5CreditoDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn-g" type="button" onclick="previsualizarCreditoF5('${creditoId}')">Calcular devolución</button></div><div class="f-full" id="f5CreditoPreview"><div class="empty">Todavía no calculada.</div></div><div class="f-full"><button class="btn" type="button" id="btnF5CreditoConfirmar" onclick="confirmarCreditoF5('${creditoId}')" disabled>Confirmar devolución</button><div class="op-msg" id="msgF5Credito"></div></div></div>`);
+  $('f5CreditoMonto').oninput=()=>{creditoF5Preview.delete(creditoId);$('btnF5CreditoConfirmar').disabled=true};
+}
+async function previsualizarCreditoF5(id){
+  const monto=Number($('f5CreditoMonto').value),box=$('f5CreditoPreview'),m=$('msgF5Credito');try{
+    if(!(monto>0))throw new Error('Ingresá un monto mayor que cero.');const {data,error}=await sb.rpc('alq_admin_credito_devolucion_previsualizar',{p_credito_id:id,p_monto:String(monto)});if(error)throw new Error(error.message);
+    creditoF5Preview.set(id,{monto,data});box.innerHTML=`<div class="account-grid"><div class="account-box obligations"><div class="pg-l">Devuelve ahora</div><div class="amount">${fmt(data.monto_devolver)} ${esc(data.moneda)}</div></div><div class="account-box fees"><div class="pg-l">Crédito restante</div><div class="amount">${fmt(data.saldo_despues)} ${esc(data.moneda)}</div></div><div class="account-box"><div class="pg-l">Tratamiento</div><div class="amount">${data.modalidad==='custodiado'?'Salida de Caja':'Devolución directa'}</div><div class="account-caption">Impacto en la cuenta del propietario: ${fmt(data.impacto_propietario)} ${esc(data.moneda)}</div></div></div>`;$('btnF5CreditoConfirmar').disabled=false;m.textContent='';
+  }catch(e){creditoF5Preview.delete(id);box.innerHTML='<div class="empty">No se pudo calcular.</div>';m.textContent=e.message;m.className='op-msg op-err'}
+}
+async function confirmarCreditoF5(id){
+  const p=creditoF5Preview.get(id),m=$('msgF5Credito'),file=$('f5CreditoDoc').files&&$('f5CreditoDoc').files[0];try{
+    if(!p||p.monto!==Number($('f5CreditoMonto').value))throw new Error('Calculá nuevamente la devolución.');$('btnF5CreditoConfirmar').disabled=true;m.textContent='Registrando salida…';m.className='op-msg';
+    if(!file)throw new Error('Adjuntá el comprobante de la devolución.');const doc=await documentoArchivo(p.data.propiedad_id,file,'credito_devolucion_comprobante','creditos-devolucion','Adjuntá el comprobante.',{audiencia:'admin'});
+    const payload={schema_version:1,credito_id:id,monto:String(p.data.monto_devolver),preview_sha256:p.data.preview_sha256,fecha:fechaOperacionTimestamp($('f5CreditoFecha').value),medio:$('f5CreditoMedio').value,comprobante_documento_id:doc.id};
+    const r=await f5Mutar('alq_admin_credito_devolver','alq:f5:credito-devolver:'+id+':'+p.data.preview_sha256,payload);toast((r&&r.replay?'Devolución verificada':'Crédito devuelto')+' · '+fmt(r.monto));f5Cerrar();await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err';const b=$('btnF5CreditoConfirmar');if(b)b.disabled=false}
+}
+function abrirDepositoF5(depositoId){
+  const d=D.deposito.find(x=>x.id===depositoId),p=d&&D.prop.find(x=>x.id===d.propiedad_id);if(!d||!p)return;depositoF5Preview.delete(depositoId);
+  f5Abrir('Devolver depósito custodiado',p.direccion,`<div class="section-note">La devolución es total, exige obligaciones del inquilino en cero y fondos efectivamente imputados en la cuenta elegida. Si el plazo ya venció de forma natural, la misma operación cierra el contrato y registra la salida de caja atómicamente.</div><div class="f-grid" style="margin-top:1rem"><div><span class="f-l">Cuenta custodiada</span><select class="f" id="f5DepositoCuenta">${opcionesCuenta(d.moneda)}</select></div><div><span class="f-l">Fecha</span><input class="f" id="f5DepositoFecha" type="date" value="${hoy()}"/></div><div><span class="f-l">Medio</span><select class="f" id="f5DepositoMedio"><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="otro">Otro</option></select></div><div><span class="f-l">Comprobante obligatorio</span><input class="f" id="f5DepositoDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn-g" type="button" onclick="previsualizarDepositoF5('${depositoId}')">Calcular devolución total</button></div><div class="f-full" id="f5DepositoPreview"><div class="empty">Todavía no calculada.</div></div><div class="f-full"><button class="btn" type="button" id="btnF5DepositoConfirmar" onclick="confirmarDepositoF5('${depositoId}')" disabled>Confirmar devolución total</button><div class="op-msg" id="msgF5Deposito"></div></div></div>`);
+  $('f5DepositoCuenta').onchange=()=>{depositoF5Preview.delete(depositoId);$('btnF5DepositoConfirmar').disabled=true};
+}
+async function previsualizarDepositoF5(id){
+  const cuenta=$('f5DepositoCuenta').value,box=$('f5DepositoPreview'),m=$('msgF5Deposito');try{
+    if(!cuenta)throw new Error('Elegí la cuenta que custodia el depósito.');const {data,error}=await sb.rpc('alq_admin_deposito_devolucion_previsualizar',{p_deposito_id:id,p_cuenta_custodia_id:cuenta});if(error)throw new Error(error.message);
+    depositoF5Preview.set(id,{cuenta,data});box.innerHTML=`<div class="account-box obligations"><div class="pg-l">Devolución total al inquilino</div><div class="amount">${fmt(data.monto_devolver)} ${esc(data.moneda)}</div><div class="account-caption">${data.fuentes_custodiadas.length} fuente(s) de depósito verificadas en caja.${data.cierre_natural_requerido?' También cerrará el contrato con fin efectivo '+fdate(data.fecha_cierre)+'.':' El contrato ya está cerrado o rescindido.'}</div></div>`;$('btnF5DepositoConfirmar').disabled=false;m.textContent='';
+  }catch(e){depositoF5Preview.delete(id);box.innerHTML='<div class="empty">No se pudo calcular.</div>';m.textContent=e.message;m.className='op-msg op-err'}
+}
+async function confirmarDepositoF5(id){
+  const p=depositoF5Preview.get(id),m=$('msgF5Deposito'),file=$('f5DepositoDoc').files&&$('f5DepositoDoc').files[0];try{
+    if(!p||p.cuenta!==$('f5DepositoCuenta').value)throw new Error('Calculá nuevamente la devolución.');if(!file)throw new Error('Adjuntá el comprobante de devolución.');$('btnF5DepositoConfirmar').disabled=true;m.textContent='Guardando comprobante y devolución…';m.className='op-msg';
+    const doc=await documentoArchivo(p.data.propiedad_id,file,'deposito_devolucion_comprobante','depositos-devolucion','Adjuntá el comprobante.',{audiencia:'admin'});
+    const payload={schema_version:1,deposito_id:id,cuenta_custodia_id:p.data.cuenta_custodia_id,preview_sha256:p.data.preview_sha256,fecha:fechaOperacionTimestamp($('f5DepositoFecha').value),medio:$('f5DepositoMedio').value,comprobante_documento_id:doc.id};
+    const r=await f5Mutar('alq_admin_deposito_liquidar_y_devolver','alq:f5:deposito-devolver:'+id,payload);toast((r&&r.replay?'Devolución verificada':'Depósito devuelto')+' · '+fmt(r.monto)+(r&&r.contrato_cerrado?' · contrato cerrado':'') );f5Cerrar();await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err';const b=$('btnF5DepositoConfirmar');if(b)b.disabled=false}
+}
+function abrirGiroF5(liquidacionId){
+  const liq=(D.liq||[]).find(x=>x.id===liquidacionId),p=liq&&D.prop.find(x=>x.id===liq.propiedad_id);if(!liq||!p)return;giroF5Preview.delete(liquidacionId);
+  f5Abrir('Registrar giro al propietario',`${p.direccion} · liquidación ${String(liq.periodo).slice(0,7)} v${liq.version_documento}`,`<div class="section-note">La base toma únicamente cobros custodiados de los cargos incluidos en esta liquidación. No gira pagos directos ni retiene honorarios dentro del giro.</div><div class="f-grid" style="margin-top:1rem"><div><span class="f-l">Cuenta desde la que se gira</span><select class="f" id="f5GiroCuenta">${opcionesCuenta(liq.moneda)}</select></div><div><span class="f-l">Fecha</span><input class="f" id="f5GiroFecha" type="date" value="${hoy()}"/></div><div><span class="f-l">Medio</span><select class="f" id="f5GiroMedio"><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="otro">Otro</option></select></div><div><span class="f-l">Comprobante obligatorio</span><input class="f" id="f5GiroDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn-g" type="button" onclick="previsualizarGiroF5('${liquidacionId}')">Calcular giro</button></div><div class="f-full" id="f5GiroPreview"><div class="empty">Todavía no calculado.</div></div><div class="f-full"><button class="btn" type="button" id="btnF5GiroConfirmar" onclick="confirmarGiroF5('${liquidacionId}')" disabled>Confirmar giro</button><div class="op-msg" id="msgF5Giro"></div></div></div>`);
+  $('f5GiroCuenta').onchange=()=>{giroF5Preview.delete(liquidacionId);$('btnF5GiroConfirmar').disabled=true};
+}
+async function previsualizarGiroF5(id){
+  const cuenta=$('f5GiroCuenta').value,box=$('f5GiroPreview'),m=$('msgF5Giro');try{
+    if(!cuenta)throw new Error('Elegí la cuenta de la que sale el giro.');box.innerHTML='<div class="empty">Buscando fondos custodiados elegibles…</div>';
+    const {data,error}=await sb.rpc('alq_admin_giro_previsualizar',{p_liquidacion_id:id,p_cuenta_custodia_id:cuenta});if(error)throw new Error(error.message);
+    giroF5Preview.set(id,{cuenta,data});box.innerHTML=`<div class="account-grid"><div class="account-box obligations"><div class="pg-l">Monto a girar</div><div class="amount">${fmt(data.monto_girar)} ${esc(data.moneda)}</div></div><div class="account-box"><div class="pg-l">Cobros custodiados fuente</div><div class="amount">${data.fuentes.length}</div><div class="account-caption">Todos pertenecen al mismo contrato y no fueron girados antes.</div></div></div>`;$('btnF5GiroConfirmar').disabled=false;m.textContent='';
+  }catch(e){giroF5Preview.delete(id);box.innerHTML='<div class="empty">No se pudo calcular el giro.</div>';m.textContent=e.message;m.className='op-msg op-err'}
+}
+async function confirmarGiroF5(id){
+  const p=giroF5Preview.get(id),m=$('msgF5Giro'),file=$('f5GiroDoc').files&&$('f5GiroDoc').files[0];try{
+    if(!p||p.cuenta!==$('f5GiroCuenta').value)throw new Error('Calculá nuevamente el giro.');if(!file)throw new Error('Adjuntá el comprobante del giro.');$('btnF5GiroConfirmar').disabled=true;m.textContent='Guardando comprobante y giro…';m.className='op-msg';
+    const doc=await documentoArchivo(p.data.propiedad_id,file,'giro_propietario_comprobante','giros-propietario','Adjuntá el comprobante.',{audiencia:'propietario'});
+    const payload={schema_version:1,liquidacion_id:id,cuenta_custodia_id:p.data.cuenta_custodia_id,preview_sha256:p.data.preview_sha256,fecha:fechaOperacionTimestamp($('f5GiroFecha').value),medio:$('f5GiroMedio').value,comprobante_documento_id:doc.id};
+    const r=await f5Mutar('alq_admin_giro_registrar','alq:f5:giro:'+id,payload);toast((r&&r.replay?'Giro verificado':'Giro registrado')+' · '+fmt(r.monto)+' '+r.moneda);f5Cerrar();await cargar();abrir(p.data.propiedad_id,'Liquidación');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err';const b=$('btnF5GiroConfirmar');if(b)b.disabled=false}
+}
+function rendicionVigenteGiro(giroId){
+  const xs=(D.rendF5||[]).filter(r=>r.giro_id===giroId);return xs.find(r=>!xs.some(x=>x.sucesora_de===r.id))||null;
+}
+function abrirRendicionF5(giroId,corregirId){
+  const giro=(D.giroF5||[]).find(x=>x.id===giroId),p=giro&&D.prop.find(x=>x.id===giro.propiedad_id);if(!giro||!p)return;
+  const vigente=rendicionVigenteGiro(giroId),corregir=corregirId?((D.rendF5||[]).find(x=>x.id===corregirId)||null):vigente;
+  rendicionF5Preview.delete(giroId);f5Abrir(corregir?'Corregir rendición formal':'Emitir rendición formal',`${p.direccion} · giro ${fmt(giro.monto)} ${giro.moneda}`,`<div class="section-note">La rendición toma el giro, la liquidación sellada y sus cobros fuente. El PDF queda archivado con una huella distinta de la huella del contenido.</div><div class="f-grid" style="margin-top:1rem">${corregir?`<div class="f-full"><span class="f-l">Motivo obligatorio de la corrección</span><input class="f" id="f5RendMotivo" placeholder="Qué se corrige en la constancia"/></div>`:''}<div class="f-full"><span class="f-l">Observación visible (opcional)</span><textarea class="f" id="f5RendObs" rows="3"></textarea></div><div class="f-full"><button class="btn-g" type="button" onclick="previsualizarRendicionF5('${giroId}','${corregir&&corregir.id||''}')">Calcular rendición</button></div><div class="f-full" id="f5RendPreview"><div class="empty">Todavía no calculada.</div></div><div class="f-full"><button class="btn" type="button" id="btnF5RendConfirmar" onclick="confirmarRendicionF5('${giroId}')" disabled>${corregir?'Emitir versión corregida':'Emitir y archivar rendición'}</button><div class="op-msg" id="msgF5Rend"></div></div></div>`);
+  ['f5RendMotivo','f5RendObs'].forEach(id=>{if($(id))$(id).oninput=()=>{rendicionF5Preview.delete(giroId);$('btnF5RendConfirmar').disabled=true}});
+}
+async function previsualizarRendicionF5(giroId,corregirId){
+  const motivo=$('f5RendMotivo')&&$('f5RendMotivo').value.trim()||null,obs=$('f5RendObs').value.trim()||null,box=$('f5RendPreview'),m=$('msgF5Rend');try{
+    if(corregirId&&!motivo)throw new Error('Escribí el motivo de la corrección.');const config={observacion:obs};if(corregirId){config.corregir_id=corregirId;config.motivo_correccion=motivo}
+    box.innerHTML='<div class="empty">Calculando contenido y huella…</div>';const {data,error}=await sb.rpc('alq_admin_rendicion_previsualizar',{p_giro_id:giroId,p_config:config});if(error)throw new Error(error.message);
+    const revertidos=data.contenido&&Array.isArray(data.contenido.pagos_revertidos)?data.contenido.pagos_revertidos:[];
+    rendicionF5Preview.set(giroId,{config,data});box.innerHTML=`<div class="account-grid"><div class="account-box obligations"><div class="pg-l">Versión</div><div class="amount">v${data.version_documento}</div><div class="account-caption">${esc(data.estado)}</div></div><div class="account-box"><div class="pg-l">Monto girado</div><div class="amount">${fmt(data.monto)} ${esc(data.moneda)}</div></div><div class="account-box fees"><div class="pg-l">Reversiones registradas</div><div class="amount">${revertidos.length}</div><div class="account-caption">Eventos informativos, no cobros adicionales</div></div></div><div class="section-note">Contenido sellado: ${esc(data.contenido_sha256)}. Al confirmar se genera, archiva y vuelve a verificar el PDF exacto.</div>`;$('btnF5RendConfirmar').disabled=false;m.textContent='';
+  }catch(e){rendicionF5Preview.delete(giroId);box.innerHTML='<div class="empty">No se pudo calcular.</div>';m.textContent=e.message;m.className='op-msg op-err'}
+}
+function crearRendicionF5Pdf(preview){
+  if(!window.jspdf||!window.jspdf.jsPDF)throw new Error('No se pudo cargar el generador de PDF.');
+  const c=preview.contenido,{jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'});let y=18;const maxY=276;
+  if(typeof doc.setFileId==='function')doc.setFileId(String(preview.contenido_sha256).slice(0,32).toUpperCase());
+  if(typeof doc.setCreationDate==='function')doc.setCreationDate(new Date(String(c.fecha_giro||c.periodo).slice(0,10)+'T00:00:00Z'));
+  const asegurar=alto=>{if(y+alto>maxY){doc.addPage();y=18}};
+  const linea=(texto,margen=0)=>{const cantidad=Math.max(1,doc.splitTextToSize(String(texto||''),178).length);asegurar(cantidad*5+margen);y=pdfLinea(doc,texto,16,y+margen,178,'normal')};
+  doc.setTextColor(20,20,20);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text('SUR PATAGONIAN REAL ESTATE',16,y);y+=9;doc.setFontSize(13);doc.text('Rendición de fondos al propietario',16,y);y+=8;
+  doc.setFont('helvetica','normal');doc.setFontSize(9);const p=D.prop.find(x=>x.id===c.propiedad_id);linea(`${p?p.direccion:'Propiedad'} · período ${String(c.periodo).slice(0,7)} · versión ${c.version_documento}`);
+  linea(`Giro: ${fmt(c.monto_girado)} ${c.moneda} · ${fdateInstante(c.fecha_giro)} · ${String(c.medio_giro||'').replaceAll('_',' ')}`,2);
+  linea(`Liquidación: versión ${c.liquidacion_version} · contenido ${c.liquidacion_contenido_sha256} · PDF ${c.liquidacion_pdf_sha256}`,2);
+  asegurar(15);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Fondos custodiados incluidos',16,y+8);y+=15;doc.setFont('helvetica','normal');doc.setFontSize(9);
+  (c.fuentes_custodiadas||[]).forEach((f,i)=>linea(`${i+1}. Cargo ${String(f.cargo_id).slice(0,8)}… · ${fmt(f.monto)} ${f.moneda}`));
+  if((c.pagos_revertidos||[]).length){
+    asegurar(15);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Reversiones registradas - no computadas como cobro adicional',16,y+8);y+=15;doc.setFont('helvetica','normal');doc.setFontSize(9);
+    c.pagos_revertidos.forEach((x,i)=>linea(`${i+1}. ${fdateInstante(x.fecha_original)} · ${x.pagador} a ${x.beneficiario} · revertido ${fmt(x.monto_revertido)} ${x.moneda_reversa||x.moneda_original||''} · deuda reabierta ${reaperturasLiquidacionTexto(x.reaperturas)} · motivo: ${x.motivo||'sin motivo visible'}`));
+  }
+  if(c.observacion)linea(`Observación: ${c.observacion}`,6);
+  if(c.motivo_correccion)linea(`Corrección: ${c.motivo_correccion}`,4);
+  linea(c.leyenda_no_fiscal,8);linea(`Huella de contenido: ${preview.contenido_sha256}`,4);
+  const paginas=doc.getNumberOfPages();for(let i=1;i<=paginas;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(110);doc.text(`Sur Patagonian Real Estate · rendición informativa no fiscal · página ${i} de ${paginas}`,105,291,{align:'center'})}
+  return new Blob([doc.output('arraybuffer')],{type:'application/pdf'});
+}
+async function confirmarRendicionF5(giroId){
+  const p=rendicionF5Preview.get(giroId),m=$('msgF5Rend');try{
+    if(!p)throw new Error('Calculá nuevamente la rendición.');$('btnF5RendConfirmar').disabled=true;m.textContent='Generando, archivando y verificando el PDF…';m.className='op-msg';
+    const blob=crearRendicionF5Pdf(p.data),pdfSha=await shaArchivo(blob),version=Number(p.data.version_documento),periodo=String(p.data.periodo).slice(0,7);
+    const nombre=`rendicion-${p.data.propiedad_id}-${periodo}-${String(p.data.moneda||'').toLowerCase()}-giro-${String(giroId).slice(0,8)}-v${version}.pdf`,file=new File([blob],nombre,{type:'application/pdf',lastModified:0});
+    const plantillaPath=String(p.data.pdf_path_esperado||'');if(!plantillaPath.includes('{pdf_sha256}'))throw new Error('La base no devolvió la ruta durable esperada.');
+    const path=plantillaPath.replace('{pdf_sha256}',pdfSha);if(path.includes('{'))throw new Error('La ruta durable de la rendición es inválida.');
+    const doc=await documentoArchivo(p.data.propiedad_id,file,'rendicion_propietario_pdf','rendiciones','No se pudo preparar el PDF.',{audiencia:'propietario',version,path,retencion:{contenido_sha256:p.data.contenido_sha256,giro_id:giroId,version_documento:String(version)}});
+    if(doc.sha256!==pdfSha)throw new Error('La huella del PDF archivado no coincide.');const ver=await sb.storage.from('alq-docs').download(doc.path);if(ver.error||await shaArchivo(ver.data)!==pdfSha)throw new Error('El PDF recuperado no coincide byte por byte.');
+    const payload={schema_version:1,giro_id:giroId,observacion:p.config.observacion||null,contenido_sha256:p.data.contenido_sha256,documento_id:doc.id,pdf_sha256:pdfSha};
+    let rpcNombre='alq_admin_rendicion_emitir';if(p.config.corregir_id){rpcNombre='alq_admin_rendicion_corregir';payload.corregir_id=p.config.corregir_id;payload.motivo_correccion=p.config.motivo_correccion}
+    const r=await f5Mutar(rpcNombre,'alq:f5:rendicion:'+giroId+':v'+version,payload);toast((r&&r.replay?'Rendición verificada':'Rendición emitida')+' · versión '+r.version_documento);f5Cerrar();await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err';const b=$('btnF5RendConfirmar');if(b)b.disabled=false}
+}
+async function descargarRendicionF5(id){
+  const r=(D.rendF5||[]).find(x=>x.id===id);if(!r||!r.pdf_path||!r.pdf_sha256){toast('La rendición no tiene un PDF archivado.');return}
+  try{const q=await sb.storage.from('alq-docs').download(r.pdf_path);if(q.error)throw new Error(q.error.message);if(await shaArchivo(q.data)!==r.pdf_sha256)throw new Error('La huella del PDF no coincide.');const pr=D.prop.find(p=>p.id===r.propiedad_id),base=String(pr&&pr.direccion||'propiedad').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');descargarBlob(q.data,`rendicion-${base}-${String(r.periodo).slice(0,7)}-${String(r.moneda).toLowerCase()}-giro-${String(r.giro_id).slice(0,8)}-v${r.version_documento}.pdf`);toast('Rendición verificada · '+r.pdf_sha256.slice(0,12)+'…')}catch(e){toast('No se pudo descargar la rendición: '+e.message)}
+}
 function cargosSeleccionadosPago(grupo){
   return [...document.querySelectorAll(`[data-ck-group="${grupo}"]`)]
     .filter(x=>x.checked).map(x=>D.cargo.find(c=>c.id===x.dataset.ck)).filter(Boolean)
@@ -1970,12 +2707,11 @@ async function previsualizarPagoOtraMoneda(grupo,forzar=false){
   const cargos=cargosSeleccionadosPago(grupo),destino=cargos[0]&&String(cargos[0].moneda||'').toUpperCase();
   const origen=String(monedaEl.value||'').trim().toUpperCase();monedaEl.value=origen;
   const contratoId=cargos[0]&&cargos[0].contrato_id;
-  const version=contratoId&&D.ver.filter(v=>v.contrato_id===contratoId)
-    .sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+  const version=contratoId&&(contratoVersionVigente(contratoId)||contratoVersionUltima(contratoId));
   const permite=!!(version&&version.regla_pago_otra_moneda==='tasa_pactada'&&version.fuente_conversion);
   pagoConversionPreview.delete(grupo);
   if(!cargos.length){boton.disabled=true;box.style.display='none';return null}
-  if(origen===destino){box.style.display='none';boton.disabled=false;
+  if(origen===destino){box.style.display='none';boton.disabled=grupo.startsWith('obligaciones-')&&!cobroF5Preview.has(grupo);
     info.innerHTML='Pago en <b>'+esc(destino)+'</b>: se imputa sin conversión.';return null}
   box.style.display='block';boton.disabled=true;
   if(!permite){info.textContent='Este contrato prohíbe pagos en otra moneda.';return null}
@@ -2012,7 +2748,7 @@ async function opCobro(pid,grupo){
   const cargos=sel.map(id=>D.cargo.find(c=>c.id===id)).filter(Boolean)
     .sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
   const totalSeleccionado=cargos.reduce((s,c)=>s+Number(c.saldo_pendiente||0),0);
-  if(grupo!=='obligaciones'&&monto>totalSeleccionado){
+  if(!grupo.startsWith('obligaciones-')&&monto>totalSeleccionado){
     m.textContent='Este pago no puede superar el saldo seleccionado. Registrá sólo lo efectivamente adeudado.';
     m.className='op-msg op-err';return;
   }
@@ -2023,13 +2759,22 @@ async function opCobro(pid,grupo){
     m.textContent='Los cargos elegidos deben corresponder al mismo contrato, pagador, beneficiario y moneda.';
     m.className='op-msg op-err';return;
   }
-  const cvig=D.con.find(c=>c.id===primero.contrato_id&&c.propiedad_id===pid&&
-    ['vigente','continuacion_legal'].includes(c.estado));
-  if(!cvig){m.textContent='No encontré el contrato vigente de esos cargos.';m.className='op-msg op-err';return}
+  const contrato=D.con.find(c=>c.id===primero.contrato_id&&c.propiedad_id===pid);
+  if(!contrato){m.textContent='No encontré el contrato de esos cargos.';m.className='op-msg op-err';return}
   const monedaOrigen=String($('opMoneda-'+grupo).value||'').trim().toUpperCase();
   if(!/^[A-Z]{3}$/.test(monedaOrigen)){m.textContent='Revisá la moneda recibida.';m.className='op-msg op-err';return}
   try{
     $('btnCobro-'+grupo).disabled=true;
+    if(grupo.startsWith('obligaciones-')&&monedaOrigen===primero.moneda){
+      const guardado=cobroF5Preview.get(grupo);
+      if(!guardado||guardado.fingerprint!==huellaFormularioCobro(grupo,file))throw new Error('Calculá y revisá el pago antes de confirmarlo.');
+      const payload={...guardado.input,contrato_id:guardado.contrato_id,preview_sha256:guardado.data.preview_sha256};
+      m.textContent='Confirmando exactamente la vista previa…';
+      const r=await f5Mutar('alq_admin_cobro_registrar','alq:f5:cobro:'+guardado.input.documento_id,payload);
+      cobroF5Preview.delete(grupo);toast((r&&r.replay?'Cobro verificado':'Cobro confirmado')+' · '+(r.modalidad==='custodiado'?'ingresó en caja':'pago directo')+' · aplicado '+fmt(r.monto_aplicado)+(Number(r.monto_credito)>0?' · crédito '+fmt(r.monto_credito):''));await cargar();return;
+    }
+    const cfg=configuracionCobro(contrato.id,primero.moneda);
+    if(grupo.startsWith('obligaciones-')&&monedaOrigen!==primero.moneda&&cfg&&cfg.modalidad==='custodiado')throw new Error('Un cobro custodiado debe entrar en la moneda de su cuenta. Cambiá la modalidad a pago directo o recibí la moneda contractual.');
     let preview=null;
     if(monedaOrigen!==primero.moneda){
       m.textContent='Verificando la conversión exacta…';
@@ -2040,9 +2785,9 @@ async function opCobro(pid,grupo){
     const doc=await documentoComprobante(pid,file);
     let r;
     if(monedaOrigen===primero.moneda){
-      r=await rpc('pago_comprobante_confirmar',{propiedad_id:pid,contrato_id:cvig.id,
+      r=await rpc('pago_comprobante_confirmar',{propiedad_id:pid,contrato_id:contrato.id,
         documento_id:doc.id,cargo_ids:cargos.map(c=>c.id),monto:String(monto),
-        fecha:$('opFecha-'+grupo).value+'T12:00:00Z',medio:$('opMedio-'+grupo).value});
+        fecha:fechaOperacionTimestamp($('opFecha-'+grupo).value),medio:$('opMedio-'+grupo).value});
       toast((r&&r.replay?'Pago ya confirmado':'Pago confirmado')+' · aplicado '+fmt(r.monto_aplicado)+
         (Number(r.monto_credito)>0?' · crédito '+fmt(r.monto_credito):''));
     }else{
@@ -2050,25 +2795,25 @@ async function opCobro(pid,grupo){
       r=await rpc('pago_multimoneda',{pago_fuente_ref:doc.id,ambito:'externa_informativa',
         contraparte_parte_id:primero.deudor_parte_id,beneficiario_parte_id:primero.acreedor_parte_id,
         moneda:monedaOrigen,monto:String(preview.monto_origen),
-        fecha:$('opFecha-'+grupo).value+'T12:00:00Z',medio:$('opMedio-'+grupo).value,
+        fecha:fechaOperacionTimestamp($('opFecha-'+grupo).value),medio:$('opMedio-'+grupo).value,
         comprobante_documento_id:doc.id,aplicaciones},{slot:'pago-multimoneda:'+doc.id});
       toast((r&&r.replay?'Pago ya confirmado':'Pago en otra moneda confirmado')+' · aplicado '+fmt(preview.monto_destino)+' '+preview.moneda_destino);
     }
     await cargar();
   }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
-  finally{const b=$('btnCobro-'+grupo);if(b)b.disabled=false}
+  finally{const b=$('btnCobro-'+grupo);if(b)b.disabled=grupo.startsWith('obligaciones-')&&!cobroF5Preview.has(grupo)}
 }
 async function opCargo(pid){
   const m=$('msgCargo');m.className='op-msg';m.textContent='';
-  const monto=Number($('cgMonto').value);
-  if(!monto||monto<=0){m.textContent='Poné el monto.';m.className='op-msg op-err';return}
+  const monto=Number($('cgMonto').value),moneda=$('cgMoneda').value.trim().toUpperCase();
+  if(!monto||monto<=0||!/^[A-Z]{3}$/.test(moneda)){m.textContent='Poné el monto y una moneda de tres letras.';m.className='op-msg op-err';return}
   if($('cgDeudor').value===$('cgAcreedor').value){m.textContent='Deudor y acreedor no pueden ser la misma persona.';m.className='op-msg op-err';return}
   const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
   const slot='cargo-manual:'+pid;
   try{
     $('btnCargo').disabled=true;
     const payload={propiedad_id:pid,deudor_parte_id:$('cgDeudor').value,acreedor_parte_id:$('cgAcreedor').value,
-      ambito:'custodiada',concepto:$('cgConcepto').value.trim()||'extra',moneda:'ARS',monto:String(monto),
+      ambito:'externa',concepto:$('cgConcepto').value.trim()||'extra',moneda,monto:String(monto),
       vence_at:fechaCivilATimestamp($('cgVence').value),
       snapshot_regla:{detalle:$('cgDetalle').value.trim()||null}};
     if(cvig)payload.contrato_id=cvig.id;
@@ -2079,14 +2824,15 @@ async function opCargo(pid){
 }
 async function opNota(pid){
   const m=$('msgNota');m.className='op-msg';m.textContent='';
-  const monto=Number($('ntMonto').value),motivo=$('ntMotivo').value.trim();
+  const monto=Number($('ntMonto').value),motivo=$('ntMotivo').value.trim(),cargo=D.cargo.find(c=>c.id===$('ntCargo').value&&c.propiedad_id===pid);
   if(!monto||monto<=0){m.textContent='Poné el monto.';m.className='op-msg op-err';return}
   if(!motivo){m.textContent='El motivo es obligatorio.';m.className='op-msg op-err';return}
+  if(!cargo||!/^[A-Z]{3}$/.test(String(cargo.moneda||''))){m.textContent='No se pudo determinar la moneda del cargo.';m.className='op-msg op-err';return}
   const slot='nota-manual:'+pid;
   try{
     $('btnNota').disabled=true;
-    await rpc('nota_emitir',{tipo:$('ntTipo').value,cargo_id:$('ntCargo').value,
-      monto:String(monto),moneda:'ARS',motivo:motivo},{slot});
+    await rpc('nota_emitir',{tipo:$('ntTipo').value,cargo_id:cargo.id,
+      monto:String(monto),moneda:cargo.moneda,motivo:motivo},{slot});
     toast('Nota emitida');await cargar();
   }catch(e){alqF1aMostrarError(m,e,async()=>{toast('Nota emitida');await cargar()})}
   finally{const b=$('btnNota');if(b)b.disabled=false}
@@ -2188,16 +2934,15 @@ async function opFactura(pid){
     let cargoId=null;
     if(conCargo){
       if(!cvig)throw new Error('No hay contrato vigente: no puedo generarle el cargo al inquilino.');
-      const titular=D.tit.find(x=>x.propiedad_id===pid);
-      const adminParte=D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
-      const acreedor=(titular&&titular.parte_id)||(adminParte&&adminParte.id);
-      if(!acreedor)throw new Error('No encuentro al titular de la propiedad para ser acreedor.');
+      const titularId=titularParteId(pid);
+      const acreedor=titularId;
+      if(!acreedor)throw new Error('No hay un titular vigente para ser acreedor de la factura.');
       const cta=D.scta.find(s=>s.id===$('faCta').value);
       cargoSlot='factura-servicio:'+pid+':'+$('faCta').value+':'+$('faDesde').value+':'+$('faHasta').value;
       const res=await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,
         cargo_fuente_ref:documento.id,
         deudor_parte_id:cvig.inquilino_parte_id,acreedor_parte_id:acreedor,
-        ambito:'custodiada',concepto:'servicio',moneda:$('faMoneda').value,monto:String(monto),
+        ambito:'externa',concepto:'servicio',moneda:$('faMoneda').value,monto:String(monto),
         vence_at:fechaCivilATimestamp($('faVence').value),
         snapshot_regla:{detalle:'Factura '+(cta?cta.tipo:'servicio')+' '+$('faDesde').value+' → '+$('faHasta').value}},
         {slot:cargoSlot,retener_hasta_continuacion:true});
@@ -2207,6 +2952,61 @@ async function opFactura(pid){
     await completar(cargoId);
   }catch(e){alqF1aMostrarError(m,e,async resultado=>completar(resultado&&resultado.id))}
   finally{const b=$('btnFac');if(b)b.disabled=false}
+}
+function garantiaPersonaCambio(){
+  const existente=!!($('garParte')&&$('garParte').value);
+  ['garNombre','garPersonaTipo','garDocTipo','garDocNumero'].forEach(id=>{if($(id))$(id).disabled=existente});
+}
+async function altaGarantiaPosterior(pid){
+  const m=$('msgGarantiaAlta'),boton=$('btnGarantiaAlta'),contrato=contratoVigentePropiedad(pid);
+  try{
+    if(!contrato)throw new Error('No hay contrato vigente.');
+    const existente=$('garParte').value,nombre=$('garNombre').value.trim(),dt=$('garDocTipo').value.trim(),dn=$('garDocNumero').value.trim();
+    if(!existente&&!nombre)throw new Error('Elegí un garante existente o escribí el nombre del nuevo.');
+    if(!existente&&Boolean(dt)!==Boolean(dn))throw new Error('Completá tipo y número de documento juntos.');
+    const garante=existente?{parte_id:existente}:{tipo_persona:$('garPersonaTipo').value,nombre};if(!existente&&dt){garante.documento_tipo=dt;garante.documento_numero=dn}
+    const cobertura=$('garCobertura').value.trim(),desde=$('garDesde').value,hasta=$('garHasta').value;
+    if(!desde)throw new Error('Indicá desde cuándo rige la garantía.');
+    let documentoId=null,file=$('garDocumento').files&&$('garDocumento').files[0];
+    if(file){const d=await documentoArchivo(pid,file,'garantia','garantias','No se pudo preparar el documento de garantía.');documentoId=d.id}
+    const payload={schema_version:1,contrato_id:contrato.id,garante,tipo:$('garTipo').value,
+      poliza:$('garPoliza').value.trim()||null,emisor:$('garEmisor').value.trim()||null,
+      cobertura:cobertura||null,moneda:cobertura?$('garMoneda').value:null,
+      desde:fechaCivilATimestamp(desde),hasta:hasta?fechaCivilATimestamp(desplazarDiaFechaCivil(hasta,1)):null,
+      documento_id:documentoId,regla_notificacion_mora:{}};
+    const clave='alq:f5:garantia:'+contrato.id,requestId=requestDirectoDurable(clave,payload);
+    boton.disabled=true;m.textContent='Agregando garantía…';m.className='op-msg';
+    const {data,error}=await sb.rpc('alq_admin_garantia_alta_integral',{p_request_id:requestId,p_payload:payload});if(error)throw new Error(error.message);
+    localStorage.removeItem(clave);toast(data&&data.replay?'Garantía verificada sin duplicar':'Garantía agregada');await cargar();abrir(pid,'Contratos');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}finally{const b=$('btnGarantiaAlta');if(b)b.disabled=false}
+}
+function configCambioMandato(){
+  const pct=Number($('mandCambioPct').value),min=Number($('mandCambioMin').value),fijo=Number($('mandCambioFijo').value);
+  if([pct,min,fijo].some(x=>!Number.isFinite(x)||x<0)||pct>100||(pct===0&&min===0&&fijo===0))throw new Error('Definí un porcentaje, mínimo o fijo válido.');
+  return{honorario_pct:String(pct/100),honorario_minimo:String(min),honorario_fijo:String(fijo),incluye_punitorios:$('mandCambioPunitorios').checked};
+}
+function invalidarCambioMandato(pid){mandatoCambioPreview.delete(pid);if($('btnMandatoAplicar'))$('btnMandatoAplicar').disabled=true;if($('mandatoPreviewBox'))$('mandatoPreviewBox').innerHTML='<div class="empty">El cambio se modificó. Calculalo de nuevo.</div>'}
+async function previsualizarCambioMandato(pid){
+  const box=$('mandatoPreviewBox'),m=$('msgMandatoCambio'),man=mandatoActivoPropiedad(pid);
+  try{
+    if(!man)throw new Error('No hay un mandato activo.');const desde=$('mandCambioDesde').value,config=configCambioMandato();
+    box.innerHTML='<div class="empty">Calculando en la base…</div>';
+    const {data,error}=await sb.rpc('alq_admin_mandato_cambio_previsualizar',{p_mandato_id:man.id,p_desde:desde,p_config:config});if(error)throw new Error(error.message);
+    mandatoCambioPreview.set(pid,{data,config,desde,mandatoId:man.id});box.innerHTML=`<div class="section-note"><b>Desde ${fdate(desde)}</b><br>Anterior: ${(Number(data.anterior.honorario_pct)*100).toLocaleString('es-AR')} % · mínimo ${fmt(data.anterior.honorario_minimo)} · fijo ${fmt(data.anterior.honorario_fijo)}<br>Nueva: ${(Number(data.nueva.honorario_pct)*100).toLocaleString('es-AR')} % · mínimo ${fmt(data.nueva.honorario_minimo)} · fijo ${fmt(data.nueva.honorario_fijo)}<br>Huella ${esc(String(data.preview_sha256).slice(0,12))}…</div>`;
+    $('btnMandatoAplicar').disabled=false;m.textContent='';m.className='op-msg';
+  }catch(e){mandatoCambioPreview.delete(pid);$('btnMandatoAplicar').disabled=true;box.innerHTML='<div class="empty">No hay una vista previa válida.</div>';m.textContent=e.message;m.className='op-msg op-err'}
+}
+async function aplicarCambioMandato(pid){
+  const m=$('msgMandatoCambio'),prev=mandatoCambioPreview.get(pid),motivo=$('mandCambioMotivo').value.trim();
+  try{
+    if(!prev||alqF1aJsonCanonico(prev.config)!==alqF1aJsonCanonico(configCambioMandato())||prev.desde!==$('mandCambioDesde').value)throw new Error('Calculá nuevamente el cambio antes de aplicarlo.');
+    if(!motivo)throw new Error('Escribí el motivo del cambio.');
+    const payload={schema_version:1,mandato_id:prev.mandatoId,desde:prev.desde,...prev.config,motivo,preview_sha256:prev.data.preview_sha256};
+    const clave='alq:f5:mandato-cambio:'+prev.mandatoId,requestId=requestDirectoDurable(clave,payload);
+    $('btnMandatoAplicar').disabled=true;m.textContent='Aplicando la nueva comisión…';m.className='op-msg';
+    const {data,error}=await sb.rpc('alq_admin_mandato_version_reemplazar',{p_request_id:requestId,p_payload:payload});if(error)throw new Error(error.message);
+    localStorage.removeItem(clave);mandatoCambioPreview.delete(pid);toast(data&&data.replay?'Cambio verificado sin duplicar':'Nueva comisión programada');await cargar();abrir(pid,'Contratos');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}finally{const b=$('btnMandatoAplicar');if(b)b.disabled=false}
 }
 function requestDirectoDurable(clave,payload){
   let x;try{x=JSON.parse(localStorage.getItem(clave)||'null')}catch(_){x=null}
@@ -2405,6 +3205,7 @@ function renderBandeja(){
         <div><span class="f-l">Propiedad</span><select class="f" id="bp-${i}">${props}</select></div>
         <div><span class="f-l">Servicio</span><select class="f" id="bs-${i}">${ctas(f.match?f.match.propiedad_id:null)}</select></div>
         <div><span class="f-l">Monto</span><input class="f" id="bm-${i}" type="number" step="0.01" value="${f.total??''}"/></div>
+        <div><span class="f-l">Moneda</span><input class="f" id="bmon-${i}" maxlength="3" value="ARS"/></div>
         <div><span class="f-l">Vence</span><input class="f" id="bv-${i}" type="date" value="${f.vence??''}"/></div>
         <div class="f-full"><label class="ck"><input type="checkbox" id="bc-${i}" checked/>
           Generarle el cargo al inquilino (a favor del titular)</label></div>
@@ -2418,9 +3219,11 @@ function renderBandeja(){
 }
 async function confirmarFactura(i){
   const b=BANDEJA[i],f=b.f,m=$('bmsg-'+i);
-  const pid=$('bp-'+i).value,ctaId=$('bs-'+i).value,monto=Number($('bm-'+i).value),vence=$('bv-'+i).value;
+  const pid=$('bp-'+i).value,ctaId=$('bs-'+i).value,monto=Number($('bm-'+i).value),vence=$('bv-'+i).value,
+    moneda=String($('bmon-'+i).value||'').trim().toUpperCase();
   if(!pid||!ctaId){m.textContent='Elegí propiedad y servicio.';m.className='op-msg op-err';return}
   if(!monto||monto<=0||!vence){m.textContent='Revisá monto y vencimiento.';m.className='op-msg op-err';return}
+  if(!/^[A-Z]{3}$/.test(moneda)){m.textContent='La moneda debe tener tres letras, por ejemplo ARS o USD.';m.className='op-msg op-err';return}
   let completar=null;
   try{
     m.textContent='Cargando…';m.className='op-msg';
@@ -2440,7 +3243,7 @@ async function confirmarFactura(i){
     completar=async idCargo=>{
       // 3 · la factura del servicio, con su PDF y su cargo ligados
       const desde=desplazarMesFechaCivil(vence,-1);
-      const pf={cuenta_id:ctaId,desde:desde,hasta:vence,moneda:'ARS',
+      const pf={cuenta_id:ctaId,desde:desde,hasta:vence,moneda,
         monto:String(monto),vence_at:fechaCivilATimestamp(vence),comprobante_documento_id:doc&&doc.id};
       if(idCargo)pf.cargo_id=idCargo;
       await rpc('servicio_factura_registrar',pf);
@@ -2452,14 +3255,13 @@ async function confirmarFactura(i){
     if($('bc-'+i).checked){
       const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
       if(!cvig)throw new Error('No hay contrato vigente en esa propiedad: destildá el cargo o revisá.');
-      const titular=D.tit.find(x=>x.propiedad_id===pid);
-      const adminParte=D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
-      const acreedor=(titular&&titular.parte_id)||(adminParte&&adminParte.id);
+      const titularId=titularParteId(pid);
+      const acreedor=titularId;if(!acreedor)throw new Error('No hay un titular vigente para ser acreedor de la factura.');
       cargoSlot='bandeja-factura:'+fuenteId;
       const res=await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,
         cargo_fuente_ref:fuenteId,
         deudor_parte_id:cvig.inquilino_parte_id,acreedor_parte_id:acreedor,
-        ambito:'custodiada',concepto:'servicio',moneda:'ARS',monto:String(monto),
+        ambito:'externa',concepto:'servicio',moneda,monto:String(monto),
         vence_at:fechaCivilATimestamp(vence),
         snapshot_regla:{detalle:'Factura '+f.emisor+(f.periodo?' '+f.periodo:''),origen:'bandeja_manual',
           comprobante_documento_id:doc&&doc.id}},
@@ -2746,6 +3548,8 @@ $('inPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 $('btnOut').onclick=async()=>{await sb.auth.signOut();location.reload()};
 $('mClose').onclick=()=>{$('ov').classList.remove('on');propAbierta=null};
 $('ov').onclick=e=>{if(e.target===$('ov')){$('ov').classList.remove('on');propAbierta=null}};
+$('f5Close').onclick=f5Cerrar;
+$('f5Ov').onclick=e=>{if(e.target===$('f5Ov'))f5Cerrar()};
 $('btnAyuda').onclick=()=>$('helpOv').classList.add('on');
 $('helpClose').onclick=()=>$('helpOv').classList.remove('on');
 $('helpOv').onclick=e=>{if(e.target===$('helpOv'))$('helpOv').classList.remove('on')};
