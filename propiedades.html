@@ -587,36 +587,63 @@
     }
 
     // Leer params de URL al cargar — acepta los nombres que manda el home/IA
-    // (operacion, ciudad, dormitorios_min, precio_max, q) y los historicos (op, precioMax).
-    // 'amenidades' no tiene filtro equivalente en esta pantalla y se ignora a proposito.
+    // (operacion, ciudad, dormitorios_min, precio_max, amenidades, q) y los historicos (op, precioMax).
     const urlParams = new URLSearchParams(window.location.search)
     const _normParam = v => (v || '').trim().toLowerCase()
     const paramOperacion = _normParam(urlParams.get('operacion') || urlParams.get('op'))
+    let paramOperacionAplicada = false
     if (paramOperacion) {
       document.querySelectorAll('.filtro-op').forEach(cb => {
-        if (cb.value === paramOperacion) cb.checked = true
+        if (cb.value === paramOperacion) {
+          cb.checked = true
+          paramOperacionAplicada = true
+        }
       })
     }
     const paramTipo = _normParam(urlParams.get('tipo'))
+    let paramTipoAplicado = false
     if (paramTipo) {
       document.querySelectorAll('.filtro-tipo').forEach(cb => {
-        if (cb.value === paramTipo) cb.checked = true
+        if (cb.value === paramTipo) {
+          cb.checked = true
+          paramTipoAplicado = true
+        }
       })
     }
     const paramPrecioMax = urlParams.get('precio_max') || urlParams.get('precioMax')
     if (paramPrecioMax && !isNaN(parseFloat(paramPrecioMax))) {
       document.getElementById('precioMax').value = parseFloat(paramPrecioMax)
     }
-    const paramDorm = parseInt(urlParams.get('dormitorios_min'), 10)
-    if (paramDorm >= 1) {
-      const radioDorm = document.querySelector(`.filtro-dorm[value="${Math.min(paramDorm, 4)}"]`)
-      if (radioDorm) radioDorm.checked = true
+    const paramDormCrudo = urlParams.get('dormitorios_min')
+    const paramDorm = Number(paramDormCrudo)
+    let paramDormAplicado = false
+    if (paramDormCrudo !== null && paramDormCrudo.trim() !== '' && Number.isInteger(paramDorm) && paramDorm >= 1) {
+      const valorDorm = String(Math.min(paramDorm, 4))
+      const radioDorm = document.querySelector(`.filtro-dorm[value="${valorDorm}"]`)
+      if (radioDorm) {
+        radioDorm.checked = true
+        paramDormAplicado = true
+      }
     }
     const _CIUDADES_CANONICAS = ['El Bolsón', 'El Hoyo', 'Lago Puelo', 'Epuyén', 'El Maitén', 'Cholila', 'Esquel', 'Bariloche']
+    const _AMENIDADES_VALIDAS = new Set('acceso_controlado,acceso_todo_ano,agua_corriente,agua_potable,agua_riego,agua_vertiente,aire,aislacion_premium,alarma,altillo,amoblado,apto_mascotas,arroyo,ascensor,asoleamiento,balcon,barrio_abierto,barrio_privado,baulera,bodega,bosque_nativo,bosque_propio,caldera,calefaccion,calefon,calle_sin_salida,camaras,camino_consolidado,carp_aluminio,carp_madera,cerco_vivo,chimenea,cisterna,cloaca,cochera,cochera_cubierta,cochera_semi,cochera_sub,cocina_equipada,const_adobe,const_hormigon,const_ladrillo,const_madera,const_piedra,const_sip,const_steel,costa_arroyo,costa_lago,costa_rio,cul_de_sac,deck,dependencia,doble_altura,dvh,electricidad,escritura_inmediata,estac_motorhome,estufa_lena,fibra_optica,fogonero,frutales,galeria,galpon,gas_natural,gimnasio,grupo_electrogeno,hidromasaje,huerta,invernadero,jardin,laundry,living_comedor,losa_radiante,oficina,orientacion_norte,paneles_solares,parrilla,patio,pavimento,perimetro_alambrado,pileta,porteria,porton,porton_electrico,quincho,radiadores,reservorio_agua,riego_automatico,sala_juegos,sauna,seguridad,sistema_incendios,sotano,taller,techo_chapa,termotanque_solar,terraza,tvh,vent_pvc,vertiente_natural,vestidor,vista_bosque,vista_cerro,vista_lago,vista_montana,vista_panoramica,wifi'.split(','))
     const _aplanarCiudad = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim()
+    const _normalizarAmenidades = valor => [...new Set(String(valor || '').split(',')
+      .map(v => v.trim().toLowerCase())
+      .filter(v => _AMENIDADES_VALIDAS.has(v)))].slice(0, 10)
     const paramCiudadCruda = (urlParams.get('ciudad') || '').trim()
     const paramCiudadCanonica = paramCiudadCruda ? (_CIUDADES_CANONICAS.find(c => _aplanarCiudad(c) === _aplanarCiudad(paramCiudadCruda)) || paramCiudadCruda) : ''
-    const paramTexto = (paramCiudadCanonica || (urlParams.get('q') || '')).trim()
+    const paramAmenidades = _normalizarAmenidades(urlParams.get('amenidades'))
+    const paramQ = (urlParams.get('q') || '').trim()
+    const filtrosInicialesBloqueados = new Set()
+    if (paramOperacionAplicada) filtrosInicialesBloqueados.add('operacion')
+    if (paramTipoAplicado) filtrosInicialesBloqueados.add('tipo')
+    if (paramDormAplicado) filtrosInicialesBloqueados.add('dormitorios')
+    if (paramCiudadCanonica) filtrosInicialesBloqueados.add('ciudad')
+    if (paramAmenidades.length) filtrosInicialesBloqueados.add('amenidades')
+    let ciudadFiltro = paramCiudadCanonica
+    let amenidadesFiltro = paramAmenidades
+    const paramTexto = (paramQ || paramCiudadCanonica).trim()
     if (paramTexto) {
       document.getElementById('busquedaTexto').value = paramTexto
     }
@@ -653,9 +680,15 @@
 
       if (ops.length > 0) query = query.in('operacion', ops)
       if (tipos.length > 0) query = query.in('tipo', tipos)
-      if (dormMin) query = query.gte('dormitorios', parseInt(dormMin))
+      if (dormMin === '0') query = query.eq('dormitorios', 0)
+      else if (dormMin) query = query.gte('dormitorios', parseInt(dormMin))
       if (precioMin) query = query.gte('precio', parseFloat(precioMin))
       if (precioMaxVal) query = query.lte('precio', parseFloat(precioMaxVal))
+      if (ciudadFiltro) {
+        const ciudadSegura = ciudadFiltro.replace(/[\\%_]/g, c => `\\${c}`)
+        query = query.ilike('ciudad', `%${ciudadSegura}%`)
+      }
+      if (amenidadesFiltro.length) query = query.contains('amenidades', amenidadesFiltro)
       if (termino) {
         const t = termino.replace(/[%_,()'"\\]/g, c => `\\${c}`)
         const codigoPublico = codigoPublicoDesdeTermino(termino)
@@ -890,6 +923,8 @@
       document.querySelector('.filtro-dorm[value=""]').checked = true
       document.getElementById('precioMin').value = ''
       document.getElementById('precioMax').value = ''
+      ciudadFiltro = ''
+      amenidadesFiltro = []
       paginaActual = 1
       actualizarResultados()
     })
@@ -905,15 +940,25 @@
     const btnClear  = document.getElementById('busquedaClear')
 
     inputBusq.addEventListener('input', () => {
+      if (!inputBusq.value.trim()) ciudadFiltro = ''
+      amenidadesFiltro = []
       btnClear.style.display = inputBusq.value ? 'block' : 'none'
       clearTimeout(inputBusq._timer)
       inputBusq._timer = setTimeout(() => { paginaActual = 1; actualizarResultados() }, 400)
     })
     inputBusq.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { paginaActual = 1; actualizarResultados() }
+      if (e.key === 'Enter') {
+        clearTimeout(inputBusq._timer)
+        interpretarConsulta(inputBusq.value)
+        btnClear.style.display = inputBusq.value ? 'block' : 'none'
+        paginaActual = 1
+        actualizarResultados()
+      }
     })
     btnClear.addEventListener('click', () => {
       inputBusq.value = ''
+      ciudadFiltro = ''
+      amenidadesFiltro = []
       btnClear.style.display = 'none'
       paginaActual = 1
       actualizarResultados()
@@ -921,11 +966,15 @@
 
     // ── Búsqueda por voz (Web Speech API) ────────────────────────
     // ── INTÉRPRETE DE LENGUAJE NATURAL ────────────────────────
-    function interpretarConsulta(texto) {
+    function interpretarConsulta(texto, dimensionesBloqueadas = new Set()) {
+      const original = String(texto || '').trim()
+      if (!original) return false
+
       // Normalizar: minúsculas, sin acentos, sin puntuación
-      const t = texto.toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      const t = original.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ').trim()
 
       // ── OPERACIÓN (temporario con prioridad) ──────────────
       const mapaOp = [
@@ -933,67 +982,136 @@
         ['alquiler',            /\b(alquil\w*|arrendar|arriendo|rento|rentar|en alquiler|para alquilar)\b/],
         ['venta',               /\b(compr\w*|venta|vend\w*|adquir\w*|invertir|inversion\w*|a la venta)\b/],
       ]
-      let opDetectada = null
-      for (const [val, rx] of mapaOp) {
-        if (rx.test(t)) { opDetectada = val; break }
-      }
+      const opDetectada = mapaOp.find(([, rx]) => rx.test(t)) || null
 
-      // ── TIPO (del más específico al más genérico) ─────────
+      // ── TIPO (solo valores que existen en el catálogo y en la UI) ─────────
       const mapaTipo = [
         ['galpon',       /\b(galpon\w*|deposito\w*|bodega\w*|nave industrial|nave comercial|almacen\w*|hangar|lugar para guardar|espacio industrial|planta industrial|taller industrial|para maquinaria|para vehiculos|para autos)\b/],
-        ['local',        /\b(local comercial|local de negocio|negocio\w*|comercio\w*|fondo de comercio|punto de venta|espacio comercial|tienda\w*)\b/],
+        ['local',        /\b(local(?:es)?(?:\s+comercial(?:es)?|\s+de negocio)?|negocio\w*|comercio\w*|fondo de comercio|punto de venta|espacio comercial|tienda\w*)\b/],
         ['oficina',      /\b(oficina\w*|coworking|espacio de trabajo|espacio laboral|consultorio\w*|estudio profesional|espacio profesional)\b/],
-        ['cabaña',       /\b(caba[n]\w*|bungalow\w*|refugio\w*|lodge\w*|alojamiento turistico|alojamiento de montana)\b/],
-        ['duplex',       /\b(duplex\w*|ph\b|penthouse\w*|dos plantas|planta alta)\b/],
-        ['quinta',       /\b(quinta\w*|hacienda\w*|estancia\w*|chacra recreativa|campo recreativo|finca\w*)\b/],
         ['terreno',      /\b(terreno\w*|lote\w*|loteo\w*|parcela\w*|baldio\w*|fraccion\w*|tierra\w*|suelo\w*|para construir|campo para construir)\b/],
-        ['campo',        /\b(campo\w*|chacra\w*|establecimiento rural|campo ganadero|campo agricola|campo productivo)\b/],
         ['departamento', /\b(departamento\w*|depto\w*|apartamento\w*|monoambiente\w*|piso\b|flat\b|studio\b|loft\b)\b/],
         ['casa',         /\b(casa\w*|chalet\w*|vivienda\w*|hogar\b|residencia\w*|para vivir|para habitar|propiedad familiar|domicilio)\b/],
       ]
-      let tipoDetectado = null
-      for (const [val, rx] of mapaTipo) {
-        if (rx.test(t)) { tipoDetectado = val; break }
-      }
+      const tipoDetectado = mapaTipo.find(([, rx]) => rx.test(t)) || null
 
       // ── DORMITORIOS ───────────────────────────────────────
-      let dormDetectado = null
-      const dormMatch = t.match(/\b(\d+)\s*(dormitorio|habitacion|cuarto|ambiente|recamara|pieza)s?\b/)
-      if (dormMatch) dormDetectado = dormMatch[1]
-      if (/\bmonoambiente\b|\bstudio\b|\bloft\b/.test(t)) dormDetectado = '0'
+      const dormMatch = t.match(/\b(\d+)\s*(dormitorios?|habitacion(?:es)?|cuartos?|recamaras?|piezas?)\b/)
+      const dormEsMonoambiente = /\bmonoambiente\w*\b|\bstudio\b|\bloft\b/.test(t)
+      const dormNumero = dormEsMonoambiente
+        ? 0
+        : (dormMatch ? Number(dormMatch[1]) : null)
+      const dormDetectado = Number.isInteger(dormNumero)
+        ? (dormNumero >= 4 ? '4' : String(dormNumero))
+        : null
 
-      // ── APLICAR A LOS FILTROS ─────────────────────────────
-      document.querySelectorAll('.filtro-op').forEach(cb => cb.checked = false)
-      document.querySelectorAll('.filtro-tipo').forEach(cb => cb.checked = false)
-      document.querySelectorAll('.filtro-dorm').forEach(cb => cb.checked = false)
+      // ── CIUDAD CANÓNICA ───────────────────────────────────
+      const escaparRegex = valor => valor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const ciudadDetectada = _CIUDADES_CANONICAS.map(ciudad => {
+        const plana = _aplanarCiudad(ciudad)
+        const sinArticulo = plana.replace(/^el\s+/, '')
+        const partes = sinArticulo.split(/\s+/).map(escaparRegex).join('\\s+')
+        const fuente = plana.startsWith('el ') ? `\\b(?:el\\s+)?${partes}\\b` : `\\b${partes}\\b`
+        return { ciudad, rx: new RegExp(fuente) }
+      }).find(({ rx }) => rx.test(t)) || null
+
+      // ── AMENIDADES (filtro interno, sin sumar controles al panel) ──
+      const amenidadesTexto = [..._AMENIDADES_VALIDAS]
+        .filter(clave => !['bodega', 'galpon', 'oficina', 'pileta'].includes(clave))
+        .map(clave => {
+          const frase = clave.split('_').map(escaparRegex).join('\\s+')
+          return { clave, rx: new RegExp(`\\b${frase}\\b`) }
+        })
+      amenidadesTexto.unshift({ clave: 'pileta', rx: /\b(pileta\w*|piscina\w*)\b/ })
+      const amenidadesDetectadas = amenidadesTexto.filter(({ rx }) => rx.test(t))
+
+      // ── APLICAR SOLO LAS DIMENSIONES DETECTADAS ────────────
+      const patronesAplicados = []
 
       if (opDetectada) {
-        const cb = document.querySelector(`.filtro-op[value="${opDetectada}"]`)
-        if (cb) cb.checked = true
+        const [valor, rx] = opDetectada
+        const cb = document.querySelector(`.filtro-op[value="${valor}"]`)
+        if (cb) {
+          if (!dimensionesBloqueadas.has('operacion')) {
+            document.querySelectorAll('.filtro-op').forEach(item => { item.checked = false })
+            cb.checked = true
+          }
+          patronesAplicados.push(rx)
+          if (valor === 'alquiler_temporario') patronesAplicados.push(mapaOp[1][1])
+        }
       }
       if (tipoDetectado) {
-        const cb = document.querySelector(`.filtro-tipo[value="${tipoDetectado}"]`)
-        if (cb) cb.checked = true
+        const [valor, rx] = tipoDetectado
+        const cb = document.querySelector(`.filtro-tipo[value="${valor}"]`)
+        if (cb) {
+          if (!dimensionesBloqueadas.has('tipo')) {
+            document.querySelectorAll('.filtro-tipo').forEach(item => { item.checked = false })
+            cb.checked = true
+          }
+          patronesAplicados.push(rx)
+        }
       }
-      if (dormDetectado) {
+      if (dormDetectado !== null) {
         const cb = document.querySelector(`.filtro-dorm[value="${dormDetectado}"]`)
-        if (cb) cb.checked = true
+        if (cb) {
+          if (!dimensionesBloqueadas.has('dormitorios')) {
+            document.querySelectorAll('.filtro-dorm').forEach(item => { item.checked = false })
+            cb.checked = true
+          }
+          patronesAplicados.push(dormEsMonoambiente
+            ? /\b(monoambiente\w*|studio|loft)\b/
+            : /\b\d+\s*(dormitorios?|habitacion(?:es)?|cuartos?|recamaras?|piezas?)\b/)
+        }
+      }
+      if (ciudadDetectada) {
+        if (!dimensionesBloqueadas.has('ciudad')) ciudadFiltro = ciudadDetectada.ciudad
+        patronesAplicados.push(ciudadDetectada.rx)
+      }
+      if (amenidadesDetectadas.length) {
+        if (!dimensionesBloqueadas.has('amenidades')) {
+          amenidadesFiltro = [...new Set(amenidadesDetectadas.map(({ clave }) => clave))].slice(0, 10)
+        }
+        amenidadesDetectadas.forEach(({ rx }) => patronesAplicados.push(rx))
       }
 
-      // Sin ningún intent claro → dejar texto original para búsqueda literal
-      if (!opDetectada && !tipoDetectado && !dormDetectado) return
+      // Sin intención aplicable: conservar texto y filtros para búsqueda literal.
+      if (patronesAplicados.length === 0) return false
 
-      // Extraer posible ubicación: quitar palabras de intent y stopwords
+      // Dejar como texto libre únicamente lo que no se convirtió en filtro.
       const stopRx = /\b(quiero|busco|necesito|estoy|buscando|un|una|unos|unas|el|la|los|las|para|con|de|en|del|al|que|me|mi|mis|hay|tiene|tienen|algun|alguna|alguno|algo|muy|bien|grande|chico|nuevo|disponible|inmueble|propiedad|comercial|industrial|residencial|amplio|moderno|luminoso|cerca|lejos|zona|sector|barrio|sobre|frente|calle|avenida|ruta)\b/g
-      const intentRx = /\b(temporari\w+|temporada|vacacion\w+|turistic\w+|alquil\w+|arrendar|arriendo|rentar|rento|compr\w+|venta|vend\w+|adquir\w+|invertir|inversion\w+|galpon\w+|deposito\w+|bodega\w+|nave\w+|almacen\w+|local\w+|negocio\w+|comercio\w+|oficina\w+|coworking|caban\w+|bungalow\w+|refugio\w+|duplex\w+|penthouse\w+|quinta\w+|chacra\w+|estancia\w+|finca\w+|terreno\w+|lote\w+|parcela\w+|baldio\w+|fraccion\w+|tierra\w+|campo\w+|departamento\w+|depto\w+|apartamento\w+|monoambiente\w+|studio\w+|loft\w+|casa\w+|chalet\w+|vivienda\w+|hogar\w+|residencia\w+|\d+\s*(dormitorio|habitacion|cuarto|ambiente)s?)\b/g
-
-      const residuo = t
-        .replace(intentRx, ' ')
+      let residuo = t
+      patronesAplicados.forEach(rx => {
+        residuo = residuo.replace(new RegExp(rx.source, 'g'), ' ')
+      })
+      residuo = residuo
         .replace(stopRx, ' ')
         .replace(/\s+/g, ' ').trim()
 
-      inputBusq.value = residuo.length > 2 ? residuo : ''
+      // Reconstruir el residuo con las mayúsculas y tildes que escribió la persona.
+      const tokensOriginales = original.match(/[\p{L}\p{N}]+/gu) || []
+      let desde = 0
+      const tokensRestaurados = (residuo ? residuo.split(/\s+/) : []).map(token => {
+        for (let i = desde; i < tokensOriginales.length; i += 1) {
+          if (_aplanarCiudad(tokensOriginales[i]) === token) {
+            desde = i + 1
+            return tokensOriginales[i]
+          }
+        }
+        return token
+      })
+      const textoResidual = tokensRestaurados.join(' ')
+
+      // Si la ciudad era el único texto libre, mostrarla en el campo en vez de ocultarla.
+      if (ciudadDetectada && !dimensionesBloqueadas.has('ciudad') && !textoResidual) {
+        inputBusq.value = ciudadDetectada.ciudad
+      } else {
+        inputBusq.value = textoResidual
+      }
+      return true
     }
+
+    if (paramQ) interpretarConsulta(paramQ, filtrosInicialesBloqueados)
+    btnClear.style.display = inputBusq.value ? 'block' : 'none'
 
     const btnMic = document.getElementById('busquedaMic')
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -1028,9 +1146,10 @@
       recognition.addEventListener('result', e => {
         const texto = e.results[0][0].transcript
         inputBusq.value = texto
-        btnClear.style.display = 'block'
-        paginaActual = 1
+        clearTimeout(inputBusq._timer)
         interpretarConsulta(texto)
+        btnClear.style.display = inputBusq.value ? 'block' : 'none'
+        paginaActual = 1
         actualizarResultados()
       })
 
