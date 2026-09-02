@@ -2021,270 +2021,182 @@ window.generarBrochure = async function() {
   btn.textContent = 'Generando...'
 
   try {
+    await ensureBrochureV43Deps()
     const { jsPDF } = window.jspdf
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    const W = 210, H = 297
+    const g = brochureDoc(jsPDF)
+    const { doc, W, H, M } = g
     const p = window._proyectoData || {}
     const lotes = window._lotesData || []
+    const disponibles = lotes.filter(l => l.estado === 'disponible')
+    const totalDeclarado = Number(p.cantidad_lotes) || lotes.length
+    const servicios = (Array.isArray(p.servicios) ? p.servicios : [])
+      .filter(Boolean)
+      .map(k => BROCHURE_SERVICE_LABELS[k] || brochureHumanLabel(k))
+    const { PUBLIC_BASE_URL, PUBLIC_HOST } = await import('/js/config.js')
+    // S6 cambia solo esta línea cuando exista el QR con canal.
+    const publicUrl = `${PUBLIC_BASE_URL}/${encodeURIComponent(p.slug || '')}`
+    const logo = await brochureLogo()
 
-    // ── Paleta clara ─────────────────────────────────────────────────
-    const BG      = [245, 240, 232]
-    const SURFACE = [235, 229, 218]
-    const DARK    = [28,  25,  20]
-    const MUTED   = [130, 122, 108]
-    const WHITE   = [255, 255, 255]
-    const GOLD_C  = [201, 168, 76]
-    const SITE    = 'https://surpatagonian.com' // FUENTE: js/config.js PUBLIC_BASE_URL — mantener sincronizado
+    doc.setProperties({
+      title: `${p.nombre || 'Proyecto'} · Brochure digital`,
+      subject: 'Brochure público de proyecto',
+      author: 'Sur Patagonian · Red Inmobiliaria',
+      creator: 'Sur Patagonian',
+    })
 
-    const f  = c => doc.setFillColor(c[0],c[1],c[2])
-    const d  = c => doc.setDrawColor(c[0],c[1],c[2])
-    const t  = c => doc.setTextColor(c[0],c[1],c[2])
-    const sp = n => doc.setCharSpace(n)
-    const gs = o => { try { doc.setGState(new doc.GState({ opacity: o })) } catch(e){} }
+    // ── Portada e información del proyecto ───────────────────────────
+    let y = brochureHeader(g, logo, 68, 14)
+    g.filete(y, true); y += 13
 
-    // ── Fondo general crema ───────────────────────────────────────────
-    f(BG); doc.rect(0, 0, W, H, 'F')
+    g.titulo(25); g.tinta()
+    const nombreLines = doc.splitTextToSize(p.nombre || 'Proyecto', W - 2*M)
+    doc.text(nombreLines, W/2, y, { align:'center', lineHeightFactor:1.03 })
+    y += nombreLines.length * 7.8 + 3
 
-    // ══ HEADER — crema, sin barra oscura ═════════════════════════════
-    const hH = 26
-    f(SURFACE); doc.rect(0, 0, W, hH, 'F')
-
-    // logo picos.png real del sitio, al 68% de opacidad
-    try {
-      const picosData = await fetchImageAsBase64(SITE + '/picos.png')
-      gs(0.68)
-      doc.addImage(picosData, 'PNG', 11, 3, 18, 18)
-      gs(1)
-    } catch(e) {}
-
-    // Texto marca
-    t(GOLD_C)
-    doc.setFont('helvetica','bold'); doc.setFontSize(11); sp(3.5)
-    doc.text('SUR PATAGONIAN', 33, 11)
-    sp(0)
-    t(MUTED)
-    doc.setFont('helvetica','normal'); doc.setFontSize(4.8); sp(1.8)
-    doc.text('DESARROLLO INMOBILIARIO', 33, 16.5)
-    sp(0)
-    t([150,142,128])
-    doc.setFontSize(4.5); sp(1.2)
-    doc.text('BROCHURE DE PROYECTO', 33, 21)
-    sp(0)
-
-    // Línea dorada inferior del header
-    d(GOLD_C); doc.setLineWidth(0.4)
-    doc.line(0, hH, W, hH)
-
-    // ══ FOTO HERO ════════════════════════════════════════════════════
-    let y = hH
-    const heroH = 72
-    const fotoUrl = p.foto_portada
-    if (fotoUrl) {
-      try {
-        const imgD = await fetchImageAsBase64(fotoUrl)
-        doc.addImage(imgD, 'JPEG', 0, y, W, heroH)
-      } catch(e) { f([35,30,22]); doc.rect(0, y, W, heroH, 'F') }
-    } else { f([35,30,22]); doc.rect(0, y, W, heroH, 'F') }
-    // overlay oscuro via canvas 1x1
-    const ov = document.createElement('canvas'); ov.width=1; ov.height=1
-    const oc2 = ov.getContext('2d'); oc2.fillStyle='rgba(8,5,2,0.50)'; oc2.fillRect(0,0,1,1)
-    doc.addImage(ov.toDataURL(), 'PNG', 0, y, W, heroH)
-
-    // Nombre del proyecto sobre la foto
-    const nombre = p.nombre || 'Proyecto'
-    t(WHITE)
-    doc.setFont('times','italic'); doc.setFontSize(34); sp(0)
-    doc.text(nombre, 14, y + heroH - 20)
-
-    // Localidad
-    const loc = [p.ciudad, p.provincia?.replace(/_/g,' ')].filter(Boolean).join(', ')
+    const loc = [p.ciudad, (p.provincia || '').replace(/_/g,' ')].filter(Boolean).join(' · ')
     if (loc) {
-      t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(6.5); sp(2.5)
-      doc.text(loc.toUpperCase(), 14, y + heroH - 10)
-      sp(0)
+      doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(6.2, true)
+      g.tracked(loc.toUpperCase(), W/2, y, 1.25, 'center'); y += 8
     }
 
-    y += heroH + 2
-
-    // ══ DESCRIPCIÓN ══════════════════════════════════════════════════
-    if (p.descripcion) {
-      t(MUTED); doc.setFont('times','italic'); doc.setFontSize(8.5); sp(0)
-      const dLines = doc.splitTextToSize(p.descripcion, W - 28)
-      doc.text(dLines.slice(0,3), 14, y + 7)
-      y += dLines.slice(0,3).length * 5 + 10
-    } else { y += 8 }
-
-    // Línea dorada
-    d(GOLD_C); doc.setLineWidth(0.35)
-    doc.line(14, y, W-14, y)
-    y += 2
-
-    // ══ INFO DEL DESARROLLO ══════════════════════════════════════════
-    f(SURFACE); doc.rect(0, y, W, 55, 'F')
-    y += 8
-
-    // Título sección izquierda
-    t(GOLD_C); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
-    doc.text('DATOS DEL DESARROLLO', 14, y)
-    sp(0)
-
-    // Título sección derecha
-    t([201,168,76]); doc.setFontSize(5.5); sp(2.2)
-    doc.text('SERVICIOS', W/2+8, y)
-    sp(0)
-    y += 8
-
-    // Columna izquierda — datos clave
-    const dataItems = []
-    if (p.tipo_propiedad)  dataItems.push(['Tipo de propiedad',  p.tipo_propiedad])
-    if (p.hectareas_total) dataItems.push(['Superficie total',   p.hectareas_total + ' hectáreas'])
-    if (p.cantidad_lotes)  dataItems.push(['Lotes totales',      p.cantidad_lotes + ' lotes'])
-    const disp = lotes.filter(l => l.estado === 'disponible').length
-    if (disp > 0)          dataItems.push(['Disponibles hoy',   disp + ' lotes'])
-    if (p.precio_desde)    dataItems.push(['Precio desde',       'USD ' + Number(p.precio_desde).toLocaleString()])
-    if (p.superficie_min && p.superficie_max)
-                           dataItems.push(['Superficies',        p.superficie_min + ' – ' + p.superficie_max + ' m²'])
-
-    dataItems.forEach((item, i) => {
-      const iy = y + i * 7.2
-      t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(5.2); sp(1.2)
-      doc.text(item[0].toUpperCase(), 14, iy)
-      sp(0)
-      t(DARK); doc.setFont('times','normal'); doc.setFontSize(9)
-      doc.text(item[1], 14, iy + 4.5)
-    })
-
-    // Columna derecha — servicios
-    const svcsKeys = Object.keys(p).filter(k => p[k] === true && SERVICIOS_LABELS[k])
-    if (svcsKeys.length > 0) {
-      svcsKeys.slice(0,7).forEach((k, i) => {
-        const sy2 = y + i * 6.2
-        t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); sp(0)
-        doc.text('· ' + SERVICIOS_LABELS[k], W/2+8, sy2)
-      })
-    } else {
-      t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(6.5); sp(0)
-      doc.text('Consultá servicios disponibles', W/2+8, y + 4)
-    }
-
-    y += 47
-
-    // Financiación — banda separada
-    if (p.financiacion) {
-      d([201,168,76]); doc.setLineWidth(0.25)
-      doc.line(14, y, W-14, y)
-      y += 5
-      t([201,168,76]); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2)
-      doc.text('FINANCIACIÓN', 14, y)
-      sp(0)
-      y += 5
-      t(DARK); doc.setFont('times','normal'); doc.setFontSize(8.5)
-      const finLines = doc.splitTextToSize(p.financiacion, W - 28)
-      doc.text(finLines.slice(0,2), 14, y)
-      y += finLines.slice(0,2).length * 5 + 5
-    }
-
-    // ══ DISPONIBILIDAD DE LOTES ══════════════════════════════════════
-    d(GOLD_C); doc.setLineWidth(0.35)
-    doc.line(14, y, W-14, y)
-    y += 8
-
-    t(GOLD_C); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
-    doc.text('DISPONIBILIDAD DE LOTES', 14, y)
-    sp(0)
-    y += 7
-
-    // Encabezado tabla
-    f(DARK); doc.rect(14, y, W-28, 6.5, 'F')
-    t(WHITE); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(1)
-    doc.text('N°',   18, y+4.5)
-    doc.text('SUPERFICIE', 42, y+4.5)
-    doc.text('PRECIO USD',  90, y+4.5)
-    doc.text('ESTADO',     150, y+4.5)
-    sp(0)
-    y += 6.5
-
-    const colores = { disponible:[50,130,70], reservado:[190,130,20], vendido:[170,50,50] }
-    const maxL = Math.min(lotes.length, 14)
-    lotes.slice(0,maxL).forEach((l,i) => {
-      const ry = y + i*6
-      if (i%2===0) { f(SURFACE); doc.rect(14, ry, W-28, 6, 'F') }
-      t(DARK); doc.setFont('helvetica','normal'); doc.setFontSize(6.5)
-      doc.text(String(l.numero != null ? l.numero : i+1), 18, ry+4)
-      doc.text(l.superficie ? l.superficie+' m²' : '—', 42, ry+4)
-      doc.text(l.precio ? 'USD '+Number(l.precio).toLocaleString() : '—', 90, ry+4)
-      const ec = colores[l.estado]||[120,120,120]
-      doc.setTextColor(ec[0],ec[1],ec[2])
-      doc.setFont('helvetica','bold'); doc.setFontSize(5.5)
-      doc.text((l.estado||'').toUpperCase(), 150, ry+4)
-    })
-    y += maxL*6 + 8
-
-    // ══ CONTACTO + QR ════════════════════════════════════════════════
-    d(GOLD_C); doc.setLineWidth(0.35)
-    doc.line(14, y, W-14, y)
-    y += 8
-
-    t(GOLD_C); doc.setFont('helvetica','normal'); doc.setFontSize(5.5); sp(2.2)
-    doc.text('CONTACTO', 14, y)
-    sp(0)
-    y += 7
-
-    const wspNum = SUR_WSP.replace(/^549/,'+54 9 ').replace(/(\d{4})(\d{4})$/,'$1 $2')
-    t(DARK); doc.setFont('times','normal'); doc.setFontSize(16)
-    doc.text(wspNum, 14, y+6)
-    t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(7)
-    doc.text(SUR_EMAIL, 14, y+13)
-
-    // QR codes — pequeños, esquina derecha
-    const qrSz = 20
-    const qrY2 = y
-    const wspMsg2 = encodeURIComponent(`Hola, me interesa ${p.nombre}. ¿Podemos hablar?`)
-    const wspLink2 = `https://wa.me/${SUR_WSP}?text=${wspMsg2}`
-    const webUrl2  = `${SITE}/${p.slug||''}`
-
-    for (const [link, label, qx] of [
-      [wspLink2, 'WHATSAPP',    W-14-qrSz*2-10],
-      [webUrl2,  'VER PROYECTO', W-14-qrSz]
-    ]) {
+    if (p.foto_portada) {
       try {
-        const qrImg = await fetchQR(link)
-        f(WHITE); doc.rect(qx-2, qrY2-2, qrSz+4, qrSz+4, 'F')
-        d([210,205,198]); doc.setLineWidth(0.2); doc.rect(qx-2, qrY2-2, qrSz+4, qrSz+4, 'S')
-        doc.addImage(qrImg, 'PNG', qx, qrY2, qrSz, qrSz)
-        t(MUTED); doc.setFont('helvetica','normal'); doc.setFontSize(4.8); sp(1)
-        doc.text(label, qx+(qrSz/2), qrY2+qrSz+5.5, { align:'center' })
-        sp(0)
-      } catch(e) {}
-    }
-
-    y += qrSz + 14
-
-    // ══ GALERÍA — tira de fotos chicas cubriendo el ancho ════════════
-    const galFotos = (window._galeria || []).filter(u => u)
-    const galH = 32
-    const galY = H - galH - 12
-    if (galFotos.length > 0 && galY > y + 5) {
-      d(GOLD_C); doc.setLineWidth(0.3); doc.line(0, galY, W, galY)
-      const nFotos = Math.min(galFotos.length, 6)
-      const fw = W / nFotos
-      for (let i = 0; i < nFotos; i++) {
-        try {
-          const gi = await fetchImageAsBase64(galFotos[i])
-          doc.addImage(gi, 'JPEG', i * fw, galY, fw, galH)
-        } catch(e) {}
+        const hero = await loadImageCover(p.foto_portada, W - 2*M, 74, 200)
+        doc.addImage(hero, 'JPEG', M, y, W - 2*M, 74, '', 'FAST')
+        y += 84
+      } catch (e) {
+        console.warn('Brochure: no se pudo cargar la foto de portada', e)
       }
     }
 
-    // ══ FOOTER ═══════════════════════════════════════════════════════
-    f(DARK); doc.rect(0, H-12, W, 12, 'F')
-    d(GOLD_C); doc.setLineWidth(0.4); doc.line(0, H-12, W, H-12)
-    t(GOLD_C); doc.setFont('helvetica','normal'); doc.setFontSize(5); sp(2.5)
-    doc.text('SUR PATAGONIAN  ·  TIERRA, NATURALEZA Y VISIÓN', W/2, H-5, { align:'center' })
-    sp(0)
+    if (p.descripcion) {
+      y = brochureEnsure(g, logo, y, 18)
+      g.rotulo('EL LOTEO', M, y); y += 7
+      doc.setTextColor(...BROCHURE_V43.TEXTO); g.sans(8.2)
+      y = brochureParagraph(g, logo, p.descripcion, y, 'EL LOTEO') + 8
+    }
 
-    // Guardar
-    const fname = (p.nombre||'proyecto').toLowerCase().replace(/\s+/g,'-')+'-brochure.pdf'
+    const supMin = brochureM2(p.sup_min_m2)
+    const supMax = brochureM2(p.sup_max_m2)
+    const rango = supMin && supMax ? `${supMin} — ${supMax}` : (supMin || supMax || '—')
+    y = brochureEnsure(g, logo, y, 31)
+    g.filete(y, true); y += 9
+    brochureMetric(g, M, y, rango, 'SUPERFICIES')
+    brochureMetric(g, W/2 + 4, y, `${disponibles.length} de ${totalDeclarado}`, 'LOTES DISPONIBLES')
+    y += 22
+
+    if (servicios.length) {
+      y = brochureEnsure(g, logo, y, 18)
+      g.rotulo('SERVICIOS', M, y); y += 7
+      doc.setTextColor(...BROCHURE_V43.TEXTO); g.sans(8.2)
+      y = brochureParagraph(g, logo, servicios.join('   ·   '), y, 'SERVICIOS') + 8
+    }
+
+    if (String(p.financiacion || '').trim()) {
+      y = brochureEnsure(g, logo, y, 18)
+      g.rotulo('FINANCIACIÓN', M, y); y += 7
+      doc.setTextColor(...BROCHURE_V43.TEXTO); g.sans(8.2)
+      brochureParagraph(g, logo, p.financiacion, y, 'FINANCIACIÓN')
+    }
+
+    // ── Todos y solo los lotes disponibles, sin precio ───────────────
+    doc.addPage()
+    y = brochureHeader(g, logo, 44, 13)
+    g.filete(y, true); y += 12
+    g.titulo(20); g.tinta(); doc.text('Lotes disponibles', M, y); y += 8
+    doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(7.2)
+    doc.text(`${disponibles.length} disponibles de ${totalDeclarado}`, M, y); y += 10
+    y = brochureLotsHeader(g, y)
+
+    if (!disponibles.length) {
+      doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(8)
+      doc.text('No hay lotes disponibles cargados en este momento.', M, y + 5)
+    } else {
+      disponibles.forEach((l, i) => {
+        if (y + 9 > g.bottom) {
+          doc.addPage()
+          y = brochureHeader(g, logo, 44, 13)
+          g.filete(y, true); y += 10
+          g.rotulo('LOTES DISPONIBLES · CONTINUACIÓN', M, y); y += 8
+          y = brochureLotsHeader(g, y)
+        }
+        if (i % 2 === 0) {
+          doc.setFillColor(247, 246, 243)
+          doc.rect(M, y - 1.5, W - 2*M, 8.5, 'F')
+        }
+        g.tinta(); g.sans(8.4, true)
+        doc.text(String(l.numero ?? '—'), M + 3, y + 4)
+        g.sans(8)
+        doc.text(brochureM2(l.superficie_m2) || '—', W - M - 3, y + 4, { align:'right' })
+        y += 8.5
+      })
+      g.filete(y, true)
+    }
+
+    // ── Galería, contacto, QR público y cierre legal ─────────────────
+    doc.addPage()
+    y = brochureHeader(g, logo, 44, 13)
+    g.filete(y, true); y += 11
+
+    const fotos = (Array.isArray(window._galeria) ? window._galeria : [])
+      .filter(Boolean)
+      .filter((url, i, arr) => arr.indexOf(url) === i && url !== p.foto_portada)
+      .slice(0, 4)
+    if (fotos.length) {
+      g.rotulo('GALERÍA', M, y); y += 7
+      const gap = 4, fw = (W - 2*M - gap) / 2, fh = 45
+      for (let i = 0; i < fotos.length; i++) {
+        const x = M + (i % 2) * (fw + gap)
+        const iy = y + Math.floor(i / 2) * (fh + gap)
+        try {
+          const foto = await loadImageCover(fotos[i], fw, fh, 180)
+          doc.addImage(foto, 'JPEG', x, iy, fw, fh, '', 'FAST')
+        } catch (e) {
+          console.warn(`Brochure: no se pudo cargar la foto ${i + 1}`, e)
+        }
+      }
+      y += Math.ceil(fotos.length / 2) * (fh + gap) + 4
+    }
+
+    const contactoNombre = String(p.contacto_nombre || 'Sur Patagonian').trim()
+    const contactoWsp = String(p.contacto_whatsapp || SUR_WSP).trim()
+    const contactoEmail = String(p.contacto_email || SUR_EMAIL).trim()
+    const qrSize = 24, qrX = W - M - qrSize
+    const contactoAncho = qrX - M - 12
+    g.titulo(14)
+    const nombreContactoLines = doc.splitTextToSize(contactoNombre, contactoAncho)
+    g.sans(8.2)
+    const emailLines = doc.splitTextToSize(contactoEmail, contactoAncho)
+    const cierreAlto = 8 + Math.max(nombreContactoLines.length * 6 + 7.5 + emailLines.length * 4.2, qrSize + 7) + 15
+    if (y + cierreAlto > H - 55) {
+      doc.addPage()
+      y = brochureHeader(g, logo, 44, 13)
+      g.filete(y, true); y += 11
+    }
+
+    g.rotulo('CONTACTO', M, y); y += 8
+    const qrY = y - 2
+    g.titulo(14); g.tinta()
+    doc.text(nombreContactoLines, M, y, { lineHeightFactor:1.05 })
+    y += nombreContactoLines.length * 6 + 2
+    doc.setTextColor(...BROCHURE_V43.TEXTO); g.sans(8.2)
+    doc.text(brochurePhone(contactoWsp), M, y); y += 5.5
+    doc.text(emailLines, M, y, { lineHeightFactor:1.15 })
+    y += emailLines.length * 4.2
+
+    const qr = await brochureLocalQR(publicUrl)
+    doc.addImage(qr, 'PNG', qrX, qrY, qrSize, qrSize)
+    doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(5.4, true)
+    g.tracked('VER PROYECTO', qrX + qrSize/2, qrY + qrSize + 5, 0.7, 'center')
+    doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(5.8)
+    const urlY = Math.max(y + 7, qrY + qrSize + 9)
+    const urlLines = doc.splitTextToSize(publicUrl.replace(/^https?:\/\//, ''), W - 2*M)
+    doc.text(urlLines, M, urlY, { lineHeightFactor:1.15 })
+
+    brochureLegal(g)
+    brochureFooter(g, PUBLIC_HOST)
+
+    const fname = brochureSlug(p.nombre || p.slug || 'proyecto') + '-brochure.pdf'
     doc.save(fname)
 
   } catch(err) {
@@ -2296,17 +2208,72 @@ window.generarBrochure = async function() {
   }
 }
 
-// Labels servicios
-const SERVICIOS_LABELS = {
-  agua_corriente:'Agua corriente', luz_electrica:'Luz eléctrica', gas_natural:'Gas natural',
-  cloaca:'Red cloacal', wifi:'Wi-Fi', porteria:'Portería 24hs', sum:'SUM',
-  parrillas:'Parrillas', senderos:'Senderos', muelle:'Acceso al agua',
-  playa:'Playa privada', cancha:'Cancha', piscina:'Piscina'
+const BROCHURE_V43 = {
+  W: 210, H: 297, M: 20,
+  TINTA:  [26, 26, 26],
+  GRIS:   [94, 90, 85],
+  LIN:    [206, 202, 195],
+  TEXTO:  [42, 40, 37],
+  DORADO: [176, 142, 60],
+  LOGO:   '/assets/logos/logo-vertical-negro.png',
+  LEGAL_NOMBRE: 'Mariana Ayelén García · Martillera y Corredora Pública',
+  LEGAL_MAT:    'Mat. 271-RP-18 · F°350 T°II · El Bolsón, Río Negro, Argentina',
+  LEGAL_NOTA:   'Documento informativo. Los precios y condiciones pueden variar sin previo aviso; la operación se perfecciona por escrito.',
 }
 
-// Carga imagen como base64 (raw)
+const BROCHURE_SERVICE_LABELS = {
+  agua_corriente: 'Agua corriente',
+  luz_electrica: 'Luz eléctrica',
+  gas_natural: 'Gas natural',
+  cloaca: 'Red cloacal',
+  wifi: 'Wi-Fi / fibra óptica',
+  porteria: 'Portería 24hs',
+  senderos: 'Senderos peatonales',
+  muelle: 'Muelle / acceso al agua',
+  cancha: 'Cancha deportiva',
+  piscina: 'Piscina',
+  agua: 'Agua potable',
+  luz: 'Electricidad',
+  gas: 'Gas natural',
+  cloacas: 'Cloacas',
+  internet: 'Internet / Fibra',
+  seguridad: 'Seguridad 24hs',
+  acceso_pavimentado: 'Acceso pavimentado',
+  laguna: 'Laguna artificial',
+  quincho: 'Quincho / SUM',
+  bosque: 'Reserva de bosque',
+  vista_lago: 'Vista al lago',
+}
+
+let _brochureLogoCache = null
+
+function brochureLoadScript(src, ready) {
+  if (ready()) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const existente = Array.from(document.scripts).find(s => s.src === new URL(src, location.href).href)
+    if (existente) {
+      existente.addEventListener('load', resolve, { once:true })
+      existente.addEventListener('error', reject, { once:true })
+      return
+    }
+    const script = document.createElement('script')
+    script.src = src
+    script.onload = resolve
+    script.onerror = () => reject(new Error(`No se pudo cargar ${src}`))
+    document.head.appendChild(script)
+  })
+}
+
+async function ensureBrochureV43Deps() {
+  await Promise.all([
+    brochureLoadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', () => !!window.QRCode),
+    brochureLoadScript('/js/gpdf-fuentes.js', () => !!window.GPDF_FUENTES),
+  ])
+}
+
 async function fetchImageAsBase64(url) {
   const res = await fetch(url)
+  if (!res.ok) throw new Error(`Imagen HTTP ${res.status}`)
   const blob = await res.blob()
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -2316,7 +2283,6 @@ async function fetchImageAsBase64(url) {
   })
 }
 
-// Carga y recorta imagen como "cover" en canvas — evita deformación
 async function loadImageCover(url, targetWmm, targetHmm, dpi = 150) {
   const twPx = Math.round(targetWmm * dpi / 25.4)
   const thPx = Math.round(targetHmm * dpi / 25.4)
@@ -2338,33 +2304,200 @@ async function loadImageCover(url, targetWmm, targetHmm, dpi = 150) {
   })
 }
 
-// Dibuja los picos Sur Patagonian en canvas y retorna base64
-function drawPicosSVG(fillColor = '#b49137', w = 300, h = 130) {
-  const canvas = document.createElement('canvas')
-  canvas.width = w; canvas.height = h
-  const ctx = canvas.getContext('2d')
-  // Puntos: 3 picos, el central el más alto, izquierdo más bajo, derecho intermedio
-  const pts = [
-    [0,   h],        // base izq
-    [0.18*w, 0.30*h], // pico izquierdo
-    [0.30*w, 0.58*h], // valle izq-centro
-    [0.50*w, 0.02*h], // pico central (más alto)
-    [0.65*w, 0.46*h], // valle centro-der
-    [0.78*w, 0.22*h], // pico derecho
-    [w,   h]         // base der
-  ]
-  ctx.beginPath()
-  ctx.moveTo(pts[0][0], pts[0][1])
-  pts.slice(1).forEach(([x,y]) => ctx.lineTo(x,y))
-  ctx.closePath()
-  ctx.fillStyle = fillColor
-  ctx.fill()
-  return canvas.toDataURL('image/png')
+function brochureLogoLimpio(base64) {
+  return new Promise(resolve => {
+    const img = new Image()
+    img.onload = () => {
+      const t = document.createElement('canvas')
+      t.width = img.naturalWidth; t.height = img.naturalHeight
+      const tx = t.getContext('2d'); tx.drawImage(img, 0, 0)
+      let x0 = t.width, y0 = t.height, x1 = 0, y1 = 0
+      try {
+        const data = tx.getImageData(0, 0, t.width, t.height).data
+        for (let yy = 0; yy < t.height; yy++) for (let xx = 0; xx < t.width; xx++) {
+          if (data[(yy * t.width + xx) * 4 + 3] > 16) {
+            if (xx < x0) x0 = xx; if (xx > x1) x1 = xx
+            if (yy < y0) y0 = yy; if (yy > y1) y1 = yy
+          }
+        }
+      } catch (e) { x0 = 0; y0 = 0; x1 = t.width - 1; y1 = t.height - 1 }
+      if (x1 <= x0 || y1 <= y0) { x0 = 0; y0 = 0; x1 = t.width - 1; y1 = t.height - 1 }
+      const bw = x1 - x0 + 1, bh = y1 - y0 + 1
+      const scale = Math.min(1, 1000 / bw)
+      const c = document.createElement('canvas')
+      c.width = Math.round(bw * scale); c.height = Math.round(bh * scale)
+      const cx = c.getContext('2d')
+      cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, c.width, c.height)
+      cx.drawImage(img, x0, y0, bw, bh, 0, 0, c.width, c.height)
+      resolve({ uri:c.toDataURL('image/jpeg', 0.92), ratio:c.height/c.width })
+    }
+    img.onerror = () => resolve(null)
+    img.src = base64
+  })
 }
 
-async function fetchQR(data) {
-  const url = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}&color=1c1914&bgcolor=ffffff&margin=6`
-  return fetchImageAsBase64(url)
+async function brochureLogo() {
+  if (_brochureLogoCache) return _brochureLogoCache
+  try {
+    _brochureLogoCache = await brochureLogoLimpio(await fetchImageAsBase64(BROCHURE_V43.LOGO))
+  } catch (e) { _brochureLogoCache = null }
+  return _brochureLogoCache
+}
+
+function brochureDoc(jsPDF) {
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4', compress:true })
+  const F = window.GPDF_FUENTES
+  if (F) {
+    doc.addFileToVFS('Corm-SB.ttf', F.cormSB); doc.addFont('Corm-SB.ttf', 'Cormorant', 'bold')
+    doc.addFileToVFS('Mont-R.ttf', F.montR); doc.addFont('Mont-R.ttf', 'Sans', 'normal')
+    doc.addFileToVFS('Mont-SB.ttf', F.montSB); doc.addFont('Mont-SB.ttf', 'Sans', 'bold')
+  }
+  const tieneFuentes = !!F
+  const g = {
+    doc,
+    ...BROCHURE_V43,
+    bottom: BROCHURE_V43.H - 28,
+    titulo: size => { doc.setFont(tieneFuentes ? 'Cormorant' : 'times', 'bold'); doc.setFontSize(size) },
+    sans: (size, bold=false) => { doc.setFont(tieneFuentes ? 'Sans' : 'helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size) },
+    tinta: () => doc.setTextColor(...BROCHURE_V43.TINTA),
+    tracked: (text, anchor, y, spacing, align='left') => {
+      doc.setCharSpace(0)
+      const width = doc.getTextWidth(text) + spacing * Math.max(0, text.length - 1)
+      const x = align === 'center' ? anchor - width/2 : align === 'right' ? anchor - width : anchor
+      doc.setCharSpace(spacing); doc.text(text, x, y); doc.setCharSpace(0)
+    },
+    rotulo: (text, x, y, align='left') => {
+      doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(5.8, true)
+      g.tracked(text, x, y, 0.8, align)
+    },
+    filete: (y, strong=false) => {
+      doc.setDrawColor(...(strong ? BROCHURE_V43.TINTA : BROCHURE_V43.LIN))
+      doc.setLineWidth(strong ? 0.4 : 0.2)
+      doc.line(BROCHURE_V43.M, y, BROCHURE_V43.W - BROCHURE_V43.M, y)
+    },
+  }
+  return g
+}
+
+function brochureHeader(g, logo, width=44, top=13) {
+  const { doc, W } = g
+  if (logo) {
+    doc.addImage(logo.uri, 'JPEG', W/2 - width/2, top, width, width * logo.ratio)
+    return top + width * logo.ratio + 5
+  }
+  g.tinta(); g.sans(10, true); g.tracked('SUR PATAGONIAN', W/2, top + 8, 2.2, 'center')
+  doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(5.8)
+  g.tracked('RED INMOBILIARIA', W/2, top + 14, 1.8, 'center')
+  return top + 19
+}
+
+function brochureEnsure(g, logo, y, needed) {
+  if (y + needed <= g.bottom) return y
+  g.doc.addPage()
+  const next = brochureHeader(g, logo, 44, 13)
+  g.filete(next, true)
+  return next + 11
+}
+
+function brochureParagraph(g, logo, text, y, continuedLabel) {
+  const { doc, W, M } = g
+  const lines = doc.splitTextToSize(String(text).replace(/\s+/g, ' ').trim(), W - 2*M)
+  const lineH = 4.5
+  lines.forEach((line, i) => {
+    if (y + lineH > g.bottom) {
+      doc.addPage()
+      y = brochureHeader(g, logo, 44, 13)
+      g.filete(y, true); y += 11
+      if (continuedLabel) { g.rotulo(`${continuedLabel} · CONTINUACIÓN`, M, y); y += 7 }
+      doc.setTextColor(...BROCHURE_V43.TEXTO); g.sans(8.2)
+    }
+    doc.text(line, M, y)
+    y += lineH
+  })
+  return y
+}
+
+function brochureMetric(g, x, y, value, label) {
+  const { doc } = g
+  g.tinta(); g.sans(12, true); doc.text(String(value), x, y)
+  doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(5.5, true)
+  g.tracked(label, x, y + 6, 0.8)
+}
+
+function brochureLotsHeader(g, y) {
+  const { doc, W, M } = g
+  doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(5.8, true)
+  g.tracked('LOTE', M + 3, y, 0.8)
+  g.tracked('SUPERFICIE', W - M - 3, y, 0.8, 'right')
+  y += 3; g.filete(y, true)
+  return y + 3
+}
+
+function brochureLegal(g) {
+  const { doc, W, H, M } = g
+  const y = H - 48
+  doc.setDrawColor(...BROCHURE_V43.TINTA); doc.setLineWidth(0.4); doc.line(M, y, W-M, y)
+  g.tinta(); g.sans(6.6, true)
+  doc.text(BROCHURE_V43.LEGAL_NOMBRE, W/2, y + 7, { align:'center' })
+  doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(6)
+  doc.text(BROCHURE_V43.LEGAL_MAT, W/2, y + 12, { align:'center' })
+  g.sans(5.4)
+  doc.text(BROCHURE_V43.LEGAL_NOTA, W/2, y + 17, { align:'center' })
+}
+
+function brochureFooter(g, host) {
+  const { doc, W, H, M } = g
+  const total = doc.getNumberOfPages()
+  for (let page = 1; page <= total; page++) {
+    doc.setPage(page)
+    doc.setDrawColor(...BROCHURE_V43.LIN); doc.setLineWidth(0.2); doc.line(M, H-20, W-M, H-20)
+    doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(5.8)
+    doc.text('SUR PATAGONIAN · RED INMOBILIARIA', M, H-14)
+    doc.text(`${host} · ${String(page).padStart(2,'0')} / ${String(total).padStart(2,'0')}`, W-M, H-14, { align:'right' })
+  }
+}
+
+function brochureLocalQR(data) {
+  return new Promise((resolve, reject) => {
+    const holder = document.createElement('div')
+    holder.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:180px;height:180px;background:#fff;padding:8px'
+    document.body.appendChild(holder)
+    try {
+      new QRCode(holder, { text:data, width:180, height:180, colorDark:'#1a1a1a', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M })
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const canvas = holder.querySelector('canvas')
+        const img = holder.querySelector('img')
+        const finish = value => { holder.remove(); value ? resolve(value) : reject(new Error('El QR local no generó imagen')) }
+        if (canvas) finish(canvas.toDataURL('image/png'))
+        else if (img?.complete) finish(img.src)
+        else if (img) { img.onload = () => finish(img.src); img.onerror = () => finish(null) }
+        else finish(null)
+      }))
+    } catch (e) { holder.remove(); reject(e) }
+  })
+}
+
+function brochureM2(value) {
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? `${n.toLocaleString('es-AR')} m²` : ''
+}
+
+function brochureHumanLabel(value) {
+  const text = String(value || '').replace(/_/g, ' ').trim()
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : ''
+}
+
+function brochurePhone(value) {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (digits.length === 13 && digits.startsWith('549')) {
+    return `+54 9 ${digits.slice(3,7)} ${digits.slice(7)}`
+  }
+  return String(value || '—')
+}
+
+function brochureSlug(value) {
+  return String(value || 'proyecto').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 </script>
 </body>
