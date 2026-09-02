@@ -1691,8 +1691,6 @@
 
     // ── Cargar métricas globales + mensajes ───────
     const canalIds    = canales.map(c => c.id)
-    const ciudadesMias = [...new Set(canales.map(c => c.ciudad).filter(Boolean))]
-    const provinciasMias = [...new Set(canales.map(c => c.provincia).filter(Boolean))]
 
     // canal_ref almacena el codigo de la REFERENCIA (no del canal).
     // El admin lo resuelve por prefijo: canal_ref.startsWith(canal.codigo + '-').
@@ -1714,7 +1712,7 @@
         .select('canal_id, campanas(nombre, url_destino, activa, fecha_inicio, fecha_fin)')
         .in('canal_id', canales.map(c => c.id)),
       supabase.from('mensajes')
-        .select('id, asunto, cuerpo, usuario_id, ciudad, provincia, tipo_acceso, provincias_arr, ciudades_arr, canal_ids, created_at, mensajes_respuestas(id, usuario_id, cuerpo, created_at)')
+        .select('id, asunto, cuerpo, created_at, mensajes_respuestas(id, cuerpo, created_at)')
         .order('created_at', { ascending: false }),
       supabase.from('referencias')
         .select('id, codigo, nombre, destino, activo, proyecto_slug, canal_id, punto_tipo')
@@ -2090,39 +2088,13 @@
       chart.canvas.addEventListener('dblclick', chart._pvDblH)
     }
 
-    // Filtrar mensajes para este usuario
-    // Lógica: si usuario_id está → solo ese usuario
-    // Si no → AND entre todos los filtros activos.
-    // Soporta tanto campos nuevos (arrays) como campos viejos (single value).
-    const userTipoAcceso = esPasivo ? 'pasivo' : 'activo'
-    const misCanalesIds  = canales.map(c => c.id)
-    const todosMsg = rMensajes.data || []
-    const misMensajes = todosMsg.filter(m => {
-      if (m.usuario_id) return m.usuario_id === userId
-
-      // ── Nuevos campos multi-select (arrays) ──
-      // canal_ids: alguno de los mis canales debe estar en la lista
-      if (m.canal_ids?.length) {
-        if (!m.canal_ids.some(id => misCanalesIds.includes(id))) return false
-      }
-      // provincias_arr: mi provincia debe estar en alguna de las seleccionadas
-      if (m.provincias_arr?.length) {
-        if (!m.provincias_arr.some(p => provinciasMias.includes(p))) return false
-      }
-      // ciudades_arr: mi ciudad debe estar en alguna de las seleccionadas
-      if (m.ciudades_arr?.length) {
-        if (!m.ciudades_arr.some(c => ciudadesMias.includes(c))) return false
-      }
-
-      // ── Compatibilidad con campos viejos (mensajes anteriores) ──
-      if (!m.provincias_arr && !m.ciudades_arr && !m.canal_ids) {
-        if (m.ciudad      && !ciudadesMias.includes(m.ciudad))      return false
-        if (m.provincia   && !provinciasMias.includes(m.provincia)) return false
-        if (m.tipo_acceso && m.tipo_acceso !== userTipoAcceso)      return false
-      }
-
-      return true
-    })
+    // La segmentación y el aislamiento de respuestas viven en RLS.
+    const mensajesError = rMensajes.error || null
+    if (mensajesError) console.error('[mensajes] No se pudo cargar:', mensajesError)
+    const misMensajes = rMensajes.data || []
+    const mensajesVacioHtml = texto => mensajesError
+      ? '<div class="pv-empty" role="alert"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">No pudimos cargar los mensajes</div><div>Recargá la página para volver a intentarlo.</div></div>'
+      : `<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>${texto}</div></div>`
     const totalScans = visitas.filter(esEntrada).length
     const conv       = totalScans > 0 ? ((contactos.filter(c => c.origen !== 'manual').length / totalScans) * 100).toFixed(1) : 0
 
@@ -2424,7 +2396,7 @@
 
     window.enviarRespuestaTitular = (btn, i) => {
       const mensajeId = btn?.dataset?.messageId
-      if (mensajeId) window.enviarRespuesta(mensajeId, i, `Titular de ${canales.length} comercios`)
+      if (mensajeId) window.enviarRespuesta(mensajeId, i)
     }
 
     async function generarQrUnidadesPasivas() {
@@ -2488,12 +2460,12 @@
                   <div class="msg-card-cuerpo">${esc(m.cuerpo)}</div>
                   <div class="reply-area">
                     <div class="reply-titulo">Tu respuesta como titular</div>
-                    ${(m.mensajes_respuestas || []).filter(r => r.usuario_id === userId).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
+                    ${(m.mensajes_respuestas || []).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
                     <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
                     <button class="btn-reply" data-message-id="${esc(m.id)}" onclick="enviarRespuestaTitular(this, ${i})">Enviar respuesta</button>
                   </div>
                 </div>
-              </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonian tenga novedades para tus canales, las vas a encontrar acá.</div></div>'}
+              </div>`).join('') : mensajesVacioHtml('Cuando Sur Patagonian tenga novedades para tus canales, las vas a encontrar acá.')}
           </div>
         </div>
 
@@ -2623,7 +2595,7 @@
                   <div class="msg-card-fecha">${fmt(m.created_at)}</div>
                 </div>
                 <div class="msg-card-body" id="msgBody-${i}"><div class="msg-card-cuerpo">${esc(m.cuerpo)}</div></div>
-              </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
+              </div>`).join('') : mensajesVacioHtml('Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.')}
           </div>
         </div>
 
@@ -2727,12 +2699,12 @@
                   <div class="msg-card-cuerpo">${esc(msg.cuerpo)}</div>
                   <div class="reply-area">
                     <div class="reply-titulo">Tu respuesta</div>
-                    ${(msg.mensajes_respuestas || []).filter(r => r.usuario_id === userId).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
+                    ${(msg.mensajes_respuestas || []).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
                     <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
-                    <button class="btn-reply" onclick="enviarRespuesta('${msg.id}', ${i}, ${JSON.stringify(canales[0]?.nombre||'').replace(/"/g,'&quot;')})">Enviar respuesta</button>
+                    <button class="btn-reply" data-message-id="${esc(msg.id)}" onclick="enviarRespuesta(this.dataset.messageId, ${i})">Enviar respuesta</button>
                   </div>
                 </div>
-              </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
+              </div>`).join('') : mensajesVacioHtml('Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.')}
           </div>
         </div>
 
@@ -5087,7 +5059,7 @@
       if (dot) dot.classList.add('leido')
     }
 
-    window.enviarRespuesta = async (mensajeId, i, canalNombre) => {
+    window.enviarRespuesta = async (mensajeId, i) => {
       const input = document.getElementById(`replyInput-${i}`)
       const cuerpo = input.value.trim()
       if (!cuerpo) return
@@ -5096,8 +5068,6 @@
       const { error } = await supabase.from('mensajes_respuestas').insert({
         mensaje_id: mensajeId,
         usuario_id: userId,
-        usuario_nombre: session.user.email,
-        canal_nombre: canalNombre,
         cuerpo
       })
       if (error) {
