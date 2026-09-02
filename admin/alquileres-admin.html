@@ -487,6 +487,13 @@ const fechaCivilEnMes=(valor,y,m)=>{const p=partesFechaCivil(valor);return !!p&&
 const diaFechaCivil=valor=>{const p=partesFechaCivil(valor);return p?p.d:null};
 const fechaCivilVencida=valor=>{const k=fechaCivil(valor);return !!k&&k<hoyCivil()};
 const ordenarFechaCivil=(a,b)=>String(fechaCivil(a)||'').localeCompare(String(fechaCivil(b)||''));
+function versionContratoListado(contrato){
+  const versiones=D.ver.filter(x=>x.contrato_id===contrato.id);
+  if(contrato.predecesor_id&&fechaCivil(contrato.inicio)>hoyCivil()){
+    return versiones.sort((a,b)=>String(a.creada_at||a.vigencia).localeCompare(String(b.creada_at||b.vigencia)))[0];
+  }
+  return versiones.sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+}
 function desplazarMesFechaCivil(valor,delta){
   const p=partesFechaCivil(valor);if(!p)throw new Error('Fecha civil inválida.');
   const baseMes=p.m+delta,y=p.y+Math.floor(baseMes/12),m=((baseMes%12)+12)%12;
@@ -1380,7 +1387,7 @@ function tab(pid,t){
       <b>Honorario:</b> ${mv?(Number(mv.honorario_pct||0)*100).toLocaleString('es-AR')+' % · mínimo '+fmt(mv.honorario_minimo)+' · fijo adicional '+fmt(mv.honorario_fijo)+' · '+esc(mv.moneda):'—'}<br/>
       <b>Base:</b> ${mv?esc(mv.honorario_base):'—'} · punitorios ${mv&&mv.incluye_punitorios?'incluidos en la base porcentual':'excluidos'}${imp?`<br/><b>Impuestos / observación:</b> ${esc(imp)}`:''}</div>
       <table><tr><th>Inquilino</th><th>Estado</th><th>Inicio / fin</th><th>Condiciones económicas</th><th>Ajuste y mora</th><th>Documento</th></tr>`+
-      cs.map(c=>{const v=D.ver.filter(x=>x.contrato_id===c.id).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+      cs.map(c=>{const v=versionContratoListado(c);
         const serie=v&&D.indices.find(x=>x.id===v.indice_serie_id);
         const ajuste=v?(v.pct_fijo!=null?'Fijo '+(Number(v.pct_fijo)*100).toLocaleString('es-AR')+' %':v.indice_serie_id?'Índice '+esc(serie?serie.organismo+' · '+serie.codigo:'configurado'):'Sin ajuste'):'—';return `<tr><td>${esc(D.pname[c.inquilino_parte_id]||'—')}</td>
       <td><span class="tag" style="--tc:${{vigente:'var(--activo)',cerrado:'var(--gris)',rescindido:'var(--rojo)',continuacion_legal:'var(--ambar)'}[c.estado]||'var(--gris)'}">${esc(c.estado.replace('_',' '))}</span></td>
@@ -1713,7 +1720,7 @@ function tab(pid,t){
         .reduce((s,x)=>{const c=D.cargo.find(y=>y.id===x.dataset.ck);return s+Number(c&&c.saldo_pendiente||0)},0);
       const el=$('opMonto-'+grupo),moneda=$('opMoneda-'+grupo),cargos=cargosSeleccionadosPago(grupo);
       const destino=cargos[0]&&cargos[0].moneda;
-      if(el&&total>0&&moneda&&moneda.value.toUpperCase()===destino)el.value=String(total);
+      if(el&&el.value.trim()===''&&total>0&&moneda&&moneda.value.toUpperCase()===destino)el.value=String(total);
       programarPreviewPago(grupo);
     };
     ['obligaciones','honorarios','otros'].forEach(grupo=>{
