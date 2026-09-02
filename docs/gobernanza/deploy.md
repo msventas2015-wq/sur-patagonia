@@ -64,8 +64,10 @@ No hay paso de build. Los archivos HTML/JS/CSS se sirven tal cual están en el r
 └── docs/
     └── gobernanza/
         ├── gobernanza-visual.md
-        ├── paleta-canales.md
-        └── deploy.md           ← este archivo
+        ├── deploy.md           ← este archivo
+        └── _archivo-2026-09-02/
+            ├── gobernanza-visual-v1.0-DEROGADA.md
+            └── paleta-canales-DEROGADA.md
 ```
 
 ---

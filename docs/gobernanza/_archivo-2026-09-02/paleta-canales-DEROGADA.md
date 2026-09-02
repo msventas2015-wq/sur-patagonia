@@ -1,3 +1,5 @@
+> DEROGADO el 2-sep-2026 por el canon v03 (docs/gobernanza/gobernanza-visual.md). Carpeta temporal, se borra después.
+
 # Paleta de Canales — Sur Patagonia
 **Fuente de verdad para colores de identidad de canal.**
 Creada por Zcode · Análisis visual v2 · 25 familias · 54 colores únicos.
