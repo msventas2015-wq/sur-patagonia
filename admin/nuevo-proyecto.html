@@ -878,8 +878,8 @@
           </div>
           <div class="form-grupo">
             <label>Slug (URL) *</label>
-            <input type="text" id="slug" placeholder="alamos-i" required />
-            <div class="slug-preview" style="margin-top:0.3rem;">Solo minúsculas, números y guiones</div>
+            <input type="text" id="slug" placeholder="alamos-i" required aria-describedby="slugAyuda" />
+            <div class="slug-preview" id="slugAyuda" style="margin-top:0.3rem;">Solo minúsculas, números y guiones</div>
           </div>
           <div class="form-grupo">
             <label>Estado</label>
@@ -2107,6 +2107,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
   let modoDuplicar = false
   let duplicacionLista = true
   let guardandoProyecto = false
+  const SLUG_AYUDA_NORMAL = 'Solo minúsculas, números y guiones'
 
   async function generarSlugUnico(base) {
     const raiz = String(base || 'proyecto')
@@ -2129,6 +2130,36 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     return `${raiz}-copia-${Date.now()}`
   }
 
+  function protegerSlugMientrasVerifica() {
+    document.getElementById('slug').readOnly = true
+    document.getElementById('slugAyuda').textContent = 'Verificando si la URL tiene códigos QR vinculados…'
+  }
+
+  async function actualizarProteccionSlug(id) {
+    protegerSlugMientrasVerifica()
+    const { data, error } = await supabase.rpc('admin_previsualizar_archivado_proyecto', {
+      p_proyecto_id: id,
+    })
+    if (error) {
+      document.getElementById('slugAyuda').textContent = 'No se pudo verificar la URL. Queda protegida; recargá la página para volver a intentar.'
+      console.error('[G4 slug] No se pudo verificar la vinculación de QR:', error)
+      return
+    }
+
+    const cantidadQr = Number(data?.qrs)
+    if (!Number.isInteger(cantidadQr) || cantidadQr < 0) {
+      document.getElementById('slugAyuda').textContent = 'No se pudo verificar la URL. Queda protegida; recargá la página para volver a intentar.'
+      console.error('[G4 slug] Respuesta de verificación inválida:', data)
+      return
+    }
+
+    const tieneQr = cantidadQr > 0
+    document.getElementById('slug').readOnly = tieneQr
+    document.getElementById('slugAyuda').textContent = tieneQr
+      ? 'URL protegida: este proyecto tiene códigos QR vinculados.'
+      : SLUG_AYUDA_NORMAL
+  }
+
   // Leer parámetros para edición o duplicación
   const params = new URLSearchParams(location.search)
   const editId = params.get('id')
@@ -2136,6 +2167,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
   if (editId) {
     proyectoId = editId
     window._proyectoId = proyectoId
+    protegerSlugMientrasVerifica()
     cargarProyecto(proyectoId)
     document.getElementById('tituloPagina').textContent = 'Editar proyecto'
     document.getElementById('subtituloPagina').textContent = 'Modificá los datos del proyecto y guardá los cambios'
@@ -2160,14 +2192,16 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
 
   // ── Slug auto ──────────────────────────────────────────
   document.getElementById('nombre').addEventListener('input', function() {
-    const slug = this.value
-      .toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g, '')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .trim()
-      .replace(/\s+/g, '-')
-    document.getElementById('slug').value = slug
-    document.getElementById('slugPreview').textContent = slug || '—'
+    if (!proyectoId) {
+      const slug = this.value
+        .toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+      document.getElementById('slug').value = slug
+      document.getElementById('slugPreview').textContent = slug || '—'
+    }
     document.getElementById('saveBarNombre').textContent = this.value || 'Sin nombre'
   })
   document.getElementById('slug').addEventListener('input', function() {
@@ -2705,6 +2739,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     const id = loteIdx++
     const tr = document.createElement('tr')
     tr.dataset.id = id
+    tr.dataset.origenId = data.id || ''
     tr.innerHTML = `
       <td style="color:var(--gris-claro);font-size:0.7rem;">${id + 1}</td>
       <td><input type="text" placeholder="L-01" value="${data.numero || ''}" class="l-numero" /></td>
@@ -2788,6 +2823,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
   function getDatos() {
     const servicios = Array.from(document.querySelectorAll('input[name="servicio"]:checked')).map(c => c.value)
     const lotes = Array.from(document.querySelectorAll('#lotesBody tr')).map(tr => ({
+      origen_id: tr.dataset.origenId || null,
       numero: tr.querySelector('.l-numero').value,
       superficie_m2: parseFloat(tr.querySelector('.l-sup').value) || null,
       precio_usd: parseFloat(tr.querySelector('.l-precio').value) || null,
@@ -2848,6 +2884,36 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     }
   }
 
+  function mensajeErrorGuardado(err) {
+    const raw = String(err?.message || '')
+    const reglas = [
+      ['E2_SLUG_VINCULADO_INMUTABLE', 'La URL no se puede cambiar porque el proyecto tiene códigos QR o accesos vinculados.'],
+      ['E2_SLUG_INVALIDO_O_RESERVADO', 'La URL elegida no es válida o está reservada. Elegí otra.'],
+      ['E2_SLUG_COLISION_CATALOGO', 'Esa URL ya está usada por otra propiedad o proyecto. Elegí otra.'],
+      ['E2_CATALOGO_PROYECTO_CON_QR_USA_P2', 'Este proyecto tiene códigos QR vinculados. Para cambiar su estado, usá la acción de archivado del listado de proyectos.'],
+      ['P2_USE_RPC_ARCHIVAR_PROYECTO', 'Este proyecto tiene códigos QR vinculados. Para cambiar su estado, usá la acción de archivado del listado de proyectos.'],
+      ['E2_CATALOGO_ADMIN_VIVO_REQUERIDO', 'Tu sesión de administrador ya no es válida. Volvé a ingresar.'],
+      ['P2_ADMIN_VIVO_REQUERIDO', 'Tu sesión de administrador ya no es válida. Volvé a ingresar.'],
+      ['P2_ADMIN_REQUERIDO', 'Tu sesión no tiene permisos de administrador.'],
+      ['E2_CATALOGO_VINCULADO_SE_ARCHIVA_NO_SE_BORRA', 'El proyecto tiene accesos vinculados y debe archivarse; no se puede borrar.'],
+      ['G4_ADMIN_VIVO_REQUERIDO', 'Tu sesión de administrador ya no es válida. Volvé a ingresar.'],
+      ['G4_PROYECTO_INEXISTENTE', 'El proyecto ya no existe. Recargá la página.'],
+      ['G4_PROYECTO_PAYLOAD_INVALIDO', 'Los datos del proyecto no tienen el formato esperado. Recargá la página y volvé a intentar.'],
+      ['G4_LOTES_PAYLOAD_INVALIDO', 'Los datos de los lotes no tienen el formato esperado. Revisalos y volvé a intentar.'],
+      ['G4_RESPUESTA_INVALIDA', 'La base no confirmó el guardado completo. Recargá antes de volver a intentar.'],
+    ]
+    const conocida = reglas.find(([codigo]) => raw.includes(codigo))
+    if (conocida) return conocida[1]
+    if (err?.code === '23505') return 'Ya existe un proyecto con ese slug. Elegí otro y volvé a guardar.'
+    if (err?.code === 'PGRST202' || raw.includes('admin_guardar_proyecto_lotes')) {
+      return 'El guardado transaccional todavía no está habilitado en la base. No se modificó nada.'
+    }
+    if (/\b(?:E2|P2)_[A-Z0-9_]+\b/.test(raw)) {
+      return 'Una regla de integridad impidió guardar. Recargá la página y volvé a intentar; si continúa, avisá al administrador.'
+    }
+    return raw ? `No se pudo guardar: ${raw}` : 'No se pudo guardar el proyecto.'
+  }
+
   // ── Guardar / Publicar ─────────────────────────────────
   async function guardar(estadoForzado) {
     if (guardandoProyecto) return
@@ -2873,60 +2939,61 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     let id = proyectoId
     let proyectoCreado = false
     try {
-      if (id) {
-        const { error } = await supabase.from('proyectos').update(proyecto).eq('id', id)
-        if (error) throw error
-      } else {
-        const { data, error } = await supabase.from('proyectos').insert(proyecto).select().single()
-        if (error) throw error
-        id = data.id
-        proyectoCreado = true
+      // El mapa ya guardado se preserva dentro de la RPC. Si el editor inline
+      // tiene cambios todavía en memoria, esos valores tienen prioridad.
+      const mapaActual = {}
+      if (!creandoCopia) {
+        const posiciones = window._getMlPos ? window._getMlPos() : null
+        const lotesMapa = window._getMlLotes ? window._getMlLotes() : null
+        const mapaCargado = window._isMlCargado?.() === true
+        if (mapaCargado && posiciones && lotesMapa) {
+          lotesMapa.forEach(l => {
+            const pos = posiciones[l.id]
+            mapaActual[l.id] = pos?.x != null ? {
+              mapa_x: pos.x,
+              mapa_y: pos.y,
+              tipo_lote: pos.tipo_lote || null,
+            } : {
+              mapa_x: null,
+              mapa_y: null,
+              tipo_lote: null,
+            }
+          })
+        }
       }
 
-      // Guardar lotes (borrar y reinsertar, preservando datos del mapa)
-      if (lotes.length > 0) {
-        const mapaBackup = {}
-        if (!proyectoCreado) {
-          // Preservar el mapa únicamente al editar; una copia empieza sin mapa.
-          const { data: lotesActuales, error: lotesActualesError } = await supabase.from('lotes')
-            .select('numero, mapa_x, mapa_y, tipo_lote')
-            .eq('proyecto_id', id)
-          if (lotesActualesError) throw lotesActualesError
-          ;(lotesActuales || []).forEach(l => {
-            if (l.mapa_x != null) mapaBackup[l.numero] = { mapa_x: l.mapa_x, mapa_y: l.mapa_y, tipo_lote: l.tipo_lote }
-          })
+      const lotesParaGuardar = lotes.map(l => l.origen_id && mapaActual[l.origen_id]
+        ? { ...l, ...mapaActual[l.origen_id] }
+        : l)
+      const idSolicitado = id
+      const { data, error } = await supabase.rpc('admin_guardar_proyecto_lotes', {
+        p_proyecto_id: id,
+        p_proyecto: proyecto,
+        p_lotes: lotesParaGuardar,
+      })
+      if (error) throw error
 
-          const _mlPosActual   = window._getMlPos   ? window._getMlPos()   : null
-          const _mlLotesActual = window._getMlLotes ? window._getMlLotes() : null
-          if (_mlPosActual && _mlLotesActual) {
-            _mlLotesActual.forEach(l => {
-              const pos = _mlPosActual[l.id]
-              if (pos?.x != null)
-                mapaBackup[l.numero] = { mapa_x: pos.x, mapa_y: pos.y, tipo_lote: pos.tipo_lote || null }
-            })
-          }
+      const loteIds = data?.lote_ids
+      const respuestaValida = data
+        && typeof data.proyecto_id === 'string'
+        && typeof data.creado === 'boolean'
+        && Number.isInteger(data.lotes)
+        && data.lotes === lotesParaGuardar.length
+        && Array.isArray(loteIds)
+        && loteIds.length === lotesParaGuardar.length
+        && loteIds.every(loteId => typeof loteId === 'string')
+        && (idSolicitado ? data.proyecto_id === idSolicitado && !data.creado : data.creado)
+      if (!respuestaValida) throw new Error('G4_RESPUESTA_INVALIDA')
 
-          const { error: deleteError } = await supabase.from('lotes').delete().eq('proyecto_id', id)
-          if (deleteError) throw deleteError
-        }
+      id = data.proyecto_id
+      proyectoCreado = data.creado
+      document.querySelectorAll('#lotesBody tr').forEach((tr, index) => {
+        tr.dataset.origenId = loteIds[index]
+      })
 
-        const lotesConId = lotes.map(l => ({ ...l, proyecto_id: id }))
-        const { data: lotesInsertados, error: errLotes } = await supabase.from('lotes').insert(lotesConId).select()
-        if (errLotes) throw errLotes
-
-        if (lotesInsertados && Object.keys(mapaBackup).length) {
-          const restoreUpdates = lotesInsertados
-            .filter(l => mapaBackup[l.numero])
-            .map(l => supabase.from('lotes').update(mapaBackup[l.numero]).eq('id', l.id))
-          if (restoreUpdates.length) {
-            const resultados = await Promise.all(restoreUpdates)
-            const restoreError = resultados.find(r => r.error)?.error
-            if (restoreError) throw restoreError
-          }
-        }
-      } else if (!proyectoCreado) {
-        const { error: deleteError } = await supabase.from('lotes').delete().eq('proyecto_id', id)
-        if (deleteError) throw deleteError
+      window._invalidarMlEstado?.()
+      if (document.getElementById('tabMapa')?.classList.contains('activo')) {
+        await window._cargarMlProyecto?.(id)
       }
 
       if (proyectoCreado) {
@@ -2954,17 +3021,8 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
       }
 
     } catch (err) {
-      let rollbackError = null
-      if (proyectoCreado && id) {
-        const rollback = await supabase.from('proyectos').delete().eq('id', id)
-        rollbackError = rollback.error
-      }
-      const detalle = err?.code === '23505'
-        ? 'Ya existe un proyecto con ese slug. Elegí otro y volvé a guardar.'
-        : 'Error al guardar: ' + err.message
-      mostrarAlerta('error', rollbackError
-        ? `${detalle} Además, no se pudo eliminar la copia incompleta: ${rollbackError.message}`
-        : detalle)
+      console.error('[G4 guardar] Falló el guardado transaccional:', err)
+      mostrarAlerta('error', mensajeErrorGuardado(err))
     } finally {
       guardandoProyecto = false
       document.getElementById('btnGuardarBorrador').disabled = false
@@ -3118,6 +3176,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     document.getElementById('slugPreview').textContent = p.slug || '—'
     document.getElementById('saveBarNombre').textContent = p.nombre || 'Sin nombre'
     document.getElementById('saveBarEstado').textContent = p.estado || 'Borrador'
+    if (!duplicar) await actualizarProteccionSlug(id)
 
     // Servicios
     const serviciosArr = Array.isArray(p.servicios) ? p.servicios : []
@@ -3136,6 +3195,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     }
     if (lotes) lotes.forEach(l => agregarLote(duplicar ? {
       ...l,
+      id: null,
       estado: 'disponible',
       mapa_x: null,
       mapa_y: null,
@@ -3149,6 +3209,9 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
       link.href = `../${p.slug}`
       link.style.display = 'inline-flex'
     }
+
+    window._proyectoCargado = true
+    document.dispatchEvent(new CustomEvent('proyecto-cargado'))
   }
 
   // ── Alerta ─────────────────────────────────────────────
@@ -3234,11 +3297,12 @@ let _mlZonaActiva = null
 
 // ── Estado lotes ─────────────────────────────────────────────────────
 // _mlPos keyed by lote.id (UUID) — no por numero, que puede repetirse
-let _mlLotes = [], _mlPos = {}, _mlSel = null, _mlDrag = null, _mlUrl = null
+let _mlLotes = [], _mlPos = {}, _mlSel = null, _mlDrag = null, _mlUrl = null, _mlCargado = false
 let _mlPinEstilo = 'gotita'   // 'circulo' | 'gotita' | 'etiqueta'
 // Exponer para que guardarProyecto() (otro script) pueda acceder al estado en memoria
 window._getMlPos      = () => _mlPos
 window._getMlLotes    = () => _mlLotes
+window._isMlCargado   = () => _mlCargado
 window._getMlPinEstilo = () => _mlPinEstilo
 
 window.mlSetPinEstilo = (estilo) => {
@@ -3577,10 +3641,15 @@ function svgPt(svg, e) {
 }
 
 // ── Cargar tab Mapa ────────────────────────────────────────────────────
-document.getElementById('tabMapa')?.addEventListener('click', async () => {
-  const pid = window._proyectoId; if (!pid) return
+async function cargarMlProyecto(pid) {
+  if (!pid) return
   // Siempre recargar del DB para reflejar el estado real (evita mostrar posiciones obsoletas tras publicar)
-  const { data: lotes } = await supabase.from('lotes').select('*').eq('proyecto_id', pid).order('numero')
+  _mlCargado = false
+  const { data: lotes, error: lotesError } = await supabase.from('lotes').select('*').eq('proyecto_id', pid).order('numero')
+  if (lotesError) {
+    console.error('[G4 mapa] No se pudieron cargar los lotes:', lotesError)
+    return
+  }
   _mlLotes = lotes || []
   _mlPos = {}
   // Clave: l.id (UUID único), nunca l.numero (puede repetirse)
@@ -3588,13 +3657,39 @@ document.getElementById('tabMapa')?.addEventListener('click', async () => {
     if (l.mapa_x != null && l.mapa_y != null)
       _mlPos[l.id] = { x: l.mapa_x, y: l.mapa_y, tipo_lote: l.tipo_lote || '' }
   })
-  const { data: p } = await supabase.from('proyectos').select('mapa_imagen_url, mapa_zonas, mapa_pin_estilo').eq('id', pid).single()
+  const { data: p, error: proyectoError } = await supabase.from('proyectos').select('mapa_imagen_url, mapa_zonas, mapa_pin_estilo').eq('id', pid).single()
+  if (proyectoError) {
+    console.error('[G4 mapa] No se pudo cargar el proyecto:', proyectoError)
+    return
+  }
   if (p?.mapa_zonas?.length) _mlZonas = p.mapa_zonas
   if (p?.mapa_pin_estilo) window.mlSetPinEstilo(p.mapa_pin_estilo)
   mlRenderZonas()
   mlRenderLista()
   if (p?.mapa_imagen_url) { _mlUrl = p.mapa_imagen_url; mlMostrarMapa(_mlUrl) }
+  _mlCargado = true
+}
+
+window._cargarMlProyecto = cargarMlProyecto
+window._invalidarMlEstado = () => {
+  _mlLotes = []
+  _mlPos = {}
+  _mlSel = null
+  _mlCargado = false
+}
+
+document.getElementById('tabMapa')?.addEventListener('click', async () => {
+  await cargarMlProyecto(window._proyectoId)
 })
+
+// Compatibilidad con el editor viejo: mapa-lotes.html redirige acá.
+const abrirMapaSolicitado = () => {
+  if (new URLSearchParams(location.search).get('panel') === 'mapa') {
+    document.getElementById('tabMapa')?.click()
+  }
+}
+document.addEventListener('proyecto-cargado', abrirMapaSolicitado, { once: true })
+if (window._proyectoCargado) queueMicrotask(abrirMapaSolicitado)
 </script>
 
 <script type="module">
