@@ -285,7 +285,6 @@
               <label class="filtro-opcion"><input type="checkbox" value="lote" class="filtro-tipo" /> Lote</label>
               <label class="filtro-opcion"><input type="checkbox" value="local" class="filtro-tipo" /> Local comercial</label>
               <label class="filtro-opcion"><input type="checkbox" value="oficina" class="filtro-tipo" /> Oficina</label>
-              <label class="filtro-opcion"><input type="checkbox" value="campo" class="filtro-tipo" /> Campo / Chacra</label>
               <label class="filtro-opcion"><input type="checkbox" value="galpon" class="filtro-tipo" /> Galpón / Depósito</label>
             </div>
           </div>
@@ -302,12 +301,10 @@
             <p class="filtro-titulo">Dormitorios mínimo</p>
             <div class="filtro-opciones">
               <label class="filtro-opcion"><input type="radio" name="dormitorios" value="" class="filtro-dorm" checked /> Todos</label>
-              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="0" class="filtro-dorm" /> 0 dormitorios</label>
               <label class="filtro-opcion"><input type="radio" name="dormitorios" value="1" class="filtro-dorm" /> 1+</label>
               <label class="filtro-opcion"><input type="radio" name="dormitorios" value="2" class="filtro-dorm" /> 2+</label>
               <label class="filtro-opcion"><input type="radio" name="dormitorios" value="3" class="filtro-dorm" /> 3+</label>
               <label class="filtro-opcion"><input type="radio" name="dormitorios" value="4" class="filtro-dorm" /> 4+</label>
-              <label class="filtro-opcion"><input type="radio" name="dormitorios" value="5" class="filtro-dorm" /> 5+</label>
             </div>
           </div>
 
@@ -590,8 +587,7 @@
     }
 
     // Leer params de URL al cargar — acepta los nombres que manda el home/IA
-    // (operacion, ciudad, dormitorios_min, precio_max, q) y los historicos (op, precioMax).
-    // 'amenidades' no tiene filtro equivalente en esta pantalla y se ignora a proposito.
+    // (operacion, ciudad, dormitorios_min, precio_max, amenidades, q) y los historicos (op, precioMax).
     const urlParams = new URLSearchParams(window.location.search)
     const _normParam = v => (v || '').trim().toLowerCase()
     const paramOperacion = _normParam(urlParams.get('operacion') || urlParams.get('op'))
@@ -621,8 +617,8 @@
     const paramDormCrudo = urlParams.get('dormitorios_min')
     const paramDorm = Number(paramDormCrudo)
     let paramDormAplicado = false
-    if (paramDormCrudo !== null && paramDormCrudo.trim() !== '' && Number.isInteger(paramDorm) && paramDorm >= 0) {
-      const valorDorm = paramDorm >= 5 ? '5' : String(paramDorm)
+    if (paramDormCrudo !== null && paramDormCrudo.trim() !== '' && Number.isInteger(paramDorm) && paramDorm >= 1) {
+      const valorDorm = String(Math.min(paramDorm, 4))
       const radioDorm = document.querySelector(`.filtro-dorm[value="${valorDorm}"]`)
       if (radioDorm) {
         radioDorm.checked = true
@@ -630,17 +626,23 @@
       }
     }
     const _CIUDADES_CANONICAS = ['El Bolsón', 'El Hoyo', 'Lago Puelo', 'Epuyén', 'El Maitén', 'Cholila', 'Esquel', 'Bariloche']
+    const _AMENIDADES_VALIDAS = new Set('acceso_controlado,acceso_todo_ano,agua_corriente,agua_potable,agua_riego,agua_vertiente,aire,aislacion_premium,alarma,altillo,amoblado,apto_mascotas,arroyo,ascensor,asoleamiento,balcon,barrio_abierto,barrio_privado,baulera,bodega,bosque_nativo,bosque_propio,caldera,calefaccion,calefon,calle_sin_salida,camaras,camino_consolidado,carp_aluminio,carp_madera,cerco_vivo,chimenea,cisterna,cloaca,cochera,cochera_cubierta,cochera_semi,cochera_sub,cocina_equipada,const_adobe,const_hormigon,const_ladrillo,const_madera,const_piedra,const_sip,const_steel,costa_arroyo,costa_lago,costa_rio,cul_de_sac,deck,dependencia,doble_altura,dvh,electricidad,escritura_inmediata,estac_motorhome,estufa_lena,fibra_optica,fogonero,frutales,galeria,galpon,gas_natural,gimnasio,grupo_electrogeno,hidromasaje,huerta,invernadero,jardin,laundry,living_comedor,losa_radiante,oficina,orientacion_norte,paneles_solares,parrilla,patio,pavimento,perimetro_alambrado,pileta,porteria,porton,porton_electrico,quincho,radiadores,reservorio_agua,riego_automatico,sala_juegos,sauna,seguridad,sistema_incendios,sotano,taller,techo_chapa,termotanque_solar,terraza,tvh,vent_pvc,vertiente_natural,vestidor,vista_bosque,vista_cerro,vista_lago,vista_montana,vista_panoramica,wifi'.split(','))
     const _aplanarCiudad = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim()
+    const _normalizarAmenidades = valor => [...new Set(String(valor || '').split(',')
+      .map(v => v.trim().toLowerCase())
+      .filter(v => _AMENIDADES_VALIDAS.has(v)))].slice(0, 10)
     const paramCiudadCruda = (urlParams.get('ciudad') || '').trim()
     const paramCiudadCanonica = paramCiudadCruda ? (_CIUDADES_CANONICAS.find(c => _aplanarCiudad(c) === _aplanarCiudad(paramCiudadCruda)) || paramCiudadCruda) : ''
+    const paramAmenidades = _normalizarAmenidades(urlParams.get('amenidades'))
     const paramQ = (urlParams.get('q') || '').trim()
-    const qInterpretadaPorIA = urlParams.get('interpretada') === '1'
     const filtrosInicialesBloqueados = new Set()
     if (paramOperacionAplicada) filtrosInicialesBloqueados.add('operacion')
     if (paramTipoAplicado) filtrosInicialesBloqueados.add('tipo')
     if (paramDormAplicado) filtrosInicialesBloqueados.add('dormitorios')
     if (paramCiudadCanonica) filtrosInicialesBloqueados.add('ciudad')
+    if (paramAmenidades.length) filtrosInicialesBloqueados.add('amenidades')
     let ciudadFiltro = paramCiudadCanonica
+    let amenidadesFiltro = paramAmenidades
     const paramTexto = (paramQ || paramCiudadCanonica).trim()
     if (paramTexto) {
       document.getElementById('busquedaTexto').value = paramTexto
@@ -684,8 +686,9 @@
       if (precioMaxVal) query = query.lte('precio', parseFloat(precioMaxVal))
       if (ciudadFiltro) {
         const ciudadSegura = ciudadFiltro.replace(/[\\%_]/g, c => `\\${c}`)
-        query = query.ilike('ciudad', ciudadSegura)
+        query = query.ilike('ciudad', `%${ciudadSegura}%`)
       }
+      if (amenidadesFiltro.length) query = query.contains('amenidades', amenidadesFiltro)
       if (termino) {
         const t = termino.replace(/[%_,()'"\\]/g, c => `\\${c}`)
         const codigoPublico = codigoPublicoDesdeTermino(termino)
@@ -825,7 +828,7 @@
             <p class="card-ubicacion">📍 ${ubicacion}${verEnMapa}</p>
             <div class="card-precio">${precio} <span>${p.operacion !== 'venta' ? '/ mes' : ''}</span></div>
             <div class="card-detalles">
-              ${p.dormitorios !== null && p.dormitorios !== undefined ? `<div class="card-detalle"><strong>${p.dormitorios}</strong>Dorm.</div>` : ''}
+              ${p.dormitorios ? `<div class="card-detalle"><strong>${p.dormitorios}</strong>Dorm.</div>` : ''}
               ${p.banos ? `<div class="card-detalle"><strong>${p.banos}</strong>Baños</div>` : ''}
               ${p.superficie_cubierta ? `<div class="card-detalle"><strong>${esc(p.superficie_cubierta)}</strong>m² cub.</div>` : ''}
               ${p.superficie_total ? `<div class="card-detalle"><strong>${esc(p.superficie_total)}</strong>m² tot.</div>` : ''}
@@ -921,6 +924,7 @@
       document.getElementById('precioMin').value = ''
       document.getElementById('precioMax').value = ''
       ciudadFiltro = ''
+      amenidadesFiltro = []
       paginaActual = 1
       actualizarResultados()
     })
@@ -937,6 +941,7 @@
 
     inputBusq.addEventListener('input', () => {
       if (!inputBusq.value.trim()) ciudadFiltro = ''
+      amenidadesFiltro = []
       btnClear.style.display = inputBusq.value ? 'block' : 'none'
       clearTimeout(inputBusq._timer)
       inputBusq._timer = setTimeout(() => { paginaActual = 1; actualizarResultados() }, 400)
@@ -953,6 +958,7 @@
     btnClear.addEventListener('click', () => {
       inputBusq.value = ''
       ciudadFiltro = ''
+      amenidadesFiltro = []
       btnClear.style.display = 'none'
       paginaActual = 1
       actualizarResultados()
@@ -983,9 +989,7 @@
         ['galpon',       /\b(galpon\w*|deposito\w*|bodega\w*|nave industrial|nave comercial|almacen\w*|hangar|lugar para guardar|espacio industrial|planta industrial|taller industrial|para maquinaria|para vehiculos|para autos)\b/],
         ['local',        /\b(local(?:es)?(?:\s+comercial(?:es)?|\s+de negocio)?|negocio\w*|comercio\w*|fondo de comercio|punto de venta|espacio comercial|tienda\w*)\b/],
         ['oficina',      /\b(oficina\w*|coworking|espacio de trabajo|espacio laboral|consultorio\w*|estudio profesional|espacio profesional)\b/],
-        ['lote',         /\b(lote\w*|loteo\w*)\b/],
-        ['campo',        /\b(campo\w*|chacra\w*|establecimiento rural|campo ganadero|campo agricola|campo productivo)\b/],
-        ['terreno',      /\b(terreno\w*|baldio\w*|tierra\w*|suelo\w*)\b/],
+        ['terreno',      /\b(terreno\w*|lote\w*|loteo\w*|parcela\w*|baldio\w*|fraccion\w*|tierra\w*|suelo\w*|para construir|campo para construir)\b/],
         ['departamento', /\b(departamento\w*|depto\w*|apartamento\w*|monoambiente\w*|piso\b|flat\b|studio\b|loft\b)\b/],
         ['casa',         /\b(casa\w*|chalet\w*|vivienda\w*|hogar\b|residencia\w*|para vivir|para habitar|propiedad familiar|domicilio)\b/],
       ]
@@ -993,13 +997,12 @@
 
       // ── DORMITORIOS ───────────────────────────────────────
       const dormMatch = t.match(/\b(\d+)\s*(dormitorios?|habitacion(?:es)?|cuartos?|recamaras?|piezas?)\b/)
-      const ambientesMatch = t.match(/\b(\d+)\s*ambientes?\b/)
       const dormEsMonoambiente = /\bmonoambiente\w*\b|\bstudio\b|\bloft\b/.test(t)
       const dormNumero = dormEsMonoambiente
         ? 0
-        : (dormMatch ? Number(dormMatch[1]) : (ambientesMatch ? Math.max(0, Number(ambientesMatch[1]) - 1) : null))
+        : (dormMatch ? Number(dormMatch[1]) : null)
       const dormDetectado = Number.isInteger(dormNumero)
-        ? (dormNumero >= 5 ? '5' : String(dormNumero))
+        ? (dormNumero >= 4 ? '4' : String(dormNumero))
         : null
 
       // ── CIUDAD CANÓNICA ───────────────────────────────────
@@ -1011,6 +1014,16 @@
         const fuente = plana.startsWith('el ') ? `\\b(?:el\\s+)?${partes}\\b` : `\\b${partes}\\b`
         return { ciudad, rx: new RegExp(fuente) }
       }).find(({ rx }) => rx.test(t)) || null
+
+      // ── AMENIDADES (filtro interno, sin sumar controles al panel) ──
+      const amenidadesTexto = [..._AMENIDADES_VALIDAS]
+        .filter(clave => !['bodega', 'galpon', 'oficina', 'pileta'].includes(clave))
+        .map(clave => {
+          const frase = clave.split('_').map(escaparRegex).join('\\s+')
+          return { clave, rx: new RegExp(`\\b${frase}\\b`) }
+        })
+      amenidadesTexto.unshift({ clave: 'pileta', rx: /\b(pileta\w*|piscina\w*)\b/ })
+      const amenidadesDetectadas = amenidadesTexto.filter(({ rx }) => rx.test(t))
 
       // ── APLICAR SOLO LAS DIMENSIONES DETECTADAS ────────────
       const patronesAplicados = []
@@ -1047,14 +1060,18 @@
           }
           patronesAplicados.push(dormEsMonoambiente
             ? /\b(monoambiente\w*|studio|loft)\b/
-            : (dormMatch
-                ? /\b\d+\s*(dormitorios?|habitacion(?:es)?|cuartos?|recamaras?|piezas?)\b/
-                : /\b\d+\s*ambientes?\b/))
+            : /\b\d+\s*(dormitorios?|habitacion(?:es)?|cuartos?|recamaras?|piezas?)\b/)
         }
       }
       if (ciudadDetectada) {
         if (!dimensionesBloqueadas.has('ciudad')) ciudadFiltro = ciudadDetectada.ciudad
         patronesAplicados.push(ciudadDetectada.rx)
+      }
+      if (amenidadesDetectadas.length) {
+        if (!dimensionesBloqueadas.has('amenidades')) {
+          amenidadesFiltro = [...new Set(amenidadesDetectadas.map(({ clave }) => clave))].slice(0, 10)
+        }
+        amenidadesDetectadas.forEach(({ rx }) => patronesAplicados.push(rx))
       }
 
       // Sin intención aplicable: conservar texto y filtros para búsqueda literal.
@@ -1093,7 +1110,7 @@
       return true
     }
 
-    if (paramQ && !qInterpretadaPorIA) interpretarConsulta(paramQ, filtrosInicialesBloqueados)
+    if (paramQ) interpretarConsulta(paramQ, filtrosInicialesBloqueados)
     btnClear.style.display = inputBusq.value ? 'block' : 'none'
 
     const btnMic = document.getElementById('busquedaMic')

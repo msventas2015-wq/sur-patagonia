@@ -822,36 +822,41 @@ async function buscarConIA() {
       return (Number.isInteger(n) && n >= 0 && n <= 20) ? n : null
     }
     const _OPS_VALIDAS = ['venta', 'alquiler', 'alquiler_temporario']
-    const _TIPOS_VALIDOS = ['casa', 'departamento', 'terreno', 'lote', 'local', 'oficina', 'campo', 'galpon']
+    const _TIPOS_VALIDOS = ['casa', 'departamento', 'terreno', 'lote', 'local', 'oficina', 'galpon']
     const params = new URLSearchParams()
+    let requiereBusquedaLocal = false
     const _fOp = _fTxt(filtros.operacion)
-    if (_tieneValor(filtros.operacion) && !_fOp) throw errorBusqueda('respuesta')
-    if (_fOp && !_OPS_VALIDAS.includes(_fOp.toLowerCase())) throw errorBusqueda('respuesta')
-    if (_fOp) params.set('operacion', _fOp.toLowerCase())
+    if (_tieneValor(filtros.operacion) && !_fOp) requiereBusquedaLocal = true
+    if (_fOp && _OPS_VALIDAS.includes(_fOp.toLowerCase())) params.set('operacion', _fOp.toLowerCase())
+    else if (_fOp) requiereBusquedaLocal = true
     const _fTipo = _fTxt(filtros.tipo)
-    if (_tieneValor(filtros.tipo) && !_fTipo) throw errorBusqueda('respuesta')
-    if (_fTipo && !_TIPOS_VALIDOS.includes(_fTipo.toLowerCase())) throw errorBusqueda('basica')
-    if (_fTipo) params.set('tipo', _fTipo.toLowerCase())
+    if (_tieneValor(filtros.tipo) && !_fTipo) requiereBusquedaLocal = true
+    if (_fTipo && _TIPOS_VALIDOS.includes(_fTipo.toLowerCase())) {
+      params.set('tipo', _fTipo.toLowerCase() === 'lote' ? 'terreno' : _fTipo.toLowerCase())
+    } else if (_fTipo) requiereBusquedaLocal = true
     const _ciudad = _fTxt(filtros.ciudad)
-    if (_tieneValor(filtros.ciudad) && !_ciudad) throw errorBusqueda('respuesta')
+    if (_tieneValor(filtros.ciudad) && !_ciudad) requiereBusquedaLocal = true
     if (_ciudad) params.set('ciudad', _ciudad)
     const _dormitorios = _fDorm(filtros.dormitorios_min)
-    if (_tieneValor(filtros.dormitorios_min) && _dormitorios === null) throw errorBusqueda('respuesta')
-    if (_dormitorios !== null) params.set('dormitorios_min', _dormitorios)
+    if (_tieneValor(filtros.dormitorios_min) && _dormitorios === null) requiereBusquedaLocal = true
+    if (_dormitorios !== null && _dormitorios >= 1 && _dormitorios <= 4) params.set('dormitorios_min', _dormitorios)
+    else if (_dormitorios !== null) requiereBusquedaLocal = true
     const _precioMax = _fNum(filtros.precio_max)
-    if (_tieneValor(filtros.precio_max) && _precioMax === null) throw errorBusqueda('respuesta')
+    if (_tieneValor(filtros.precio_max) && _precioMax === null) requiereBusquedaLocal = true
     if (_precioMax !== null) params.set('precio_max', _precioMax)
-    if (_tieneValor(filtros.amenidades) && !Array.isArray(filtros.amenidades)) throw errorBusqueda('respuesta')
+    if (_tieneValor(filtros.amenidades) && !Array.isArray(filtros.amenidades)) requiereBusquedaLocal = true
     const _amenidades = Array.isArray(filtros.amenidades)
-      ? filtros.amenidades.filter(a => typeof a === 'string' && a.trim() && a.length <= 40).slice(0, 10)
+      ? [...new Set(filtros.amenidades
+          .filter(a => typeof a === 'string' && /^[a-z0-9_]{1,40}$/i.test(a.trim()))
+          .map(a => a.trim().toLowerCase()))].slice(0, 10)
       : []
-    if (Array.isArray(filtros.amenidades) && filtros.amenidades.length !== _amenidades.length) throw errorBusqueda('respuesta')
-    if (_amenidades.length) throw errorBusqueda('basica')
+    if (Array.isArray(filtros.amenidades) && filtros.amenidades.length !== _amenidades.length) requiereBusquedaLocal = true
+    if (_amenidades.length) params.set('amenidades', _amenidades.join(','))
     const _textoLibre = _fTxt(filtros.texto_libre)
-    if (_tieneValor(filtros.texto_libre) && !_textoLibre) throw errorBusqueda('respuesta')
+    if (_tieneValor(filtros.texto_libre) && !_textoLibre) requiereBusquedaLocal = true
     if (_textoLibre) params.set('q', _textoLibre)
-    if (!params.toString()) throw errorBusqueda('respuesta')
-    params.set('interpretada', '1')
+    else if (requiereBusquedaLocal) params.set('q', query)
+    if (!params.toString()) throw errorBusqueda('basica')
     estado.textContent = _textoLibre ? `Buscando: ${_textoLibre}` : 'Redirigiendo...'
     setTimeout(() => {
       btn.disabled = false
