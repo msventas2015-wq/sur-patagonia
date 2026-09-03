@@ -285,7 +285,7 @@
     .stat-box:last-child { border-right: none; }
     .stat-num { font-family: 'Montserrat', sans-serif; font-size: clamp(2.8rem, 4.5vw, 4.8rem); font-weight: 300; color: var(--gold); line-height: 1; letter-spacing: -0.02em; }
     .stat-lbl { font-size: 0.65rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 0.6rem; }
-    .proy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--stroke); }
+    .proy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1px; background: var(--stroke); }
     .proy-card { position: relative; overflow: hidden; aspect-ratio: 3/4; background: var(--surface); cursor: pointer; }
     .proy-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94); filter: brightness(0.55) saturate(0.7); }
     .proy-card:hover .proy-img { transform: scale(1.05); filter: brightness(0.7) saturate(1); }
@@ -2196,7 +2196,8 @@ async function cargarProyectos() {
   if (!data||!data.length) { grid.innerHTML=`<div style="grid-column:1/-1;padding:4rem;text-align:center;color:var(--muted);">Los proyectos aparecerán aquí una vez que los cargues.</div>`; return }
   grid.innerHTML = data.map(p => {
     const img = p.foto_portada ? `<img class="proy-img" src="${p.foto_portada}" alt="${p.nombre}" loading="lazy" />` : `<div class="proy-placeholder">🏔️</div>`
-    return `<div class="proy-card" onclick="location.href='${p.slug ? '/'+p.slug : 'proyectos.html'}'">${img}<div class="proy-content"><div class="proy-type">${p.tipo_propiedad||p.categoria||'Proyecto'} · ${p.ciudad||''}</div><div class="proy-title">${p.nombre}</div><div class="proy-desc">${(p.descripcion||'').substring(0,120)}</div></div></div>`
+    const tipoTxt = String(p.tipo_propiedad || p.categoria || 'Proyecto').replace(/_/g, ' ')
+    return `<div class="proy-card" onclick="location.href='${p.slug ? '/'+p.slug : 'proyectos.html'}'">${img}<div class="proy-content"><div class="proy-type">${tipoTxt} · ${p.ciudad||''}</div><div class="proy-title">${p.nombre}</div><div class="proy-desc">${(p.descripcion||'').substring(0,120)}</div></div></div>`
   }).join('')
 }
 </script>
