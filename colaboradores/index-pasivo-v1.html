@@ -23,7 +23,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="../js/paleta-canales.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -37,8 +36,6 @@
       --blanco: #f5f3f0;
       --rojo: #e05c5c;
     }
-    /* Desplegable nativo: sin esto el popup del SO queda blanco con texto claro. */
-    select option, select optgroup { background-color: var(--card); color: var(--blanco); }
     body {
       background: var(--bg);
       color: var(--blanco);
@@ -59,11 +56,11 @@
       gap: 1rem;
       position: sticky;
       top: 0;
-      z-index: 1000;
+      z-index: 10;
     }
-    .header-brand { display:flex; flex-direction:row; align-items:center; gap:0; }
-    .header-brand img { width:240px; height:auto; margin-right:1.35rem; filter:brightness(0) invert(1); opacity:.96; }
-    .header-brand span { color:#9d4eff; font-size:.64rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; padding-left:1.35rem; border-left:1px solid rgba(157,78,255,.26); text-shadow:0 0 8px rgba(157,78,255,.72),0 0 20px rgba(157,78,255,.34); }
+    .header-brand { display:flex; flex-direction:row; align-items:center; gap:.9rem; }
+    .header-brand img { width:240px; height:auto; filter:brightness(0) invert(1); opacity:.96; }
+    .header-brand span { color:rgba(255,255,255,.45); font-size:.52rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; padding-left:.9rem; border-left:1px solid rgba(255,255,255,.12); }
     .sp-bg-brand {
       position: fixed;
       bottom: 6vh; left: 0; right: 0;
@@ -76,36 +73,53 @@
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
       mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
     }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
     .header-canal { font-size: .75rem; color: var(--gris); }
     .header-canal strong { color: var(--blanco); display: block; font-size: .82rem; }
-    .pv-logout-bottom { display:flex; justify-content:center; margin:1.15rem 0 0; }
-    .pv-logout-card {
-      width:100%;
-      max-width:320px;
-      min-height:46px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      border:1px solid rgba(255,255,255,.09);
-      border-radius:14px;
-      background:linear-gradient(160deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
-      color:rgba(255,255,255,.68);
-      font-family:inherit;
-      font-size:.78rem;
-      font-weight:700;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-      cursor:pointer;
-      transition:border-color .18s,color .18s,background .18s;
+    .btn-salir {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--gris);
+      padding: .35rem .8rem;
+      border-radius: 8px;
+      font-size: .72rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .18s;
     }
-    .pv-logout-card:hover {
-      border-color:rgba(224,92,92,.42);
-      color:#e05c5c;
-      background:rgba(224,92,92,.055);
-    }
+    .btn-salir:hover { border-color: var(--rojo); color: var(--rojo); }
 
     /* Main */
     .main { max-width: 900px; margin: 0 auto; padding: 2rem 1.4rem; }
+
+    /* Hero pasivo */
+    .pasivo-hero {
+      position: relative; overflow: hidden;
+      padding: 2rem 2.2rem 1.8rem;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(201,168,76,.18);
+      border-top: 1px solid rgba(201,168,76,.48);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 92% 20%, rgba(215,111,63,.1), transparent 32%),
+        linear-gradient(135deg, rgba(201,168,76,.09), rgba(255,255,255,.01) 60%),
+        #11100e;
+    }
+    .pasivo-hero::after {
+      content: ''; position: absolute; inset: auto 0 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,.4), transparent);
+    }
+    .pasivo-eyebrow { font-size:.55rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; color:#c9a84c; margin-bottom:.6rem; }
+    .pasivo-titulo {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800; letter-spacing: -.03em; line-height: 1; text-transform: uppercase;
+      background: linear-gradient(120deg, #ffffff 0%, rgba(255,255,255,.6) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: .4rem;
+    }
+    .pasivo-geo { font-size:.61rem; color:rgba(255,255,255,.3); letter-spacing:.14em; text-transform:uppercase; margin-top:.4rem; }
+    .pasivo-status { display:flex; align-items:center; gap:.5rem; margin-top:.9rem; font-size:.61rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.45); }
 
     /* Estado QR */
     .qr-status {
@@ -123,7 +137,7 @@
     }
     .qr-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .qr-dot.activo { background: var(--verde); box-shadow: 0 0 8px rgba(80,200,120,.5); }
-    .qr-dot.campana { background: var(--dorado); }
+    .qr-dot.campana { background: var(--dorado); box-shadow: 0 0 8px rgba(201,168,76,.5); }
     .qr-dot.inactivo { background: var(--gris); }
     .qr-info { flex: 1; }
     .qr-label { font-size: .7rem; color: var(--gris); }
@@ -145,7 +159,7 @@
       padding: 1.1rem 1.2rem;
       position: relative; overflow: hidden;
     }
-    .kpi::before { content:''; position:absolute; left:0; top:20%; bottom:20%; width:2px; background:var(--c,#c9a84c); border-radius:99px; }
+    .kpi::before { content:''; position:absolute; left:0; top:20%; bottom:20%; width:2px; background:linear-gradient(to bottom,transparent,var(--c,#c9a84c),transparent); border-radius:99px; }
     .kpi-grid .kpi:nth-child(1) { --c:#d76f3f; }
     .kpi-grid .kpi:nth-child(2) { --c:#6495ed; }
     .kpi-grid .kpi:nth-child(3) { --c:#c9a84c; }
@@ -253,6 +267,7 @@
       letter-spacing: .05em;
     }
     .tipo-pasivo    { background: rgba(136,136,136,.12); color: var(--gris); border: 1px solid rgba(136,136,136,.2); }
+    .tipo-activo    { background: rgba(201,168,76,.1); color: var(--dorado); border: 1px solid rgba(201,168,76,.25); }
 
     .sp { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,.1); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 4rem auto; display: block; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -295,15 +310,19 @@
 
     /* ── Panel de impacto del aliado ── */
     .main.pv-main { max-width:1220px; padding-top:1.5rem; }
+    .pv-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:2rem; min-height:230px; padding:2.4rem 2.2rem; margin-bottom:.75rem; border:1px solid rgba(201,168,76,.18); border-top-color:rgba(201,168,76,.52); border-radius:14px; background:radial-gradient(circle at 88% 20%,rgba(215,111,63,.13),transparent 34%),linear-gradient(135deg,rgba(201,168,76,.1),rgba(255,255,255,.015) 58%),#11100e; }
+    .pv-hero::after { content:''; position:absolute; inset:auto 0 0; height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,.45),transparent); }
     .pv-hero-eyebrow { margin-bottom:1.1rem; color:#c9a84c; font-size:.55rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; }
     .pv-hero-hola { color:rgba(255,255,255,.45); font-family:'Inter',sans-serif; font-size:.82rem; font-weight:300; line-height:1.1; letter-spacing:.04em; }
     .pv-hero-hola strong { display:block; font-family:'Inter',sans-serif; font-size:2rem; font-weight:700; color:#f5f3f0; letter-spacing:-.02em; line-height:1.05; margin-top:.25rem; }
     .pv-hero-impacto { max-width:560px; margin-top:1.1rem; color:rgba(255,255,255,.52); font-size:.83rem; line-height:1.65; }
     .pv-hero-geo { display:none; }
     .pv-identity { display:flex; flex-direction:column; align-items:center; gap:.85rem; min-width:150px; }
+    .pv-monogram { width:82px; height:82px; display:grid; place-items:center; border:1px solid rgba(201,168,76,.32); border-radius:50%; background:rgba(201,168,76,.07); color:#e8c96a; font-family:'Cormorant Garamond',serif; font-size:1.75rem; letter-spacing:.08em; box-shadow:0 0 32px rgba(201,168,76,.08); }
+    .pv-monogram-mobile { display:none; }
     .pv-mini-mapa-wrap { display:flex; flex-direction:column; align-items:center; gap:.45rem; }
-    .pv-mini-mapa { width:190px; height:190px; overflow:hidden; border:1px solid rgba(201,168,76,.25); border-radius:10px; background:#111; pointer-events:none; }
-    .pv-mini-mapa-label { max-width:190px; color:rgba(255,255,255,.3); font-size:.56rem; letter-spacing:.14em; text-align:center; text-transform:uppercase; }
+    .pv-mini-mapa { width:220px; height:220px; overflow:hidden; border:1px solid rgba(201,168,76,.25); border-radius:10px; background:#111; pointer-events:none; }
+    .pv-mini-mapa-label { max-width:220px; color:rgba(255,255,255,.3); font-size:.56rem; letter-spacing:.14em; text-align:center; text-transform:uppercase; }
     #pvMiniMapa .leaflet-control-zoom { display:none !important; }
     #pvMiniMapa .leaflet-control-attribution { background:rgba(8,8,8,.72); color:#666; }
     #pvMiniMapa .leaflet-control-attribution a { color:#888; }
@@ -315,13 +334,13 @@
     .pv-resumen { margin-bottom:1.25rem; padding:.75rem 1rem; text-align:center; color:rgba(255,255,255,.42); font-size:.72rem; }
     .pv-resumen strong { color:#e8c96a; font-weight:600; }
     .pv-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; margin-bottom:1rem; }
-    .pv-kpi { position:relative; overflow:hidden; min-height:132px; padding:.65rem 1.3rem .75rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:12px; background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.018)); }
-    .pv-kpi::before { content:''; position:absolute; left:0; top:10%; bottom:20%; width:2px; background:var(--pv-c,#c9a84c); opacity:1; }
-    .pv-kpi-label { margin-bottom:.25rem; color:rgba(255,255,255,.42); font-size:.58rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; }
+    .pv-kpi { position:relative; overflow:hidden; min-height:148px; padding:1.25rem 1.3rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:12px; background:linear-gradient(145deg,rgba(255,255,255,.052),rgba(255,255,255,.018)); }
+    .pv-kpi::before { content:''; position:absolute; left:0; top:22%; bottom:22%; width:2px; background:var(--pv-c,#c9a84c); opacity:.75; }
+    .pv-kpi-label { margin-bottom:.55rem; color:rgba(255,255,255,.42); font-size:.58rem; font-weight:600; letter-spacing:.22em; text-transform:uppercase; }
     .pv-kpi-n { font-size:2.45rem; font-weight:300; line-height:1; background:linear-gradient(135deg,#fff,rgba(255,255,255,.7)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
     .pv-kpi-n.pv-dorado { background:linear-gradient(135deg,#c9a84c,#e8c96a); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-    .pv-kpi-sub { margin-top:.25rem; color:rgba(255,255,255,.3); font-size:.63rem; line-height:1.45; }
-    .pv-kpi-delta { display:inline-flex; align-items:center; gap:.25rem; margin-top:.2rem; font-size:.61rem; font-weight:600; }
+    .pv-kpi-sub { margin-top:.55rem; color:rgba(255,255,255,.3); font-size:.63rem; line-height:1.45; }
+    .pv-kpi-delta { display:inline-flex; align-items:center; gap:.25rem; margin-top:.45rem; font-size:.61rem; font-weight:600; }
     .pv-delta-pos { color:#47d48a; }
     .pv-delta-neg { color:#d9825b; }
     .pv-delta-neu { color:rgba(255,255,255,.3); }
@@ -334,7 +353,7 @@
     .pv-flt-bar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
     .pv-flt-btn { min-height:32px; padding:.36rem .88rem; border:1px solid rgba(255,255,255,.09); border-radius:8px; background:rgba(255,255,255,.05); color:rgba(255,255,255,.5); font:600 .63rem 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:all .2s; }
     .pv-flt-btn:hover { border-color:rgba(201,168,76,.35); color:var(--dorado); }
-    .pv-flt-btn.activo { background:linear-gradient(135deg,rgba(201,168,76,.22),rgba(201,168,76,.08)); border-color:rgba(201,168,76,.42); color:#e8c96a; }
+    .pv-flt-btn.activo { background:linear-gradient(135deg,rgba(201,168,76,.22),rgba(201,168,76,.08)); border-color:rgba(201,168,76,.42); color:#e8c96a; box-shadow:0 0 14px rgba(201,168,76,.12); }
     .pv-flt-custom { display:flex; align-items:flex-end; justify-content:flex-end; gap:.55rem; margin:0 0 1rem; padding:.7rem; border-top:1px solid rgba(255,255,255,.05); }
     .pv-flt-custom label { display:flex; flex-direction:column; gap:.3rem; color:rgba(255,255,255,.3); font-size:.55rem; text-transform:uppercase; letter-spacing:.09em; }
     .pv-fecha-input { padding:.38rem .5rem; border:1px solid rgba(255,255,255,.1); border-radius:7px; background:rgba(255,255,255,.04); color:#f5f3f0; color-scheme:dark; font:500 .67rem 'Inter',sans-serif; }
@@ -355,8 +374,7 @@
     .pv-pipe-step.p0 .pv-pipe-ico { background:rgba(255,255,255,.06); color:rgba(255,255,255,.55); }
     /* p1 = consultas/leads → dorado */
     .pv-pipe-step.p1 { border-top-color:rgba(232,201,106,.35); }
-    .pv-pipe-step.p1 .pv-pipe-ico { background:rgba(255,255,255,.06); color:#e8c96a; }
-    .pv-pipe-step.p1 .pv-pipe-dot { box-shadow:none; }
+    .pv-pipe-step.p1 .pv-pipe-ico { background:rgba(232,201,106,.1); color:#e8c96a; }
     /* p2 = contactado → teal */
     .pv-pipe-step.p2 { border-top-color:rgba(53,198,180,.35); }
     .pv-pipe-step.p2 .pv-pipe-ico { background:rgba(53,198,180,.1); color:#35c6b4; }
@@ -517,7 +535,7 @@
       .pv-recorrido-card .ya-estoy { animation:none !important; }
     }
     @media(max-width:720px){ .pv-recorrido-head{display:block}.pv-recorrido-canal{display:block;margin-top:.85rem;white-space:normal}.pv-recorrido-svg{min-height:235px} }
-    @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-kpi{min-height:130px;padding:.8rem 1rem}.pv-impact-grid{grid-template-columns:1fr} }
+    @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
 
     /* ── Trazabilidad CRM — PASIVO-07B ── */
     .pv-traza-sec {}
@@ -549,7 +567,7 @@
     .pv-activo-hoy-ancla {
       display:inline-flex; align-items:center; justify-content:center;
       padding:.3rem .7rem; border:1px solid rgba(232,201,106,.3);
-      border-radius:99px; background:rgba(255,255,255,.06);
+      border-radius:99px; background:rgba(232,201,106,.08);
       color:#e8c96a; font-size:.66rem; font-weight:700; white-space:nowrap;
     }
     .pv-activo-recorrido-svg { width:100%; height:auto; display:block; }
@@ -590,7 +608,7 @@
     /* Para cambiar acento SPORT: editar --sport-counter-accent en .pv-hero-counts */
     /* --sport-counter-accent: #D4ED00; */ /* Amarillo Volt — alternativa */
     .pv-hero-right-cluster {
-      position:relative; z-index:1; display:flex; align-items:flex-start; gap:1rem; flex-shrink:0; margin-top:.35rem;
+      display:flex; align-items:flex-start; gap:1rem; flex-shrink:0;
     }
     .pv-hero-qr-block {
       display:flex; flex-direction:column; align-items:center; gap:.6rem;
@@ -607,7 +625,7 @@
     .pv-hero-qr-badge.activo { color:#6ee89a; }
     .pv-hero-qr-badge.campana { color:#e8c96a; }
     .pv-hero-qr-badge.inactivo { color:rgba(255,255,255,.35); }
-    .pv-hero-header { display:flex; align-items:flex-start; justify-content:space-between; gap:2rem; margin-bottom:1.75rem; }
+    .pv-hero-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1.2rem; margin-bottom:1.4rem; }
     .pv-hero-counts {
       --sport-counter-accent: #6EE89A; /* Verde menta premium — activo */
       flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:.55rem;
@@ -621,61 +639,26 @@
     .pv-flip-digit { display:inline-flex; align-items:center; justify-content:center; width:1.55rem; height:2rem; background:linear-gradient(180deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.03) 50%,rgba(0,0,0,.08) 51%,rgba(255,255,255,.04) 100%); border:1px solid rgba(255,255,255,.1); border-bottom:1px solid rgba(0,0,0,.25); border-radius:4px; font-size:1.3rem; font-weight:300; line-height:1; color:var(--fc,var(--sport-counter-accent)); font-variant-numeric:tabular-nums; box-shadow:0 2px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08); animation:pvFlipIn .42s cubic-bezier(.22,.61,.36,1) both; }
     .pv-flip-digit::after { content:''; position:absolute; inset:50% 0 auto; height:1px; background:rgba(0,0,0,.22); pointer-events:none; }
     .pv-flip-digit { position:relative; }
-    /* PUNTO B · solo existe con 2+ canales pasivos. */
-    .pv-multi-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1.5rem; margin-bottom:1.25rem; padding:1.5rem 1.6rem; border:1px solid rgba(232,201,106,.2); border-top-color:rgba(232,201,106,.5); border-radius:14px; background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015)); }
-    .pv-multi-kicker { margin-bottom:.55rem; color:#e8c96a; font-size:.58rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase; }
-    .pv-multi-head h1 { margin:0; color:#f5f3f0; font-size:clamp(1.8rem,4vw,3rem); font-weight:700; letter-spacing:-.035em; }
-    .pv-multi-head p { max-width:620px; margin:.65rem 0 0; color:rgba(255,255,255,.48); font-size:.78rem; line-height:1.6; }
-    .pv-multi-count { flex-shrink:0; display:flex; align-items:baseline; gap:.45rem; padding:.55rem .8rem; border:1px solid rgba(232,201,106,.25); border-radius:10px; background:rgba(255,255,255,.06); color:#e8c96a; }
-    .pv-multi-count strong { font-size:1.6rem; font-weight:400; line-height:1; }
-    .pv-multi-count span { font-size:.58rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
-    .pv-multi-unidades { margin:1.25rem 0 1rem; }
-    .pv-multi-unidades-head { display:flex; align-items:end; justify-content:space-between; gap:1rem; margin-bottom:.75rem; }
-    .pv-multi-unidades-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.85rem; }
-    .pv-comercio-card { --canal-color:#8a8a82; position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1.2rem; min-height:245px; padding:1.25rem; border:1px solid rgba(255,255,255,.08); border-top:2px solid var(--canal-color); border-radius:13px; background:linear-gradient(150deg,color-mix(in srgb,var(--canal-color) 11%,#151515),rgba(255,255,255,.015) 58%); }
-    .pv-comercio-card::before { content:''; position:absolute; width:180px; height:180px; right:-70px; top:-90px; border-radius:50%; background:var(--canal-color); opacity:.08; filter:blur(20px); pointer-events:none; }
-    .pv-comercio-main { min-width:0; display:flex; flex-direction:column; }
-    .pv-comercio-identidad { display:flex; align-items:center; gap:.65rem; min-width:0; }
-    .pv-comercio-color { width:10px; height:10px; flex-shrink:0; border-radius:50%; background:var(--canal-color); box-shadow:0 0 12px color-mix(in srgb,var(--canal-color) 75%,transparent); }
-    .pv-comercio-nombre { overflow:hidden; color:#f5f3f0; font-size:1rem; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
-    .pv-comercio-geo { margin:.35rem 0 .9rem 1.05rem; color:rgba(255,255,255,.36); font-size:.66rem; line-height:1.4; }
-    .pv-comercio-metricas { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; margin-bottom:.85rem; }
-    .pv-comercio-metrica { padding:.55rem .65rem; border:1px solid rgba(255,255,255,.065); border-radius:8px; background:rgba(0,0,0,.12); }
-    .pv-comercio-metrica strong { display:block; color:#f5f3f0; font-size:1.25rem; font-weight:400; line-height:1; }
-    .pv-comercio-metrica span { display:block; margin-top:.25rem; color:rgba(255,255,255,.3); font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
-    .pv-comercio-destino { margin-top:auto; padding-top:.75rem; border-top:1px solid rgba(255,255,255,.06); }
-    .pv-comercio-destino-label { margin-bottom:.28rem; color:rgba(255,255,255,.28); font-size:.52rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
-    .pv-comercio-destino-valor { overflow:hidden; color:rgba(255,255,255,.7); font:600 .67rem/1.45 'Inter',sans-serif; text-overflow:ellipsis; white-space:nowrap; }
-    .pv-comercio-campana { display:inline-block; margin-left:.35rem; padding:.12rem .38rem; border:1px solid rgba(232,201,106,.3); border-radius:99px; color:#e8c96a; font-size:.5rem; letter-spacing:.08em; text-transform:uppercase; }
-    .pv-comercio-qr { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; width:122px; }
-    .pv-comercio-qr canvas { display:block; width:112px; height:112px; padding:4px; border-radius:7px; background:#fff; box-sizing:border-box; }
-    .pv-comercio-codigo { width:100%; margin:.5rem 0 .6rem; overflow:hidden; color:var(--canal-color); font:600 .6rem/1.3 monospace; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
-    .pv-comercio-estado { margin-bottom:.65rem; color:rgba(255,255,255,.5); font-size:.52rem; font-weight:700; letter-spacing:.1em; text-align:center; text-transform:uppercase; }
-    .pv-comercio-acciones { display:flex; flex-direction:column; gap:.38rem; width:100%; }
-    .pv-comercio-btn { min-height:34px; width:100%; padding:.4rem .5rem; border:1px solid rgba(255,255,255,.1); border-radius:7px; background:rgba(255,255,255,.045); color:rgba(255,255,255,.72); font:700 .56rem 'Inter',sans-serif; letter-spacing:.07em; text-transform:uppercase; cursor:pointer; }
-    .pv-comercio-btn:hover { border-color:color-mix(in srgb,var(--canal-color) 58%,transparent); color:#fff; }
-    .pv-comercio-card.is-inactivo { opacity:.58; }
-    @media(max-width:850px){ .pv-multi-unidades-grid{grid-template-columns:1fr} }
-    @media(max-width:560px){ .pv-multi-head{flex-direction:column;padding:1.2rem}.pv-multi-count{align-self:flex-start}.pv-comercio-card{grid-template-columns:1fr;gap:1rem}.pv-comercio-qr{width:100%;display:grid;grid-template-columns:104px minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:.85rem;align-items:center}.pv-comercio-qr canvas{grid-row:1/4;width:104px;height:104px}.pv-comercio-codigo,.pv-comercio-estado{margin:.15rem 0;text-align:left}.pv-comercio-acciones{flex-direction:row}.pv-comercio-btn{min-height:38px}.pv-multi-unidades-head{align-items:flex-start;flex-direction:column} }
-    @media(max-width:700px){ .header{padding:.85rem 1rem;gap:0;justify-content:flex-start}.header-brand{gap:0;min-width:0;width:100%;justify-content:flex-start;padding:0;box-sizing:border-box}.header-brand img{width:clamp(150px,41vw,166px);margin-right:clamp(.95rem,3.2vw,1.2rem)}.header-brand span{white-space:nowrap;font-size:clamp(.6rem,2.55vw,.68rem);letter-spacing:clamp(.18em,.75vw,.24em);padding-left:clamp(.95rem,3.2vw,1.2rem);flex:0 1 auto}.pv-logout-bottom{margin:1rem 0 1.25rem}.pv-logout-card{max-width:none;min-height:50px;border-radius:16px}.pv-hero-title{transform:translateY(.55rem)}.pv-hero-header{flex-direction:column;gap:2rem;margin-bottom:-7.25rem}.pv-alianza-hero{order:2;align-items:center;text-align:center;min-width:0;max-width:none;width:100%;padding:.1rem 0 .5rem}.pv-alianza-rings{width:88px;height:48px;margin-bottom:1.2rem;transform:translateY(-.72rem)}.pv-alianza-kicker{font-size:10.56px;letter-spacing:1.45px;max-width:18.5rem}.pv-alianza-lema{margin-top:.8rem;font-size:1.3rem;max-width:21rem}.pv-hero-right-cluster{display:none}.pv-hero-qr-block{flex-direction:row;padding:0} .pv-hero-counts{align-items:flex-start;flex-direction:row;width:100%;justify-content:space-around;border-top-width:1px;box-sizing:border-box} .pv-hero-count-item{align-items:center} .pv-hero-count-sep{display:none} }
+    @media(max-width:700px){ .pv-hero-header{flex-direction:column} .pv-hero-right-cluster{flex-direction:column;align-items:flex-end;width:100%} .pv-hero-qr-block{flex-direction:row;padding:0} .pv-hero-counts{align-items:flex-start;flex-direction:row;width:100%;justify-content:space-around;border-top-width:1px;box-sizing:border-box} .pv-hero-count-item{align-items:center} .pv-hero-count-sep{display:none} }
     @media(max-width:560px){ .pv-flip-digit{width:1.35rem;height:1.75rem;font-size:1.1rem} }
 
     /* ── Módulo Registros acumulados ── */
     .pv-carta-resumen { display:flex; gap:.9rem; align-items:stretch; margin-bottom:1.25rem; flex-wrap:wrap; }
+    .pv-carta-stat-main { flex:0 0 auto; min-width:120px; padding:1rem 1.2rem; border:1px solid rgba(232,201,106,.22); border-top-color:rgba(232,201,106,.45); border-radius:10px; background:linear-gradient(155deg,rgba(232,201,106,.07),rgba(232,201,106,.02)); display:flex; flex-direction:column; gap:.3rem; }
+    .pv-carta-stat-main-n { font-size:2.6rem; font-weight:300; line-height:1; color:#e8c96a; }
+    .pv-carta-stat-main-l { font-size:.5rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(232,201,106,.6); }
+    .pv-carta-stat-main-hint { font-size:.62rem; color:rgba(255,255,255,.35); margin-top:.1rem; }
     .pv-carta-stat-mini-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.5rem; flex:1; }
     .pv-carta-stat-mini { padding:.65rem .7rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:9px; background:linear-gradient(155deg,rgba(255,255,255,.04),rgba(255,255,255,.012)); display:flex; flex-direction:column; gap:.25rem; }
     .pv-carta-stat-mini span { font-size:1.5rem; font-weight:300; line-height:1; color:var(--sc,rgba(255,255,255,.7)); }
     .pv-carta-stat-mini small { font-size:.46rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:rgba(255,255,255,.32); }
     .pv-carta-seccion-titulo { font-size:.52rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.3); margin-bottom:.45rem; padding-bottom:.45rem; border-bottom:1px solid rgba(255,255,255,.06); margin-top:.2rem; }
     .pv-carta-sub-hint { font-size:.62rem; color:rgba(255,255,255,.32); line-height:1.5; margin-bottom:.75rem; }
-    .pv-carta-evol { display:grid; grid-template-columns:repeat(var(--mes-count,12),minmax(42px,1fr)); align-items:end; gap:.62rem; overflow-x:auto; padding:.25rem .15rem .55rem; margin-bottom:1.15rem; min-height:112px; }
-    .pv-carta-mes-col { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:.32rem; min-width:0; }
-    .pv-carta-mes-n { font-size:.66rem; font-weight:700; color:rgba(255,255,255,.56); line-height:1; }
-    .pv-carta-mes-bar { width:min(46px,72%); background:linear-gradient(to top,rgba(232,201,106,.7),rgba(232,201,106,.22)); border-radius:4px 4px 0 0; min-height:3px; }
-    .pv-carta-mes-label { font-size:.56rem; font-weight:700; letter-spacing:.055em; text-transform:uppercase; color:rgba(255,255,255,.34); white-space:nowrap; }
-    .pv-carta-mes-col.is-locked .pv-carta-mes-n { color:rgba(255,255,255,.16); }
-    .pv-carta-mes-col.is-locked .pv-carta-mes-bar { background:linear-gradient(to top,rgba(255,255,255,.11),rgba(255,255,255,.025)); border:1px solid rgba(255,255,255,.045); box-sizing:border-box; }
-    .pv-carta-mes-col.is-locked .pv-carta-mes-label { color:rgba(255,255,255,.18); }
+    .pv-carta-evol { display:flex; align-items:flex-end; gap:.45rem; overflow-x:auto; padding:.2rem .1rem .4rem; margin-bottom:1.15rem; min-height:90px; }
+    .pv-carta-mes-col { display:flex; flex-direction:column; align-items:center; gap:.25rem; flex-shrink:0; min-width:34px; }
+    .pv-carta-mes-n { font-size:.56rem; font-weight:600; color:rgba(255,255,255,.5); line-height:1; }
+    .pv-carta-mes-bar { width:26px; background:linear-gradient(to top,rgba(232,201,106,.7),rgba(232,201,106,.22)); border-radius:3px 3px 0 0; min-height:2px; }
+    .pv-carta-mes-label { font-size:.44rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,.25); white-space:nowrap; }
     .pv-carta-mes-estado { display:flex; flex-direction:column; gap:.5rem; margin-bottom:1.15rem; }
     .pv-carta-mes-row { display:flex; align-items:flex-start; gap:.75rem; padding:.6rem .7rem; border:1px solid rgba(255,255,255,.06); border-radius:9px; background:rgba(255,255,255,.018); }
     .pv-carta-mes-row-label { font-size:.62rem; font-weight:600; color:rgba(255,255,255,.55); white-space:nowrap; min-width:62px; padding-top:.1rem; }
@@ -690,59 +673,22 @@
     .pv-carta-origen-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
     .pv-carta-origen-item strong { margin-left:auto; color:rgba(255,255,255,.82); font-weight:600; font-size:.74rem; }
     .pv-carta-nota { font-size:.61rem; color:rgba(255,255,255,.28); line-height:1.55; border-top:1px solid rgba(255,255,255,.05); padding-top:.75rem; margin-top:.25rem; }
-    @media(max-width:560px){ .pv-carta-origen-row{grid-template-columns:1fr} .pv-carta-resumen{gap:.55rem} }
+    @media(max-width:560px){ .pv-carta-origen-row{grid-template-columns:1fr} .pv-carta-resumen{gap:.55rem} .pv-carta-stat-main{min-width:100px;padding:.8rem 1rem} .pv-carta-stat-main-n{font-size:2.1rem} }
 
     /* ── Dev-style hero pasivo ── */
-    .badge-aliado { font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; background:rgba(255,255,255,.045); color:rgba(255,255,255,.64); border:1px solid rgba(255,255,255,.12); padding:.22rem .68rem; border-radius:999px; white-space:nowrap; flex-shrink:0; }
-    .pv-hero-title { min-height:190px; display:flex; flex-direction:column; justify-content:space-between; margin-bottom:0; }
+    .badge-aliado { font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; background:rgba(201,168,76,.1); color:#e8c96a; border:1px solid rgba(201,168,76,.25); padding:.22rem .68rem; border-radius:999px; white-space:nowrap; flex-shrink:0; }
+    .pv-hero-title { margin-bottom:0; }
     .pv-hero-title h1 { font-family:'Inter',sans-serif; font-size:clamp(2rem,5vw,3rem); font-weight:800; letter-spacing:-.03em; text-transform:uppercase; line-height:1.05; background:linear-gradient(120deg,#ffffff 0%,rgba(255,255,255,.55) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:.4rem; }
-    .pv-hero-meta-actions { display:flex; flex-direction:column; align-items:flex-start; gap:.85rem; }
-    .pv-hero-sub-bar { font-size:.62rem; color:rgba(255,255,255,.52); letter-spacing:.12em; text-transform:uppercase; margin-bottom:0; display:flex; align-items:center; gap:.5rem; }
+    .pv-hero-sub-bar { font-size:.62rem; color:rgba(255,255,255,.52); letter-spacing:.12em; text-transform:uppercase; margin-bottom:1rem; display:flex; align-items:center; gap:.5rem; }
     .pv-periodo-bar-hero { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem; }
-    .pv-hero-actions-row { display:flex; gap:.45rem; flex-wrap:wrap; align-items:center; margin-top:0; }
-    @keyframes alianzaRingIn { 0%{opacity:0;transform:translateY(6px) scale(.86)} 100%{opacity:1;transform:translateY(0) scale(1)} }
-    @keyframes alianzaCopyIn { 0%{opacity:0;transform:translateY(7px)} 100%{opacity:1;transform:translateY(0)} }
-    .pv-alianza-hero { flex:1 1 420px; align-self:center; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:260px; max-width:680px; padding:.05rem 1.25rem .2rem; text-align:center; pointer-events:none; }
-    .pv-alianza-rings { width:92px; height:49px; margin-bottom:1.05rem; overflow:visible; transform:translateY(-1.45rem); }
-    .pv-alianza-ring { fill:none; stroke-width:2.6; stroke-linecap:round; opacity:0; transform-box:fill-box; transform-origin:center; animation:alianzaRingIn .74s cubic-bezier(.22,.61,.36,1) forwards; }
-    .pv-alianza-ring.gold { stroke:#e8c96a; animation-delay:.08s; }
-    .pv-alianza-ring.channel { animation-delay:.34s; }
-    .pv-alianza-glow { fill:none; stroke-width:8; stroke-linecap:round; opacity:0; filter:url(#alianzaBlur); animation:alianzaRingIn .74s cubic-bezier(.22,.61,.36,1) forwards; }
-    .pv-alianza-glow.gold { display:none; stroke:#e8c96a; stroke-opacity:.15; animation-delay:.08s; }
-    .pv-alianza-glow.channel { stroke-opacity:.15; animation-delay:.34s; }
-    .pv-alianza-channel-back { opacity:.3; }
-    .pv-alianza-channel-front { opacity:1; }
-    .pv-alianza-kicker { color:#7a7f88; font-size:11.4px; font-weight:600; letter-spacing:1.6px; line-height:1.35; text-transform:uppercase; max-width:none; white-space:nowrap; opacity:0; animation:alianzaCopyIn .62s ease forwards .66s; }
-    .pv-alianza-lema { margin-top:.82rem; color:rgba(236,238,242,.86); font-size:clamp(1.42rem,1.7vw,1.68rem); font-weight:600; letter-spacing:.42px; line-height:1.16; max-width:none; white-space:nowrap; opacity:0; animation:alianzaCopyIn .62s ease forwards .82s; }
-    @media (prefers-reduced-motion: reduce) {
-      .pv-alianza-ring,
-      .pv-alianza-glow,
-      .pv-alianza-kicker,
-      .pv-alianza-lema { animation:none !important; opacity:1 !important; }
-      .pv-alianza-channel-back { opacity:.3 !important; }
-    }
-    @media(max-width:700px){
-      .pv-alianza-hero{min-height:0;padding:.15rem 0 0;justify-content:flex-start;transform:translateY(6.3rem)}
-      .pv-alianza-rings{width:88px;height:48px;margin-bottom:1.5rem;transform:translateY(-.72rem)}
-      .pv-alianza-kicker{font-size:10.56px;letter-spacing:1.45px;max-width:20rem;white-space:normal}
-      .pv-alianza-lema{margin-top:.85rem;font-size:1.28rem;max-width:22rem;white-space:normal}
-    }
-    @media(max-width:560px){
-      .pv-alianza-rings{width:82px;height:44px;margin-bottom:1.25rem}
-      .pv-alianza-kicker{font-size:10.08px;letter-spacing:1.35px}
-      .pv-alianza-lema{font-size:1.22rem}
-    }
-    .pv-actividad-head { align-items:center; }
-    .pv-periodo-bar-chart { display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; flex:0 0 auto; }
-    .pv-actividad-copy { margin-left:auto; text-align:right; }
     .pv-titular-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; }
-    .pv-titular-card { position:relative; overflow:hidden; min-height:170px; padding:1.5rem 1.6rem; display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:14px; background:linear-gradient(155deg,rgba(255,255,255,.052),rgba(255,255,255,.016)); }
-    .pv-titular-card::before { content:''; position:absolute; left:0; top:1.5rem; bottom:1.5rem; width:2px; background:var(--pv-c,#6495ed); opacity:1; }
-    .pv-titular-label { color:rgba(255,255,255,.42); font-size:.58rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase; margin-bottom:0; }
+    .pv-titular-card { position:relative; overflow:hidden; min-height:154px; padding:1.35rem 1.45rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.13); border-radius:14px; background:linear-gradient(155deg,rgba(255,255,255,.052),rgba(255,255,255,.016)); }
+    .pv-titular-card::before { content:''; position:absolute; left:0; top:22%; bottom:22%; width:2px; background:var(--pv-c,#6495ed); opacity:.78; }
+    .pv-titular-label { color:rgba(255,255,255,.42); font-size:.58rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase; margin-bottom:.72rem; }
     .pv-titular-n { font-size:3rem; font-weight:300; line-height:1; color:#f8f6f2; }
     .pv-titular-n.pv-flip-num { justify-content:flex-start; }
-    .pv-titular-n .pv-flip-digit { width:2.7rem; height:3.42rem; font-size:2.26rem; }
-    .pv-titular-sub { margin-top:0; color:rgba(255,255,255,.36); font-size:.72rem; line-height:1.45; transform:translateY(.18rem); }
+    .pv-titular-n .pv-flip-digit { width:2.15rem; height:2.75rem; font-size:1.8rem; }
+    .pv-titular-sub { margin-top:.7rem; color:rgba(255,255,255,.36); font-size:.72rem; line-height:1.45; }
     .pv-titular-sub strong { color:#e8c96a; font-weight:700; }
     .pv-chart-origin-chips { display:flex; flex-wrap:wrap; gap:.45rem; margin:.85rem 0 .1rem; }
     .pv-origin-chip { display:inline-flex; align-items:center; gap:.42rem; padding:.28rem .62rem; border:1px solid rgba(255,255,255,.09); border-radius:999px; color:rgba(255,255,255,.62); font-size:.61rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; background:rgba(255,255,255,.025); }
@@ -752,47 +698,16 @@
     .pv-estado-simple span { display:block; color:var(--sc,#f5f3f0); font-size:1.35rem; font-weight:500; line-height:1; margin-bottom:.25rem; }
     .pv-estado-simple small { display:block; color:rgba(255,255,255,.42); font-size:.58rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
     .pv-estado-simple.secundario { opacity:.68; }
-    .pv-detalle {
-      margin-bottom:1rem;
-      border:0;
-      background:transparent;
-      box-shadow:none;
-      overflow:visible;
-    }
-    .pv-detalle-summary {
-      position:relative;
-      overflow:hidden;
-      cursor:pointer;
-      list-style:none;
-      padding:1.1rem 1.35rem;
-      display:grid;
-      grid-template-columns:minmax(0,auto) minmax(0,1fr) auto;
-      align-items:center;
-      gap:1rem;
-      color:#f5f3f0;
-      font-size:.62rem;
-      font-weight:700;
-      letter-spacing:.18em;
-      text-transform:uppercase;
-      border:1px solid rgba(232,201,106,.2);
-      border-top-color:rgba(232,201,106,.42);
-      border-radius:12px;
-      background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
-      box-shadow:0 18px 48px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.055);
-      transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease;
-    }
-    .pv-detalle-summary:hover { background:rgba(255,255,255,.05); color:#e8c96a; }
-    .pv-detalle-summary::after { content:'Ver más ▸'; color:#e8c96a; font-size:.58rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; transition:color .18s ease; }
-    .pv-detalle[open] .pv-detalle-summary::after { content:'Ver más ▾'; color:#e8c96a; }
+    .pv-detalle { margin-bottom:1rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:12px; background:linear-gradient(155deg,rgba(255,255,255,.038),rgba(255,255,255,.012)); overflow:hidden; }
+    .pv-detalle-summary { cursor:pointer; list-style:none; padding:1.1rem 1.35rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; color:#f5f3f0; font-size:.62rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; }
     .pv-detalle-summary::-webkit-details-marker { display:none; }
     .pv-detalle-summary span { color:rgba(255,255,255,.34); font-size:.58rem; letter-spacing:.1em; }
-    .pv-detalle[open] .pv-detalle-summary { border-bottom-color:rgba(232,201,106,.2); }
+    .pv-detalle[open] .pv-detalle-summary { border-bottom:1px solid rgba(255,255,255,.06); }
     .pv-detalle-body { padding:1rem; }
-    @media(max-width:720px){ .pv-actividad-head{align-items:flex-start}.pv-actividad-copy{margin-left:0;text-align:left}.pv-periodo-bar-chart{order:2}.pv-detalle-summary{grid-template-columns:minmax(0,1fr) auto}.pv-detalle-summary span{grid-column:1 / -1} }
-    @media(max-width:640px){ .pv-hero-title{min-height:auto;gap:1.15rem}.pv-titular-grid{grid-template-columns:1fr}.pv-titular-card{min-height:140px}.pv-titular-n{font-size:2.45rem}.pv-titular-n .pv-flip-digit{width:2.22rem;height:2.88rem;font-size:1.88rem}.pv-titular-grid .pv-titular-card:nth-child(2) .pv-titular-sub{transform:translateY(.18rem)} }
+    @media(max-width:640px){ .pv-titular-grid{grid-template-columns:1fr}.pv-titular-card{min-height:132px}.pv-titular-n{font-size:2.45rem} }
     .pv-btn-refresh { min-height:30px; padding:.32rem .72rem; border:1px solid rgba(100,149,237,.28); border-radius:7px; background:linear-gradient(135deg,rgba(100,149,237,.15),rgba(100,149,237,.05)); color:#8fb2ff; font:600 .6rem 'Inter',sans-serif; cursor:pointer; transition:all .2s; letter-spacing:.06em; text-transform:uppercase; }
     .pv-btn-refresh:hover { border-color:rgba(100,149,237,.45); color:#fff; box-shadow:0 0 12px rgba(100,149,237,.2); }
-    .pv-hero-acciones { display:flex; gap:.45rem; margin-left:0; }
+    .pv-hero-acciones { display:flex; gap:.4rem; margin-left:auto; }
     .pv-btn-link-canal { min-height:30px; padding:.32rem .72rem; border:1px solid rgba(100,149,237,.28); border-radius:7px; background:linear-gradient(135deg,rgba(100,149,237,.15),rgba(100,149,237,.05)); color:#8fb2ff; font:600 .6rem 'Inter',sans-serif; cursor:pointer; transition:all .2s; letter-spacing:.06em; text-transform:uppercase; }
     .pv-btn-link-canal:hover { border-color:rgba(100,149,237,.45); color:#fff; box-shadow:0 0 12px rgba(100,149,237,.2); }
     .pv-btn-qr-dl { min-height:30px; padding:.32rem .72rem; border:1px solid rgba(80,200,120,.28); border-radius:7px; background:linear-gradient(135deg,rgba(80,200,120,.15),rgba(80,200,120,.05)); color:#6ee89a; font:600 .6rem 'Inter',sans-serif; cursor:pointer; transition:all .2s; letter-spacing:.06em; text-transform:uppercase; }
@@ -837,7 +752,7 @@
     .pv-mini-sub { font-size:.46rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.28); margin:-.18rem 0 .42rem; }
     .pv-mini-wrap { position:relative; height:60px; }
     @media(max-width:560px){
-      .header{padding:.85rem .9rem}.header-brand img{width:clamp(150px,42vw,168px)}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:120px;padding:.7rem .9rem .75rem}.pv-kpi-n{font-size:2rem}.pv-kpi::before{top:12%;bottom:32%}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.9rem}
+      .header{padding:.85rem 1rem}.header-brand img{width:122px}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:135px;padding:1rem}.pv-kpi-n{font-size:2rem}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.9rem}
       .pv-live-bar{flex-direction:column;align-items:flex-start;gap:.45rem}
       .pv-live-left{width:100%}
       .pv-live-right{width:100%;justify-content:space-between}
@@ -871,7 +786,7 @@
       position: relative;
       height: 200px;
       overflow: hidden;
-      background: linear-gradient(135deg, rgba(255,255,255,.06), #11100e);
+      background: linear-gradient(135deg, rgba(201,168,76,.09), #11100e);
       background-size: cover;
       background-position: center;
     }
@@ -1027,7 +942,7 @@
     .qr-slot-img {
       position: relative;
       height: 110px;
-      background: linear-gradient(135deg, rgba(255,255,255,.06), #11100e);
+      background: linear-gradient(135deg, rgba(201,168,76,.09), #11100e);
       background-size: cover;
       background-position: center;
       display: flex;
@@ -1210,29 +1125,6 @@
     }
     .pv-rank-head span { font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.35); }
     .pv-rank-head span.r { text-align:right; }
-    .der-modal { position:fixed; inset:0; z-index:1200; display:grid; place-items:center; padding:1rem; background:rgba(0,0,0,.78); backdrop-filter:blur(5px); }
-    .der-modal[hidden] { display:none; }
-    .der-card { width:min(620px,100%); max-height:calc(100vh - 2rem); overflow:auto; background:#141414; border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:1.25rem; box-shadow:0 24px 70px rgba(0,0,0,.55); }
-    .der-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
-    .der-title { color:#f5f3f0; font-size:1.05rem; font-weight:650; }
-    .der-sub { color:rgba(245,243,240,.45); font-size:.7rem; line-height:1.45; margin-top:.2rem; }
-    .der-close { width:44px; height:44px; flex:0 0 44px; border-radius:9px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); color:#f5f3f0; cursor:pointer; }
-    .der-grid { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; }
-    .der-field { min-width:0; font-size:.6rem; color:rgba(255,255,255,.42); text-transform:uppercase; letter-spacing:.08em; }
-    .der-field.full { grid-column:1/-1; }
-    .der-input { width:100%; min-height:44px; margin-top:.3rem; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:#0c0c0c; color:#f5f3f0; padding:.65rem .75rem; font:inherit; font-size:.78rem; text-transform:none; letter-spacing:0; }
-    textarea.der-input { min-height:88px; resize:vertical; }
-    .der-error { min-height:1.1rem; margin-top:.7rem; color:#f0956a; font-size:.7rem; text-transform:none; letter-spacing:0; }
-    .der-actions { display:flex; justify-content:flex-end; gap:.65rem; margin-top:1rem; }
-    .der-actions button { min-height:44px; }
-    @media(max-width:520px) {
-      .der-modal { padding:.5rem; align-items:end; }
-      .der-card { max-height:calc(100vh - 1rem); padding:1rem; border-radius:14px; }
-      .der-grid { grid-template-columns:1fr; }
-      .der-field.full { grid-column:auto; }
-      .der-actions { flex-direction:column-reverse; }
-      .der-actions button { width:100%; }
-    }
   </style>
 </head>
 <body>
@@ -1244,7 +1136,10 @@
     <img src="../assets/logos/logo-horizontal-negro.png" alt="Sur Patagonian" />
     <span>Red de aliados</span>
   </div>
-  <div class="header-canal" id="headerCanal" hidden></div>
+  <div class="header-right">
+    <div class="header-canal" id="headerCanal"></div>
+    <button class="btn-salir" onclick="salir()">Salir</button>
+  </div>
 </header>
 
 <!-- MAIN -->
@@ -1270,8 +1165,7 @@
     location.href = 'login.html'
   }
 
-  const esc  = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
-  const esEntrada = v => v.canal_via === 'qr' || v.canal_via === 'link'
+  const esc  = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
   const fmt  = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
   const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
   const ESTADO_LABEL_PASIVO = { nueva:'Sin avance', contactado:'Contactado', visita:'En visita', oferta:'Oferta', cerrado:'Cerrada', descartado:'Descartado' }
@@ -1320,9 +1214,9 @@
   }
 
   function obtenerClavePersonaRecorrido(c, index = 0) {
-    if (c?.persona_id) return `p:${c.persona_id}`;
+    const tel = String(c?.telefono || c?.telefono_contacto || '').replace(/\D/g, '');
     const email = String(c?.email || c?.mail || '').trim().toLowerCase();
-    return email ? `email:${email}` : ('id:' + String(c?.id || `fila-${index}`));
+    return tel ? `tel:${tel}` : email ? `email:${email}` : ('id:' + String(c?.id || `fila-${index}`));
   }
 
   function fechaIngresoRecorrido(c) {
@@ -1423,7 +1317,7 @@
     const visitaColor = visita[0]?.color || REC_COHORT_PALETTE[0];
     const ofertaColor = oferta[0]?.color || REC_COHORT_PALETTE[1];
     const cerradoColor = cerrado[0]?.color || REC_COHORT_PALETTE[2];
-    const stationCount = (x, y, n, color) => `<text x="${x}" y="${y}" text-anchor="middle" fill="${color}" font-size="13" font-weight="800" font-family="Inter">${Number(n || 0).toLocaleString('es-AR')}</text>`;
+    const badge = (x, y, n, color) => n > 0 ? `<g transform="translate(${x},${y})"><rect x="-14" y="-9" width="28" height="18" rx="9" fill="rgba(0,0,0,.48)" stroke="${color}" stroke-opacity=".5"/><text x="0" y="3" text-anchor="middle" fill="${color}" font-size="8" font-weight="800" font-family="Inter">${n}</text></g>` : '';
     const tipoWalkInline = () => `<g stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round">
       <circle cx="0" cy="-12" r="2.9" fill="currentColor" stroke="none"/>
       <line x1="0" y1="-8.6" x2="0" y2="-1"/>
@@ -1544,7 +1438,7 @@
         <ellipse cx="130" cy="274" rx="150" ry="52" fill="url(#luzLocal)"/>
 
         <g transform="translate(130,272)">
-          <rect x="-88" y="-232" width="176" height="24" rx="4" fill="rgba(255,255,255,.06)" stroke="#c9a84c" stroke-width="1.5"/>
+          <rect x="-88" y="-232" width="176" height="24" rx="4" fill="rgba(201,168,76,.12)" stroke="#c9a84c" stroke-width="1.5"/>
           <text x="0" y="-215" text-anchor="middle" fill="#c9a84c" font-size="13" font-weight="700" letter-spacing="2.5" font-family="Inter">${nombreCanal}</text>
           <rect x="-80" y="-208" width="160" height="208" rx="3" fill="rgba(255,255,255,.028)" stroke="#8a8f99" stroke-opacity=".5" stroke-width="1.5"/>
           <rect x="-69" y="-196" width="138" height="196" rx="2" fill="rgba(255,255,255,.014)" stroke="#8a8f99" stroke-opacity=".28" stroke-width="1"/>
@@ -1555,8 +1449,7 @@
           <ellipse cx="0" cy="-2" rx="64" ry="3" fill="url(#sombraGrad)" opacity=".5"/>
           ${localTipitos}
           ${localExtra > 0 ? `<text x="76" y="-38" text-anchor="middle" fill="#8a8f99" font-size="9" font-family="Inter">+${localExtra}</text>` : ''}
-          <text x="0" y="26" text-anchor="middle" fill="#8a8f99" font-size="9.5" letter-spacing="1.8" font-family="Inter">TUS CONTACTOS GENERADOS</text>
-          <text x="0" y="44" text-anchor="middle" fill="#8a8f99" font-size="13" font-weight="800" font-family="Inter">${total.toLocaleString('es-AR')}</text>
+          <text x="0" y="26" text-anchor="middle" fill="#8a8f99" font-size="9.5" letter-spacing="1.8" font-family="Inter">TUS CONTACTOS · ${total.toLocaleString('es-AR')} Y SUMANDO</text>
         </g>
 
         <g transform="translate(340,272)">
@@ -1568,6 +1461,8 @@
         </g>
 
         ${visitaTipitos}
+        ${badge(430, 214, visita.length, '#f29a5a')}
+
         <g transform="translate(590,272)">
           <path d="M -32 0 L -32 -36 L 0 -56 L 32 -36 L 32 0 Z" fill="rgba(242,154,90,.07)" stroke="#f29a5a" stroke-width="1.6"/>
           <rect x="-9" y="-21" width="18" height="21" fill="#f29a5a" opacity=".4"/>
@@ -1576,11 +1471,10 @@
           <text x="55.5" y="-20.5" text-anchor="middle" fill="#f29a5a" font-size="6.5" font-family="Inter">VENTA</text>
           <text x="0" y="24" text-anchor="middle" fill="#f29a5a" font-size="9" letter-spacing="1.6" font-family="Inter">VISITA PROGRAMADA</text>
         </g>
-        ${stationCount(590, 314, visita.length, '#f29a5a')}
 
         ${ofertaTipitos}
-        <text x="735" y="296" text-anchor="middle" fill="#3bbf88" font-size="9" letter-spacing="1.6" font-family="Inter" opacity=".85">OFERTA ENVIADA</text>
-        ${stationCount(735, 314, oferta.length, '#3bbf88')}
+        ${badge(700, 214, oferta.length, '#3bbf88')}
+        <text x="672" y="222" text-anchor="middle" fill="#3bbf88" font-size="8" letter-spacing="1.4" font-family="Inter" opacity=".85">OFERTA ENVIADA</text>
 
         <g transform="translate(880,272)">
           <path d="M -30 0 L -30 -34 L 0 -54 L 30 -34 L 30 0 Z" fill="rgba(201,168,76,.12)" stroke="#c9a84c" stroke-width="2"/>
@@ -1590,7 +1484,7 @@
           ${cerradoTipitos}
           <text x="0" y="24" text-anchor="middle" fill="#c9a84c" font-size="9" letter-spacing="1.6" font-family="Inter">SU CASA</text>
         </g>
-        ${stationCount(880, 314, cerrado.length, '#c9a84c')}
+        ${badge(932, 214, cerrado.length, '#c9a84c')}
       </svg>
       <div class="pv-recorrido-note">Lectura agregada y anónima. No muestra nombre, teléfono, email ni mensajes.</div>
     </section>`;
@@ -1620,10 +1514,6 @@
       location.href = 'desarrollador.html'
       return
     }
-    if (meta.tipo_acceso === 'propietario') {
-      location.href = 'propietario.html'
-      return
-    }
 
     const userId = session.user.id
 
@@ -1643,16 +1533,14 @@
     const hace30    = new Date(ahora - 30 * 86400000).toISOString()
 
     // Header
-    const headerCanalEl = document.getElementById('headerCanal')
-    if (esPasivo) {
-      headerCanalEl.innerHTML = ''
-    } else {
-      headerCanalEl.innerHTML =
-        `<div style="display:flex;align-items:center;gap:.65rem;"><div><strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}</div></div>`
-    }
+    const badgeHtml = esPasivo ? '<div class="badge-aliado">Aliado</div>' : ''
+    document.getElementById('headerCanal').innerHTML =
+      `<div style="display:flex;align-items:center;gap:.65rem;">${badgeHtml}<div><strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}</div></div>`
 
     // ── Cargar métricas globales + mensajes ───────
     const canalIds    = canales.map(c => c.id)
+    const ciudadesMias = [...new Set(canales.map(c => c.ciudad).filter(Boolean))]
+    const provinciasMias = [...new Set(canales.map(c => c.provincia).filter(Boolean))]
 
     // canal_ref almacena el codigo de la REFERENCIA (no del canal).
     // El admin lo resuelve por prefijo: canal_ref.startsWith(canal.codigo + '-').
@@ -1668,16 +1556,16 @@
 
     const [rVisitas, rVisitas30, rContactos, rCampanas, rMensajes, rMisSlots] = await Promise.all([
       supabase.from('visitas').select('created_at, canal_via, canal_ref').in('canal_ref', codigosRef),
-      supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigosRef).in('canal_via', ['qr','link']).gte('created_at', hace30),
+      supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigosRef).gte('created_at', hace30),
       supabase.from('contactos').select('*').in('canal_ref', codigosRef).order('created_at', { ascending: false }),
       supabase.from('campanas_canales')
-        .select('canal_id, campanas(nombre, url_destino, activa, fecha_inicio, fecha_fin)')
+        .select('canal_id, campanas(nombre, activa, fecha_inicio, fecha_fin)')
         .in('canal_id', canales.map(c => c.id)),
       supabase.from('mensajes')
-        .select('id, asunto, cuerpo, created_at, mensajes_respuestas(id, cuerpo, created_at)')
+        .select('id, asunto, cuerpo, usuario_id, ciudad, provincia, tipo_acceso, provincias_arr, ciudades_arr, canal_ids, created_at, mensajes_respuestas(id, usuario_id, cuerpo, created_at)')
         .order('created_at', { ascending: false }),
       supabase.from('referencias')
-        .select('id, codigo, nombre, destino, activo, proyecto_slug, canal_id, punto_tipo')
+        .select('id, codigo, nombre, destino, activo, proyecto_slug, canal_id')
         .in('canal_id', canalIds)
         .order('created_at', { ascending: true })
     ])
@@ -1781,29 +1669,11 @@
     })
     // Pre-warm de colores en orden alfabético → asignación determinística e independiente del orden de render
     ;[...misSlots].sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(s => colorDeSlot(s.codigo))
-
-    // ── UNA LINEA POR COMERCIO (canal), NUNCA por punto QR ──────────────
-    // Los puntos QR son segmentacion interna de administracion y no se
-    // exponen al aliado. Cada comercio suma las visitas de todos sus puntos.
-    const comerciosDelAliado = canales.map(c => {
-      const refs = misSlots.filter(s => s.canal_id === c.id && s.activo !== false)
-      const principal = refs.find(r => r.punto_tipo === 'principal') || refs[0]
-      return {
-        codigo: c.codigo,
-        nombre: c.nombre,
-        codigos: new Set([c.codigo, ...refs.map(r => r.codigo)]),
-        // Color canonico del canal (paleta aprobada). Fallback al color de slot.
-        color: (window.SPCanalColors && window.SPCanalColors.colorCanalDesdeIndex
-                 ? window.SPCanalColors.colorCanalDesdeIndex(c.color_index)
-                 : null) || colorDeSlot(principal ? principal.codigo : c.codigo)
-      }
-    })
-
     const slotCodigos  = misSlots.map(s => s.codigo)
     const derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
     const [rScansPorSlot, rProyImgs, rPropAll] = await Promise.all([
       slotCodigos.length
-        ? supabase.from('visitas').select('canal_ref,canal_via,created_at').in('canal_ref', slotCodigos).in('canal_via', ['qr','link']).gte('created_at', hace30)
+        ? supabase.from('visitas').select('canal_ref').in('canal_ref', slotCodigos).gte('created_at', hace30)
         : Promise.resolve({ data: [] }),
       derivedSlugs.length
         ? supabase.from('proyectos').select('slug, nombre, foto_portada').in('slug', derivedSlugs)
@@ -1817,35 +1687,14 @@
     const proyImgs = {}
     ;(rProyImgs.data || []).forEach(p => { proyImgs[p.slug] = p })
     const propDataMap = {}
-    const propDataById = {}
-    ;(rPropAll.data || []).forEach(p => {
-      propDataMap[slugify(p.titulo)] = p
-      propDataById[String(p.id).toLowerCase()] = p
-    })
-    function propiedadIdDesdeDestino(destino) {
-      if (!destino) return null
-      try {
-        const url = new URL(String(destino), location.origin)
-        if (!/(^|\/)propiedad(?:\.html)?\/?$/.test(url.pathname)) return null
-        const id = String(url.searchParams.get('id') || '').toLowerCase()
-        return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id) ? id : null
-      } catch (_) {
-        return null
-      }
-    }
-    function findPropData(slotOslug) {
-      const slot = slotOslug && typeof slotOslug === 'object' ? slotOslug : null
-      const id = slot ? propiedadIdDesdeDestino(slot.destino) : null
-      if (id && propDataById[id]) return propDataById[id]
-      const slug = slot ? slot.proyecto_slug : slotOslug
+    ;(rPropAll.data || []).forEach(p => { propDataMap[slugify(p.titulo)] = p })
+    function findPropData(slug) {
       if (!slug) return null
       if (propDataMap[slug]) return propDataMap[slug]
       for (const [k, v] of Object.entries(propDataMap)) { if (k.startsWith(slug) || slug.startsWith(k)) return v }
       return null
     }
     const esPropiedadReal = slot => {
-      const propiedadId = propiedadIdDesdeDestino(slot.destino)
-      if (propiedadId && propDataById[propiedadId]) return true
       if (!slot.proyecto_slug) return false
       if (proyImgs[slot.proyecto_slug]) return true
       if (findPropData(slot.proyecto_slug)) return true
@@ -1928,7 +1777,6 @@
       const ds = new Array(numBuckets).fill(0)
       const dc = new Array(numBuckets).fill(0)
       visitas.forEach(v => {
-        if (!esEntrada(v)) return
         const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
         const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) ds[idx]++
       })
@@ -1936,14 +1784,14 @@
         const t = new Date(c.created_at).getTime(); if (t < fromMs || t >= toMs) return
         const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) dc[idx]++
       })
-      const slotData = (typeof comerciosDelAliado !== 'undefined' ? comerciosDelAliado : []).map(com => {
+      const slotData = (typeof misSlots !== 'undefined' ? misSlots : []).map(slot => {
         const arr = new Array(numBuckets).fill(0)
         visitas.forEach(v => {
-          if (!esEntrada(v) || !com.codigos.has(v.canal_ref)) return
+          if (v.canal_ref !== slot.codigo) return
           const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
           const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) arr[idx]++
         })
-        return { codigo: com.codigo, data: arr }
+        return { codigo: slot.codigo, data: arr }
       })
       return { labels: newLbls, dataScans: ds, dataCons: dc, slotData }
     }
@@ -1956,10 +1804,7 @@
       _pvChart4.data.labels = labels
       if (_pvChart4.data.datasets[0]) _pvChart4.data.datasets[0].data = dataScans
       if (_pvChart4.data.datasets[1]) _pvChart4.data.datasets[1].data = dataCons
-      slotData.forEach(sd => {
-        const dst = _pvChart4.data.datasets.find(dataset => dataset._slotCodigo === sd.codigo)
-        if (dst) dst.data = sd.data
-      })
+      slotData.forEach((sd,i) => { const dst=_pvChart4.data.datasets[2+i]; if (dst) dst.data=sd.data })
       delete _pvChart4.options.scales.x.min; delete _pvChart4.options.scales.x.max
       const _cap = labels // captura para closures de callback
       if (_pvChart4.options.scales?.x?.ticks) {
@@ -2050,19 +1895,44 @@
       chart.canvas.addEventListener('dblclick', chart._pvDblH)
     }
 
-    // La segmentación y el aislamiento de respuestas viven en RLS.
-    const mensajesError = rMensajes.error || null
-    if (mensajesError) console.error('[mensajes] No se pudo cargar:', mensajesError)
-    const misMensajes = rMensajes.data || []
-    const mensajesVacioHtml = texto => mensajesError
-      ? '<div class="pv-empty" role="alert"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">No pudimos cargar los mensajes</div><div>Recargá la página para volver a intentarlo.</div></div>'
-      : `<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>${texto}</div></div>`
-    const totalScans = visitas.filter(esEntrada).length
-    const conv       = totalScans > 0 ? ((contactos.filter(c => c.origen !== 'manual').length / totalScans) * 100).toFixed(1) : 0
+    // Filtrar mensajes para este usuario
+    // Lógica: si usuario_id está → solo ese usuario
+    // Si no → AND entre todos los filtros activos.
+    // Soporta tanto campos nuevos (arrays) como campos viejos (single value).
+    const userTipoAcceso = esPasivo ? 'pasivo' : 'activo'
+    const misCanalesIds  = canales.map(c => c.id)
+    const todosMsg = rMensajes.data || []
+    const misMensajes = todosMsg.filter(m => {
+      if (m.usuario_id) return m.usuario_id === userId
+
+      // ── Nuevos campos multi-select (arrays) ──
+      // canal_ids: alguno de los mis canales debe estar en la lista
+      if (m.canal_ids?.length) {
+        if (!m.canal_ids.some(id => misCanalesIds.includes(id))) return false
+      }
+      // provincias_arr: mi provincia debe estar en alguna de las seleccionadas
+      if (m.provincias_arr?.length) {
+        if (!m.provincias_arr.some(p => provinciasMias.includes(p))) return false
+      }
+      // ciudades_arr: mi ciudad debe estar en alguna de las seleccionadas
+      if (m.ciudades_arr?.length) {
+        if (!m.ciudades_arr.some(c => ciudadesMias.includes(c))) return false
+      }
+
+      // ── Compatibilidad con campos viejos (mensajes anteriores) ──
+      if (!m.provincias_arr && !m.ciudades_arr && !m.canal_ids) {
+        if (m.ciudad      && !ciudadesMias.includes(m.ciudad))      return false
+        if (m.provincia   && !provinciasMias.includes(m.provincia)) return false
+        if (m.tipo_acceso && m.tipo_acceso !== userTipoAcceso)      return false
+      }
+
+      return true
+    })
+    const totalScans = visitas.length
+    const conv       = totalScans > 0 ? ((contactos.length / totalScans) * 100).toFixed(1) : 0
 
     // Campaña activa por canal
     const campanaActiva = {}
-    const campanaDestino = {}
     ;(rCampanas.data || []).forEach(row => {
       const c = row.campanas
       if (!c?.activa) return
@@ -2070,7 +1940,6 @@
       const fin = c.fecha_fin    ? new Date(c.fecha_fin)    : null
       if ((!ini || ini <= ahora) && (!fin || fin >= ahora)) {
         campanaActiva[row.canal_id] = c.nombre
-        campanaDestino[row.canal_id] = c.url_destino || null
       }
     })
 
@@ -2091,7 +1960,7 @@
 
         const imgStyle = fotoUrl
           ? `background-image:url('${fotoUrl.replace(/'/g, "\\'")}');background-size:cover;background-position:center`
-          : 'background:linear-gradient(135deg,rgba(255,255,255,.06),#11100e)'
+          : 'background:linear-gradient(135deg,rgba(201,168,76,.09),#11100e)'
 
         const badgeClass = esActivo ? 'activo' : 'inactivo'
         const badgeLabel = esActivo ? '● ACTIVO' : '● INACTIVO'
@@ -2135,7 +2004,7 @@
             <div class="sec-titulo" style="margin-bottom:.2rem;">Mis QRs activos</div>
             <div style="font-size:.72rem;color:rgba(255,255,255,.38);">Los QRs que podés imprimir y compartir</div>
           </div>
-          <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(255,255,255,.06);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activos} activo${activos !== 1 ? 's' : ''}</span>
+          <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activos} activo${activos !== 1 ? 's' : ''}</span>
         </div>
         <div class="mis-qrs-grid">${cards}</div>
       </div>`
@@ -2148,96 +2017,34 @@
         const url = `${location.origin}/r/${slot.codigo}`
         try {
           await QRCode.toCanvas(canvas, url, {
-            width: canvas.width || 70, margin: 1, errorCorrectionLevel: 'H',
+            width: canvas.width || 70, margin: 1,
             color: { dark: '#000000', light: '#ffffff' }
           })
         } catch (e) { console.warn('QR error', slot.codigo, e) }
       }
     }
 
-    const QR_DOWNLOAD_SIZE = 4000
-    const QR_DOWNLOAD_FALLBACK_SIZE = 1024
-    let qrDownloadEnCurso = false
-
-    function canvasTieneQR(canvas) {
-      if (!canvas || canvas.width < 1 || canvas.height < 1) return false
-      const muestra = document.createElement('canvas')
-      muestra.width = 64
-      muestra.height = 64
-      const ctx = muestra.getContext('2d', { willReadFrequently: true })
-      if (!ctx) return false
-      ctx.drawImage(canvas, 0, 0, muestra.width, muestra.height)
-      const pixeles = ctx.getImageData(0, 0, muestra.width, muestra.height).data
-      let oscuros = 0
-      let claros = 0
-      for (let i = 0; i < pixeles.length; i += 4) {
-        if (pixeles[i + 3] < 200) continue
-        const luminancia = 0.2126 * pixeles[i] + 0.7152 * pixeles[i + 1] + 0.0722 * pixeles[i + 2]
-        if (luminancia < 80) oscuros++
-        if (luminancia > 220) claros++
-      }
-      return oscuros >= 16 && claros >= 16
-    }
-
-    function canvasABlobPng(canvas) {
-      if (typeof canvas.toBlob !== 'function') return Promise.reject(new Error('Canvas sin soporte para PNG Blob'))
-      return new Promise((resolve, reject) => {
-        canvas.toBlob(blob => {
-          if (blob && blob.size >= 100) resolve(blob)
-          else reject(new Error('PNG vacío o inválido'))
-        }, 'image/png')
-      })
-    }
-
-    async function generarPngQR(url, size, color) {
-      const canvas = document.createElement('canvas')
-      canvas.width = size
-      canvas.height = size
-      await QRCode.toCanvas(canvas, url, {
-        width: size, margin: 4, errorCorrectionLevel: 'H', color
-      })
-      if (canvas.width !== size || canvas.height !== size || !canvasTieneQR(canvas)) {
-        throw new Error(`Canvas QR ${size}×${size} vacío o incompleto`)
-      }
-      return canvasABlobPng(canvas)
-    }
-
-    async function descargarPngQR(url, nombreArchivo, color) {
-      if (qrDownloadEnCurso) return
-      qrDownloadEnCurso = true
-      try {
-        let blob
-        try {
-          blob = await generarPngQR(url, QR_DOWNLOAD_SIZE, color)
-        } catch (error4000) {
-          console.warn('[QR] Falló la generación 4000×4000; se intenta 1024×1024:', error4000)
-          try {
-            blob = await generarPngQR(url, QR_DOWNLOAD_FALLBACK_SIZE, color)
-          } catch (error1024) {
-            console.error('[QR] No se generó un PNG válido:', error1024)
-            alert('No se pudo generar un QR válido. No se descargó ningún archivo.')
-            return
-          }
-          alert('Tu dispositivo no pudo generar el QR en 4000 × 4000. Se descargará una versión segura de 1024 × 1024.')
-        }
-
-        const blobUrl = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.download = nombreArchivo
-        a.href = blobUrl
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
-      } finally {
-        qrDownloadEnCurso = false
-      }
-    }
-
     async function descargarQR(canvasId, codigo) {
-      if (!document.getElementById(canvasId)) return
+      const canvas = document.getElementById(canvasId)
+      if (!canvas) return
+      const SIZE = 1024
+      const offscreen = document.createElement('canvas')
+      offscreen.width = SIZE
+      offscreen.height = SIZE
       const url = `${location.origin}/r/${codigo}`
-      await descargarPngQR(url, `qr-${codigo}.png`, { dark: '#000000', light: '#ffffff' })
+      try {
+        await QRCode.toCanvas(offscreen, url, {
+          width: SIZE, margin: 4,
+          color: { dark: '#000000', light: '#ffffff' }
+        })
+      } catch (e) {
+        console.error('[descargarQR] Error generando QR de alta resolución:', e)
+        return
+      }
+      const a = document.createElement('a')
+      a.download = `qr-${codigo}.png`
+      a.href = offscreen.toDataURL('image/png')
+      a.click()
     }
     window.descargarQR = descargarQR
 
@@ -2247,8 +2054,23 @@
 
     async function descargarQRPasivo(codigo) {
       if (!codigo || typeof QRCode === 'undefined') return
+      const offscreen = document.createElement('canvas')
+      offscreen.width = 230
+      offscreen.height = 230
       const url = linkQrCanonico(codigo)
-      await descargarPngQR(url, `qr-${codigo}.png`, { dark: '#1a1a1a', light: '#ffffff' })
+      try {
+        await QRCode.toCanvas(offscreen, url, {
+          width: 230, margin: 2,
+          color: { dark: '#1a1a1a', light: '#ffffff' }
+        })
+      } catch (e) {
+        console.error('[descargarQRPasivo] Error generando QR canónico:', e)
+        return
+      }
+      const a = document.createElement('a')
+      a.download = `qr-${codigo}.png`
+      a.href = offscreen.toDataURL('image/png')
+      a.click()
     }
     window.descargarQRPasivo = descargarQRPasivo
 
@@ -2267,7 +2089,7 @@
     const renderCards = () => canales.map(c => {
       // Todos los codigos (referencia o canal directo) que pertenecen a este canal
       const misCodigos = new Set([c.codigo, ...(misRefs || []).filter(r => r.canal_id === c.id).map(r => r.codigo)])
-      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref) && esEntrada(v)).length
+      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref)).length
       const cContacts = contactos.filter(x => misCodigos.has(x.canal_ref)).length
       const estado    = !c.activo ? 'inactivo' : campanaActiva[c.id] ? 'campana' : 'activo'
       const estadoLabel = estado === 'inactivo' ? 'QR inactivo'
@@ -2290,162 +2112,15 @@
       </div>`
     }).join('')
 
-    // ── PUNTO B: unidades pasivas separadas para un mismo titular ──────────
-    const datosComercioPasivo = canal => {
-      const referenciasCanal = (misSlots || []).filter(r => r.canal_id === canal.id)
-      const codigosCanal = new Set([canal.codigo, ...referenciasCanal.map(r => r.codigo)])
-      const visitasCanal = visitas.filter(v => codigosCanal.has(v.canal_ref) && esEntrada(v))
-      const contactosCanal = contactos.filter(c => codigosCanal.has(c.canal_ref))
-      const principal = referenciasCanal.find(r => r.codigo === canal.codigo && r.punto_tipo === 'principal')
-        || referenciasCanal.find(r => r.activo !== false)
-      const destinoBase = principal?.destino || canal.destino || '/'
-      const destinoEfectivo = campanaDestino[canal.id] || destinoBase
-      const estado = !canal.activo ? 'inactivo' : campanaActiva[canal.id] ? 'campana' : 'activo'
-      const estadoLabel = estado === 'inactivo' ? 'QR inactivo'
-        : estado === 'campana' ? `Campaña: ${campanaActiva[canal.id]}`
-        : 'QR activo'
-      return { canal, visitasCanal, contactosCanal, destinoEfectivo, estado, estadoLabel }
-    }
-
-    const renderUnidadesPasivas = () => {
-      const cards = canales.map(canal => {
-        const d = datosComercioPasivo(canal)
-        const color = window.SPCanalColors?.colorCanalDesdeIndex?.(canal.color_index) || '#8a8a82'
-        const geo = [canal.ciudad, canal.provincia].filter(Boolean).join(', ') || 'Ubicación no informada'
-        return `<article class="pv-comercio-card${d.estado === 'inactivo' ? ' is-inactivo' : ''}" style="--canal-color:${color}">
-          <div class="pv-comercio-main">
-            <div class="pv-comercio-identidad"><span class="pv-comercio-color"></span><div class="pv-comercio-nombre">${esc(canal.nombre)}</div></div>
-            <div class="pv-comercio-geo">${esc(geo)}</div>
-            <div class="pv-comercio-metricas">
-              <div class="pv-comercio-metrica"><strong>${d.visitasCanal.length.toLocaleString('es-AR')}</strong><span>Clics</span></div>
-              <div class="pv-comercio-metrica"><strong>${d.contactosCanal.length.toLocaleString('es-AR')}</strong><span>Consultas</span></div>
-            </div>
-            <div class="pv-comercio-destino">
-              <div class="pv-comercio-destino-label">Qué está mostrando${campanaDestino[canal.id] ? '<span class="pv-comercio-campana">Campaña</span>' : ''}</div>
-              <div class="pv-comercio-destino-valor" title="${esc(d.destinoEfectivo)}">${esc(d.destinoEfectivo)}</div>
-            </div>
-          </div>
-          <div class="pv-comercio-qr">
-            <canvas id="pvComercioQr-${canal.id}" width="112" height="112" aria-label="QR de ${esc(canal.nombre)}"></canvas>
-            <div class="pv-comercio-codigo" title="${esc(canal.codigo)}">${esc(canal.codigo)}</div>
-            <div class="pv-comercio-estado">${esc(d.estadoLabel)}</div>
-            <div class="pv-comercio-acciones">
-              <button class="pv-comercio-btn" data-canal-id="${esc(canal.id)}" onclick="copiarLinkComercioPasivo(this)">Link</button>
-              <button class="pv-comercio-btn" data-canal-id="${esc(canal.id)}" onclick="descargarQrComercioPasivo(this)">Descargar QR</button>
-            </div>
-          </div>
-        </article>`
-      }).join('')
-      return `<section class="pv-multi-unidades" aria-labelledby="pvMultiUnidadesTitulo">
-        <div class="pv-multi-unidades-head"><div><div class="pv-sec-titulo" id="pvMultiUnidadesTitulo">Tus comercios</div><div class="pv-sec-sub">Cada local conserva su identidad, destino, enlace y código QR.</div></div></div>
-        <div class="pv-multi-unidades-grid">${cards}</div>
-      </section>`
-    }
-
-    function canalDesdeBotonPasivo(btn) {
-      return canales.find(c => c.id === btn?.dataset?.canalId) || null
-    }
-
-    window.copiarLinkComercioPasivo = btn => {
-      const canal = canalDesdeBotonPasivo(btn)
-      if (canal?.codigo) copiarLink(linkQrCanonico(canal.codigo), btn)
-    }
-
-    window.descargarQrComercioPasivo = btn => {
-      const canal = canalDesdeBotonPasivo(btn)
-      if (canal?.codigo) descargarQRPasivo(canal.codigo)
-    }
-
-    window.enviarRespuestaTitular = (btn, i) => {
-      const mensajeId = btn?.dataset?.messageId
-      if (mensajeId) window.enviarRespuesta(mensajeId, i)
-    }
-
-    async function generarQrUnidadesPasivas() {
-      if (typeof QRCode === 'undefined') return
-      for (const canal of canales) {
-        const canvas = document.getElementById(`pvComercioQr-${canal.id}`)
-        if (!canvas) continue
-        try {
-          await QRCode.toCanvas(canvas, linkQrCanonico(canal.codigo), {
-            width:112, margin:1, errorCorrectionLevel:'H', color:{ dark:'#111111', light:'#ffffff' }
-          })
-        } catch (e) { console.warn('[Punto B] QR no generado:', canal.codigo, e) }
-      }
-    }
-
     // ── Render ─────────────────────────────────────
     const main = document.getElementById('mainContent')
-    if (esPasivo && canales.length > 1) {
-      main.classList.add('pv-main')
-      const totalRegistrosActivos = contactos.filter(c => c.estado !== 'descartado').length
-      const mkFlip = (num, color) => String(num).split('').map((d, i) =>
-        `<span class="pv-flip-digit" style="--fc:${color};animation-delay:${(i * 0.07).toFixed(2)}s">${d}</span>`
-      ).join('')
-
-      main.innerHTML = `
-        <div class="pv-multi-head">
-          <div>
-            <h1>Tus comercios</h1>
-            <div class="pv-sec-sub">Resultados combinados de todos tus espacios.</div>
-          </div>
-          <div class="pv-multi-count"><strong>${canales.length.toLocaleString('es-AR')}</strong><span>comercios</span></div>
-        </div>
-
-        <div class="pv-titular-grid">
-          <div class="pv-titular-card" style="--pv-c:#6495ed">
-            <div class="pv-titular-label">Clics totales</div>
-            <div class="pv-titular-n pv-flip-num">${mkFlip(totalScans, '#7aaeff')}</div>
-            <div class="pv-titular-sub">Lecturas y clics combinados de todos tus comercios.</div>
-          </div>
-          <div class="pv-titular-card" style="--pv-c:#c9a84c">
-            <div class="pv-titular-label">Consultas totales</div>
-            <div class="pv-titular-n pv-flip-num">${mkFlip(contactos.length, '#e8c96a')}</div>
-            <div class="pv-titular-sub">${totalRegistrosActivos.toLocaleString('es-AR')} registros activos.</div>
-          </div>
-        </div>
-
-        ${renderUnidadesPasivas()}
-        ${renderPasivo(contactos, filasTraza, { nombre: 'TUS COMERCIOS' })}
-
-        <div class="pv-sec pv-msg-sec" id="secMensajes">
-          <div class="pv-sec-head"><div><div class="pv-sec-titulo">Novedades de la red${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem">${misMensajes.length}</span>` : ''}</div><div class="pv-sec-sub">Actualizaciones de Sur Patagonian para tus espacios.</div></div></div>
-          <div class="msg-inbox" id="msgInbox">
-            ${misMensajes.length ? misMensajes.map((m, i) => `
-              <div class="msg-card" id="msgCard-${i}">
-                <div class="msg-card-head" onclick="toggleMsg(${i})">
-                  <div class="msg-unread-dot" id="dot-${i}"></div>
-                  <div class="msg-card-asunto">${esc(m.asunto)}</div>
-                  <div class="msg-card-fecha">${fmt(m.created_at)}</div>
-                </div>
-                <div class="msg-card-body" id="msgBody-${i}">
-                  <div class="msg-card-cuerpo">${esc(m.cuerpo)}</div>
-                  <div class="reply-area">
-                    <div class="reply-titulo">Tu respuesta como titular</div>
-                    ${(m.mensajes_respuestas || []).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
-                    <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
-                    <button class="btn-reply" data-message-id="${esc(m.id)}" onclick="enviarRespuestaTitular(this, ${i})">Enviar respuesta</button>
-                  </div>
-                </div>
-              </div>`).join('') : mensajesVacioHtml('Cuando Sur Patagonian tenga novedades para tus canales, las vas a encontrar acá.')}
-          </div>
-        </div>
-
-        <div class="pv-logout-bottom">
-          <button class="pv-logout-card" onclick="salir()">Salir</button>
-        </div>`
-
-      requestAnimationFrame(() => {
-        renderGraficoPasivo(contactos, 7)
-        generarQrUnidadesPasivas()
-      })
-    } else if (esPasivo) {
+    if (esPasivo) {
       main.classList.add('pv-main')
       const canal = canales[0]
       const geo = [canal.ciudad, canal.provincia].filter(Boolean).join(', ')
       const estadoQR = !canal.activo ? 'inactivo' : campanaActiva[canal.id] ? 'campana' : 'activo'
       const dotColor = estadoQR === 'activo' ? '#50c878' : estadoQR === 'campana' ? '#c9a84c' : '#444'
-      const dotGlow = estadoQR === 'activo' ? `box-shadow:0 0 10px ${dotColor}88` : ''
+      const dotGlow = estadoQR !== 'inactivo' ? `box-shadow:0 0 10px ${dotColor}88` : ''
       const dotLabel = estadoQR === 'inactivo' ? 'QR inactivo' : estadoQR === 'campana' ? `Campaña: ${campanaActiva[canal.id]}` : 'QR activo'
       const m = metricasPasivo(contactos)
       const monograma = (canal.nombre || 'SP').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()
@@ -2458,69 +2133,31 @@
 
       const pvQrCodigo = codigoQrCanonicoPasivo(canal)
       const pvQrUrl = linkQrCanonico(pvQrCodigo)
-      const alianzaGold = '#e8c96a'
-      const alianzaReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false
-      const alianzaHexRgb = hex => {
-        const clean = String(hex || '').replace('#', '')
-        if (!/^[0-9a-f]{6}$/i.test(clean)) return null
-        return [
-          parseInt(clean.slice(0, 2), 16),
-          parseInt(clean.slice(2, 4), 16),
-          parseInt(clean.slice(4, 6), 16)
-        ]
-      }
-      const alianzaDist = (a, b) => {
-        const ar = alianzaHexRgb(a), br = alianzaHexRgb(b)
-        if (!ar || !br) return 999
-        return Math.sqrt((ar[0] - br[0]) ** 2 + (ar[1] - br[1]) ** 2 + (ar[2] - br[2]) ** 2)
-      }
-      const alianzaPaletaCanal = Array.isArray(window.SPCanalColors?.PALETA_CANALES)
-        ? window.SPCanalColors.PALETA_CANALES
-            .filter(c => /^#[0-9a-f]{6}$/i.test(String(c || '')))
-            .filter(c => alianzaDist(c, alianzaGold) >= 90)
-        : []
-      const alianzaCanalLoop = alianzaPaletaCanal.length ? [...alianzaPaletaCanal, alianzaPaletaCanal[0]] : ['#9d4eff']
-      const alianzaCanalValues = alianzaCanalLoop.join(';')
-      const alianzaCanalDur = '56s'
-      const alianzaCanalAnimate = alianzaReducedMotion ? '' : `<animate attributeName="stroke" values="${alianzaCanalValues}" dur="${alianzaCanalDur}" repeatCount="indefinite"></animate>`
 
       main.innerHTML = `
         <div class="pv-hero-header">
           <div class="pv-hero-title">
             <h1>${esc(canal.nombre)}</h1>
-            <div class="pv-hero-meta-actions">
-              <div class="pv-hero-sub-bar">
-                <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};${dotGlow};flex-shrink:0;display:inline-block;"></span>
-                <span>${geo ? esc(geo) + ' · ' : ''}${esc(dotLabel)}</span>
-              </div>
-              <div class="pv-hero-actions-row">
-                <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+            <div class="pv-hero-sub-bar">
+              <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};${dotGlow};flex-shrink:0;display:inline-block;"></span>
+              <span>${geo ? esc(geo) + ' · ' : ''}${esc(dotLabel)}</span>
+            </div>
+            <div class="pv-periodo-bar-hero">
+              <button class="pv-flt-btn activo" data-dias="hoy" onclick="pvSetPeriodo(this)">Hoy</button>
+              <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
+              <button class="pv-flt-btn" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
+              <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
+              <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+              <div class="pv-hero-acciones">
                 <button class="pv-btn-link-canal" onclick="copiarLink('${pvQrUrl}', this)">Link</button>
                 <button class="pv-btn-qr-dl" onclick="descargarQRPasivo('${pvQrCodigo}')">Descargar QR</button>
               </div>
             </div>
-          </div>
-          <div class="pv-alianza-hero" aria-label="Alianza Sur Patagonian y red de aliados">
-            <svg class="pv-alianza-rings" viewBox="0 0 92 52" aria-hidden="true">
-              <defs>
-                <filter id="alianzaBlur" x="-45%" y="-45%" width="190%" height="190%">
-                  <feGaussianBlur stdDeviation="4"></feGaussianBlur>
-                </filter>
-              </defs>
-              <circle class="pv-alianza-glow gold" cx="31" cy="26" r="21"></circle>
-              <circle class="pv-alianza-glow channel" cx="61" cy="26" r="21" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
-                ${alianzaCanalAnimate}
-              </circle>
-              <circle class="pv-alianza-ring channel pv-alianza-channel-back" cx="61" cy="26" r="21" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
-                ${alianzaCanalAnimate}
-              </circle>
-              <circle class="pv-alianza-ring gold" cx="31" cy="26" r="21"></circle>
-              <path class="pv-alianza-ring channel pv-alianza-channel-front" d="M 40 26 C 40 38 49 47 61 47 C 73 47 82 38 82 26" stroke="${alianzaPaletaCanal[0] || '#9d4eff'}">
-                ${alianzaCanalAnimate}
-              </path>
-            </svg>
-            <div class="pv-alianza-kicker">GRACIAS POR SER PARTE DE NUESTRA RED</div>
-            <div class="pv-alianza-lema">Si nosotros ganamos, vos también.</div>
+            <div class="pv-flt-custom" id="pvFltCustom" style="display:none;margin-top:.8rem;">
+              <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
+              <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
+              <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
+            </div>
           </div>
           <div class="pv-hero-right-cluster">
             ${canal.latitud && canal.longitud ? `
@@ -2535,12 +2172,12 @@
           <div class="pv-titular-card" style="--pv-c:#6495ed">
             <div class="pv-titular-label">Clics</div>
             <div class="pv-titular-n pv-flip-num">${mkFlip(totalScans, '#7aaeff')}</div>
-            <div class="pv-titular-sub">Lectura de QR o clics en tu link.</div>
+            <div class="pv-titular-sub"><strong>+${m.v30.toLocaleString('es-AR')}</strong> en los últimos 30 días.</div>
           </div>
           <div class="pv-titular-card" style="--pv-c:#c9a84c">
             <div class="pv-titular-label">Consultas</div>
             <div class="pv-titular-n pv-flip-num">${mkFlip(contactos.length, '#e8c96a')}</div>
-            <div class="pv-titular-sub">Personas que se sumaron a tu registro.</div>
+            <div class="pv-titular-sub"><strong>+${m.c30.toLocaleString('es-AR')}</strong> en los últimos 30 días.</div>
           </div>
         </div>
 
@@ -2557,23 +2194,19 @@
                   <div class="msg-card-fecha">${fmt(m.created_at)}</div>
                 </div>
                 <div class="msg-card-body" id="msgBody-${i}"><div class="msg-card-cuerpo">${esc(m.cuerpo)}</div></div>
-              </div>`).join('') : mensajesVacioHtml('Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.')}
+              </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
           </div>
-        </div>
-
-        <div class="pv-logout-bottom">
-          <button class="pv-logout-card" onclick="salir()">Salir</button>
         </div>`
 
       requestAnimationFrame(() => {
-        renderGraficoPasivo(contactos, 7)
+        renderGraficoPasivo(contactos, 0)
         renderMiniMapaPasivo(canal)
         const heroQrCanvas = document.getElementById('pvHeroQrCanvas')
         const heroQrCodigo = codigoQrCanonicoPasivo(canal)
         if (heroQrCanvas && heroQrCodigo && typeof QRCode !== 'undefined') {
           const qrUrl = linkQrCanonico(heroQrCodigo)
           QRCode.toCanvas(heroQrCanvas, qrUrl, {
-            width: 72, margin: 1, errorCorrectionLevel: 'H',
+            width: 72, margin: 1,
             color: { dark: '#111111', light: '#ffffff' }
           }).catch(e => console.warn('QR hero error', e))
         }
@@ -2592,7 +2225,7 @@
         <div class="pv-hero-title">
           <h1>${esc(nombreDisplay)}</h1>
           <div class="pv-hero-sub-bar">
-            <span style="width:8px;height:8px;border-radius:50%;background:${dotColorAct};${estadoAct==='activo'?`box-shadow:0 0 10px ${dotColorAct}88`:''};flex-shrink:0;display:inline-block;"></span>
+            <span style="width:8px;height:8px;border-radius:50%;background:${dotColorAct};${estadoAct!=='inactivo'?`box-shadow:0 0 10px ${dotColorAct}88`:''};flex-shrink:0;display:inline-block;"></span>
             <span>${geoAct ? esc(geoAct) + ' · ' : ''}${esc(dotLabelAct)}</span>
           </div>
           <div class="pv-periodo-bar-hero">
@@ -2661,17 +2294,13 @@
                   <div class="msg-card-cuerpo">${esc(msg.cuerpo)}</div>
                   <div class="reply-area">
                     <div class="reply-titulo">Tu respuesta</div>
-                    ${(msg.mensajes_respuestas || []).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
+                    ${(msg.mensajes_respuestas || []).filter(r => r.usuario_id === userId).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
                     <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
-                    <button class="btn-reply" data-message-id="${esc(msg.id)}" onclick="enviarRespuesta(this.dataset.messageId, ${i})">Enviar respuesta</button>
+                    <button class="btn-reply" onclick="enviarRespuesta('${msg.id}', ${i}, ${JSON.stringify(canales[0]?.nombre||'').replace(/"/g,'&quot;')})">Enviar respuesta</button>
                   </div>
                 </div>
-              </div>`).join('') : mensajesVacioHtml('Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.')}
+              </div>`).join('') : '<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.</div></div>'}
           </div>
-        </div>
-
-        <div class="pv-logout-bottom">
-          <button class="pv-logout-card" onclick="salir()">Salir</button>
         </div>`
 
       // Render de gráficos y QR canvases tras DOM
@@ -2700,14 +2329,12 @@
     function metricasPasivo(contactos) {
       const corte30 = new Date(Date.now() - 30 * 86400000)
       const corte60 = new Date(Date.now() - 60 * 86400000)
-      const v30 = visitas.filter(v => esEntrada(v) && new Date(v.created_at) >= corte30).length
+      const v30 = visitas.filter(v => new Date(v.created_at) >= corte30).length
       const c30 = contactos.filter(c => new Date(c.created_at) >= corte30).length
-      const vAnt = visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= corte60 && d < corte30 }).length
+      const vAnt = visitas.filter(v => { const d = new Date(v.created_at); return d >= corte60 && d < corte30 }).length
       const cAnt = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 }).length
-      const c30Web = contactos.filter(c => new Date(c.created_at) >= corte30 && c.origen !== 'manual').length
-      const cAntWeb = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 && c.origen !== 'manual' }).length
-      const conv30 = v30 > 0 ? Number((c30Web / v30 * 100).toFixed(1)) : 0
-      const convAnt = vAnt > 0 ? Number((cAntWeb / vAnt * 100).toFixed(1)) : 0
+      const conv30 = v30 > 0 ? Number((c30 / v30 * 100).toFixed(1)) : 0
+      const convAnt = vAnt > 0 ? Number((cAnt / vAnt * 100).toFixed(1)) : 0
       return {
         v30, c30, vAnt, cAnt, conv30,
         deltaV: compararPeriodo(v30, vAnt),
@@ -2737,7 +2364,7 @@
 
     function renderActividadReciente(contactos, limite = 8) {
       const eventos = [
-        ...visitas.filter(esEntrada).map(v => ({ fecha:v.created_at, tipo:v.canal_via === 'qr' ? 'qr' : 'link', texto:v.canal_via === 'qr' ? 'Clic desde QR físico' : 'Clic desde enlace digital' })),
+        ...visitas.map(v => ({ fecha:v.created_at, tipo:v.canal_via === 'qr' ? 'qr' : 'link', texto:v.canal_via === 'qr' ? 'Clic desde QR físico' : 'Clic desde enlace digital' })),
         ...contactos.map(c => ({ fecha:c.created_at, tipo:'lead', texto:'Nueva consulta generada' })),
       ].filter(e => e.fecha).sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, limite)
 
@@ -2777,7 +2404,7 @@
 
       const icon = leaflet.divIcon({
         className: '',
-        html: '<div style="width:14px;height:14px;background:#c9a84c;border:2px solid rgba(201,168,76,.5);border-radius:50%"></div>',
+        html: '<div style="width:14px;height:14px;background:#c9a84c;border:2px solid rgba(201,168,76,.5);border-radius:50%;box-shadow:0 0 12px rgba(201,168,76,.7),0 0 24px rgba(201,168,76,.3)"></div>',
         iconSize: [14, 14],
         iconAnchor: [7, 7],
       })
@@ -2787,7 +2414,7 @@
     }
 
     function renderFunnelCRM(contactos) {
-      const totalInteracciones = visitas.filter(esEntrada).length
+      const totalInteracciones = visitas.length
       const contactosFunnel = contactos.filter(c => c.estado !== 'descartado')
       const totalConsultas = contactosFunnel.length
       const totalDescartadas = contactos.filter(c => c.estado === 'descartado').length
@@ -2809,8 +2436,7 @@
       const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : null
       const fmtPct = (a, b) => { const v = pct(a, b); return v !== null ? `${v}% convirtió` : null }
 
-      const consultasWeb = contactosFunnel.filter(c => c.origen !== 'manual').length
-      const convC = fmtPct(consultasWeb, totalInteracciones)
+      const convC = fmtPct(totalConsultas, totalInteracciones)
       const convCo = fmtPct(totalContactadas, totalConsultas)
       const convV = fmtPct(totalVisitas, totalContactadas)
       const convO = fmtPct(totalOfertas, totalVisitas)
@@ -2881,31 +2507,50 @@
       })
 
       const mesesOrdenados = Object.keys(porMes).sort()
-      const anioVisible = mesesOrdenados.length
-        ? Number(mesesOrdenados[mesesOrdenados.length - 1].split('-')[0])
-        : new Date().getFullYear()
-      const mesesAnio = Array.from({ length: 12 }, (_, i) =>
-        `${anioVisible}-${String(i + 1).padStart(2, '0')}`
-      )
-      const MAX_BAR_H = 82
+      const MAX_BAR_H = 60
       const maxMes = mesesOrdenados.length ? Math.max(...mesesOrdenados.map(k => porMes[k])) : 1
-      const mesesGridCount = 12
-      const colorPorMesActivo = {}
-      mesesOrdenados.forEach((k, idx) => { colorPorMesActivo[k] = COHORT_PALETTE[idx % COHORT_PALETTE.length] })
 
       // Barras: Registros por mes — color de cohorte por mes (no color semántico de estado)
-      const barrasMes = mesesAnio.map(k => {
-        const activo = (porMes[k] || 0) > 0
-        const color = activo ? colorPorMesActivo[k] : 'rgba(255,255,255,.16)'
-        const h = activo ? Math.max(2, Math.round(porMes[k] / maxMes * MAX_BAR_H)) : 14
+      const barrasMes = mesesOrdenados.map((k, idx) => {
+        const color = COHORT_PALETTE[idx % COHORT_PALETTE.length]
+        const h = Math.max(2, Math.round(porMes[k] / maxMes * MAX_BAR_H))
         const [y, m] = k.split('-')
         const label = nombresMes[parseInt(m) - 1] + ' ' + y.slice(2)
-        return `<div class="pv-carta-mes-col${activo ? '' : ' is-locked'}">
-          <div class="pv-carta-mes-n"${activo ? ` style="color:${color}"` : ''}>${porMes[k] || 0}</div>
-          <div class="pv-carta-mes-bar"${activo ? ` style="height:${h}px;background:linear-gradient(to top,${color}cc,${color}44)"` : ` style="height:${h}px"`}></div>
+        return `<div class="pv-carta-mes-col">
+          <div class="pv-carta-mes-n" style="color:${color}">${porMes[k]}</div>
+          <div class="pv-carta-mes-bar" style="height:${h}px;background:linear-gradient(to top,${color}cc,${color}44)"></div>
           <div class="pv-carta-mes-label">${label}</div>
         </div>`
       }).join('')
+
+      // Estado actual por mes — gobernanza visual: color de estado ≠ color de cohorte
+      const EST_LABEL = { nueva: 'Sin avance', contactado: 'Contactado', visita: 'En visita', oferta: 'Oferta', cerrado: 'Cerrado', descartado: 'Descartado' }
+      const EST_COLOR = { nueva: '#b39ddb', contactado: '#35c6b4', visita: '#f29a5a', oferta: '#6ee89a', cerrado: '#e8c96a', descartado: '#7b7f88' }
+
+      const filasMesEstado = mesesOrdenados.map((k, idx) => {
+        const cohortColor = COHORT_PALETTE[idx % COHORT_PALETTE.length]
+        const [y, m] = k.split('-')
+        const mesLabel = nombresMes[parseInt(m) - 1] + ' ' + y
+        const datos = porMesEstado[k]
+        const pills = ['nueva','contactado','visita','oferta','cerrado','descartado']
+          .filter(est => datos[est] > 0)
+          .map(est =>
+            `<span class="pv-carta-est-pill" style="background:${EST_COLOR[est]}18;color:${EST_COLOR[est]};border-color:${EST_COLOR[est]}45">${datos[est]} ${EST_LABEL[est]}</span>`
+          ).join('')
+        if (!pills) return ''
+        return `<div class="pv-carta-mes-row">
+          <div class="pv-carta-mes-row-label" style="border-left:2px solid ${cohortColor};padding-left:.5rem">${mesLabel}</div>
+          <div class="pv-carta-mes-row-arrow">→ hoy:</div>
+          <div class="pv-carta-mes-row-pills">${pills}</div>
+        </div>`
+      }).filter(Boolean).join('')
+
+      // Canal de ingreso — solo canal_via (propiedad/proyecto NO visible al aliado)
+      const porQR   = contactos.filter(c => c.canal_via === 'qr').length
+      const porLink = total - porQR
+
+      const origenItem = (color, texto, n) =>
+        `<div class="pv-carta-origen-item"><span class="pv-carta-origen-dot" style="background:${color}"></span>${texto}<strong>${n}</strong></div>`
 
       return `<div class="pv-sec pv-cartera-sec">
         <div class="pv-sec-head">
@@ -2915,7 +2560,9 @@
           </div>
         </div>
 
-        <div class="pv-carta-evol" style="--mes-count:${mesesGridCount}">${barrasMes}</div>
+        ${mesesOrdenados.length > 0
+          ? `<div class="pv-carta-evol">${barrasMes}</div>`
+          : '<div class="pv-empty">Todavía no hay registros por mes.</div>'}
       </div>`
     }
 
@@ -3149,17 +2796,14 @@
       }
 
       const hoy = new Date()
-      const yearActual = hoy.getFullYear()
-      const currentMesKey = `${yearActual}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
+      const year = hoy.getFullYear()
+      const currentMesKey = `${year}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
       const bloques = filasTraza.filter(f => f.fila_tipo === 'bloque_estado_actual')
       const movimientos = filasTraza.filter(f =>
         f.fila_tipo === 'movimiento_registro_activo' || f.fila_tipo === 'movimiento_registro_anonimo'
       )
 
       const keysConDatos = [...new Set(filasTraza.map(f => f.mes_ingreso_key).filter(Boolean))].sort()
-      const anioVisible = keysConDatos.length
-        ? Number(keysConDatos[keysConDatos.length - 1].split('-')[0])
-        : yearActual
       const cohortColorMap = {}
       keysConDatos.forEach((k, idx) => { cohortColorMap[k] = COHORT_PALETTE_A[idx % COHORT_PALETTE_A.length] })
       const colorMes = k => cohortColorMap[k] || COHORT_PALETTE_A[Math.max(0, keysConDatos.length) % COHORT_PALETTE_A.length]
@@ -3225,22 +2869,27 @@
 
       const mesCells = Array.from({ length: 12 }, (_, i) => {
         const m = i + 1
-        const key = `${anioVisible}-${String(m).padStart(2, '0')}`
+        const key = `${year}-${String(m).padStart(2, '0')}`
         const row = Math.floor(i / 4)
         const col = i % 4
         const x = [-69, -23, 23, 69][col]
         const y = [-160, -98, -36][row]
         const n = ingresoPorMes[key] || 0
-        const activo = n > 0
         const isCurrent = key === currentMesKey
-        const color = activo ? colorMes(key) : 'rgba(255,255,255,.18)'
+        const color = n > 0 ? colorMes(key) : colorMes(currentMesKey)
         const label = NOMBRES_MES_A[i]
-        const dash = isCurrent && !activo ? ' stroke-dasharray="4 3"' : ''
-        return `<g transform="translate(${x},${y})" color="${color}">
-          <rect x="-18" y="-20" width="36" height="40" rx="4" fill="color-mix(in srgb, currentColor ${activo ? 24 : 8}%, transparent)" stroke="currentColor" stroke-width="${activo ? '1.5' : '1'}"${dash}/>
-          <rect x="-18" y="-20" width="36" height="40" rx="4" fill="url(#gradTarjeta)" opacity="${activo ? '1' : '.35'}"/>
-          <text x="0" y="5" text-anchor="middle" fill="${activo ? '#f5f3f0' : 'rgba(255,255,255,.22)'}" font-size="14" font-weight="700" font-family="Inter">${n}</text>
-          <text x="0" y="30" text-anchor="middle" fill="${activo ? 'currentColor' : 'rgba(255,255,255,.22)'}" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
+        if (n > 0 || isCurrent) {
+          const dash = isCurrent ? ' stroke-dasharray="4 3"' : ''
+          return `<g transform="translate(${x},${y})" color="${color}">
+            <rect x="-18" y="-20" width="36" height="40" rx="4" fill="color-mix(in srgb, currentColor ${n > 0 ? 24 : 8}%, transparent)" stroke="currentColor" stroke-width="1.5"${dash}/>
+            <rect x="-18" y="-20" width="36" height="40" rx="4" fill="url(#gradTarjeta)"/>
+            ${n > 0 ? `<text x="0" y="5" text-anchor="middle" fill="#f5f3f0" font-size="14" font-weight="700" font-family="Inter">${n}</text>` : ''}
+            <text x="0" y="30" text-anchor="middle" fill="currentColor" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
+          </g>`
+        }
+        return `<g transform="translate(${x},${y})">
+          <use href="#mesVacio"/>
+          <text x="0" y="30" text-anchor="middle" fill="rgba(255,255,255,.22)" font-size="7" letter-spacing="1" font-family="Inter">${label}</text>
         </g>`
       }).join('')
 
@@ -3256,7 +2905,7 @@
         return 'TUS CANALES'
       })()
       const vendidoStroke = cerradoN > 0 ? 'rgba(232,201,106,.75)' : 'rgba(232,201,106,.4)'
-      const vendidoFilter = ''
+      const vendidoFilter = cerradoN > 0 ? 'filter:drop-shadow(0 0 9px rgba(232,201,106,.45))' : ''
       const vendidoText = cerradoN > 0 ? 'rgba(232,201,106,.8)' : 'rgba(255,255,255,.55)'
 
       const svg = `<svg class="pv-activo-recorrido-svg" viewBox="0 0 1000 360" role="img" aria-label="Recorrido de leads desde la agencia hasta el cierre">
@@ -3413,18 +3062,15 @@
     }
 
     function renderEstadosConsultasPasivo(contactos) {
-      const personasMap = new Map()
-      ;(Array.isArray(contactos) ? contactos : []).forEach((c, index) => {
+      const cuenta = estado => contactos.filter(c => (c.estado || 'nueva') === estado).length
+      const personas = new Map()
+      contactos.forEach((c, index) => {
         const clave = obtenerClavePersonaRecorrido(c, index)
         const estado = normalizarEstadoRecorrido(c?.estado)
-        const actual = personasMap.get(clave)
-        if (!actual || (REC_ESTADO_ORDEN[estado] ?? 0) > (REC_ESTADO_ORDEN[actual] ?? 0)) {
-          personasMap.set(clave, estado)
-        }
+        const actual = personas.get(clave)
+        if (!actual || (REC_ESTADO_ORDEN[estado] ?? 0) > (REC_ESTADO_ORDEN[actual] ?? 0)) personas.set(clave, estado)
       })
-      const estadosPersona = [...personasMap.values()].filter(estado => estado !== 'descartado')
-      const cuenta = estado => estadosPersona.filter(e => e === estado).length
-      const total = estadosPersona.length
+      const total = [...personas.values()].filter(estado => estado !== 'descartado').length
       const items = [
         { n: total, label: 'Total', color: '#cdd2da' },
         { n: cuenta('visita'), label: 'En visita', color: '#f29a5a' },
@@ -3442,7 +3088,7 @@
             return `<tr>
               <td style="width:10px">${(c.estado || 'nueva') === 'nueva' ? '<div class="pv-dot-nueva"></div>' : ''}</td>
               <td class="pv-fecha">${fmt(c.created_at)}</td>
-              <td><span class="pv-via ${c.origen === 'manual' ? '' : (c.canal_via === 'qr' ? 'qr' : c.canal_via === 'link' ? 'link' : '')}" ${(c.origen === 'manual' || (c.canal_via !== 'qr' && c.canal_via !== 'link')) ? 'style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${(c.origen === 'manual' || (c.canal_via !== 'qr' && c.canal_via !== 'link')) ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen === 'manual' ? 'Manual' : (c.canal_via === 'qr' ? 'QR físico' : c.canal_via === 'link' ? 'Enlace' : 'Directo')}</span></td>
+              <td><span class="pv-via ${c.canal_via === 'qr' ? 'qr' : 'link'}"><span class="pv-via-mark"></span>${c.canal_via === 'qr' ? 'QR físico' : 'Enlace'}</span></td>
               <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL_PASIVO[c.estado]||'Sin avance')}</span></td>
             </tr>`
           }).join('')
@@ -3462,7 +3108,7 @@
     function renderDetallePasivo(contactos, filasTraza) {
       return `
         <details class="pv-detalle">
-          <summary class="pv-detalle-summary">Ver el recorrido de cada consulta <span>Leads acumulados por mes y su recorrido</span></summary>
+          <summary class="pv-detalle-summary">Ver detalle de trazabilidad <span>Leads acumulados por mes y su recorrido</span></summary>
           <div class="pv-detalle-body">
             ${renderCarteraAcumulada(contactos)}
             ${renderTrazabilidad(filasTraza, { anonimo: true })}
@@ -3471,29 +3117,16 @@
     }
 
     function renderPasivo(contactos, filasTraza = [], canal = null) {
-      const qrTotal = contactos.filter(c => c.origen !== 'manual' && c.canal_via === 'qr').length
-      const manualTotal = contactos.filter(c => c.origen === 'manual').length
-      const linkTotal = contactos.filter(c => c.origen !== 'manual' && c.canal_via === 'link').length
-      const directoTotal = contactos.filter(c => c.origen !== 'manual' && c.canal_via !== 'qr' && c.canal_via !== 'link').length
+      const qrTotal = contactos.filter(c => c.canal_via === 'qr').length
+      const linkTotal = contactos.length - qrTotal
 
       return `
         <div class="pv-sec">
-          <div class="pv-sec-head pv-actividad-head">
-            <div class="pv-periodo-bar-chart">
-              <button class="pv-flt-btn" data-dias="hoy" onclick="pvSetPeriodo(this)">Hoy</button>
-              <button class="pv-flt-btn activo" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
-              <button class="pv-flt-btn" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
-              <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
-            </div>
-            <div class="pv-actividad-copy">
+          <div class="pv-sec-head">
+            <div>
               <div class="pv-sec-titulo">Actividad en el tiempo</div>
               <div class="pv-sec-sub">Clics y consultas reales generadas por tu QR y enlace.</div>
             </div>
-          </div>
-          <div class="pv-flt-custom" id="pvFltCustom" style="display:none;">
-            <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
-            <label>Hasta<input type="date" id="pvEvolHasta" class="pv-fecha-input"></label>
-            <button class="pv-aplicar" onclick="pvAplicarFechas()">Aplicar</button>
           </div>
           <div id="pvLiveBar4" class="pv-live-bar">
             <div class="pv-live-left">
@@ -3522,8 +3155,6 @@
           <div class="pv-chart-origin-chips">
             <span class="pv-origin-chip" style="--oc:#50c878"><span class="dot"></span>QR físico · ${qrTotal.toLocaleString('es-AR')}</span>
             <span class="pv-origin-chip" style="--oc:#6495ed"><span class="dot"></span>Enlace digital · ${linkTotal.toLocaleString('es-AR')}</span>
-            ${directoTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Directo · ${directoTotal.toLocaleString('es-AR')}</span>` : ''}
-            ${manualTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Manual · ${manualTotal.toLocaleString('es-AR')}</span>` : ''}
           </div>
         </div>
 
@@ -3559,7 +3190,7 @@
         const bloqueIni = new Date(cursor)
         const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
         labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
-        dataScans.push(visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataScans.push(visitas.filter(v => { const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
         dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
       }
       // Arrancar desde el primer día con actividad real
@@ -3587,7 +3218,7 @@
         const bloqueIni = new Date(cursor)
         const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
         labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
-        dataScans.push(visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataScans.push(visitas.filter(v => { const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
         dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
       }
       const firstIdx = dataScans.findIndex((v, i) => v > 0 || dataConsultas[i] > 0)
@@ -3617,7 +3248,7 @@
       </div>`)
       // Consultas (locked)
       chips.push(`<div class="pv-legend-chip locked" title="Siempre visible">
-        <span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;box-shadow:none;"></span>
+        <span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;"></span>
         <span class="pv-legend-name">Consultas</span>
       </div>`)
       // Una por slot activo con actividad (todos los slots activos, no solo propiedades reales)
@@ -3769,7 +3400,6 @@
         const bucketCons  = new Array(numBuckets).fill(0)
         const inHoy = (iso) => { const d=new Date(iso); return d>=hoyB0&&d<=ahoraMin }
         visitas.forEach(v => {
-          if (!esEntrada(v)) return
           if (!inHoy(v.created_at)) return
           const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes()
           const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketScans[b]++
@@ -3793,12 +3423,13 @@
         // ── Líneas individuales por slot (modo Hoy, por bucket de 15min) ──
         const slotLinesHoy = []
         if (multiSlot) {
-          comerciosDelAliado.forEach(com => {
-            const visCom = visitas.filter(v => esEntrada(v) && com.codigos.has(v.canal_ref) && inHoy(v.created_at))
+          misSlots.filter(s => s.activo !== false).forEach(slot => {
+            const visSlot = visitas.filter(v => v.canal_ref === slot.codigo && inHoy(v.created_at))
             const arr = new Array(numBuckets).fill(0)
-            visCom.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
+            visSlot.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
             if (arr.some(x => x > 0)) {
-              slotLinesHoy.push({ codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr })
+              const proy = proyImgs[slot.proyecto_slug]
+              slotLinesHoy.push({ codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr })
             }
           })
         }
@@ -3862,7 +3493,7 @@
         // Contadores en vivo
         const refrescarContadores = () => {
           const hoy=new Date(); hoy.setHours(0,0,0,0)
-          setText('pvLiveScans4', visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoy).length)
+          setText('pvLiveScans4', visitas.filter(v=>new Date(v.created_at)>=hoy).length)
           setText('pvLiveConsultas4', contactos.filter(v=>new Date(v.created_at)>=hoy).length)
         }
         refrescarContadores()
@@ -3944,13 +3575,14 @@
           const _recorte = _buckets.length - labelsEvol.length
           const _buckAlin = _recorte > 0 ? _buckets.slice(_recorte) : _buckets
           // 5. Construir series con los buckets alineados (todos los slots activos)
-          comerciosDelAliado.forEach(com => {
-            const visCom = visitas.filter(v => esEntrada(v) && com.codigos.has(v.canal_ref))
+          slotsDedup.filter(s => s.activo !== false).forEach(slot => {
+            const visSlot = visitas.filter(v => v.canal_ref === slot.codigo)
             const arr = _buckAlin.map(({ bIni, bFin }) =>
-              visCom.filter(v => { const d = new Date(v.created_at); return d >= bIni && d < bFin }).length
+              visSlot.filter(v => { const d = new Date(v.created_at); return d >= bIni && d < bFin }).length
             )
             if (arr.some(x => x > 0)) {
-              slotLinesPeriodo.push({ codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr })
+              const proy = proyImgs[slot.proyecto_slug]
+              slotLinesPeriodo.push({ codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr })
             }
           })
         }
@@ -4010,11 +3642,11 @@
       })
 
       const semAll=(()=>{ const d=7; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
-        visitas.forEach(v=>{ if(!esEntrada(v)||!enRango(v.created_at,sem0,new Date())) return; const i=Math.floor((new Date(v.created_at)-sem0)/86400000); if(i>=0&&i<d) oS[i]++ })
+        visitas.forEach(v=>{ if(!enRango(v.created_at,sem0,new Date())) return; const i=Math.floor((new Date(v.created_at)-sem0)/86400000); if(i>=0&&i<d) oS[i]++ })
         contactos.forEach(c=>{ if(!enRango(c.created_at,sem0,new Date())) return; const i=Math.floor((new Date(c.created_at)-sem0)/86400000); if(i>=0&&i<d) oC[i]++ })
         let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
       const mesAll=(()=>{ const d=30; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
-        visitas.forEach(v=>{ if(!esEntrada(v)||!enRango(v.created_at,mes0,new Date())) return; const i=Math.floor((new Date(v.created_at)-mes0)/86400000); if(i>=0&&i<d) oS[i]++ })
+        visitas.forEach(v=>{ if(!enRango(v.created_at,mes0,new Date())) return; const i=Math.floor((new Date(v.created_at)-mes0)/86400000); if(i>=0&&i<d) oS[i]++ })
         contactos.forEach(c=>{ if(!enRango(c.created_at,mes0,new Date())) return; const i=Math.floor((new Date(c.created_at)-mes0)/86400000); if(i>=0&&i<d) oC[i]++ })
         let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
 
@@ -4036,11 +3668,10 @@
       const d0 = new Date(desde); d0.setHours(0,0,0,0)
       const d1 = new Date(hasta); d1.setHours(23,59,59,999)
 
-      const vP  = visitas.filter(v  => { if (!esEntrada(v)) return false; const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
+      const vP  = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
       const qrP = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 && v.canal_via==='qr' }).length
       const cP  = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 }).length
-      const cWebP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && c.origen !== 'manual' }).length
-      const conv = vP > 0 ? Number((cWebP / vP * 100).toFixed(1)) : 0
+      const conv = vP > 0 ? Number((cP / vP * 100).toFixed(1)) : 0
 
       const setEl   = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v }
       const clearEl = (id)    => { const el=document.getElementById(id); if(el) el.innerHTML='' }
@@ -4076,7 +3707,6 @@
         }
         const _lbl = valor === 'hoy' ? 'hoy' : `últimos ${dias} días`
         renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot() })
-        if (esPasivo) return
         if (_modoMultiSlot()) renderPanelesActivos(contactos)
         actualizarKpisActivo(desde, hasta)
         actualizarSlotCards(desde, hasta)
@@ -4091,7 +3721,6 @@
       if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
       const fechaLocal = val => { const [y,m,d] = val.split('-').map(Number); return new Date(y, m-1, d) }
       renderGraficoPasivo(contactos, 30, desde, hasta, { multiSlot: _modoMultiSlot() })
-      if (esPasivo) return
       if (_modoMultiSlot()) renderPanelesActivos(contactos)
       actualizarKpisActivo(fechaLocal(desde), fechaLocal(hasta))
       actualizarSlotCards(fechaLocal(desde), fechaLocal(hasta))
@@ -4105,14 +3734,12 @@
       const en  = t => { const d = new Date(t); return d >= d0 && d <= d1 }
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
       misSlots.filter(s => s.activo !== false).forEach(slot => {
-        const vSlot = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo && en(v.created_at))
+        const vSlot = visitas.filter(v => v.canal_ref === slot.codigo && en(v.created_at))
         const int   = vSlot.length
         const qrN   = vSlot.filter(v => v.canal_via === 'qr').length
         const lnkN  = int - qrN
-        const consultasSlot = contactos.filter(c => c.canal_ref === slot.codigo && en(c.created_at))
-        const cons  = consultasSlot.length
-        const consWeb = consultasSlot.filter(c => c.origen !== 'manual').length
-        const conv  = int > 0 ? (consWeb / int * 100).toFixed(1) + '%' : '—'
+        const cons  = contactos.filter(c => c.canal_ref === slot.codigo && en(c.created_at)).length
+        const conv  = int > 0 ? (cons / int * 100).toFixed(1) + '%' : '—'
         set(`slot-n-int-${slot.id}`,  int)
         set(`slot-n-cons-${slot.id}`, cons)
         set(`slot-n-conv-${slot.id}`, conv)
@@ -4140,14 +3767,13 @@
       // ── Sección A: Propiedades activas (código sin cambios) ──
       const cards = propSlots.map(slot => {
         const proy       = proyImgs[slot.proyecto_slug]
-        const prop       = findPropData(slot)
+        const prop       = findPropData(slot.proyecto_slug)
         const fotoUrl    = proy?.foto_portada || prop?.imagenes?.[0] || ''
         const proyNombre = proy?.nombre || prop?.titulo || slot.nombre || slot.codigo
         const attrSrc    = prop || proy
         const scans      = scansPorSlot[slot.codigo] || 0
         const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
-        const slotConsWeb = slotCons.filter(c => c.origen !== 'manual')
-        const conv       = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
+        const conv       = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
         const esActivo   = slot.activo !== false
         const redirectUrl = `${location.origin}/r/${slot.codigo}`
         const imgStyle = fotoUrl ? `background-image:url('${fotoUrl.replace(/'/g,"\\'")}')` : ''
@@ -4222,8 +3848,7 @@
       const canalCards = canalSlots.map(slot => {
         const scans      = scansPorSlot[slot.codigo] || 0
         const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
-        const slotConsWeb = slotCons.filter(c => c.origen !== 'manual')
-        const conv       = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
+        const conv       = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
         const esActivo   = slot.activo !== false
         const redirectUrl = `${location.origin}/r/${slot.codigo}`
         const dest       = slot.destino || '/'
@@ -4300,7 +3925,7 @@
               <div class="pv-sec-titulo">Mis propiedades activas</div>
               <div class="pv-sec-sub">QR, estadísticas y actividad individual de cada propiedad.</div>
             </div>
-            <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(255,255,255,.06);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activosCount} activa${activosCount!==1?'s':''}</span>
+            <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activosCount} activa${activosCount!==1?'s':''}</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:.85rem;">${cards}</div>
         </div>` : ''
@@ -4346,7 +3971,7 @@
         if (_slotCharts[slot.id]) { try { _slotCharts[slot.id].destroy() } catch(e){} ; _slotCharts[slot.id] = null }
         const colorHex = colorDeSlot(slot.codigo)
         const rgba = (a) => colorHex.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)).join(',')+`,${a}`
-        const slotVis  = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo)
+        const slotVis  = visitas.filter(v => v.canal_ref === slot.codigo)
         const slotCons = contactos.filter(c => c.canal_ref === slot.codigo)
         // HOY → contar por hora; multiday → contar por día
         let data, dataCons
@@ -4477,11 +4102,12 @@
       const mes0 = new Date(hoy0 - 30*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
       const labels = dias.map(d => d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}))
-      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
+      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
       const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
-      const slotLines = comerciosDelAliado.map(com => {
-        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&com.codigos.has(v.canal_ref)&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
-        return { codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr }
+      const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
+        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        const proy = proyImgs[slot.proyecto_slug]
+        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
       }).filter(ln => ln.data.some(x=>x>0))
 
       const ctxAct = document.getElementById('pvPanelAct30')?.getContext('2d')
@@ -4501,7 +4127,7 @@
         if (legendHost) {
           if (typeof window._pvPanelHidden !== 'object' || window._pvPanelHidden === null) window._pvPanelHidden = {}
           const chips = [`<div class="pv-legend-chip locked"><span class="pv-legend-dot" style="background:#7aaeff;color:#7aaeff;"></span><span class="pv-legend-name">Total</span></div>`,
-                         `<div class="pv-legend-chip locked"><span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;box-shadow:none;"></span><span class="pv-legend-name">Consultas</span></div>`]
+                         `<div class="pv-legend-chip locked"><span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;"></span><span class="pv-legend-name">Consultas</span></div>`]
           slotLines.forEach(ln => {
             const off = window._pvPanelHidden[ln.codigo] === true ? ' off' : ''
             chips.push(`<div class="pv-legend-chip${off}" data-slot="${esc(ln.codigo)}" title="Click para mostrar/ocultar"><span class="pv-legend-dot" style="background:${ln.color};color:${ln.color};"></span><span class="pv-legend-name">${esc(ln.nombre)}</span></div>`)
@@ -4522,7 +4148,7 @@
       }
 
       // ── Panel 2: Conversión · últimos 30 días ──
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
       const ctxConv = document.getElementById('pvPanelConv30')?.getContext('2d')
       if (ctxConv && convDiaria.some(x=>x>0)) {
         _pvPanelConv = new Chart(ctxConv, {
@@ -4603,11 +4229,12 @@
       const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
       const mes0 = new Date(hoy0 - 30*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
-      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
+      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
       const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
-      const slotLines = comerciosDelAliado.map(com => {
-        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&com.codigos.has(v.canal_ref)&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
-        return { codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr }
+      const slotLines = misSlots.filter(esPropiedadReal).map(slot => {
+        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>v.canal_ref===slot.codigo&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        const proy = proyImgs[slot.proyecto_slug]
+        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), data: arr }
       }).filter(ln => ln.data.some(x=>x>0))
       const totalScans = dataScans.reduce((s,v)=>s+v,0)
       const hayDatos = totalScans > 0 || dataCons.reduce((s,v)=>s+v,0) > 0
@@ -4631,11 +4258,11 @@
       const mes0 = new Date(hoy0 - 30*86400000)
       const prev0 = new Date(hoy0 - 60*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
-      const v30 = visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=mes0).length
-      const c30 = contactos.filter(c=>new Date(c.created_at)>=mes0 && c.origen !== 'manual').length
-      const vAnt = visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=prev0&&d<mes0}).length
-      const cAnt = contactos.filter(c=>{const d=new Date(c.created_at);return d>=prev0&&d<mes0&&c.origen!=='manual'}).length
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const v30 = visitas.filter(v=>new Date(v.created_at)>=mes0).length
+      const c30 = contactos.filter(c=>new Date(c.created_at)>=mes0).length
+      const vAnt = visitas.filter(v=>{const d=new Date(v.created_at);return d>=prev0&&d<mes0}).length
+      const cAnt = contactos.filter(c=>{const d=new Date(c.created_at);return d>=prev0&&d<mes0}).length
       const conv30 = v30 > 0 ? Number((c30/v30*100).toFixed(1)) : 0
       const convAnt = vAnt > 0 ? Number((cAnt/vAnt*100).toFixed(1)) : null
       const delta = convAnt !== null ? Number((conv30-convAnt).toFixed(1)) : null
@@ -4664,7 +4291,7 @@
     // Panel 3 — Origen de las interacciones
     function panelOrigenInteracciones() {
       const qr = visitas.filter(v => v.canal_via === 'qr').length
-      const link = visitas.filter(v => v.canal_via === 'link').length
+      const link = visitas.filter(v => v.canal_via !== 'qr').length
       const total = qr + link
       const items = [
         { key:'qr', label:'QR físico', color:'#50c878', n: qr },
@@ -4713,11 +4340,10 @@
         </div>`
       const rows = misSlots.filter(s => s.activo !== false).map(slot => {
         const scans = scansPorSlot[slot.codigo] || 0
-        const slotConsTodos = contactos.filter(c => c.canal_ref === slot.codigo)
-        const slotConsWeb = slotConsTodos.filter(c => c.origen !== 'manual').length
-        const conv = scans > 0 ? Number((slotConsWeb/scans*100).toFixed(1)) : 0
+        const slotCons = contactos.filter(c => c.canal_ref === slot.codigo).length
+        const conv = scans > 0 ? Number((slotCons/scans*100).toFixed(1)) : 0
         const proy = proyImgs[slot.proyecto_slug]
-        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), scans, consultas: slotConsTodos.length, conv }
+        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), scans, consultas: slotCons, conv }
       }).sort((a,b) => b.scans - a.scans)
       return `
         <div class="pv-panel">
@@ -4743,8 +4369,7 @@
       const rows = misSlots.map(slot => {
         const scans     = scansPorSlot[slot.codigo] || 0
         const slotCons  = contactos.filter(c => c.canal_ref === slot.codigo)
-        const slotConsWeb = slotCons.filter(c => c.origen !== 'manual')
-        const conv      = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
+        const conv      = scans > 0 ? ((slotCons.length / scans) * 100).toFixed(1) + '%' : '—'
         const proy      = proyImgs[slot.proyecto_slug]
         const nombre    = proy?.nombre || slot.nombre || slot.codigo
         const esActivo  = slot.activo !== false
@@ -4788,132 +4413,11 @@
         </div>`
     }
 
-    // ── Canal activo: derivación manual ───────────────────────────────────────
-    let _derFocoAnterior = null
-
-    function principalesElegiblesPropias() {
-      return canales.map(canal => {
-        const principales = misSlots.filter(r =>
-          r.canal_id === canal.id && r.punto_tipo === 'principal' && r.activo && r.codigo === canal.codigo)
-        return principales.length === 1 ? { canal, principal: principales[0] } : null
-      }).filter(Boolean)
-    }
-
-    window.cerrarDerivar = function() {
-      const modal = document.getElementById('derModal')
-      if (!modal) return
-      modal.hidden = true
-      document.body.style.overflow = ''
-      const errorEl = document.getElementById('derError')
-      if (errorEl) errorEl.textContent = ''
-      if (_derFocoAnterior?.focus) _derFocoAnterior.focus()
-    }
-
-    window.abrirDerivar = async function() {
-      const elegibles = principalesElegiblesPropias()
-      if (!elegibles.length) {
-        alert('No hay una referencia principal elegible en tus canales. Pedile al administrador que revise las guardas.')
-        return
-      }
-
-      const { data: proyectosActivos, error: proyectosError } = await supabase
-        .from('proyectos')
-        .select('nombre, slug, estado')
-        .eq('estado', 'activo')
-        .order('nombre')
-      if (proyectosError) {
-        alert('No se pudo cargar el catálogo de proyectos: ' + proyectosError.message)
-        return
-      }
-
-      _derFocoAnterior = document.activeElement
-      ;['derNombre','derEmail','derTel','derNota'].forEach(id => { document.getElementById(id).value = '' })
-      document.getElementById('derError').textContent = ''
-
-      const canalSelect = document.getElementById('derCanal')
-      canalSelect.innerHTML = elegibles.map(({ canal }) => `<option value="${esc(canal.id)}">${esc(canal.nombre)}</option>`).join('')
-      canalSelect.disabled = elegibles.length === 1
-
-      const propiedadesActivas = rPropAll.data || []
-      document.getElementById('derDestino').innerHTML = '<option value="">Sin destino — consulta general</option>'
-        + propiedadesActivas.map(p => `<option value="prop:${esc(p.id)}">Propiedad · ${esc(p.titulo)}</option>`).join('')
-        + (proyectosActivos || []).filter(p => p.slug).map(p => `<option value="proy:${esc(p.slug)}">Proyecto · ${esc(p.nombre)}</option>`).join('')
-
-      document.getElementById('derModal').hidden = false
-      document.body.style.overflow = 'hidden'
-      requestAnimationFrame(() => document.getElementById('derNombre').focus())
-    }
-
-    window.guardarDerivacion = async function() {
-      const btn = document.getElementById('derGuardar')
-      if (btn.disabled) return
-      const nombre = document.getElementById('derNombre').value.trim()
-      const email = document.getElementById('derEmail').value.trim()
-      const telefono = document.getElementById('derTel').value.trim()
-      const canalId = document.getElementById('derCanal').value
-      const destino = document.getElementById('derDestino').value
-      const nota = document.getElementById('derNota').value.trim()
-      const errorEl = document.getElementById('derError')
-      errorEl.textContent = ''
-
-      if (!nombre || !email || !telefono) {
-        errorEl.textContent = 'Nombre, email y teléfono son obligatorios.'
-        return
-      }
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-        errorEl.textContent = 'Ingresá un email válido.'
-        return
-      }
-
-      const elegibles = principalesElegiblesPropias()
-      const seleccion = elegibles.find(({ canal }) => canal.id === canalId)
-      if (!seleccion) {
-        errorEl.textContent = 'El canal elegido ya no tiene una principal elegible.'
-        return
-      }
-
-      const fila = {
-        nombre,
-        email,
-        telefono,
-        mensaje: nota || null,
-        propiedad_id: destino.startsWith('prop:') ? destino.slice(5) : null,
-        proyecto_slug: destino.startsWith('proy:') ? destino.slice(5) : null,
-        canal_ref: seleccion.principal.codigo,
-        canal_via: null,
-        origen: 'manual',
-        estado: 'nueva',
-      }
-
-      btn.disabled = true
-      btn.textContent = 'Guardando…'
-      try {
-        const { error } = await supabase.from('contactos').insert(fila)
-        if (error) {
-          errorEl.textContent = 'No se pudo guardar: ' + (error.message || 'error desconocido')
-          return
-        }
-        location.reload()
-      } catch (error) {
-        errorEl.textContent = 'No se pudo guardar: ' + (error?.message || 'error de conexión')
-      } finally {
-        btn.disabled = false
-        btn.textContent = 'Guardar'
-      }
-    }
-
-    document.addEventListener('keydown', event => {
-      const modal = document.getElementById('derModal')
-      if (event.key === 'Escape' && modal && !modal.hidden) window.cerrarDerivar()
-    })
-
     // ── Canal activo: tabla de contactos enriquecida ─────────────────────────
     function renderContactosActivo_pv(contactos) {
       const nombreSlot = {}
       ;(misSlots || []).forEach(s => {
-        // El aliado ve el nombre del COMERCIO, nunca el del punto QR (interno).
-        const _canalDelSlot = canales.find(c => c.id === s.canal_id)
-        nombreSlot[s.codigo] = _canalDelSlot ? _canalDelSlot.nombre : s.codigo
+        nombreSlot[s.codigo] = proyImgs[s.proyecto_slug]?.nombre || s.nombre || s.codigo
       })
       canales.forEach(c => { if (!nombreSlot[c.codigo]) nombreSlot[c.codigo] = c.nombre })
 
@@ -4928,7 +4432,7 @@
             </td>
             <td style="font-size:.7rem;color:rgba(255,255,255,.55);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
             <td><span style="font-family:monospace;font-size:.65rem;color:#c9a84c;">${esc(nombreSlot[c.canal_ref] || c.canal_ref || '—')}</span></td>
-            <td><span class="pv-via ${c.origen==='manual' ? '' : (c.canal_via==='qr'?'qr':c.canal_via==='link'?'link':'')}"${(c.origen==='manual'||(c.canal_via!=='qr'&&c.canal_via!=='link')) ? ' style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${(c.origen==='manual'||(c.canal_via!=='qr'&&c.canal_via!=='link')) ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen==='manual'?'Manual':(c.canal_via==='qr'?'QR':c.canal_via==='link'?'Link':'Directo')}</span></td>
+            <td><span class="pv-via ${c.canal_via==='qr'?'qr':'link'}"><span class="pv-via-mark"></span>${c.canal_via==='qr'?'QR':'Link'}</span></td>
             <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
           </tr>`).join('')
         : '<tr><td colspan="7"><div class="pv-empty"><div class="pv-empty-mark"></div>Aún no hay consultas generadas desde tus slots.</div></td></tr>'
@@ -4940,7 +4444,6 @@
               <div class="pv-sec-titulo">Consultas generadas</div>
               <div class="pv-sec-sub">Oportunidades de comisión vinculadas a tu actividad comercial.</div>
             </div>
-            <button class="qr-slot-btn" onclick="abrirDerivar()">＋ Derivar cliente</button>
           </div>
           <div style="overflow-x:auto">
             <table class="pv-tabla">
@@ -4950,27 +4453,6 @@
               <tbody>${filas}</tbody>
             </table>
           </div>
-        </div>
-        <div class="der-modal" id="derModal" hidden onclick="if(event.target===this) cerrarDerivar()">
-          <section class="der-card" role="dialog" aria-modal="true" aria-labelledby="derTitulo">
-            <div class="der-head">
-              <div><div class="der-title" id="derTitulo">Derivar cliente</div><div class="der-sub">Crea una consulta nueva vinculada a uno de tus canales.</div></div>
-              <button class="der-close" type="button" onclick="cerrarDerivar()" aria-label="Cerrar">✕</button>
-            </div>
-            <div class="der-grid">
-              <label class="der-field">Nombre *<input class="der-input" id="derNombre" autocomplete="name"></label>
-              <label class="der-field">Email *<input class="der-input" id="derEmail" type="email" autocomplete="email"></label>
-              <label class="der-field">Teléfono *<input class="der-input" id="derTel" autocomplete="tel"></label>
-              <label class="der-field">Canal<select class="der-input" id="derCanal"></select></label>
-              <label class="der-field full">Destino<select class="der-input" id="derDestino"></select></label>
-              <label class="der-field full">Nota<textarea class="der-input" id="derNota" placeholder="Observación opcional"></textarea></label>
-            </div>
-            <div class="der-error" id="derError" aria-live="polite"></div>
-            <div class="der-actions">
-              <button class="qr-slot-btn" type="button" onclick="cerrarDerivar()">Cancelar</button>
-              <button class="qr-slot-btn" id="derGuardar" type="button" onclick="guardarDerivacion()">Guardar</button>
-            </div>
-          </section>
         </div>`
     }
 
@@ -4994,7 +4476,7 @@
           </td>
           <td style="font-size:.72rem;color:var(--gris);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
           <td style="font-size:.7rem;color:var(--gris);">${esc(nombreCanal[c.canal_ref] || c.canal_ref || '—')}</td>
-          <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr':''}">${c.canal_via === 'qr' ? '⬛ QR' : c.canal_via === 'link' ? '🔗 Link' : '● Directo'}</span></td>
+          <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr':''}">${c.canal_via === 'qr' ? '⬛ QR' : '🔗 Link'}</span></td>
           <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
         </tr>`).join('')
 
@@ -5021,7 +4503,7 @@
       if (dot) dot.classList.add('leido')
     }
 
-    window.enviarRespuesta = async (mensajeId, i) => {
+    window.enviarRespuesta = async (mensajeId, i, canalNombre) => {
       const input = document.getElementById(`replyInput-${i}`)
       const cuerpo = input.value.trim()
       if (!cuerpo) return
@@ -5030,6 +4512,8 @@
       const { error } = await supabase.from('mensajes_respuestas').insert({
         mensaje_id: mensajeId,
         usuario_id: userId,
+        usuario_nombre: session.user.email,
+        canal_nombre: canalNombre,
         cuerpo
       })
       if (error) {
