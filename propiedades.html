@@ -208,6 +208,32 @@
     .nav-mob-header-logo { display: block; width: 108px; height: auto; margin-bottom: 0.5rem; opacity: 0.82; }
   }
   </style>
+  <style>
+    /* ── Márgenes del home (5rem = 80 px, sin ancho máximo) + mapa y listado más grandes ── */
+    .contenedor { max-width: none; margin: 0; padding: 0 5rem; }
+    #mapaPropiedades { height: min(65vh, 720px); min-height: 520px; }
+    @media (min-width: 901px) { .grid-propiedades { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); } }
+    /* Contacto: mismos 80 px (las reglas propias de la sección viven más abajo en el body → se sube la especificidad) */
+    section#contacto-nuevo { padding-left: 5rem; padding-right: 5rem; }
+    section#contacto-nuevo .cnt-inner { max-width: none; margin: 0; }
+    /* Buscador: píldora visible (mismo tratamiento que el select "Más recientes": --negro-3 / --gris-oscuro) y micrófono afuera,
+       primero en la fila, con el dorado de los botones (.btn-dorado). Estado "escuchando" como antes (rojo + pulso). */
+    .busqueda-row { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem; }
+    .busqueda-row .busqueda-wrap { flex: 1; margin-bottom: 0; min-height: 42px; box-sizing: border-box; padding: 0.5rem 1rem; background: var(--negro-3); border: 1px solid var(--gris-oscuro); }
+    .busqueda-row .busqueda-wrap:focus-within { border-color: var(--dorado); }
+    .busqueda-row .busqueda-wrap > svg { stroke: var(--gris-claro); }
+    .busqueda-input::placeholder { color: var(--gris-claro); }
+    .busqueda-clear { color: var(--gris-claro); }
+    .busqueda-mic { flex: none; width: 42px; height: 42px; padding: 0; border-radius: 50%; background: var(--dorado); color: var(--negro); justify-content: center; transition: background .2s, transform .2s; }
+    .busqueda-mic svg { width: 18px; height: 18px; }
+    .busqueda-mic:hover { background: var(--dorado-claro); color: var(--negro); transform: translateY(-1px); }
+    .busqueda-mic.escuchando { background: #e05c5c; color: var(--blanco); }
+    @media (max-width: 900px) {
+      .contenedor { padding: 0 1.5rem; }
+      #mapaPropiedades { height: 420px; min-height: 0; }
+      section#contacto-nuevo { padding-left: 1.5rem; padding-right: 1.5rem; }
+    }
+  </style>
 </head>
 <body>
 <div id="cur"></div>
@@ -247,7 +273,7 @@
         <p style="font-size:0.8rem; color:var(--gris-claro); margin:0;">Todas las propiedades disponibles en el mapa. Hacé clic en cada punto para ver más detalles.</p>
         <select id="mapaCiudad" class="ordenar-select"><option value="">Todas las ciudades</option></select>
       </div>
-      <div id="mapaPropiedades" style="height:480px; border:1px solid var(--gris-oscuro);"></div>
+      <div id="mapaPropiedades" style="border:1px solid var(--gris-oscuro);"></div>
     </div>
   </div>
 
@@ -352,13 +378,15 @@
         <!-- LISTADO -->
         <div>
           <!-- Barra de búsqueda + voz -->
+          <div class="busqueda-row">
+            <button class="busqueda-mic" id="busquedaMic" title="Buscar por voz">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
           <div class="busqueda-wrap">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="busquedaTexto" class="busqueda-input" placeholder="Buscá por título, ciudad, tipo de propiedad…" autocomplete="off" />
             <button class="busqueda-clear" id="busquedaClear" title="Limpiar">✕</button>
-            <button class="busqueda-mic" id="busquedaMic" title="Buscar por voz">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            </button>
+          </div>
           </div>
 
           <div class="resultados-header">
