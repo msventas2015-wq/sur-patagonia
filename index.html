@@ -1255,7 +1255,7 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
               <div style="font-size:0.46rem;color:rgba(201,168,76,0.7);letter-spacing:0.1em;text-transform:uppercase;font-weight:700;">24 disp.</div>
             </div>
             <div class="pmock-dev-plano">
-              <picture><img src="assets/BUENA VISTA SUP.png" alt="Plano de loteo Buena Vista" loading="lazy"></picture>
+              <picture><source srcset="assets/BUENA VISTA SUP.webp" type="image/webp"><img src="assets/BUENA VISTA SUP.png" alt="Plano de loteo Buena Vista" loading="lazy"></picture>
             </div>
             <div class="pmock-lot-list">
               <div class="pmock-lot-row">
@@ -1669,6 +1669,7 @@ async function aplicarSiteConfig() {
     const cfg = await getSiteConfig()
     if (!cfg || !Object.keys(cfg).length) return
     if (cfg.overlay_servicios) { const op = Math.min(Math.max(parseInt(cfg.overlay_servicios) || 0, 0), 100) / 100; const s = document.getElementById('sec-servicios'); if (s) { s.style.setProperty('--srv-ov-l', Math.min(op + 0.35, 1).toFixed(2)); s.style.setProperty('--srv-ov-m', Math.min(op + 0.15, 1).toFixed(2)); s.style.setProperty('--srv-ov-r', op.toFixed(2)) } }
+    if (cfg.img_servicios_bg) { const s2 = document.getElementById('sec-servicios'); if (s2) s2.style.setProperty('--srv-bg', `url('${cfg.img_servicios_bg}')`) }
     if (cfg.img_stats_bg) { const el = document.getElementById('stats-bg'); if (el) el.style.backgroundImage = `url('${cfg.img_stats_bg}')` }
     if (cfg.img_acordeon_comprar) { const el = document.getElementById('bg-comprar'); if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_comprar}')` }
     if (cfg.img_acordeon_alquiler) { const el = document.getElementById('bg-alquilar'); if (el) el.style.backgroundImage = `url('${cfg.img_acordeon_alquiler}')` }
@@ -2589,6 +2590,14 @@ input.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(inpu
   .srv-ver-todos { display: none; }
   .footer-bottom { flex-direction: column; align-items: stretch; gap: 0.5rem; }
   .footer-links li { font-size: 0.8rem; color: var(--muted); }
+  /* Títulos de sección: un solo patrón (el de "Proyectos y Desarrollos": peso 200 + última palabra en 700, mismo blanco) */
+  .srv-title, .qs-intro-title, #contacto .section-title { font-size: clamp(2rem, 3.8vw, 3.2rem); font-weight: 200; letter-spacing: -0.01em; color: rgba(240,237,232,0.85); line-height: 1.05; }
+  .srv-title em, .qs-intro-title em, #contacto .section-title em { font-style: normal; font-weight: 700; color: rgba(240,237,232,0.85); }
+  .qs-intro-title em { display: block; font-size: 1em; }
+  .pub-path-titulo em { font-style: normal; font-weight: 700; color: inherit; }
+  .qs-intro-eyebrow { font-size: 0.65rem; font-weight: 500; letter-spacing: 0.25em; margin-bottom: 1.2rem; }
+  /* Servicios: la foto del Admin (img_servicios_bg) queda de fondo; en escritorio el video la cubre, en móvil es el fondo */
+  #sec-servicios { background-image: var(--srv-bg, url('DESEMBOQUE-24.webp')); background-size: cover; background-position: center; }
   @media (max-width: 900px) {
     /* 1. Ritmo único: 5rem arriba / 4.5rem abajo, hairline al inicio de cada sección */
     #sec-propiedades, #sec-proyectos-desarrollos, #sec-red, #sec-servicios, #contacto { padding-top: 5rem !important; padding-bottom: 4.5rem !important; }
@@ -2598,6 +2607,13 @@ input.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(inpu
     .qs-intro { padding-top: 5rem !important; padding-bottom: 2.5rem !important; }
     .eyebrow { align-items: flex-start; }
     .eyebrow::before { margin-top: 0.45em; }
+
+    /* Servicios en móvil: foto en vez del video (el iframe de YouTube no autoreproduce de forma fiable en iOS y deja bandas) */
+    #sec-servicios .srv-video { display: none; }
+    /* Sumate: cabecera al mismo margen que el resto (el wrapper trae padding 5rem inline) */
+    #sec-red > div[style] { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+    /* Plano Buena Vista: sin mezcla de capas en móvil (Safari iOS no la pinta con filtro) */
+    .pmock-dev-plano img { mix-blend-mode: normal; opacity: 1; }
 
     /* 3. Publicá: sin palabra decorativa; un mockup por camino */
     .pub-path-ghost { display: none !important; }
