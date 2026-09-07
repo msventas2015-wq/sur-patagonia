@@ -31,7 +31,7 @@ if (!window.__SP_BURBUJA__) {
   .bc-eyebrow { display: flex; align-items: center; gap: 1rem; font-size: 0.65rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold, #c9a84c); margin-bottom: 0.7rem; }
   .bc-eyebrow::before { content: ''; display: block; width: 30px; height: 1px; background: var(--gold, #c9a84c); }
   .bc-titulo { font-family: 'Montserrat', sans-serif; font-size: 1.55rem; font-weight: 200; line-height: 1.1; letter-spacing: -0.02em; color: var(--text, #f0ede8); margin: 0; }
-  .bc-titulo em { font-style: normal; font-weight: 300; color: var(--gold, #c9a84c); }
+  .bc-titulo em { font-style: normal; font-weight: 700; color: var(--text, #f0ede8); }
   .bc-cerrar { background: none; border: none; color: var(--text, #f0ede8); font-size: 1.3rem; line-height: 1; padding: 0.4rem; margin: -0.4rem -0.4rem 0 0; cursor: pointer; opacity: 0.7; }
   .bc-cerrar:hover { opacity: 1; }
   .bc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem; }
