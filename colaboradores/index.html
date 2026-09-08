@@ -44,6 +44,7 @@
       color: var(--blanco);
       font-family: 'Inter', system-ui, sans-serif;
       min-height: 100vh;
+      isolation: isolate;
     }
 
     /* Header */
@@ -72,7 +73,7 @@
       filter: grayscale(1) brightness(0.75);
       opacity: .11;
       pointer-events: none;
-      z-index: 9;
+      z-index: 0;
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
       mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 82%, transparent 100%);
     }
@@ -105,36 +106,7 @@
     }
 
     /* Main */
-    .main { max-width: 900px; margin: 0 auto; padding: 2rem 1.4rem; }
-
-    /* Hero pasivo */
-    .pasivo-hero {
-      position: relative; overflow: hidden;
-      padding: 2rem 2.2rem 1.8rem;
-      margin-bottom: 1rem;
-      border: 1px solid rgba(201,168,76,.18);
-      border-top: 1px solid rgba(201,168,76,.48);
-      border-radius: 14px;
-      background:
-        radial-gradient(circle at 92% 20%, rgba(215,111,63,.1), transparent 32%),
-        linear-gradient(135deg, rgba(201,168,76,.09), rgba(255,255,255,.01) 60%),
-        #11100e;
-    }
-    .pasivo-hero::after {
-      content: ''; position: absolute; inset: auto 0 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,.4), transparent);
-    }
-    .pasivo-eyebrow { font-size:.55rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; color:#c9a84c; margin-bottom:.6rem; }
-    .pasivo-titulo {
-      font-family: 'Inter', system-ui, sans-serif;
-      font-size: clamp(1.8rem, 4vw, 2.8rem);
-      font-weight: 800; letter-spacing: -.03em; line-height: 1; text-transform: uppercase;
-      background: linear-gradient(120deg, #ffffff 0%, rgba(255,255,255,.6) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      margin-bottom: .4rem;
-    }
-    .pasivo-geo { font-size:.61rem; color:rgba(255,255,255,.3); letter-spacing:.14em; text-transform:uppercase; margin-top:.4rem; }
-    .pasivo-status { display:flex; align-items:center; gap:.5rem; margin-top:.9rem; font-size:.61rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.45); }
+    .main { position:relative; z-index:1; max-width: 900px; margin: 0 auto; padding: 2rem 1.4rem; }
 
     /* Estado QR */
     .qr-status {
@@ -152,7 +124,7 @@
     }
     .qr-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .qr-dot.activo { background: var(--verde); box-shadow: 0 0 8px rgba(80,200,120,.5); }
-    .qr-dot.campana { background: var(--dorado); box-shadow: 0 0 8px rgba(201,168,76,.5); }
+    .qr-dot.campana { background: var(--dorado); }
     .qr-dot.inactivo { background: var(--gris); }
     .qr-info { flex: 1; }
     .qr-label { font-size: .7rem; color: var(--gris); }
@@ -245,13 +217,11 @@
       white-space: nowrap;
     }
     .estado-nueva        { background: rgba(179,157,219,.09); color: #b39ddb; border-color: rgba(179,157,219,.35); }
-    .estado-en_contacto  { background: rgba(201,168,76,.12); color: var(--dorado); }
-    .estado-en_negociacion { background: rgba(215,111,63,.12); color: var(--accent); }
-    .estado-cerrada      { background: rgba(169,220,122,.12); color: #a9dc7a; }
-    .estado-descartada   { background: rgba(136,136,136,.12); color: var(--gris); }
-    /* Estados reales de producción — gobernanza visual */
     .estado-contactado   { background: rgba(53,198,180,.09); color: #35c6b4; border-color: rgba(53,198,180,.35); }
     .estado-visita       { background: rgba(242,154,90,.09); color: #f29a5a; border-color: rgba(242,154,90,.35); }
+    .estado-visita_realizada { background: rgba(127,209,198,.09); color: #7fd1c6; border-color: rgba(127,209,198,.35); }
+    .estado-oferta       { background: rgba(217,167,255,.09); color: #d9a7ff; border-color: rgba(217,167,255,.35); }
+    .estado-cerrado      { background: rgba(169,220,122,.09); color: #a9dc7a; border-color: rgba(169,220,122,.35); }
     .estado-descartado   { background: rgba(123,127,136,.12); color: #7b7f88; border-color: rgba(123,127,136,.28); }
 
     /* Via badge */
@@ -282,7 +252,6 @@
       letter-spacing: .05em;
     }
     .tipo-pasivo    { background: rgba(136,136,136,.12); color: var(--gris); border: 1px solid rgba(136,136,136,.2); }
-    .tipo-activo    { background: rgba(201,168,76,.1); color: var(--dorado); border: 1px solid rgba(201,168,76,.25); }
 
     .sp { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,.1); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 4rem auto; display: block; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -292,7 +261,8 @@
     /* ── Mensajes ── */
     .msg-inbox { display:flex; flex-direction:column; gap:.5rem; }
     .msg-card { background:rgba(255,255,255,.025); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-    .msg-card-head { display:flex; align-items:center; gap:.7rem; padding:.85rem 1rem; cursor:pointer; }
+    .msg-card-head { width:100%; display:flex; align-items:center; gap:.7rem; padding:.85rem 1rem; border:0; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+    .msg-card-head:focus-visible { outline:1px solid rgba(201,168,76,.45); outline-offset:-2px; }
     .msg-unread-dot { width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; }
     .msg-unread-dot.leido { background:transparent; }
     .msg-card-asunto { font-size:.82rem; font-weight:600; color:var(--blanco); flex:1; }
@@ -325,16 +295,12 @@
 
     /* ── Panel de impacto del aliado ── */
     .main.pv-main { max-width:1220px; padding-top:1.5rem; }
-    .pv-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:2rem; min-height:230px; padding:2.4rem 2.2rem; margin-bottom:.75rem; border:1px solid rgba(201,168,76,.18); border-top-color:rgba(201,168,76,.52); border-radius:14px; background:radial-gradient(circle at 88% 20%,rgba(215,111,63,.13),transparent 34%),linear-gradient(135deg,rgba(201,168,76,.1),rgba(255,255,255,.015) 58%),#11100e; }
-    .pv-hero::after { content:''; position:absolute; inset:auto 0 0; height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,.45),transparent); }
     .pv-hero-eyebrow { margin-bottom:1.1rem; color:#c9a84c; font-size:.55rem; font-weight:700; letter-spacing:.24em; text-transform:uppercase; }
     .pv-hero-hola { color:rgba(255,255,255,.45); font-family:'Inter',sans-serif; font-size:.82rem; font-weight:300; line-height:1.1; letter-spacing:.04em; }
     .pv-hero-hola strong { display:block; font-family:'Inter',sans-serif; font-size:2rem; font-weight:700; color:#f5f3f0; letter-spacing:-.02em; line-height:1.05; margin-top:.25rem; }
     .pv-hero-impacto { max-width:560px; margin-top:1.1rem; color:rgba(255,255,255,.52); font-size:.83rem; line-height:1.65; }
     .pv-hero-geo { display:none; }
     .pv-identity { display:flex; flex-direction:column; align-items:center; gap:.85rem; min-width:150px; }
-    .pv-monogram { width:82px; height:82px; display:grid; place-items:center; border:1px solid rgba(201,168,76,.32); border-radius:50%; background:rgba(201,168,76,.07); color:#e8c96a; font-family:'Cormorant Garamond',serif; font-size:1.75rem; letter-spacing:.08em; box-shadow:0 0 32px rgba(201,168,76,.08); }
-    .pv-monogram-mobile { display:none; }
     .pv-mini-mapa-wrap { display:flex; flex-direction:column; align-items:center; gap:.45rem; }
     .pv-mini-mapa { width:190px; height:190px; overflow:hidden; border:1px solid rgba(201,168,76,.25); border-radius:10px; background:#111; pointer-events:none; }
     .pv-mini-mapa-label { max-width:190px; color:rgba(255,255,255,.3); font-size:.56rem; letter-spacing:.14em; text-align:center; text-transform:uppercase; }
@@ -368,7 +334,7 @@
     .pv-flt-bar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
     .pv-flt-btn { min-height:32px; padding:.36rem .88rem; border:1px solid rgba(255,255,255,.09); border-radius:8px; background:rgba(255,255,255,.05); color:rgba(255,255,255,.5); font:600 .63rem 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:all .2s; }
     .pv-flt-btn:hover { border-color:rgba(201,168,76,.35); color:var(--dorado); }
-    .pv-flt-btn.activo { background:linear-gradient(135deg,rgba(201,168,76,.22),rgba(201,168,76,.08)); border-color:rgba(201,168,76,.42); color:#e8c96a; box-shadow:0 0 14px rgba(201,168,76,.12); }
+    .pv-flt-btn.activo { background:linear-gradient(135deg,rgba(201,168,76,.22),rgba(201,168,76,.08)); border-color:rgba(201,168,76,.42); color:#e8c96a; }
     .pv-flt-custom { display:flex; align-items:flex-end; justify-content:flex-end; gap:.55rem; margin:0 0 1rem; padding:.7rem; border-top:1px solid rgba(255,255,255,.05); }
     .pv-flt-custom label { display:flex; flex-direction:column; gap:.3rem; color:rgba(255,255,255,.3); font-size:.55rem; text-transform:uppercase; letter-spacing:.09em; }
     .pv-fecha-input { padding:.38rem .5rem; border:1px solid rgba(255,255,255,.1); border-radius:7px; background:rgba(255,255,255,.04); color:#f5f3f0; color-scheme:dark; font:500 .67rem 'Inter',sans-serif; }
@@ -382,14 +348,14 @@
     .pv-pipe-n { font-size:2.6rem; font-weight:300; line-height:1; color:#f8f6f2; margin-bottom:.35rem; }
     .pv-pipe-label { font-size:.52rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.38); line-height:1.35; }
     .pv-pipe-conv { margin-top:.55rem; font-size:.6rem; font-weight:600; color:rgba(255,255,255,.28); line-height:1.3; }
-    .pv-pipe-dot { width:10px; height:10px; border-radius:999px; background:currentColor; box-shadow:0 0 10px currentColor; }
+    .pv-pipe-dot { width:10px; height:10px; border-radius:999px; background:currentColor; }
     /* Colores de acento por etapa — gobernanza visual */
     /* p0 = interacciones/clics → neutro */
     .pv-pipe-step.p0 { border-top-color:rgba(255,255,255,.16); }
     .pv-pipe-step.p0 .pv-pipe-ico { background:rgba(255,255,255,.06); color:rgba(255,255,255,.55); }
     /* p1 = consultas/leads → dorado */
     .pv-pipe-step.p1 { border-top-color:rgba(232,201,106,.35); }
-    .pv-pipe-step.p1 .pv-pipe-ico { background:rgba(232,201,106,.1); color:#e8c96a; }
+    .pv-pipe-step.p1 .pv-pipe-ico { background:rgba(255,255,255,.06); color:#e8c96a; }
     /* p2 = contactado → teal */
     .pv-pipe-step.p2 { border-top-color:rgba(53,198,180,.35); }
     .pv-pipe-step.p2 .pv-pipe-ico { background:rgba(53,198,180,.1); color:#35c6b4; }
@@ -436,13 +402,11 @@
     .pv-msg-sec .msg-unread-dot { background:#c9a84c; }
     .pv-msg-empty-title { margin-bottom:.32rem; color:rgba(255,255,255,.5); font-size:.86rem; }
     .pv-main .estado-nueva { background:rgba(179,157,219,.2); color:#b39ddb; border:1px solid rgba(179,157,219,.35); }
-    .pv-main .estado-en_contacto { background:rgba(201,168,76,.2); color:#e8c96a; border:1px solid rgba(201,168,76,.3); }
-    .pv-main .estado-en_negociacion { background:rgba(215,111,63,.2); color:#f0956a; border:1px solid rgba(215,111,63,.3); }
-    .pv-main .estado-cerrada { background:rgba(169,220,122,.2); color:#a9dc7a; border:1px solid rgba(169,220,122,.3); }
-    .pv-main .estado-descartada { background:rgba(136,136,136,.14); color:rgba(255,255,255,.42); border:1px solid rgba(136,136,136,.22); }
-    /* Estados reales de producción — pv-main — gobernanza visual */
     .pv-main .estado-contactado  { background:rgba(53,198,180,.18); color:#35c6b4; border:1px solid rgba(53,198,180,.35); }
     .pv-main .estado-visita      { background:rgba(242,154,90,.18); color:#f29a5a; border:1px solid rgba(242,154,90,.35); }
+    .pv-main .estado-visita_realizada { background:rgba(127,209,198,.18); color:#7fd1c6; border:1px solid rgba(127,209,198,.35); }
+    .pv-main .estado-oferta      { background:rgba(217,167,255,.18); color:#d9a7ff; border:1px solid rgba(217,167,255,.35); }
+    .pv-main .estado-cerrado     { background:rgba(169,220,122,.18); color:#a9dc7a; border:1px solid rgba(169,220,122,.35); }
     .pv-main .estado-descartado  { background:rgba(123,127,136,.14); color:#7b7f88; border:1px solid rgba(123,127,136,.28); }
 
     .pv-recorrido-card {
@@ -550,7 +514,7 @@
       .pv-recorrido-card .ya-estoy { animation:none !important; }
     }
     @media(max-width:720px){ .pv-recorrido-head{display:block}.pv-recorrido-canal{display:block;margin-top:.85rem;white-space:normal}.pv-recorrido-svg{min-height:235px} }
-    @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-kpi{min-height:130px;padding:.8rem 1rem}.pv-impact-grid{grid-template-columns:1fr}.pv-hero{min-height:210px} }
+    @media(max-width:900px){ .pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pv-kpi{min-height:130px;padding:.8rem 1rem}.pv-impact-grid{grid-template-columns:1fr} }
 
     /* ── Trazabilidad CRM — PASIVO-07B ── */
     .pv-traza-sec {}
@@ -582,7 +546,7 @@
     .pv-activo-hoy-ancla {
       display:inline-flex; align-items:center; justify-content:center;
       padding:.3rem .7rem; border:1px solid rgba(232,201,106,.3);
-      border-radius:99px; background:rgba(232,201,106,.08);
+      border-radius:99px; background:rgba(255,255,255,.06);
       color:#e8c96a; font-size:.66rem; font-weight:700; white-space:nowrap;
     }
     .pv-activo-recorrido-svg { width:100%; height:auto; display:block; }
@@ -655,11 +619,11 @@
     .pv-flip-digit::after { content:''; position:absolute; inset:50% 0 auto; height:1px; background:rgba(0,0,0,.22); pointer-events:none; }
     .pv-flip-digit { position:relative; }
     /* PUNTO B · solo existe con 2+ canales pasivos. */
-    .pv-multi-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1.5rem; margin-bottom:1.25rem; padding:1.5rem 1.6rem; border:1px solid rgba(232,201,106,.2); border-top-color:rgba(232,201,106,.5); border-radius:14px; background:radial-gradient(circle at 92% 12%,rgba(232,201,106,.09),transparent 34%),linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015)); }
+    .pv-multi-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1.5rem; margin-bottom:1.25rem; padding:1.5rem 1.6rem; border:1px solid rgba(232,201,106,.2); border-top-color:rgba(232,201,106,.5); border-radius:14px; background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015)); }
     .pv-multi-kicker { margin-bottom:.55rem; color:#e8c96a; font-size:.58rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase; }
     .pv-multi-head h1 { margin:0; color:#f5f3f0; font-size:clamp(1.8rem,4vw,3rem); font-weight:700; letter-spacing:-.035em; }
     .pv-multi-head p { max-width:620px; margin:.65rem 0 0; color:rgba(255,255,255,.48); font-size:.78rem; line-height:1.6; }
-    .pv-multi-count { flex-shrink:0; display:flex; align-items:baseline; gap:.45rem; padding:.55rem .8rem; border:1px solid rgba(232,201,106,.25); border-radius:10px; background:rgba(232,201,106,.07); color:#e8c96a; }
+    .pv-multi-count { flex-shrink:0; display:flex; align-items:baseline; gap:.45rem; padding:.55rem .8rem; border:1px solid rgba(232,201,106,.25); border-radius:10px; background:rgba(255,255,255,.06); color:#e8c96a; }
     .pv-multi-count strong { font-size:1.6rem; font-weight:400; line-height:1; }
     .pv-multi-count span { font-size:.58rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
     .pv-multi-unidades { margin:1.25rem 0 1rem; }
@@ -695,10 +659,6 @@
 
     /* ── Módulo Registros acumulados ── */
     .pv-carta-resumen { display:flex; gap:.9rem; align-items:stretch; margin-bottom:1.25rem; flex-wrap:wrap; }
-    .pv-carta-stat-main { flex:0 0 auto; min-width:120px; padding:1rem 1.2rem; border:1px solid rgba(232,201,106,.22); border-top-color:rgba(232,201,106,.45); border-radius:10px; background:linear-gradient(155deg,rgba(232,201,106,.07),rgba(232,201,106,.02)); display:flex; flex-direction:column; gap:.3rem; }
-    .pv-carta-stat-main-n { font-size:2.6rem; font-weight:300; line-height:1; color:#e8c96a; }
-    .pv-carta-stat-main-l { font-size:.5rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(232,201,106,.6); }
-    .pv-carta-stat-main-hint { font-size:.62rem; color:rgba(255,255,255,.35); margin-top:.1rem; }
     .pv-carta-stat-mini-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.5rem; flex:1; }
     .pv-carta-stat-mini { padding:.65rem .7rem; border:1px solid rgba(255,255,255,.07); border-top-color:rgba(255,255,255,.12); border-radius:9px; background:linear-gradient(155deg,rgba(255,255,255,.04),rgba(255,255,255,.012)); display:flex; flex-direction:column; gap:.25rem; }
     .pv-carta-stat-mini span { font-size:1.5rem; font-weight:300; line-height:1; color:var(--sc,rgba(255,255,255,.7)); }
@@ -727,7 +687,7 @@
     .pv-carta-origen-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
     .pv-carta-origen-item strong { margin-left:auto; color:rgba(255,255,255,.82); font-weight:600; font-size:.74rem; }
     .pv-carta-nota { font-size:.61rem; color:rgba(255,255,255,.28); line-height:1.55; border-top:1px solid rgba(255,255,255,.05); padding-top:.75rem; margin-top:.25rem; }
-    @media(max-width:560px){ .pv-carta-origen-row{grid-template-columns:1fr} .pv-carta-resumen{gap:.55rem} .pv-carta-stat-main{min-width:100px;padding:.8rem 1rem} .pv-carta-stat-main-n{font-size:2.1rem} }
+    @media(max-width:560px){ .pv-carta-origen-row{grid-template-columns:1fr} .pv-carta-resumen{gap:.55rem} }
 
     /* ── Dev-style hero pasivo ── */
     .badge-aliado { font-size:.55rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; background:rgba(255,255,255,.045); color:rgba(255,255,255,.64); border:1px solid rgba(255,255,255,.12); padding:.22rem .68rem; border-radius:999px; white-space:nowrap; flex-shrink:0; }
@@ -742,10 +702,10 @@
     .pv-alianza-hero { flex:1 1 420px; align-self:center; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:260px; max-width:680px; padding:.05rem 1.25rem .2rem; text-align:center; pointer-events:none; }
     .pv-alianza-rings { width:92px; height:49px; margin-bottom:1.05rem; overflow:visible; transform:translateY(-1.45rem); }
     .pv-alianza-ring { fill:none; stroke-width:2.6; stroke-linecap:round; opacity:0; transform-box:fill-box; transform-origin:center; animation:alianzaRingIn .74s cubic-bezier(.22,.61,.36,1) forwards; }
-    .pv-alianza-ring.gold { stroke:#e8c96a; filter:drop-shadow(0 0 8px rgba(232,201,106,.26)); animation-delay:.08s; }
+    .pv-alianza-ring.gold { stroke:#e8c96a; animation-delay:.08s; }
     .pv-alianza-ring.channel { animation-delay:.34s; }
     .pv-alianza-glow { fill:none; stroke-width:8; stroke-linecap:round; opacity:0; filter:url(#alianzaBlur); animation:alianzaRingIn .74s cubic-bezier(.22,.61,.36,1) forwards; }
-    .pv-alianza-glow.gold { stroke:#e8c96a; stroke-opacity:.15; animation-delay:.08s; }
+    .pv-alianza-glow.gold { display:none; stroke:#e8c96a; stroke-opacity:.15; animation-delay:.08s; }
     .pv-alianza-glow.channel { stroke-opacity:.15; animation-delay:.34s; }
     .pv-alianza-channel-back { opacity:.3; }
     .pv-alianza-channel-front { opacity:1; }
@@ -814,12 +774,11 @@
       border:1px solid rgba(232,201,106,.2);
       border-top-color:rgba(232,201,106,.42);
       border-radius:12px;
-      background:
-        linear-gradient(135deg,rgba(232,201,106,.105),rgba(232,201,106,.035) 46%,rgba(255,255,255,.018) 100%);
-      box-shadow:0 18px 48px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.055), 0 0 22px rgba(232,201,106,.055);
+      background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+      box-shadow:0 18px 48px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.055);
       transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease;
     }
-    .pv-detalle-summary:hover { background:rgba(232,201,106,.055); color:#e8c96a; }
+    .pv-detalle-summary:hover { background:rgba(255,255,255,.05); color:#e8c96a; }
     .pv-detalle-summary::after { content:'Ver más ▸'; color:#e8c96a; font-size:.58rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; transition:color .18s ease; }
     .pv-detalle[open] .pv-detalle-summary::after { content:'Ver más ▾'; color:#e8c96a; }
     .pv-detalle-summary::-webkit-details-marker { display:none; }
@@ -875,7 +834,7 @@
     .pv-mini-sub { font-size:.46rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.28); margin:-.18rem 0 .42rem; }
     .pv-mini-wrap { position:relative; height:60px; }
     @media(max-width:560px){
-      .header{padding:.85rem .9rem}.header-brand img{width:clamp(150px,42vw,168px)}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-hero{grid-template-columns:1fr;min-height:0;padding:1.5rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-monogram-mobile{display:grid}.pv-monogram{width:58px;height:58px;font-size:1.3rem}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:120px;padding:.7rem .9rem .75rem}.pv-kpi-n{font-size:2rem}.pv-kpi::before{top:12%;bottom:32%}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.9rem}
+      .header{padding:.85rem .9rem}.header-brand img{width:clamp(150px,42vw,168px)}.header-canal{display:none}.main.pv-main{padding:1rem}.pv-identity{align-items:flex-start;min-width:0}.pv-mini-mapa-wrap{display:none}.pv-hero-estado{justify-content:flex-start}.pv-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.pv-kpi{min-height:120px;padding:.7rem .9rem .75rem}.pv-kpi-n{font-size:2rem}.pv-kpi::before{top:12%;bottom:32%}.pv-sec{padding:1rem}.pv-sec-head{flex-direction:column}.pv-chart-wrap{height:235px}.pv-pipeline{grid-template-columns:repeat(2,1fr)!important}.pv-pipe-arrow{display:none}.pv-flt-custom{align-items:stretch;flex-direction:column}.pv-aplicar{width:100%}.pv-tabla{min-width:500px}.pv-live-wrap{height:235px}.pv-live-stat-n{font-size:1rem}.pv-live-right{gap:.9rem}
       .pv-live-bar{flex-direction:column;align-items:flex-start;gap:.45rem}
       .pv-live-left{width:100%}
       .pv-live-right{width:100%;justify-content:space-between}
@@ -909,7 +868,7 @@
       position: relative;
       height: 200px;
       overflow: hidden;
-      background: linear-gradient(135deg, rgba(201,168,76,.09), #11100e);
+      background: linear-gradient(135deg, rgba(255,255,255,.06), #11100e);
       background-size: cover;
       background-position: center;
     }
@@ -1065,7 +1024,7 @@
     .qr-slot-img {
       position: relative;
       height: 110px;
-      background: linear-gradient(135deg, rgba(201,168,76,.09), #11100e);
+      background: linear-gradient(135deg, rgba(255,255,255,.06), #11100e);
       background-size: cover;
       background-position: center;
       display: flex;
@@ -1301,7 +1260,88 @@
     { auth: { storageKey: 'sp-colab-session' } }
   )
 
-  leerConfigVisual(supabase).then(aplicarConfigVisual).catch(() => {})
+  leerConfigVisual(supabase).then(aplicarConfigVisual).catch(error => {
+    console.warn('[config visual] Se usa la configuración visual incorporada:', error?.message || error)
+  })
+
+  const PAGE_SIZE = 500
+  const MAX_PAGES = 200
+  const MAX_ROWS = PAGE_SIZE * MAX_PAGES
+  const IN_CHUNK_SIZE = 100
+  const REFRESH_MS = 30000
+  const CAMPOS_CONTACTO_PASIVO = new Set(['fila_key','sujeto_key','created_at','fecha','estado','origen','canal_ref','canal_via'])
+
+  const partirEnBloques = (valores, tam = IN_CHUNK_SIZE) => {
+    const unicos = [...new Set((valores || []).filter(v => v !== null && v !== undefined && v !== ''))]
+    return Array.from({length:Math.ceil(unicos.length / tam)}, (_, i) => unicos.slice(i * tam, (i + 1) * tam))
+  }
+
+  async function cargarTrazabilidadSnapshot(rpc) {
+    const respuesta = await supabase.rpc(rpc)
+    if (respuesta?.error) throw new Error(`trazabilidad: ${respuesta.error.message || respuesta.error}`)
+    let payload = respuesta?.data
+    if (typeof payload === 'string') {
+      try { payload = JSON.parse(payload) } catch (_) { throw new Error('trazabilidad: snapshot JSON inválido') }
+    }
+    const total = Number(payload?.total_filas)
+    const filas = payload?.filas
+    if (!Array.isArray(filas) || !Number.isSafeInteger(total) || total < 0 || filas.length !== total) {
+      throw new Error('trazabilidad: snapshot incompleto o mal formado')
+    }
+    if (total > MAX_ROWS) throw new Error(`trazabilidad: superó el máximo seguro de ${MAX_ROWS} filas`)
+    if (!payload?.snapshot_at || !Number.isFinite(Date.parse(payload.snapshot_at))) {
+      throw new Error('trazabilidad: snapshot sin fecha válida')
+    }
+    return filas
+  }
+
+  const literalPostgrest = valor => `"${String(valor).replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"`
+  const despuesAsc = (query, a, va, b, vb) => query.or(`${a}.gt.${literalPostgrest(va)},and(${a}.eq.${literalPostgrest(va)},${b}.gt.${literalPostgrest(vb)})`)
+  const despuesDesc = (query, a, va, b, vb) => query.or(`${a}.lt.${literalPostgrest(va)},and(${a}.eq.${literalPostgrest(va)},${b}.lt.${literalPostgrest(vb)})`)
+
+  async function cargarKeyset(etiqueta, crearConsulta, cursorDeFila, claveDeFila = fila => fila?.id) {
+    const filas = []
+    const claves = new Set()
+    let cursor = null, cursorAnterior = null, total = null
+    for (let pagina = 0; pagina < MAX_PAGES; pagina++) {
+      const respuesta = await crearConsulta(cursor, pagina === 0)
+      if (respuesta?.error) throw new Error(`${etiqueta}: ${respuesta.error.message || respuesta.error}`)
+      if (pagina === 0) {
+        const count = respuesta?.count
+        if (!Number.isInteger(count) || count < 0) throw new Error(`${etiqueta}: count exacto ausente o inválido`)
+        total = count
+      }
+      if (total !== null && total > MAX_ROWS) throw new Error(`${etiqueta}: superó el máximo seguro de ${MAX_ROWS} filas`)
+      const bloque = respuesta?.data || []
+      bloque.forEach(fila => {
+        const clave = String(claveDeFila(fila) || '')
+        if (!clave || claves.has(clave)) throw new Error(`${etiqueta}: fila sin clave o repetida`)
+        claves.add(clave)
+        filas.push(fila)
+      })
+      if (bloque.length < PAGE_SIZE) break
+      cursor = cursorDeFila(bloque[bloque.length - 1])
+      if (!cursor || Object.values(cursor).some(valor => valor === null || valor === undefined || valor === '')) {
+        throw new Error(`${etiqueta}: cursor incompleto`)
+      }
+      const cursorSerializado = JSON.stringify(cursor)
+      if (!cursor || cursorSerializado === cursorAnterior) throw new Error(`${etiqueta}: el cursor no avanzó`)
+      cursorAnterior = cursorSerializado
+      if (pagina === MAX_PAGES - 1) throw new Error(`${etiqueta}: barrido incompleto (${filas.length}${total === null ? '' : ` de ${total}`})`)
+    }
+    if (total !== null && filas.length !== total) throw new Error(`${etiqueta}: barrido parcial (${filas.length} de ${total})`)
+    return filas
+  }
+
+  async function cargarPorBloques(etiqueta, valores, crearConsulta) {
+    const bloques = partirEnBloques(valores)
+    if (!bloques.length) return []
+    const resultados = []
+    for (let i = 0; i < bloques.length; i++) {
+      resultados.push(...await crearConsulta(bloques[i], i))
+    }
+    return resultados
+  }
 
   window.salir = async function() {
     await supabase.auth.signOut()
@@ -1309,16 +1349,22 @@
   }
 
   const esc  = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
-  const esEntrada = v => v.canal_via === 'qr' || v.canal_via === 'link'
+  const clasificarVia = fila => {
+    if (fila?.origen === 'manual') return 'manual'
+    return fila?.canal_via === 'qr' ? 'qr' : fila?.canal_via === 'link' ? 'link' : 'directo'
+  }
+  const esEntrada = v => ['qr','link'].includes(clasificarVia(v))
+  const esInteraccion = v => clasificarVia(v) !== 'manual'
   const fmt  = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
-  const ESTADO_LABEL = { nueva:'Nueva', en_contacto:'En contacto', en_negociacion:'En negociación', cerrada:'Cerrada', descartada:'Descartada' }
-  const ESTADO_LABEL_PASIVO = { nueva:'Sin avance', contactado:'Contactado', visita:'En visita', oferta:'Oferta', cerrado:'Cerrada', descartado:'Descartado' }
+  const ESTADO_LABEL = { nueva:'Sin avance', contactado:'Contactado', visita:'Visita', visita_realizada:'Visita realizada', oferta:'Oferta', cerrado:'Cerrado', descartado:'Descartado' }
+  const ESTADO_LABEL_PASIVO = { nueva:'Sin avance', contactado:'Contactado', visita:'En visita', visita_realizada:'Visita realizada', oferta:'Oferta', cerrado:'Cerrada', descartado:'Descartado' }
 
   const RECORRIDO_ENABLED = true;
   const REC_ESTADO_ORDEN = {
     nueva: 0,
     contactado: 1,
     visita: 2,
+    visita_realizada: 2.5,
     oferta: 3,
     cerrado: 4,
     descartado: -1
@@ -1328,6 +1374,7 @@
     nueva: 'Sin avance',
     contactado: 'En contacto',
     visita: 'Visita programada',
+    visita_realizada: 'Visita realizada',
     oferta: 'Oferta enviada',
     cerrado: 'Cerrado'
   };
@@ -1358,9 +1405,9 @@
   }
 
   function obtenerClavePersonaRecorrido(c, index = 0) {
+    if (c?.sujeto_key) return `s:${c.sujeto_key}`;
     if (c?.persona_id) return `p:${c.persona_id}`;
-    const email = String(c?.email || c?.mail || '').trim().toLowerCase();
-    return email ? `email:${email}` : ('id:' + String(c?.id || `fila-${index}`));
+    return 'id:' + String(c?.fila_key || c?.id || `fila-${index}`);
   }
 
   function fechaIngresoRecorrido(c) {
@@ -1419,7 +1466,7 @@
     personas.forEach(p => { p.color = colorMes[p.mesKey] || REC_COHORT_PALETTE[0]; });
 
     const local = personas.filter(p => p.estado === 'nueva' || p.estado === 'contactado');
-    const visita = personas.filter(p => p.estado === 'visita');
+    const visita = personas.filter(p => p.estado === 'visita' || p.estado === 'visita_realizada');
     const oferta = personas.filter(p => p.estado === 'oferta');
     const cerrado = personas.filter(p => p.estado === 'cerrado');
     const localMax = 15;
@@ -1524,7 +1571,7 @@
           <h3>El recorrido de tu gente</h3>
           <p>De tu local a su casa — Sur Patagonian los acompaña en cada paso.</p>
         </div>
-        <div class="pv-recorrido-canal">${total.toLocaleString('es-AR')} personas · ${nombreCanal}</div>
+        <div class="pv-recorrido-canal">${total.toLocaleString('es-AR')} recorridos anónimos · ${nombreCanal}</div>
       </div>
       <svg class="pv-recorrido-svg" viewBox="0 0 1000 330" role="img" aria-label="Camino animado desde el local hasta la casita">
         <defs>
@@ -1582,7 +1629,7 @@
         <ellipse cx="130" cy="274" rx="150" ry="52" fill="url(#luzLocal)"/>
 
         <g transform="translate(130,272)">
-          <rect x="-88" y="-232" width="176" height="24" rx="4" fill="rgba(201,168,76,.12)" stroke="#c9a84c" stroke-width="1.5"/>
+          <rect x="-88" y="-232" width="176" height="24" rx="4" fill="rgba(255,255,255,.06)" stroke="#c9a84c" stroke-width="1.5"/>
           <text x="0" y="-215" text-anchor="middle" fill="#c9a84c" font-size="13" font-weight="700" letter-spacing="2.5" font-family="Inter">${nombreCanal}</text>
           <rect x="-80" y="-208" width="160" height="208" rx="3" fill="rgba(255,255,255,.028)" stroke="#8a8f99" stroke-opacity=".5" stroke-width="1.5"/>
           <rect x="-69" y="-196" width="138" height="196" rx="2" fill="rgba(255,255,255,.014)" stroke="#8a8f99" stroke-opacity=".28" stroke-width="1"/>
@@ -1617,8 +1664,8 @@
         ${stationCount(590, 314, visita.length, '#f29a5a')}
 
         ${ofertaTipitos}
-        <text x="735" y="296" text-anchor="middle" fill="#3bbf88" font-size="9" letter-spacing="1.6" font-family="Inter" opacity=".85">OFERTA ENVIADA</text>
-        ${stationCount(735, 314, oferta.length, '#3bbf88')}
+        <text x="735" y="296" text-anchor="middle" fill="#d9a7ff" font-size="9" letter-spacing="1.6" font-family="Inter" opacity=".85">OFERTA ENVIADA</text>
+        ${stationCount(735, 314, oferta.length, '#d9a7ff')}
 
         <g transform="translate(880,272)">
           <path d="M -30 0 L -30 -34 L 0 -54 L 30 -34 L 30 0 Z" fill="rgba(201,168,76,.12)" stroke="#c9a84c" stroke-width="2"/>
@@ -1634,18 +1681,12 @@
     </section>`;
   }
 
-  // Codifica el apellido: "Juan González" → "Juan Go***"
-  const codificarNombre = nombre => {
-    if (!nombre) return '—'
-    const partes = nombre.trim().split(/\s+/)
-    if (partes.length === 1) return partes[0]
-    const apellido = partes[partes.length - 1]
-    const codApellido = apellido.slice(0, 2) + '***'
-    return [...partes.slice(0, -1), codApellido].join(' ')
-  }
-
   ;(async () => {
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      document.getElementById('mainContent').innerHTML = '<div class="empty-msg">No se pudo verificar tu sesión. Recargá la página o volvé a ingresar.</div>'
+      return
+    }
     if (!session) { location.href = 'login.html'; return }
 
     const meta = session.user.app_metadata || {}
@@ -1662,12 +1703,28 @@
       location.href = 'propietario.html'
       return
     }
+    if (!['activo','pasivo'].includes(meta.tipo_acceso)) {
+      document.getElementById('mainContent').innerHTML = '<div class="empty-msg">Tu tipo de acceso no está configurado. Contactá a Sur Patagonian.</div>'
+      return
+    }
 
     const userId = session.user.id
 
     // ── Cargar TODOS los canales del usuario ───────
-    const { data: canales } = await supabase
-      .from('canales').select('*').eq('user_id', userId).order('nombre')
+    let canales
+    try {
+      canales = await cargarKeyset('canales', (cursor, contar) => {
+        let q = supabase.from('canales')
+          .select('id,codigo,nombre,activo,ciudad,provincia,latitud,longitud,color_index,destino', { count: contar ? 'exact' : undefined })
+          .eq('user_id', userId).order('nombre').order('id').limit(PAGE_SIZE)
+        if (cursor) q = despuesAsc(q, 'nombre', cursor.nombre, 'id', cursor.id)
+        return q
+      }, fila => ({nombre:fila.nombre,id:fila.id}))
+    } catch (error) {
+      console.error(error)
+      document.getElementById('mainContent').innerHTML = '<div class="empty-msg">No pudimos cargar tus canales. Tus métricas no se reemplazaron por ceros. Probá actualizar.</div>'
+      return
+    }
 
     if (!canales?.length) {
       document.getElementById('mainContent').innerHTML =
@@ -1675,13 +1732,14 @@
       return
     }
 
-    const esPasivo  = meta.tipo_acceso !== 'activo'
-    const codigos   = canales.map(c => c.codigo)
-    const ahora     = new Date()
-    const hace30    = new Date(ahora - 30 * 86400000).toISOString()
+    const esPasivo  = meta.tipo_acceso === 'pasivo'
+    let codigos   = canales.map(c => c.codigo)
+    let ahora     = new Date()
+    let hace30    = new Date(ahora - 30 * 86400000).toISOString()
 
     // Header
     const headerCanalEl = document.getElementById('headerCanal')
+    headerCanalEl.hidden = esPasivo
     if (esPasivo) {
       headerCanalEl.innerHTML = ''
     } else {
@@ -1690,42 +1748,141 @@
     }
 
     // ── Cargar métricas globales + mensajes ───────
-    const canalIds    = canales.map(c => c.id)
+    let canalIds    = canales.map(c => c.id)
 
     // canal_ref almacena el codigo de la REFERENCIA (no del canal).
     // El admin lo resuelve por prefijo: canal_ref.startsWith(canal.codigo + '-').
     // Acá buscamos primero todas las referencias del canal y filtramos por esos códigos.
     // También incluimos canal.codigo directamente como fallback (links sin referencia).
-    const { data: misRefs } = await supabase
-      .from('referencias')
-      .select('codigo, canal_id')
-      .in('canal_id', canalIds)
-    const refCodigos = misRefs?.map(r => r.codigo) || []
+    let misRefs
+    try {
+      misRefs = await cargarPorBloques('referencias', canalIds, (ids, bloque) => cargarKeyset(`referencias [${bloque + 1}]`, (cursor, contar) => {
+        let q = supabase.from('referencias')
+          .select('id,codigo,nombre,destino,activo,proyecto_slug,canal_id,punto_tipo,created_at', { count: contar ? 'exact' : undefined })
+          .in('canal_id', ids).order('created_at').order('id').limit(PAGE_SIZE)
+        if (cursor) q = despuesAsc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+        return q
+      }, fila => ({created_at:fila.created_at,id:fila.id})))
+    } catch (error) {
+      console.error(error)
+      document.getElementById('mainContent').innerHTML = '<div class="empty-msg">No pudimos cargar las referencias de tus canales. El panel se detuvo para no mostrar datos incompletos.</div>'
+      return
+    }
+    let refCodigos = misRefs.map(r => r.codigo)
     // codigos de filtrado = referencia codes + canal codes (fallback)
-    const codigosRef = [...new Set([...refCodigos, ...codigos])]
+    let codigosRef = [...new Set([...refCodigos, ...codigos])]
 
-    const [rVisitas, rVisitas30, rContactos, rCampanas, rMensajes, rMisSlots] = await Promise.all([
-      supabase.from('visitas').select('created_at, canal_via, canal_ref').in('canal_ref', codigosRef),
-      supabase.from('visitas').select('id', { count:'exact', head:true }).in('canal_ref', codigosRef).in('canal_via', ['qr','link']).gte('created_at', hace30),
-      supabase.from('contactos').select('*').in('canal_ref', codigosRef).order('created_at', { ascending: false }),
-      supabase.from('campanas_canales')
-        .select('canal_id, campanas(nombre, url_destino, activa, fecha_inicio, fecha_fin)')
-        .in('canal_id', canales.map(c => c.id)),
-      supabase.from('mensajes')
-        .select('id, asunto, cuerpo, created_at, mensajes_respuestas(id, cuerpo, created_at)')
-        .order('created_at', { ascending: false }),
-      supabase.from('referencias')
-        .select('id, codigo, nombre, destino, activo, proyecto_slug, canal_id, punto_tipo')
-        .in('canal_id', canalIds)
-        .order('created_at', { ascending: true })
-    ])
+    let visitas = [], contactos = [], campanasRows = [], misMensajes = []
+    let misSlots = misRefs
+    try {
+      const cargas = [
+        cargarPorBloques('visitas', codigosRef, (refs, bloque) => cargarKeyset(`visitas [${bloque + 1}]`, (cursor, contar) => {
+          let q = supabase.from('visitas')
+            .select('id,created_at,canal_via,canal_ref', { count: contar ? 'exact' : undefined })
+            .in('canal_ref', refs).order('created_at', {ascending:false}).order('id', {ascending:false}).limit(PAGE_SIZE)
+          if (cursor) q = despuesDesc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+          return q
+        }, fila => ({created_at:fila.created_at,id:fila.id}))),
+        esPasivo ? cargarContactosPasivos() : cargarPorBloques('contactos', codigosRef, (refs, bloque) => cargarKeyset(`contactos [${bloque + 1}]`, (cursor, contar) => {
+          let q = supabase.from('contactos')
+            .select('id,created_at,fecha,nombre,mensaje,estado,origen,canal_ref,canal_via,propiedad_id,proyecto_slug,persona_id,propiedades(titulo)', { count: contar ? 'exact' : undefined })
+            .in('canal_ref', refs).order('created_at', {ascending:false}).order('id', {ascending:false}).limit(PAGE_SIZE)
+          if (cursor) q = despuesDesc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+          return q
+        }, fila => ({created_at:fila.created_at,id:fila.id}))),
+        cargarPorBloques('campañas', canalIds, (ids, bloque) => cargarKeyset(`campañas [${bloque + 1}]`, (cursor, contar) => {
+          let q = supabase.from('campanas_canales')
+            .select('canal_id,campana_id,campanas(nombre,url_destino,activa,fecha_inicio,fecha_fin)', { count: contar ? 'exact' : undefined })
+            .in('canal_id', ids).order('campana_id').order('canal_id').limit(PAGE_SIZE)
+          if (cursor) q = despuesAsc(q, 'campana_id', cursor.campana_id, 'canal_id', cursor.canal_id)
+          return q
+        }, fila => ({campana_id:fila.campana_id,canal_id:fila.canal_id}), fila => `${fila.campana_id}:${fila.canal_id}`)),
+        cargarKeyset('mensajes', (cursor, contar) => {
+          let q = supabase.from('mensajes')
+            .select('id,asunto,cuerpo,created_at', { count: contar ? 'exact' : undefined })
+            .order('created_at', {ascending:false}).order('id', {ascending:false}).limit(PAGE_SIZE)
+          if (cursor) q = despuesDesc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+          return q
+        }, fila => ({created_at:fila.created_at,id:fila.id}))
+      ]
+      ;[visitas, contactos, campanasRows, misMensajes] = await Promise.all(cargas)
+      const mensajeIds = misMensajes.map(m => m.id)
+      const respuestas = mensajeIds.length ? await cargarPorBloques('respuestas', mensajeIds, (ids, bloque) => cargarKeyset(`respuestas [${bloque + 1}]`, (cursor, contar) => {
+        let q = supabase.from('mensajes_respuestas')
+          .select('id,mensaje_id,cuerpo,created_at', { count: contar ? 'exact' : undefined })
+          .in('mensaje_id', ids).order('created_at').order('id').limit(PAGE_SIZE)
+        if (cursor) q = despuesAsc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+        return q
+      }, fila => ({created_at:fila.created_at,id:fila.id}))) : []
+      const respuestasPorMensaje = new Map()
+      respuestas.forEach(r => {
+        if (!respuestasPorMensaje.has(r.mensaje_id)) respuestasPorMensaje.set(r.mensaje_id, [])
+        respuestasPorMensaje.get(r.mensaje_id).push(r)
+      })
+      misMensajes.forEach(m => { m.mensajes_respuestas = respuestasPorMensaje.get(m.id) || [] })
+    } catch (error) {
+      console.error(error)
+      document.getElementById('mainContent').innerHTML = '<div class="empty-msg">No pudimos completar la carga del panel. Se detuvo antes de publicar métricas parciales. Probá actualizar.</div>'
+      return
+    }
 
-    let visitas   = rVisitas.data    || []
-    const scans30 = rVisitas30.count || 0
-    let contactos = rContactos.data  || []
-
-    // ── Mis QRs: datos de slots activos ───────────
-    const misSlots = rMisSlots.data || []
+    async function cargarContactosPasivos() {
+      const acumuladas = []
+      const claves = new Set()
+      const cursores = new Set()
+      let corte = null, cursorTs = null, cursorKey = null, total = null
+      for (let pagina = 0; pagina < MAX_PAGES; pagina++) {
+        const { data, error } = await supabase.rpc('rpc_pasivo_contactos_anon', {
+          p_corte: corte,
+          p_cursor_ts: cursorTs,
+          p_cursor_key: cursorKey,
+          p_limit: PAGE_SIZE
+        })
+        if (error) throw new Error(`contactos pasivos: ${error.message}`)
+        const respuesta = data || {}
+        const cortePagina = respuesta.corte_created_at || null
+        if (typeof cortePagina !== 'string' || !Number.isFinite(Date.parse(cortePagina))) {
+          throw new Error('contactos pasivos: corte_created_at ausente o inválido')
+        }
+        if (respuesta.total_filas === null || respuesta.total_filas === undefined || respuesta.total_filas === '') {
+          throw new Error('contactos pasivos: total_filas ausente o inválido')
+        }
+        const totalPagina = Number(respuesta.total_filas)
+        if (!Number.isInteger(totalPagina) || totalPagina < 0) throw new Error('contactos pasivos: total_filas ausente o inválido')
+        if (!corte) corte = cortePagina
+        else if (cortePagina !== corte) throw new Error('contactos pasivos: cambió el corte durante el barrido')
+        if (total === null) total = totalPagina
+        else if (totalPagina !== total) throw new Error('contactos pasivos: cambió el total durante el barrido')
+        if (total > MAX_ROWS) throw new Error(`contactos pasivos: superó el máximo seguro de ${MAX_ROWS} filas`)
+        if (!Array.isArray(respuesta.filas)) throw new Error('contactos pasivos: filas ausentes o inválidas')
+        const filas = respuesta.filas
+        filas.forEach(fila => {
+          const campos = Object.keys(fila || {})
+          if (campos.length !== CAMPOS_CONTACTO_PASIVO.size
+              || campos.some(campo => !CAMPOS_CONTACTO_PASIVO.has(campo))
+              || [...CAMPOS_CONTACTO_PASIVO].some(campo => !Object.prototype.hasOwnProperty.call(fila, campo))) {
+            throw new Error('contactos pasivos: la RPC no respetó el contrato anónimo exacto')
+          }
+          if (!fila.fila_key || claves.has(fila.fila_key)) throw new Error('contactos pasivos: fila repetida o sin clave')
+          claves.add(fila.fila_key)
+          acumuladas.push(fila)
+        })
+        if (!respuesta.next_cursor) break
+        const ultima = filas[filas.length - 1]
+        cursorTs = respuesta.next_cursor.created_at
+        cursorKey = respuesta.next_cursor.fila_key
+        if (!ultima || !cursorTs || !cursorKey) throw new Error('contactos pasivos: cursor incompleto o sin fila final')
+        if (String(cursorTs) !== String(ultima.created_at) || String(cursorKey) !== String(ultima.fila_key)) {
+          throw new Error('contactos pasivos: el cursor no coincide con la última fila')
+        }
+        const cursorSerializado = `${cursorTs}\u0000${cursorKey}`
+        if (cursores.has(cursorSerializado)) throw new Error('contactos pasivos: el cursor se repitió')
+        cursores.add(cursorSerializado)
+        if (pagina === MAX_PAGES - 1) throw new Error(`contactos pasivos: barrido incompleto (${acumuladas.length} de ${total})`)
+      }
+      if (acumuladas.length !== total) throw new Error(`contactos pasivos: barrido parcial (${acumuladas.length} de ${total})`)
+      return acumuladas
+    }
     // Derivar proyecto_slug desde el código cuando no está seteado en BD
     const slugify = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
     const canalCodigoMap = {}; canales.forEach(c => { canalCodigoMap[c.id] = c.codigo })
@@ -1736,7 +1893,7 @@
     const COLOR_QR_FISICO        = '#50c878'
     const COLOR_LINK_COMPARTIDO  = '#6495ed'
     const COLORES_RESERVADOS = [COLOR_TOTAL_GENERAL, COLOR_TOTAL_GRAFICO, COLOR_QR_FISICO, COLOR_LINK_COMPARTIDO]
-    // PALETA_PROPIEDADES — fuente: registro-colores-sistema.md §10b (firmada 6/7). NO editar acá: se edita en el registro primero.
+    // PALETA_PROPIEDADES — fuente: docs/gobernanza/gobernanza-visual.md §8 (canon v03, firmado 2-sep-2026). NO editar acá: se edita en el canon primero.
     const PALETA_PROPIEDADES = [
       '#ff4088',
       '#ccff00',
@@ -1823,7 +1980,7 @@
     // ── UNA LINEA POR COMERCIO (canal), NUNCA por punto QR ──────────────
     // Los puntos QR son segmentacion interna de administracion y no se
     // exponen al aliado. Cada comercio suma las visitas de todos sus puntos.
-    const comerciosDelAliado = canales.map(c => {
+    let comerciosDelAliado = canales.map(c => {
       const refs = misSlots.filter(s => s.canal_id === c.id && s.activo !== false)
       const principal = refs.find(r => r.punto_tipo === 'principal') || refs[0]
       return {
@@ -1837,29 +1994,6 @@
       }
     })
 
-    const slotCodigos  = misSlots.map(s => s.codigo)
-    const derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
-    const [rScansPorSlot, rProyImgs, rPropAll] = await Promise.all([
-      slotCodigos.length
-        ? supabase.from('visitas').select('canal_ref,canal_via,created_at').in('canal_ref', slotCodigos).in('canal_via', ['qr','link']).gte('created_at', hace30)
-        : Promise.resolve({ data: [] }),
-      derivedSlugs.length
-        ? supabase.from('proyectos').select('slug, nombre, foto_portada').in('slug', derivedSlugs)
-        : Promise.resolve({ data: [] }),
-      supabase.from('propiedades')
-        .select('id, titulo, imagenes, dormitorios, banos, superficie_cubierta, superficie_total')
-        .eq('activa', true).limit(200)
-    ])
-    const scansPorSlot = {}
-    ;(rScansPorSlot.data || []).forEach(v => { scansPorSlot[v.canal_ref] = (scansPorSlot[v.canal_ref] || 0) + 1 })
-    const proyImgs = {}
-    ;(rProyImgs.data || []).forEach(p => { proyImgs[p.slug] = p })
-    const propDataMap = {}
-    const propDataById = {}
-    ;(rPropAll.data || []).forEach(p => {
-      propDataMap[slugify(p.titulo)] = p
-      propDataById[String(p.id).toLowerCase()] = p
-    })
     function propiedadIdDesdeDestino(destino) {
       if (!destino) return null
       try {
@@ -1871,6 +2005,47 @@
         return null
       }
     }
+
+    let slotCodigos  = misSlots.map(s => s.codigo)
+    let derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
+    const propiedadIdsVinculadas = [...new Set(misSlots
+      .filter(s => s.activo !== false)
+      .map(s => propiedadIdDesdeDestino(s.destino))
+      .filter(Boolean))]
+    let proyectosRows = [], propiedadesRows = []
+    try {
+      ;[proyectosRows, propiedadesRows] = await Promise.all([
+        derivedSlugs.length ? cargarPorBloques('proyectos referenciados', derivedSlugs, (slugs, bloque) => cargarKeyset(`proyectos referenciados [${bloque + 1}]`, (cursor, contar) => {
+          let q = supabase.from('proyectos')
+            .select('id,slug,nombre,foto_portada', { count: contar ? 'exact' : undefined })
+            .in('slug', slugs).order('id').limit(PAGE_SIZE)
+          if (cursor) q = q.gt('id', cursor.id)
+          return q
+        }, fila => ({id:fila.id}))) : [],
+        propiedadIdsVinculadas.length ? cargarPorBloques('propiedades vinculadas', propiedadIdsVinculadas, (ids, bloque) => cargarKeyset(`propiedades vinculadas [${bloque + 1}]`, (cursor, contar) => {
+          let q = supabase.from('propiedades')
+            .select('id,titulo,imagenes,dormitorios,banos,superficie_cubierta,superficie_total', { count: contar ? 'exact' : undefined })
+            .in('id', ids).eq('activa', true).order('id').limit(PAGE_SIZE)
+          if (cursor) q = q.gt('id', cursor.id)
+          return q
+        }, fila => ({id:fila.id}))) : []
+      ])
+    } catch (error) {
+      console.error(error)
+      document.getElementById('mainContent').innerHTML = '<div class="empty-msg">No pudimos completar propiedades y proyectos. El panel se detuvo para no mostrar métricas parciales.</div>'
+      return
+    }
+    const scansPorSlot = {}
+    visitas.filter(v => slotCodigos.includes(v.canal_ref) && esInteraccion(v) && new Date(v.created_at) >= new Date(hace30))
+      .forEach(v => { scansPorSlot[v.canal_ref] = (scansPorSlot[v.canal_ref] || 0) + 1 })
+    const proyImgs = {}
+    proyectosRows.forEach(p => { proyImgs[p.slug] = p })
+    const propDataMap = {}
+    const propDataById = {}
+    propiedadesRows.forEach(p => {
+      propDataMap[slugify(p.titulo)] = p
+      propDataById[String(p.id).toLowerCase()] = p
+    })
     function findPropData(slotOslug) {
       const slot = slotOslug && typeof slotOslug === 'object' ? slotOslug : null
       const id = slot ? propiedadIdDesdeDestino(slot.destino) : null
@@ -1881,35 +2056,78 @@
       for (const [k, v] of Object.entries(propDataMap)) { if (k.startsWith(slug) || slug.startsWith(k)) return v }
       return null
     }
-    const esPropiedadReal = slot => {
+    const propiedadVisibleDeSlot = slot => {
       const propiedadId = propiedadIdDesdeDestino(slot.destino)
-      if (propiedadId && propDataById[propiedadId]) return true
-      if (!slot.proyecto_slug) return false
-      if (proyImgs[slot.proyecto_slug]) return true
-      if (findPropData(slot.proyecto_slug)) return true
-      return false
+      return propiedadId ? (propDataById[propiedadId] || null) : null
     }
-    // Log temporal — verificar en producción con F12 los slots filtrados como canales generales:
-    console.warn('[esPropiedadReal] Slots filtrados como canales generales:', misSlots.filter(s => !esPropiedadReal(s)).map(s => s.codigo))
+    // Fuente única de las líneas del gráfico. El pasivo agrupa por negocio;
+    // el activo agrupa por propiedad real vinculada a sus referencias.
+    function unidadesGrafico() {
+      if (esPasivo) return comerciosDelAliado.map(com => ({
+        key: `canal:${com.codigo}`,
+        codigo: com.codigo,
+        nombre: com.nombre,
+        color: com.color,
+        codigos: com.codigos
+      }))
+      const porPropiedad = new Map()
+      propiedadesRows.forEach(propiedad => {
+        const propiedadId = String(propiedad.id).toLowerCase()
+        porPropiedad.set(`propiedad:${propiedadId}`, {
+          key: `propiedad:${propiedadId}`,
+          codigo: `propiedad:${propiedadId}`,
+          propiedadId,
+          nombre: propiedad.titulo || 'Propiedad sin título',
+          color: colorDeSlot(propiedadId),
+          codigos: new Set()
+        })
+      })
+      misSlots.filter(s => s.activo !== false).forEach(slot => {
+        const propiedadId = propiedadIdDesdeDestino(slot.destino)
+        const propiedad = propiedadId ? propDataById[propiedadId] : null
+        if (!propiedad) return
+        const key = `propiedad:${propiedadId}`
+        if (!porPropiedad.has(key)) porPropiedad.set(key, {
+          key,
+          codigo: key,
+          propiedadId,
+          nombre: propiedad.titulo || slot.nombre || slot.codigo,
+          color: colorDeSlot(slot.codigo),
+          codigos: new Set()
+        })
+        porPropiedad.get(key).codigos.add(slot.codigo)
+      })
+      return [...porPropiedad.values()].sort((a,b) => a.nombre.localeCompare(b.nombre, 'es'))
+    }
 
+    function propiedadAtribuida(contacto) {
+      const idDirecto = contacto?.propiedad_id ? String(contacto.propiedad_id).toLowerCase() : null
+      if (idDirecto) return propDataById[idDirecto] ? idDirecto : null
+      if (!contacto?.canal_ref) return null
+      const candidatas = unidadesGrafico().filter(u => u.propiedadId && u.codigos.has(contacto.canal_ref))
+      return candidatas.length === 1 ? candidatas[0].propiedadId : null
+    }
+    function contactoPerteneceSlot(contacto, slot) {
+      const propiedadId = propiedadIdDesdeDestino(slot?.destino)
+      return propiedadId ? propiedadAtribuida(contacto) === propiedadId : contacto?.canal_ref === slot?.codigo
+    }
     // ── Trazabilidad CRM ─────────────────────────────────────────────────────
     // Lee crm_eventos SOLO via RPC con SECURITY DEFINER — nunca directo.
     // Pasivo: anónimo. Activo: nombres reales de sus propios leads.
     let filasTraza = []
-    if (esPasivo) {
-      const { data: rpcTraza, error: errTraza } = await supabase.rpc('rpc_pasivo_trazabilidad_comercial')
-      if (!errTraza) filasTraza = rpcTraza || []
-      else console.warn('[trazabilidad] RPC error:', errTraza.message)
-    } else {
-      const { data: rpcTraza, error: errTraza } = await supabase.rpc('rpc_activo_trazabilidad_comercial')
-      if (!errTraza) filasTraza = rpcTraza || []
-      else console.warn('[trazabilidad activo] RPC error:', errTraza.message)
+    try {
+      const rpcTraza = esPasivo ? 'rpc_pasivo_trazabilidad_comercial_snapshot_v1' : 'rpc_activo_trazabilidad_comercial_snapshot_v1'
+      filasTraza = await cargarTrazabilidadSnapshot(rpcTraza)
+    } catch (error) {
+      console.error('[trazabilidad] No se pudo completar:', error)
+      document.getElementById('mainContent').innerHTML = '<div class="empty-msg">No pudimos completar la trazabilidad. El panel se detuvo para no mostrar un recorrido parcial.</div>'
+      return
     }
 
-    let _pvChart4 = null, _pvChart4b = null, _pvChart4c = null
+    let _pvChart4 = null
     let _pvPanelAct = null, _pvPanelConv = null  // charts de los paneles nuevos (Actividad 30d, Conversión 30d)
+    let _pvMiniMap = null
     let _pvLiveRAF = null   // loop de animación del "pulso en vivo"
-    let _pvLiveTimer = null // refresco automático (modo Hoy)
     let _pvDocMoveH = null, _pvDocUpH = null    // document-level pan listeners (cleanup seguro)
 
     // ── Zoom horario (modo Hoy) ──────────────────────────────────────────────
@@ -1971,17 +2189,18 @@
         const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) ds[idx]++
       })
       contactos.forEach(c => {
+        if (!esEntrada(c)) return
         const t = new Date(c.created_at).getTime(); if (t < fromMs || t >= toMs) return
         const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) dc[idx]++
       })
-      const slotData = (typeof comerciosDelAliado !== 'undefined' ? comerciosDelAliado : []).map(com => {
+      const slotData = unidadesGrafico().map(unidad => {
         const arr = new Array(numBuckets).fill(0)
         visitas.forEach(v => {
-          if (!esEntrada(v) || !com.codigos.has(v.canal_ref)) return
+          if (!esEntrada(v) || !unidad.codigos.has(v.canal_ref)) return
           const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
           const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) arr[idx]++
         })
-        return { codigo: com.codigo, data: arr }
+        return { key: unidad.key, data: arr }
       })
       return { labels: newLbls, dataScans: ds, dataCons: dc, slotData }
     }
@@ -1993,9 +2212,12 @@
       const { labels, dataScans, dataCons, slotData } = pvResampleChart(fromMs, toMs)
       _pvChart4.data.labels = labels
       if (_pvChart4.data.datasets[0]) _pvChart4.data.datasets[0].data = dataScans
-      if (_pvChart4.data.datasets[1]) _pvChart4.data.datasets[1].data = dataCons
+      if (_pvChart4.data.datasets[1]) {
+        _pvChart4.data.datasets[1].data = dataCons
+        _pvChart4.data.datasets[1].pointRadius = dataCons.map(v => v > 0 ? 6 : 0)
+      }
       slotData.forEach(sd => {
-        const dst = _pvChart4.data.datasets.find(dataset => dataset._slotCodigo === sd.codigo)
+        const dst = _pvChart4.data.datasets.find(dataset => dataset._seriesKey === sd.key)
         if (dst) dst.data = sd.data
       })
       delete _pvChart4.options.scales.x.min; delete _pvChart4.options.scales.x.max
@@ -2089,19 +2311,39 @@
     }
 
     // La segmentación y el aislamiento de respuestas viven en RLS.
-    const mensajesError = rMensajes.error || null
-    if (mensajesError) console.error('[mensajes] No se pudo cargar:', mensajesError)
-    const misMensajes = rMensajes.data || []
-    const mensajesVacioHtml = texto => mensajesError
-      ? '<div class="pv-empty" role="alert"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">No pudimos cargar los mensajes</div><div>Recargá la página para volver a intentarlo.</div></div>'
-      : `<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>${texto}</div></div>`
-    const totalScans = visitas.filter(esEntrada).length
-    const conv       = totalScans > 0 ? ((contactos.filter(c => c.origen !== 'manual').length / totalScans) * 100).toFixed(1) : 0
+    const mensajesVacioHtml = texto => `<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>${texto}</div></div>`
+    const mensajesAbiertos = new Set()
+    const mensajeDomId = id => `msg-${String(id).replace(/[^a-zA-Z0-9_-]/g, '')}`
+    function renderMensajes(textoVacio, tituloRespuesta = 'Tu respuesta') {
+      if (!misMensajes.length) return mensajesVacioHtml(textoVacio)
+      return misMensajes.map(m => {
+        const domId = mensajeDomId(m.id)
+        const abierto = mensajesAbiertos.has(m.id)
+        return `<div class="msg-card" id="${domId}-card">
+          <button type="button" class="msg-card-head" id="${domId}-head" aria-expanded="${abierto}" aria-controls="${domId}-body" onclick="toggleMsg('${esc(m.id)}')">
+            <span class="msg-unread-dot${abierto ? ' leido' : ''}" id="${domId}-dot"></span>
+            <span class="msg-card-asunto">${esc(m.asunto)}</span>
+            <span class="msg-card-fecha">${fmt(m.created_at)}</span>
+          </button>
+          <div class="msg-card-body${abierto ? ' open' : ''}" id="${domId}-body" role="region" aria-labelledby="${domId}-head">
+            <div class="msg-card-cuerpo">${esc(m.cuerpo)}</div>
+            <div class="reply-area">
+              <div class="reply-titulo">${esc(tituloRespuesta)}</div>
+              ${(m.mensajes_respuestas || []).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
+              <textarea class="reply-input" id="${domId}-input" placeholder="Escribí tu respuesta..."></textarea>
+              <button type="button" class="btn-reply" onclick="enviarRespuesta(this, '${esc(m.id)}')">Enviar respuesta</button>
+              <div id="${domId}-status" role="status" aria-live="polite" style="margin-top:.35rem;font-size:.65rem;color:var(--gris)"></div>
+            </div>
+          </div>
+        </div>`
+      }).join('')
+    }
+    let totalScans = visitas.filter(esInteraccion).length
 
     // Campaña activa por canal
     const campanaActiva = {}
     const campanaDestino = {}
-    ;(rCampanas.data || []).forEach(row => {
+    campanasRows.forEach(row => {
       const c = row.campanas
       if (!c?.activa) return
       const ini = c.fecha_inicio ? new Date(c.fecha_inicio) : null
@@ -2116,74 +2358,11 @@
     const refACanal = {}
     ;(misRefs || []).forEach(r => { refACanal[r.codigo] = r.canal_id })
 
-    // ── Mis QRs (solo lectura, canal activo) ──────
-    function renderMisQRs() {
-      if (!misSlots.length) return ''
-      const activos   = misSlots.filter(s => s.activo).length
-      const cards = misSlots.map(slot => {
-        const proy       = proyImgs[slot.proyecto_slug]
-        const fotoUrl    = proy?.foto_portada || ''
-        const proyNombre = proy?.nombre || slot.nombre || slot.codigo
-        const scans      = scansPorSlot[slot.codigo] || 0
-        const esActivo   = slot.activo !== false
-
-        const imgStyle = fotoUrl
-          ? `background-image:url('${fotoUrl.replace(/'/g, "\\'")}');background-size:cover;background-position:center`
-          : 'background:linear-gradient(135deg,rgba(201,168,76,.09),#11100e)'
-
-        const badgeClass = esActivo ? 'activo' : 'inactivo'
-        const badgeLabel = esActivo ? '● ACTIVO' : '● INACTIVO'
-
-        const inactivoBanner = !esActivo ? `
-          <div class="qr-slot-inactivo-banner">
-            Esta propiedad ya no está disponible · Retirá el material impreso.
-          </div>` : ''
-
-        const ptrEvents = !esActivo ? 'pointer-events:none' : ''
-        const redirectUrl = `${location.origin}/r/${slot.codigo}`
-
-        return `
-        <div class="qr-slot-card${esActivo ? '' : ' slot-inactivo'}">
-          <div class="qr-slot-img" style="${imgStyle}">
-            <div class="qr-slot-img-overlay"></div>
-            <div class="qr-slot-img-nombre">${esc(proyNombre)}</div>
-            <div class="qr-slot-estado-badge ${badgeClass}">${badgeLabel}</div>
-          </div>
-          <div class="qr-slot-body" style="${ptrEvents}">
-            <div class="qr-slot-canvas-wrap">
-              <canvas id="qr-canvas-${slot.id}" width="134" height="134"></canvas>
-            </div>
-            <div class="qr-slot-codigo">${esc(slot.codigo)}</div>
-          </div>
-          ${inactivoBanner}
-          <div class="qr-slot-footer">
-            <span class="qr-slot-scans">${scans} escaneos este mes</span>
-            <div class="qr-slot-btns" style="${ptrEvents}">
-              <button class="qr-slot-btn" onclick="descargarQR('qr-canvas-${slot.id}', '${slot.codigo}')">Descargar QR</button>
-              <button class="qr-slot-btn" onclick="copiarLink('${redirectUrl}', this)">Copiar link</button>
-            </div>
-          </div>
-        </div>`
-      }).join('')
-
-      return `
-      <div class="seccion">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem;flex-wrap:wrap;gap:.5rem;">
-          <div>
-            <div class="sec-titulo" style="margin-bottom:.2rem;">Mis QRs activos</div>
-            <div style="font-size:.72rem;color:rgba(255,255,255,.38);">Los QRs que podés imprimir y compartir</div>
-          </div>
-          <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activos} activo${activos !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="mis-qrs-grid">${cards}</div>
-      </div>`
-    }
-
     async function generarQRCanvases() {
       for (const slot of misSlots) {
         const canvas = document.getElementById(`qr-canvas-${slot.id}`)
         if (!canvas) continue
-        const url = `${location.origin}/r/${slot.codigo}`
+        const url = linkQrCanonico(slot.codigo)
         try {
           await QRCode.toCanvas(canvas, url, {
             width: canvas.width || 70, margin: 1, errorCorrectionLevel: 'H',
@@ -2272,15 +2451,20 @@
       }
     }
 
+    const QR_BASE_URL_CANONICA = 'https://surpatagonian.com' // FUENTE: js/config.js PUBLIC_BASE_URL — mantener sincronizado
+    const linkQrCanonico = codigo => `${QR_BASE_URL_CANONICA}/r/${codigo}`
+    const slotActivoPorCodigo = codigo => misSlots.find(slot => slot.codigo === codigo && slot.activo !== false) || null
+
     async function descargarQR(canvasId, codigo) {
-      if (!document.getElementById(canvasId)) return
-      const url = `${location.origin}/r/${codigo}`
+      if (!slotActivoPorCodigo(codigo) || !document.getElementById(canvasId)) {
+        console.warn('[QR] Descarga rechazada: el slot no está activo', codigo)
+        return
+      }
+      const url = linkQrCanonico(codigo)
       await descargarPngQR(url, `qr-${codigo}.png`, { dark: '#000000', light: '#ffffff' })
     }
     window.descargarQR = descargarQR
 
-    const QR_BASE_URL_CANONICA = 'https://surpatagonian.com' // FUENTE: js/config.js PUBLIC_BASE_URL — mantener sincronizado
-    const linkQrCanonico = codigo => `${QR_BASE_URL_CANONICA}/r/${codigo}`
     const codigoQrCanonicoPasivo = canal => canal.codigo
 
     async function descargarQRPasivo(codigo) {
@@ -2300,12 +2484,19 @@
       })
     }
     window.copiarLink = copiarLink
+    window.copiarLinkSlot = (codigo, btn) => {
+      if (!slotActivoPorCodigo(codigo)) {
+        console.warn('[QR] Copia rechazada: el slot no está activo', codigo)
+        return
+      }
+      copiarLink(linkQrCanonico(codigo), btn)
+    }
 
     // ── Cards de canales (activo) ──────────────────
     const renderCards = () => canales.map(c => {
       // Todos los codigos (referencia o canal directo) que pertenecen a este canal
       const misCodigos = new Set([c.codigo, ...(misRefs || []).filter(r => r.canal_id === c.id).map(r => r.codigo)])
-      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref) && esEntrada(v)).length
+      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref) && esInteraccion(v)).length
       const cContacts = contactos.filter(x => misCodigos.has(x.canal_ref)).length
       const estado    = !c.activo ? 'inactivo' : campanaActiva[c.id] ? 'campana' : 'activo'
       const estadoLabel = estado === 'inactivo' ? 'QR inactivo'
@@ -2332,7 +2523,7 @@
     const datosComercioPasivo = canal => {
       const referenciasCanal = (misSlots || []).filter(r => r.canal_id === canal.id)
       const codigosCanal = new Set([canal.codigo, ...referenciasCanal.map(r => r.codigo)])
-      const visitasCanal = visitas.filter(v => codigosCanal.has(v.canal_ref) && esEntrada(v))
+      const visitasCanal = visitas.filter(v => codigosCanal.has(v.canal_ref) && esInteraccion(v))
       const contactosCanal = contactos.filter(c => codigosCanal.has(c.canal_ref))
       const principal = referenciasCanal.find(r => r.codigo === canal.codigo && r.punto_tipo === 'principal')
         || referenciasCanal.find(r => r.activo !== false)
@@ -2394,11 +2585,6 @@
       if (canal?.codigo) descargarQRPasivo(canal.codigo)
     }
 
-    window.enviarRespuestaTitular = (btn, i) => {
-      const mensajeId = btn?.dataset?.messageId
-      if (mensajeId) window.enviarRespuesta(mensajeId, i)
-    }
-
     async function generarQrUnidadesPasivas() {
       if (typeof QRCode === 'undefined') return
       for (const canal of canales) {
@@ -2412,7 +2598,8 @@
       }
     }
 
-    // ── Render ─────────────────────────────────────
+    // ── Render completo desde el snapshot publicado ────────────────────────
+    function renderizarPanelCompleto() {
     const main = document.getElementById('mainContent')
     if (esPasivo && canales.length > 1) {
       main.classList.add('pv-main')
@@ -2432,9 +2619,9 @@
 
         <div class="pv-titular-grid">
           <div class="pv-titular-card" style="--pv-c:#6495ed">
-            <div class="pv-titular-label">Clics totales</div>
+            <div class="pv-titular-label">Interacciones totales</div>
             <div class="pv-titular-n pv-flip-num">${mkFlip(totalScans, '#7aaeff')}</div>
-            <div class="pv-titular-sub">Lecturas y clics combinados de todos tus comercios.</div>
+            <div class="pv-titular-sub">QR, enlaces y entradas directas combinadas de todos tus comercios.</div>
           </div>
           <div class="pv-titular-card" style="--pv-c:#c9a84c">
             <div class="pv-titular-label">Consultas totales</div>
@@ -2449,23 +2636,7 @@
         <div class="pv-sec pv-msg-sec" id="secMensajes">
           <div class="pv-sec-head"><div><div class="pv-sec-titulo">Novedades de la red${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem">${misMensajes.length}</span>` : ''}</div><div class="pv-sec-sub">Actualizaciones de Sur Patagonian para tus espacios.</div></div></div>
           <div class="msg-inbox" id="msgInbox">
-            ${misMensajes.length ? misMensajes.map((m, i) => `
-              <div class="msg-card" id="msgCard-${i}">
-                <div class="msg-card-head" onclick="toggleMsg(${i})">
-                  <div class="msg-unread-dot" id="dot-${i}"></div>
-                  <div class="msg-card-asunto">${esc(m.asunto)}</div>
-                  <div class="msg-card-fecha">${fmt(m.created_at)}</div>
-                </div>
-                <div class="msg-card-body" id="msgBody-${i}">
-                  <div class="msg-card-cuerpo">${esc(m.cuerpo)}</div>
-                  <div class="reply-area">
-                    <div class="reply-titulo">Tu respuesta como titular</div>
-                    ${(m.mensajes_respuestas || []).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
-                    <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
-                    <button class="btn-reply" data-message-id="${esc(m.id)}" onclick="enviarRespuestaTitular(this, ${i})">Enviar respuesta</button>
-                  </div>
-                </div>
-              </div>`).join('') : mensajesVacioHtml('Cuando Sur Patagonian tenga novedades para tus canales, las vas a encontrar acá.')}
+            ${renderMensajes('Cuando Sur Patagonian tenga novedades para tus canales, las vas a encontrar acá.', 'Tu respuesta como titular')}
           </div>
         </div>
 
@@ -2474,7 +2645,7 @@
         </div>`
 
       requestAnimationFrame(() => {
-        renderGraficoPasivo(contactos, 7)
+        renderGraficoPasivo(contactos, 7, null, null, { multiSlot:true })
         generarQrUnidadesPasivas()
       })
     } else if (esPasivo) {
@@ -2483,7 +2654,7 @@
       const geo = [canal.ciudad, canal.provincia].filter(Boolean).join(', ')
       const estadoQR = !canal.activo ? 'inactivo' : campanaActiva[canal.id] ? 'campana' : 'activo'
       const dotColor = estadoQR === 'activo' ? '#50c878' : estadoQR === 'campana' ? '#c9a84c' : '#444'
-      const dotGlow = estadoQR !== 'inactivo' ? `box-shadow:0 0 10px ${dotColor}88` : ''
+      const dotGlow = estadoQR === 'activo' ? `box-shadow:0 0 10px ${dotColor}88` : ''
       const dotLabel = estadoQR === 'inactivo' ? 'QR inactivo' : estadoQR === 'campana' ? `Campaña: ${campanaActiva[canal.id]}` : 'QR activo'
       const m = metricasPasivo(contactos)
       const monograma = (canal.nombre || 'SP').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()
@@ -2532,7 +2703,7 @@
                 <span>${geo ? esc(geo) + ' · ' : ''}${esc(dotLabel)}</span>
               </div>
               <div class="pv-hero-actions-row">
-                <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+                <button class="pv-btn-refresh" onclick="actualizarPanelSeguro()">Actualizar</button>
                 <button class="pv-btn-link-canal" onclick="copiarLink('${pvQrUrl}', this)">Link</button>
                 <button class="pv-btn-qr-dl" onclick="descargarQRPasivo('${pvQrCodigo}')">Descargar QR</button>
               </div>
@@ -2571,14 +2742,14 @@
 
         <div class="pv-titular-grid">
           <div class="pv-titular-card" style="--pv-c:#6495ed">
-            <div class="pv-titular-label">Clics</div>
+            <div class="pv-titular-label">Interacciones</div>
             <div class="pv-titular-n pv-flip-num">${mkFlip(totalScans, '#7aaeff')}</div>
-            <div class="pv-titular-sub">Lectura de QR o clics en tu link.</div>
+            <div class="pv-titular-sub">QR, enlace y entradas directas atribuidas a tu canal.</div>
           </div>
           <div class="pv-titular-card" style="--pv-c:#c9a84c">
             <div class="pv-titular-label">Consultas</div>
             <div class="pv-titular-n pv-flip-num">${mkFlip(contactos.length, '#e8c96a')}</div>
-            <div class="pv-titular-sub">Personas que se sumaron a tu registro.</div>
+            <div class="pv-titular-sub">Registros atribuidos a tu canal.</div>
           </div>
         </div>
 
@@ -2587,15 +2758,7 @@
         <div class="pv-sec pv-msg-sec" id="secMensajes">
           <div class="pv-sec-head"><div><div class="pv-sec-titulo">Novedades de la red${misMensajes.length ? ` <span class="badge-nuevo" style="margin-left:.4rem">${misMensajes.length}</span>` : ''}</div><div class="pv-sec-sub">Actualizaciones de Sur Patagonian para tu espacio.</div></div></div>
           <div class="msg-inbox" id="msgInbox">
-            ${misMensajes.length ? misMensajes.map((m, i) => `
-              <div class="msg-card" id="msgCard-${i}">
-                <div class="msg-card-head" onclick="toggleMsg(${i})">
-                  <div class="msg-unread-dot" id="dot-${i}"></div>
-                  <div class="msg-card-asunto">${esc(m.asunto)}</div>
-                  <div class="msg-card-fecha">${fmt(m.created_at)}</div>
-                </div>
-                <div class="msg-card-body" id="msgBody-${i}"><div class="msg-card-cuerpo">${esc(m.cuerpo)}</div></div>
-              </div>`).join('') : mensajesVacioHtml('Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.')}
+            ${renderMensajes('Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.', 'Tu respuesta como titular')}
           </div>
         </div>
 
@@ -2606,18 +2769,8 @@
       requestAnimationFrame(() => {
         renderGraficoPasivo(contactos, 7)
         renderMiniMapaPasivo(canal)
-        const heroQrCanvas = document.getElementById('pvHeroQrCanvas')
-        const heroQrCodigo = codigoQrCanonicoPasivo(canal)
-        if (heroQrCanvas && heroQrCodigo && typeof QRCode !== 'undefined') {
-          const qrUrl = linkQrCanonico(heroQrCodigo)
-          QRCode.toCanvas(heroQrCanvas, qrUrl, {
-            width: 72, margin: 1, errorCorrectionLevel: 'H',
-            color: { dark: '#111111', light: '#ffffff' }
-          }).catch(e => console.warn('QR hero error', e))
-        }
       })
     } else {
-      const mAct       = metricasPasivo(contactos)
       const primerC    = canales[0]
       const geoAct     = [primerC.ciudad, primerC.provincia].filter(Boolean).join(', ')
       const estadoAct  = !primerC.activo ? 'inactivo' : campanaActiva[primerC.id] ? 'campana' : 'activo'
@@ -2630,7 +2783,7 @@
         <div class="pv-hero-title">
           <h1>${esc(nombreDisplay)}</h1>
           <div class="pv-hero-sub-bar">
-            <span style="width:8px;height:8px;border-radius:50%;background:${dotColorAct};${estadoAct!=='inactivo'?`box-shadow:0 0 10px ${dotColorAct}88`:''};flex-shrink:0;display:inline-block;"></span>
+            <span style="width:8px;height:8px;border-radius:50%;background:${dotColorAct};${estadoAct==='activo'?`box-shadow:0 0 10px ${dotColorAct}88`:''};flex-shrink:0;display:inline-block;"></span>
             <span>${geoAct ? esc(geoAct) + ' · ' : ''}${esc(dotLabelAct)}</span>
           </div>
           <div class="pv-periodo-bar-hero">
@@ -2638,7 +2791,7 @@
             <button class="pv-flt-btn" data-dias="7" onclick="pvSetPeriodo(this)">7 días</button>
             <button class="pv-flt-btn" data-dias="30" onclick="pvSetPeriodo(this)">30 días</button>
             <button class="pv-flt-btn" data-dias="custom" onclick="pvSetPeriodo(this)">Personalizado</button>
-            <button class="pv-btn-refresh" onclick="location.reload()">Actualizar</button>
+            <button class="pv-btn-refresh" onclick="actualizarPanelSeguro()">Actualizar</button>
           </div>
           <div class="pv-flt-custom" id="pvFltCustom" style="display:none;margin-top:.8rem;">
             <label>Desde<input type="date" id="pvEvolDesde" class="pv-fecha-input"></label>
@@ -2650,30 +2803,30 @@
         <div class="pv-kpi-grid">
           <div class="pv-kpi" style="--pv-c:#6495ed">
             <div class="pv-kpi-label">Interacciones del período</div>
-            <div class="pv-kpi-n" id="pvKpi1N">${totalScans.toLocaleString('es-AR')}</div>
-            <div class="pv-kpi-sub" id="pvKpi1Sub">Actividad histórica de todos tus QRs.</div>
+            <div class="pv-kpi-n" id="pvKpi1N">—</div>
+            <div class="pv-kpi-sub" id="pvKpi1Sub">Calculando el período…</div>
           </div>
           <div class="pv-kpi" style="--pv-c:#89b4f7">
             <div class="pv-kpi-label">Escaneos QR del período</div>
-            <div class="pv-kpi-n" id="pvKpi2N">${mAct.v30.toLocaleString('es-AR')}</div>
+            <div class="pv-kpi-n" id="pvKpi2N">—</div>
             <div id="pvKpi2Delta"></div>
-            <div class="pv-kpi-sub" id="pvKpi2Sub">Escaneos desde QR físico en el período.</div>
+            <div class="pv-kpi-sub" id="pvKpi2Sub">Calculando el período…</div>
           </div>
           <div class="pv-kpi" style="--pv-c:#c9a84c">
             <div class="pv-kpi-label">Consultas del período</div>
-            <div class="pv-kpi-n pv-dorado" id="pvKpi3N">${contactos.length.toLocaleString('es-AR')}</div>
+            <div class="pv-kpi-n pv-dorado" id="pvKpi3N">—</div>
             <div id="pvKpi3Delta"></div>
-            <div class="pv-kpi-sub" id="pvKpi3Sub">${mAct.c30.toLocaleString('es-AR')} consultas en el período.</div>
+            <div class="pv-kpi-sub" id="pvKpi3Sub">Calculando el período…</div>
           </div>
           <div class="pv-kpi" style="--pv-c:#3bbf88">
             <div class="pv-kpi-label">Conversión del período</div>
-            <div class="pv-kpi-n" id="pvKpi4N">${mAct.conv30}%</div>
+            <div class="pv-kpi-n" id="pvKpi4N">—</div>
             <div id="pvKpi4Delta"></div>
-            <div class="pv-kpi-sub" id="pvKpi4Sub">Scans que generaron una oportunidad.</div>
+            <div class="pv-kpi-sub" id="pvKpi4Sub">Calculando el período…</div>
           </div>
           <div class="pv-kpi kpi-prop">
             <div class="pv-kpi-label">Propiedades activas</div>
-            <div class="pv-kpi-n">${misSlots.filter(s => s.activo !== false && esPropiedadReal(s)).length}</div>
+            <div class="pv-kpi-n">${unidadesGrafico().filter(u => u.propiedadId).length}</div>
             <div class="pv-kpi-sub">Propiedades reales vinculadas a tu canal.</div>
           </div>
         </div>
@@ -2688,23 +2841,7 @@
             <div class="pv-sec-sub">Actualizaciones de Sur Patagonian para tu espacio.</div>
           </div></div>
           <div class="msg-inbox" id="msgInbox">
-            ${misMensajes.length ? misMensajes.map((msg, i) => `
-              <div class="msg-card" id="msgCard-${i}">
-                <div class="msg-card-head" onclick="toggleMsg(${i})">
-                  <div class="msg-unread-dot" id="dot-${i}"></div>
-                  <div class="msg-card-asunto">${esc(msg.asunto)}</div>
-                  <div class="msg-card-fecha">${fmt(msg.created_at)}</div>
-                </div>
-                <div class="msg-card-body" id="msgBody-${i}">
-                  <div class="msg-card-cuerpo">${esc(msg.cuerpo)}</div>
-                  <div class="reply-area">
-                    <div class="reply-titulo">Tu respuesta</div>
-                    ${(msg.mensajes_respuestas || []).map(r => `<div class="reply-item-colab"><div class="reply-cuerpo">${esc(r.cuerpo)}</div><div class="reply-meta">${fmt(r.created_at)}</div></div>`).join('')}
-                    <textarea class="reply-input" id="replyInput-${i}" placeholder="Escribí tu respuesta..."></textarea>
-                    <button class="btn-reply" data-message-id="${esc(msg.id)}" onclick="enviarRespuesta(this.dataset.messageId, ${i})">Enviar respuesta</button>
-                  </div>
-                </div>
-              </div>`).join('') : mensajesVacioHtml('Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.')}
+            ${renderMensajes('Cuando Sur Patagonian tenga novedades para tu canal, las vas a encontrar acá.')}
           </div>
         </div>
 
@@ -2716,7 +2853,7 @@
       // ETAPA 3A.2: fechas iniciales definidas antes del RAF para pasarlas a renderPanelesActivos y renderSlotMiniCharts
       const _h = new Date(); const _d = new Date(_h); _d.setHours(0,0,0,0)
       requestAnimationFrame(() => {
-        renderGraficoPasivo(contactos, 0, null, null, { multiSlot: true })
+        renderGraficoPasivo(contactos, 0, null, null, { multiSlot: _modoMultiSlot() })
         renderPanelesActivos(contactos)
         if (misSlots.length) {
           generarQRCanvases()
@@ -2729,6 +2866,14 @@
         if (misSlots.length) renderSlotMiniCharts(_d, _h, 'hoy')
       })
     }
+    }
+    try {
+      renderizarPanelCompleto()
+    } catch (error) {
+      console.error('[panel] No se pudo publicar la primera carga completa:', error)
+      document.getElementById('mainContent').innerHTML = '<div class="empty-msg">Los datos se cargaron, pero el panel no pudo dibujarse completo. No se publicaron métricas parciales. Probá actualizar.</div>'
+      return
+    }
 
     function compararPeriodo(actual, anterior) {
       if (anterior === 0) return { valor:null, nueva:actual > 0 }
@@ -2736,21 +2881,28 @@
     }
 
     function metricasPasivo(contactos) {
-      const corte30 = new Date(Date.now() - 30 * 86400000)
-      const corte60 = new Date(Date.now() - 60 * 86400000)
-      const v30 = visitas.filter(v => esEntrada(v) && new Date(v.created_at) >= corte30).length
-      const c30 = contactos.filter(c => new Date(c.created_at) >= corte30).length
-      const vAnt = visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= corte60 && d < corte30 }).length
-      const cAnt = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 }).length
-      const c30Web = contactos.filter(c => new Date(c.created_at) >= corte30 && c.origen !== 'manual').length
-      const cAntWeb = contactos.filter(c => { const d = new Date(c.created_at); return d >= corte60 && d < corte30 && c.origen !== 'manual' }).length
-      const conv30 = v30 > 0 ? Number((c30Web / v30 * 100).toFixed(1)) : 0
-      const convAnt = vAnt > 0 ? Number((cAntWeb / vAnt * 100).toFixed(1)) : 0
+      const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
+      const corte30 = new Date(hoy0.getTime() - 29 * 86400000)
+      const corte60 = new Date(hoy0.getTime() - 59 * 86400000)
+      const finActual = new Date(hoy0.getTime() + 86400000)
+      const enActual = fila => { const d = new Date(fila.created_at); return d >= corte30 && d < finActual }
+      const enAnterior = fila => { const d = new Date(fila.created_at); return d >= corte60 && d < corte30 }
+      const v30 = visitas.filter(v => esInteraccion(v) && enActual(v)).length
+      const v30Digital = visitas.filter(v => esEntrada(v) && enActual(v)).length
+      const qr30 = visitas.filter(v => clasificarVia(v) === 'qr' && enActual(v)).length
+      const c30 = contactos.filter(enActual).length
+      const vAnt = visitas.filter(v => esInteraccion(v) && enAnterior(v)).length
+      const vAntDigital = visitas.filter(v => esEntrada(v) && enAnterior(v)).length
+      const cAnt = contactos.filter(enAnterior).length
+      const c30Web = contactos.filter(c => esEntrada(c) && enActual(c)).length
+      const cAntWeb = contactos.filter(c => esEntrada(c) && enAnterior(c)).length
+      const conv30 = v30Digital > 0 ? Number((c30Web / v30Digital * 100).toFixed(1)) : 0
+      const convAnt = vAntDigital > 0 ? Number((cAntWeb / vAntDigital * 100).toFixed(1)) : 0
       return {
-        v30, c30, vAnt, cAnt, conv30,
+        v30, qr30, c30, vAnt, cAnt, conv30,
         deltaV: compararPeriodo(v30, vAnt),
         deltaC: compararPeriodo(c30, cAnt),
-        deltaConv: vAnt > 0 ? { valor:Number((conv30 - convAnt).toFixed(1)), nueva:false } : { valor:null, nueva:conv30 > 0 },
+        deltaConv: vAntDigital > 0 ? { valor:Number((conv30 - convAnt).toFixed(1)), nueva:false } : { valor:null, nueva:conv30 > 0 },
       }
     }
 
@@ -2775,7 +2927,10 @@
 
     function renderActividadReciente(contactos, limite = 8) {
       const eventos = [
-        ...visitas.filter(esEntrada).map(v => ({ fecha:v.created_at, tipo:v.canal_via === 'qr' ? 'qr' : 'link', texto:v.canal_via === 'qr' ? 'Clic desde QR físico' : 'Clic desde enlace digital' })),
+        ...visitas.filter(esInteraccion).map(v => {
+          const via = clasificarVia(v)
+          return { fecha:v.created_at, tipo:via === 'qr' ? 'qr' : via === 'link' ? 'link' : '', texto:via === 'qr' ? 'Clic desde QR físico' : via === 'link' ? 'Clic desde enlace digital' : 'Interacción directa' }
+        }),
         ...contactos.map(c => ({ fecha:c.created_at, tipo:'lead', texto:'Nueva consulta generada' })),
       ].filter(e => e.fecha).sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, limite)
 
@@ -2789,6 +2944,7 @@
     }
 
     function renderMiniMapaPasivo(canal) {
+      if (_pvMiniMap) { try { _pvMiniMap.remove() } catch (_) {} ; _pvMiniMap = null }
       const lat = Number(canal.latitud)
       const lng = Number(canal.longitud)
       const contenedor = document.getElementById('pvMiniMapa')
@@ -2804,6 +2960,7 @@
         touchZoom: false,
         keyboard: false,
       }).setView([lat, lng], 13)
+      _pvMiniMap = miniMap
 
       miniMap.attributionControl.setPrefix(false)
 
@@ -2815,13 +2972,13 @@
 
       const icon = leaflet.divIcon({
         className: '',
-        html: '<div style="width:14px;height:14px;background:#c9a84c;border:2px solid rgba(201,168,76,.5);border-radius:50%;box-shadow:0 0 12px rgba(201,168,76,.7),0 0 24px rgba(201,168,76,.3)"></div>',
+        html: '<div style="width:14px;height:14px;background:#c9a84c;border:2px solid rgba(201,168,76,.5);border-radius:50%"></div>',
         iconSize: [14, 14],
         iconAnchor: [7, 7],
       })
 
       leaflet.marker([lat, lng], { icon }).addTo(miniMap)
-      setTimeout(() => miniMap.invalidateSize(), 100)
+      setTimeout(() => { if (_pvMiniMap === miniMap) miniMap.invalidateSize() }, 100)
     }
 
     function renderFunnelCRM(contactos) {
@@ -2847,7 +3004,7 @@
       const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : null
       const fmtPct = (a, b) => { const v = pct(a, b); return v !== null ? `${v}% convirtió` : null }
 
-      const consultasWeb = contactosFunnel.filter(c => c.origen !== 'manual').length
+      const consultasWeb = contactosFunnel.filter(esEntrada).length
       const convC = fmtPct(consultasWeb, totalInteracciones)
       const convCo = fmtPct(totalContactadas, totalConsultas)
       const convV = fmtPct(totalVisitas, totalContactadas)
@@ -2895,7 +3052,7 @@
       const total        = contactos.length
       const totalNueva   = contactos.filter(c => c.estado === 'nueva').length
       const totalContact = contactos.filter(c => c.estado === 'contactado').length
-      const totalVisita  = contactos.filter(c => c.estado === 'visita').length
+      const totalVisita  = contactos.filter(c => c.estado === 'visita' || c.estado === 'visita_realizada').length
       const totalOferta  = contactos.filter(c => c.estado === 'oferta').length
       const totalCerrado = contactos.filter(c => c.estado === 'cerrado').length
       const totalDescar  = contactos.filter(c => c.estado === 'descartado').length
@@ -2913,7 +3070,7 @@
         if (isNaN(d.getTime())) return
         const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
         porMes[key] = (porMes[key] || 0) + 1
-        if (!porMesEstado[key]) porMesEstado[key] = { nueva: 0, contactado: 0, visita: 0, oferta: 0, cerrado: 0, descartado: 0 }
+        if (!porMesEstado[key]) porMesEstado[key] = { nueva: 0, contactado: 0, visita: 0, visita_realizada: 0, oferta: 0, cerrado: 0, descartado: 0 }
         const est = c.estado || 'nueva'
         if (porMesEstado[key][est] !== undefined) porMesEstado[key][est]++
       })
@@ -2993,8 +3150,8 @@
       // Columnas = estados CRM con datos; filas = mes de ingreso (cohorte)
       // color visual = cohorte — posición = estado actual
       const EST_CLR = {
-        contactado: '#35c6b4', visita: '#f29a5a', oferta: '#7aaeff',
-        visita_realizada: '#f29a5a', cerrado: '#50c878', descartado: '#7b7f88', nueva: '#b39ddb'
+        contactado: '#35c6b4', visita: '#f29a5a', oferta: '#d9a7ff',
+        visita_realizada: '#7fd1c6', cerrado: '#a9dc7a', descartado: '#7b7f88', nueva: '#b39ddb'
       }
       const ETAPAS_ORDEN = [
         { key: 'nueva',      col: 1  },
@@ -3293,9 +3450,9 @@
         }
         return 'TUS CANALES'
       })()
-      const vendidoStroke = cerradoN > 0 ? 'rgba(232,201,106,.75)' : 'rgba(232,201,106,.4)'
-      const vendidoFilter = cerradoN > 0 ? 'filter:drop-shadow(0 0 9px rgba(232,201,106,.45))' : ''
-      const vendidoText = cerradoN > 0 ? 'rgba(232,201,106,.8)' : 'rgba(255,255,255,.55)'
+      const vendidoStroke = cerradoN > 0 ? 'rgba(169,220,122,.75)' : '#6f6b72'
+      const vendidoFilter = ''
+      const vendidoText = cerradoN > 0 ? 'rgba(169,220,122,.8)' : '#6f6b72'
 
       const svg = `<svg class="pv-activo-recorrido-svg" viewBox="0 0 1000 360" role="img" aria-label="Recorrido de leads desde la agencia hasta el cierre">
         <defs>
@@ -3345,15 +3502,15 @@
         <g transform="translate(735,272)">
           <image href="../assets/logos/picos-blanco.png" x="-19" y="-190" width="38" height="20.8" opacity=".13" preserveAspectRatio="xMidYMid meet"/>
           <text x="0" y="-162" text-anchor="middle" fill="#8a8f99" font-size="8.5" letter-spacing="2.6" font-family="Inter" opacity=".8">SUR PATAGONIAN</text>
-          <rect x="-72" y="-152" width="144" height="152" rx="10" fill="url(#gradEstacionActivo)" stroke="rgba(59,191,136,.4)" stroke-width="1.5"/>
+          <rect x="-72" y="-152" width="144" height="152" rx="10" fill="url(#gradEstacionActivo)" stroke="rgba(217,167,255,.4)" stroke-width="1.5"/>
           <text x="0" y="-130" text-anchor="middle" fill="rgba(255,255,255,.55)" font-size="9" letter-spacing="1.8" font-family="Inter">OFERTA ENVIADA</text>
           <line x1="-52" y1="-120" x2="52" y2="-120" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
           <g transform="translate(0,-94)">
-            <circle r="13" fill="rgba(59,191,136,.1)" stroke="#3bbf88" stroke-opacity=".6" stroke-width="1.4"/>
-            <text x="0" y="4.5" text-anchor="middle" fill="#3bbf88" font-size="13" font-weight="700" font-family="Inter">$</text>
+            <circle r="13" fill="rgba(217,167,255,.1)" stroke="#d9a7ff" stroke-opacity=".6" stroke-width="1.4"/>
+            <text x="0" y="4.5" text-anchor="middle" fill="#d9a7ff" font-size="13" font-weight="700" font-family="Inter">$</text>
           </g>
           ${renderStationCards(porMesEstado(['oferta']), 110)}
-          <text x="0" y="42" text-anchor="middle" fill="#3bbf88" font-size="9.5" letter-spacing="1.8" font-weight="700" font-family="Inter">OFERTA · ${ofertaN.toLocaleString('es-AR')}</text>
+          <text x="0" y="42" text-anchor="middle" fill="#d9a7ff" font-size="9.5" letter-spacing="1.8" font-weight="700" font-family="Inter">OFERTA · ${ofertaN.toLocaleString('es-AR')}</text>
         </g>
         <g transform="translate(918,272)">
           <path d="M -55 0 L -55 -104 L 0 -164 L 55 -104 L 55 0 Z" fill="url(#gradEstacionActivo)" stroke="${vendidoStroke}" stroke-width="1.8" style="${vendidoFilter}"/>
@@ -3376,7 +3533,7 @@
         }
         movimientosPorLead[key].eventos.push(mv)
       })
-      const leadRows = Object.values(movimientosPorLead)
+      const leadRowsCompletas = Object.values(movimientosPorLead)
         .map(card => {
           const eventos = card.eventos.slice().sort((a, b) => {
             const da = fechaObj(a.fecha_evento || a.fecha_evento_publica)?.getTime() || 0
@@ -3389,7 +3546,8 @@
           return { ...card, eventos, fechaUltima }
         })
         .sort((a, b) => (fechaObj(b.fechaUltima)?.getTime() || 0) - (fechaObj(a.fechaUltima)?.getTime() || 0))
-        .slice(0, 30)
+      const limiteRegistro = 30
+      const leadRows = leadRowsCompletas.slice(0, limiteRegistro)
 
       const registroHtml = leadRows.length ? leadRows.map(card => {
         const color = colorMes(card.mes_ingreso_key)
@@ -3447,6 +3605,7 @@
           </div>
         </div>
         <div class="pv-activo-registro">${registroHtml}</div>
+        ${leadRowsCompletas.length > limiteRegistro ? `<div class="pv-sec-sub" style="margin-top:.55rem">Mostrando los ${limiteRegistro.toLocaleString('es-AR')} movimientos más recientes de ${leadRowsCompletas.length.toLocaleString('es-AR')}.</div>` : ''}
       </div>`
     }
 
@@ -3465,35 +3624,12 @@
       const total = estadosPersona.length
       const items = [
         { n: total, label: 'Total', color: '#cdd2da' },
-        { n: cuenta('visita'), label: 'En visita', color: '#f29a5a' },
-        { n: cuenta('oferta'), label: 'Oferta', color: '#6ee89a' },
-        { n: cuenta('cerrado'), label: 'Cerrado', color: '#e8c96a' },
+        { n: cuenta('visita') + cuenta('visita_realizada'), label: 'En visita', color: '#f29a5a' },
+        { n: cuenta('oferta'), label: 'Oferta', color: '#d9a7ff' },
+        { n: cuenta('cerrado'), label: 'Cerrado', color: '#a9dc7a' },
       ]
       return `<div class="pv-estado-simple-grid">
         ${items.map(i => `<div class="pv-estado-simple" style="--sc:${i.color}"><span>${i.n.toLocaleString('es-AR')}</span><small>${esc(i.label)}</small></div>`).join('')}
-      </div>`
-    }
-
-    function renderTablaEstadoPasivo(contactos) {
-      const filas = contactos.length
-        ? contactos.slice(0, 40).map(c => {
-            return `<tr>
-              <td style="width:10px">${(c.estado || 'nueva') === 'nueva' ? '<div class="pv-dot-nueva"></div>' : ''}</td>
-              <td class="pv-fecha">${fmt(c.created_at)}</td>
-              <td><span class="pv-via ${c.origen === 'manual' ? '' : (c.canal_via === 'qr' ? 'qr' : c.canal_via === 'link' ? 'link' : '')}" ${(c.origen === 'manual' || (c.canal_via !== 'qr' && c.canal_via !== 'link')) ? 'style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${(c.origen === 'manual' || (c.canal_via !== 'qr' && c.canal_via !== 'link')) ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen === 'manual' ? 'Manual' : (c.canal_via === 'qr' ? 'QR físico' : c.canal_via === 'link' ? 'Enlace' : 'Directo')}</span></td>
-              <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL_PASIVO[c.estado]||'Sin avance')}</span></td>
-            </tr>`
-          }).join('')
-        : '<tr><td colspan="4"><div class="pv-empty">Aún no hay consultas generadas desde tu canal.</div></td></tr>'
-
-      return `<div class="pv-sec">
-        <div class="pv-sec-head"><div><div class="pv-sec-titulo">Estado de las consultas generadas</div><div class="pv-sec-sub">Seguimiento comercial de las consultas atribuidas a tu canal.</div></div></div>
-        <div style="overflow-x:auto">
-          <table class="pv-tabla">
-            <thead><tr><th></th><th>Fecha</th><th>Origen</th><th>Estado</th></tr></thead>
-            <tbody>${filas}</tbody>
-          </table>
-        </div>
       </div>`
     }
 
@@ -3509,10 +3645,10 @@
     }
 
     function renderPasivo(contactos, filasTraza = [], canal = null) {
-      const qrTotal = contactos.filter(c => c.origen !== 'manual' && c.canal_via === 'qr').length
-      const manualTotal = contactos.filter(c => c.origen === 'manual').length
-      const linkTotal = contactos.filter(c => c.origen !== 'manual' && c.canal_via === 'link').length
-      const directoTotal = contactos.filter(c => c.origen !== 'manual' && c.canal_via !== 'qr' && c.canal_via !== 'link').length
+      const qrTotal = contactos.filter(c => clasificarVia(c) === 'qr').length
+      const manualTotal = contactos.filter(c => clasificarVia(c) === 'manual').length
+      const linkTotal = contactos.filter(c => clasificarVia(c) === 'link').length
+      const directoTotal = contactos.filter(c => clasificarVia(c) === 'directo').length
 
       return `
         <div class="pv-sec">
@@ -3590,7 +3726,7 @@
       const fin = new Date(hasta)
       fin.setHours(23,59,59,999)
       const dias = Math.max(1, Math.ceil((fin - inicio) / 86400000))
-      const bloqueDias = dias <= 14 ? 1 : dias <= 45 ? 3 : dias <= 120 ? 7 : 30
+      const bloqueDias = dias <= 30 ? 1 : dias <= 45 ? 3 : dias <= 120 ? 7 : 30
       const labelsEvol = [], dataScans = [], dataConsultas = []
 
       for (let cursor = new Date(inicio); cursor <= fin; cursor = new Date(cursor.getTime() + bloqueDias * 86400000)) {
@@ -3598,14 +3734,7 @@
         const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
         labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
         dataScans.push(visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
-        dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
-      }
-      // Arrancar desde el primer día con actividad real
-      const firstIdx = dataScans.findIndex((v, i) => v > 0 || dataConsultas[i] > 0)
-      if (firstIdx > 0) {
-        labelsEvol.splice(0, firstIdx)
-        dataScans.splice(0, firstIdx)
-        dataConsultas.splice(0, firstIdx)
+        dataConsultas.push(contactos.filter(c => { if (!esEntrada(c)) return false; const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
       }
       return { labelsEvol, dataScans, dataConsultas }
     }
@@ -3626,10 +3755,8 @@
         const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
         labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
         dataScans.push(visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
-        dataConsultas.push(contactos.filter(c => { const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataConsultas.push(contactos.filter(c => { if (!esEntrada(c)) return false; const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
       }
-      const firstIdx = dataScans.findIndex((v, i) => v > 0 || dataConsultas[i] > 0)
-      if (firstIdx > 0) { labelsEvol.splice(0, firstIdx); dataScans.splice(0, firstIdx); dataConsultas.splice(0, firstIdx) }
       return { labelsEvol, dataScans, dataConsultas }
     }
 
@@ -3644,44 +3771,45 @@
 
     // ── Leyenda interactiva del gráfico principal (modo multi-slot) ──
     // Total y Consultas siempre visibles (locked). Cada propiedad se oculta/muestra con click.
-    function renderLeyendaMultiSlot(ctx) {
+    function renderLeyendaMultiSlot() {
       const host = document.getElementById('pvLegendHost')
       if (!host) return
       const chips = []
       // Total de interacciones (locked)
       chips.push(`<div class="pv-legend-chip locked" title="Siempre visible">
-        <span class="pv-legend-dot" style="background:#7aaeff;color:#7aaeff;"></span>
+        <span class="pv-legend-dot" style="background:#7aaeff;color:#7aaeff;box-shadow:none"></span>
         <span class="pv-legend-name">Total interacciones</span>
       </div>`)
       // Consultas (locked)
       chips.push(`<div class="pv-legend-chip locked" title="Siempre visible">
-        <span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;"></span>
+        <span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;box-shadow:none"></span>
         <span class="pv-legend-name">Consultas</span>
       </div>`)
-      // Una por slot activo con actividad (todos los slots activos, no solo propiedades reales)
-      misSlots.filter(s => s.activo !== false).forEach(slot => {
-        const color = colorDeSlot(slot.codigo)
-        const proy = proyImgs[slot.proyecto_slug]
-        const nombre = proy?.nombre || slot.nombre || slot.codigo
-        const off = window._pvSlotHidden[slot.codigo] === true ? ' off' : ''
-        chips.push(`<div class="pv-legend-chip${off}" data-slot="${esc(slot.codigo)}" title="Click para mostrar/ocultar">
-          <span class="pv-legend-dot" style="background:${color};color:${color};"></span>
-          <span class="pv-legend-name">${esc(nombre)}</span>
-        </div>`)
+      unidadesGrafico().forEach(unidad => {
+        const off = window._pvSlotHidden[unidad.key] === true ? ' off' : ''
+        chips.push(`<button type="button" class="pv-legend-chip${off}" data-series-key="${esc(unidad.key)}" aria-pressed="${off ? 'false' : 'true'}" title="Mostrar u ocultar ${esc(unidad.nombre)}">
+          <span class="pv-legend-dot" style="background:${unidad.color};color:${unidad.color};box-shadow:none"></span>
+          <span class="pv-legend-name">${esc(unidad.nombre)}</span>
+        </button>`)
       })
       host.innerHTML = `<div class="pv-legend">${chips.join('')}</div>`
-      host.querySelectorAll('.pv-legend-chip[data-slot]').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const codigo = chip.dataset.slot
-          window._pvSlotHidden[codigo] = !(window._pvSlotHidden[codigo] === true)
+      host.querySelectorAll('.pv-legend-chip[data-series-key]').forEach(chip => {
+        const alternar = () => {
+          const key = chip.dataset.seriesKey
+          window._pvSlotHidden[key] = !(window._pvSlotHidden[key] === true)
           // Re-render solo el chart sin recalcular datos
           if (_pvChart4) {
             _pvChart4.data.datasets.forEach(ds => {
-              if (ds._slotCodigo === codigo) ds.hidden = window._pvSlotHidden[codigo] === true
+              if (ds._seriesKey === key) ds.hidden = window._pvSlotHidden[key] === true
             })
             _pvChart4.update('none')
           }
           chip.classList.toggle('off')
+          chip.setAttribute('aria-pressed', window._pvSlotHidden[key] === true ? 'false' : 'true')
+        }
+        chip.addEventListener('click', alternar)
+        chip.addEventListener('keydown', ev => {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); alternar() }
         })
       })
     }
@@ -3689,15 +3817,13 @@
     function renderGraficoPasivo(contactos, dias, desdeCustom = null, hastaCustom = null, opciones = {}) {
       if (typeof Chart === 'undefined') return
 
-      const multiSlot = opciones.multiSlot === true && misSlots && misSlots.length > 0
+      const unidades = unidadesGrafico()
+      const multiSlot = opciones.multiSlot === true && unidades.length >= 2
       const modoHoy = dias === 0 && !desdeCustom
 
       // ── Cleanup ──
       if (_pvChart4) { _pvChart4.destroy(); _pvChart4 = null }
-      ;[_pvChart4b, _pvChart4c].forEach(ch => { if (ch) ch.destroy() })
-      _pvChart4b = _pvChart4c = null
       if (_pvLiveRAF) { cancelAnimationFrame(_pvLiveRAF); _pvLiveRAF = null }
-      if (_pvLiveTimer) { clearInterval(_pvLiveTimer); _pvLiveTimer = null }
       if (_pvDocMoveH) { document.removeEventListener('mousemove', _pvDocMoveH); _pvDocMoveH = null }
       if (_pvDocUpH)   { document.removeEventListener('mouseup',   _pvDocUpH);   _pvDocUpH   = null }
 
@@ -3729,28 +3855,6 @@
             ticks:{color:'rgba(255,255,255,.35)', precision:0, padding:10, font:{size:10,family:'Inter'}, callback:(v) => Number(v).toLocaleString('es-AR')} }
       }
       const gradAzul = (c) => { const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.32)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.72)'); g.addColorStop(0.45,'rgba(122,174,255,.34)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g }
-      const pluginPeakMark = (peakIdx) => ({
-        id:'pvPeakMark4',
-        beforeDatasetsDraw(chart) {
-          const {ctx:c,chartArea,scales}=chart
-          if(!chartArea||peakIdx<0) return
-          const x=scales.x.getPixelForValue(peakIdx)
-          if(!Number.isFinite(x)) return
-          const g=c.createLinearGradient(x-40,0,x+40,0)
-          g.addColorStop(0,'rgba(232,201,106,0)'); g.addColorStop(0.5,'rgba(232,201,106,.12)'); g.addColorStop(1,'rgba(232,201,106,0)')
-          c.save(); c.fillStyle=g; c.fillRect(x-40,chartArea.top,80,chartArea.bottom-chartArea.top)
-          c.beginPath(); c.setLineDash([4,6]); c.strokeStyle='rgba(232,201,106,.35)'; c.lineWidth=1
-          c.moveTo(x,chartArea.top); c.lineTo(x,chartArea.bottom); c.stroke(); c.restore()
-        }
-      })
-      const pluginGoldGlow = {
-        id:'pvGoldGlow4',
-        beforeDatasetDraw(chart,args) {
-          if (args.index===0) { chart.ctx.save(); chart.ctx.shadowColor='rgba(122,174,255,.28)'; chart.ctx.shadowBlur=6 }
-          else if (args.index===1) { chart.ctx.save(); chart.ctx.shadowColor='rgba(232,201,106,.5)'; chart.ctx.shadowBlur=10 }
-        },
-        afterDatasetDraw(chart,args) { if(args.index===0||args.index===1) chart.ctx.restore() }
-      }
       // datasetsBase ahora recibe también el array de líneas por propiedad (opcional)
       const datasetsBase = (lblsData, slotLines = []) => {
         const base = [
@@ -3774,14 +3878,13 @@
         if (multiSlot) {
           base[0].label = 'Total de clics'
           slotLines.forEach((ln, i) => {
-            const hidden = window._pvSlotHidden[ln.codigo] === true
             base.push({
-              label: ln.nombre, _slotCodigo: ln.codigo, data: ln.data, order: 10 + i,
+              label: ln.nombre, _seriesKey: ln.key, data: ln.data, order: 10 + i,
               borderColor: ln.color, borderWidth: 1.4, tension: 0.4, fill: false,
               cubicInterpolationMode: 'monotone', spanGaps: true,
               pointRadius: 0, pointHoverRadius: 4,
               pointHoverBackgroundColor: ln.color, pointHoverBorderColor: '#fff', pointHoverBorderWidth: 1.5,
-              hidden
+              hidden: window._pvSlotHidden[ln.key] === true
             })
           })
         }
@@ -3813,6 +3916,7 @@
           const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketScans[b]++
         })
         contactos.forEach(c => {
+          if (!esEntrada(c)) return
           if (!inHoy(c.created_at)) return
           const d=new Date(c.created_at); const m=d.getHours()*60+d.getMinutes()
           const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketCons[b]++
@@ -3824,20 +3928,15 @@
           return (i * VENTANA) % 360 === 0 ? `${hh}:00` : ''
         })
 
-        const totalPorBucket = bucketScans.map((s,i)=>s+bucketCons[i])
-        const peakVal = Math.max(...totalPorBucket, 0)
-        const peakIdx = peakVal>0 ? totalPorBucket.indexOf(peakVal) : -1
-
-        // ── Líneas individuales por slot (modo Hoy, por bucket de 15min) ──
+        // Líneas individuales por negocio (pasivo) o propiedad (activo).
+        // Las series en cero se conservan para que la leyenda no cambie al cambiar período.
         const slotLinesHoy = []
         if (multiSlot) {
-          comerciosDelAliado.forEach(com => {
-            const visCom = visitas.filter(v => esEntrada(v) && com.codigos.has(v.canal_ref) && inHoy(v.created_at))
+          unidades.forEach(unidad => {
+            const visCom = visitas.filter(v => esEntrada(v) && unidad.codigos.has(v.canal_ref) && inHoy(v.created_at))
             const arr = new Array(numBuckets).fill(0)
             visCom.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
-            if (arr.some(x => x > 0)) {
-              slotLinesHoy.push({ codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr })
-            }
+            slotLinesHoy.push({ key: unidad.key, codigo: unidad.codigo, nombre: unidad.nombre, color: unidad.color, data: arr })
           })
         }
 
@@ -3854,25 +3953,24 @@
                 const {ctx:c,data}=chart
                 const t=(Date.now()%1600)/1600
                 const pulse=(1-t)*14, alpha=(1-t)*0.55
-                const lastIdx=(data.labels||[]).length-1
-                if(lastIdx<0) return
                 const drawPulse=(di,color)=>{
                   const meta=chart.getDatasetMeta(di)
-                  if(!meta?.data?.length) return
+                  const valores=chart.data.datasets[di]?.data||[]
+                  let lastIdx=-1
+                  for(let i=valores.length-1;i>=0;i--){ if(Number(valores[i])>0){ lastIdx=i; break } }
+                  if(lastIdx<0||!meta?.data?.length) return
                   const pt=meta.data[lastIdx]; if(!pt) return
                   c.save()
                   c.beginPath(); c.arc(pt.x,pt.y,pulse,0,Math.PI*2)
                   c.strokeStyle=color.replace('ALPHA',alpha.toFixed(3)); c.lineWidth=1.5; c.stroke()
                   c.beginPath(); c.arc(pt.x,pt.y,4,0,Math.PI*2)
-                  c.fillStyle=color.replace('ALPHA','1'); c.shadowColor=color.replace('ALPHA','.8'); c.shadowBlur=12; c.fill()
+                  c.fillStyle=color.replace('ALPHA','1'); c.fill()
                   c.restore()
                 }
                 drawPulse(0,'rgba(122,174,255,ALPHA)')
                 drawPulse(1,'rgba(232,201,106,ALPHA)')
               }
             },
-            pluginPeakMark(peakIdx),
-            pluginGoldGlow
           ],
           options:{
             responsive:true, maintainAspectRatio:false,
@@ -3901,7 +3999,7 @@
         const refrescarContadores = () => {
           const hoy=new Date(); hoy.setHours(0,0,0,0)
           setText('pvLiveScans4', visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoy).length)
-          setText('pvLiveConsultas4', contactos.filter(v=>new Date(v.created_at)>=hoy).length)
+          setText('pvLiveConsultas4', contactos.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoy).length)
         }
         refrescarContadores()
 
@@ -3931,65 +4029,33 @@
           pvZB.style.display = 'flex'
         }
 
-        // Refresco real cada 30s (re-fetch desde Supabase)
-        _pvLiveTimer = setInterval(async () => {
-          const [rV, rC] = await Promise.all([
-            supabase.from('visitas').select('created_at,canal_via,canal_ref').in('canal_ref', codigosRef),
-            supabase.from('contactos').select('*').in('canal_ref', codigosRef).order('created_at',{ascending:false})
-          ])
-          if (rV.data) visitas = rV.data
-          if (rC.data) contactos = rC.data
-          renderGraficoPasivo(contactos, 0, null, null, { multiSlot: opciones.multiSlot === true })
-          if (opciones.multiSlot) renderPanelesActivos(contactos)
-        }, 30000)
-
       } else {
         // ── MODO PERÍODO: diario acumulado ───────────────────────────────
         // Ocultar barra de zoom (solo activa en modo Hoy)
         const pvZBP = document.getElementById('pvHoyZoomBar'); if (pvZBP) pvZBP.style.display = 'none'
         const hasta = hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : new Date()
         const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime()-(dias-1)*86400000)
-        const { labelsEvol, dataScans, dataConsultas } = (multiSlot ? datosEvolucionActivo : datosEvolucionPasivo)(contactos, desde, hasta)
+        const { labelsEvol, dataScans, dataConsultas } = (esPasivo ? datosEvolucionPasivo : datosEvolucionActivo)(contactos, desde, hasta)
 
-        const combined = dataScans.map((s,i)=>s+dataConsultas[i])
-        const peakVal = Math.max(...combined, 0)
-        const peakIdx = peakVal>0 ? combined.indexOf(peakVal) : -1
-
-        // ── Líneas individuales por slot (modo período, alineadas al total) ──
-        // ETAPA 1: buckets idénticos a datosEvolucionPasivo para que ninguna
-        // línea individual pueda superar visualmente a la línea total.
+        // Líneas individuales con los mismos buckets que el total.
         const slotLinesPeriodo = []
         if (multiSlot) {
-          // 1. Deduplicar misSlots por codigo solo en memoria
-          const _seenCod = new Set()
-          const slotsDedup = misSlots.filter(s => {
-            if (_seenCod.has(s.codigo)) { console.warn('[Etapa1] Slot duplicado omitido:', s.codigo); return false }
-            _seenCod.add(s.codigo); return true
-          })
-          // 2. Replicar la normalización exacta de datosEvolucionPasivo
           const _ini = new Date(desde); _ini.setHours(0,0,0,0)
           const _fin = new Date(hasta);  _fin.setHours(23,59,59,999)
           const _dias = Math.max(1, Math.ceil((_fin - _ini) / 86400000))
           const bloqueDias = _dias <= 30 ? 1 : _dias <= 45 ? 3 : _dias <= 120 ? 7 : 30
-          // 3. Construir los mismos buckets que usó la línea total
           const _buckets = []
           for (let _c = new Date(_ini); _c <= _fin; _c = new Date(_c.getTime() + bloqueDias * 86400000)) {
             const bIni = new Date(_c)
             const bFin = new Date(Math.min(_fin.getTime() + 1, bIni.getTime() + bloqueDias * 86400000))
             _buckets.push({ bIni, bFin })
           }
-          // 4. Eliminar los mismos buckets iniciales que recortó datosEvolucionPasivo
-          const _recorte = _buckets.length - labelsEvol.length
-          const _buckAlin = _recorte > 0 ? _buckets.slice(_recorte) : _buckets
-          // 5. Construir series con los buckets alineados (todos los slots activos)
-          comerciosDelAliado.forEach(com => {
-            const visCom = visitas.filter(v => esEntrada(v) && com.codigos.has(v.canal_ref))
-            const arr = _buckAlin.map(({ bIni, bFin }) =>
+          unidades.forEach(unidad => {
+            const visCom = visitas.filter(v => esEntrada(v) && unidad.codigos.has(v.canal_ref))
+            const arr = _buckets.map(({ bIni, bFin }) =>
               visCom.filter(v => { const d = new Date(v.created_at); return d >= bIni && d < bFin }).length
             )
-            if (arr.some(x => x > 0)) {
-              slotLinesPeriodo.push({ codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr })
-            }
+            slotLinesPeriodo.push({ key: unidad.key, codigo: unidad.codigo, nombre: unidad.nombre, color: unidad.color, data: arr })
           })
         }
 
@@ -4008,7 +4074,7 @@
         _pvChart4 = new Chart(ctx4, {
           type:'line',
           data:{ labels:labelsEvol, datasets:_dsPer },
-          plugins:[pluginPeakMark(peakIdx), pluginGoldGlow],
+          plugins:[],
           options:{
             responsive:true, maintainAspectRatio:false,
             animation:{duration:900,easing:'easeOutQuart'},
@@ -4034,51 +4100,25 @@
       }
 
       // ── Leyenda interactiva (solo modo multi-slot) ──
-      if (multiSlot) renderLeyendaMultiSlot(ctx4)
-
-      // ── Mini sparklines (siempre, independiente del modo) ───────────────
-      const hoy0=new Date(); hoy0.setHours(0,0,0,0)
-      const sem0=new Date(hoy0-7*86400000), mes0=new Date(hoy0-30*86400000)
-      const enRango=(iso,a,b)=>{ const d=new Date(iso); return d>=a&&d<=b }
-      const miniCfg=(data,color)=>({
-        type:'line',
-        data:{labels:data.map((_,i)=>i),datasets:[{data,borderColor:color,borderWidth:2,tension:0.4,fill:true,pointRadius:0,cubicInterpolationMode:'monotone',
-          backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(0,0,0,0)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,color.replace('1)','0.4)')); g.addColorStop(1,color.replace('1)','0)')); return g } }]},
-        options:{responsive:true,maintainAspectRatio:false,animation:{duration:600},plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}
-      })
-
-      const semAll=(()=>{ const d=7; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
-        visitas.forEach(v=>{ if(!esEntrada(v)||!enRango(v.created_at,sem0,new Date())) return; const i=Math.floor((new Date(v.created_at)-sem0)/86400000); if(i>=0&&i<d) oS[i]++ })
-        contactos.forEach(c=>{ if(!enRango(c.created_at,sem0,new Date())) return; const i=Math.floor((new Date(c.created_at)-sem0)/86400000); if(i>=0&&i<d) oC[i]++ })
-        let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
-      const mesAll=(()=>{ const d=30; const oS=new Array(d).fill(0),oC=new Array(d).fill(0)
-        visitas.forEach(v=>{ if(!esEntrada(v)||!enRango(v.created_at,mes0,new Date())) return; const i=Math.floor((new Date(v.created_at)-mes0)/86400000); if(i>=0&&i<d) oS[i]++ })
-        contactos.forEach(c=>{ if(!enRango(c.created_at,mes0,new Date())) return; const i=Math.floor((new Date(c.created_at)-mes0)/86400000); if(i>=0&&i<d) oC[i]++ })
-        let rs2=0,rc2=0; return {s:oS.map(v=>{rs2+=v;return rs2}),c:oC.map(v=>{rc2+=v;return rc2})} })()
-
-      const cb=document.getElementById('pvMiniSem')?.getContext('2d')
-      const cc=document.getElementById('pvMiniMes')?.getContext('2d')
-      if(cb) _pvChart4b=new Chart(cb,miniCfg(semAll.s.map((s,i)=>s+semAll.c[i]),'rgba(122,174,255,1)'))
-      if(cc) _pvChart4c=new Chart(cc,miniCfg(mesAll.s.map((s,i)=>s+mesAll.c[i]),'rgba(110,232,154,1)'))
-
-      setText('pvMiniSemN', (semAll.s[semAll.s.length-1]||0)+(semAll.c[semAll.c.length-1]||0))
-      setText('pvMiniMesN', (mesAll.s[mesAll.s.length-1]||0)+(mesAll.c[mesAll.c.length-1]||0))
+      if (multiSlot) renderLeyendaMultiSlot()
+      else { const host=document.getElementById('pvLegendHost'); if(host) host.innerHTML='' }
     }
 
 
     // El modo multi-slot aplica solo al canal activo (cuando hay slots asignados)
-    const _modoMultiSlot = () => misSlots && misSlots.length > 0
+    const _modoMultiSlot = () => unidadesGrafico().length >= 2
 
     // ── ETAPA 2: Actualizar KPI superiores según el período seleccionado ──
     function actualizarKpisActivo(desde, hasta) {
       const d0 = new Date(desde); d0.setHours(0,0,0,0)
       const d1 = new Date(hasta); d1.setHours(23,59,59,999)
 
-      const vP  = visitas.filter(v  => { if (!esEntrada(v)) return false; const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
-      const qrP = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 && v.canal_via==='qr' }).length
+      const vP  = visitas.filter(v  => { if (!esInteraccion(v)) return false; const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
+      const vDigitalP = visitas.filter(v => { if (!esEntrada(v)) return false; const d=new Date(v.created_at); return d>=d0 && d<=d1 }).length
+      const qrP = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 && clasificarVia(v)==='qr' }).length
       const cP  = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 }).length
-      const cWebP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && c.origen !== 'manual' }).length
-      const conv = vP > 0 ? Number((cWebP / vP * 100).toFixed(1)) : 0
+      const cWebP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && esEntrada(c) }).length
+      const conv = vDigitalP > 0 ? Number((cWebP / vDigitalP * 100).toFixed(1)) : 0
 
       const setEl   = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v }
       const clearEl = (id)    => { const el=document.getElementById(id); if(el) el.innerHTML='' }
@@ -4100,6 +4140,7 @@
       document.querySelectorAll('.pv-flt-btn').forEach(b => b.classList.remove('activo'))
       btn.classList.add('activo')
       const valor = btn.dataset.dias
+      window._pvPeriodoSeleccionado = valor
       const custom = valor === 'custom'
       document.getElementById('pvFltCustom').style.display = custom ? '' : 'none'
       if (!custom) {
@@ -4115,7 +4156,7 @@
         const _lbl = valor === 'hoy' ? 'hoy' : `últimos ${dias} días`
         renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot() })
         if (esPasivo) return
-        if (_modoMultiSlot()) renderPanelesActivos(contactos)
+        renderPanelesActivos(contactos)
         actualizarKpisActivo(desde, hasta)
         actualizarSlotCards(desde, hasta)
         if (misSlots.length) renderSlotMiniCharts(desde, hasta, _lbl)
@@ -4127,10 +4168,11 @@
       const hasta = document.getElementById('pvEvolHasta').value
       if (!desde || !hasta) { alert('Seleccioná una fecha desde y una hasta.'); return }
       if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
+      window._pvPeriodoSeleccionado = 'custom'
       const fechaLocal = val => { const [y,m,d] = val.split('-').map(Number); return new Date(y, m-1, d) }
       renderGraficoPasivo(contactos, 30, desde, hasta, { multiSlot: _modoMultiSlot() })
       if (esPasivo) return
-      if (_modoMultiSlot()) renderPanelesActivos(contactos)
+      renderPanelesActivos(contactos)
       actualizarKpisActivo(fechaLocal(desde), fechaLocal(hasta))
       actualizarSlotCards(fechaLocal(desde), fechaLocal(hasta))
       if (misSlots.length) renderSlotMiniCharts(fechaLocal(desde), fechaLocal(hasta), 'período seleccionado')
@@ -4143,14 +4185,15 @@
       const en  = t => { const d = new Date(t); return d >= d0 && d <= d1 }
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
       misSlots.filter(s => s.activo !== false).forEach(slot => {
-        const vSlot = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo && en(v.created_at))
+        const vSlot = visitas.filter(v => esInteraccion(v) && v.canal_ref === slot.codigo && en(v.created_at))
+        const vSlotDigital = vSlot.filter(esEntrada)
         const int   = vSlot.length
-        const qrN   = vSlot.filter(v => v.canal_via === 'qr').length
-        const lnkN  = int - qrN
-        const consultasSlot = contactos.filter(c => c.canal_ref === slot.codigo && en(c.created_at))
+        const qrN   = vSlot.filter(v => clasificarVia(v) === 'qr').length
+        const lnkN  = vSlot.filter(v => clasificarVia(v) === 'link').length
+        const consultasSlot = contactos.filter(c => contactoPerteneceSlot(c, slot) && en(c.created_at))
         const cons  = consultasSlot.length
-        const consWeb = consultasSlot.filter(c => c.origen !== 'manual').length
-        const conv  = int > 0 ? (consWeb / int * 100).toFixed(1) + '%' : '—'
+        const consWeb = consultasSlot.filter(esEntrada).length
+        const conv  = vSlotDigital.length > 0 ? (consWeb / vSlotDigital.length * 100).toFixed(1) + '%' : '—'
         set(`slot-n-int-${slot.id}`,  int)
         set(`slot-n-cons-${slot.id}`, cons)
         set(`slot-n-conv-${slot.id}`, conv)
@@ -4171,8 +4214,14 @@
 
       // ── ETAPA 1C: separar propiedades reales de canales generales ──
       const slotsActivos = misSlots.filter(s => s.activo !== false)
-      const propSlots    = slotsActivos.filter(esPropiedadReal)
-      const canalSlots   = slotsActivos.filter(s => !esPropiedadReal(s))
+      const propiedadesVistas = new Set()
+      const propSlots    = slotsActivos.filter(slot => propiedadVisibleDeSlot(slot)).filter(slot => {
+        const key = propiedadIdDesdeDestino(slot.destino) || slot.codigo
+        if (propiedadesVistas.has(key)) return false
+        propiedadesVistas.add(key)
+        return true
+      })
+      const canalSlots   = slotsActivos.filter(slot => !propiedadVisibleDeSlot(slot))
       const activosCount = propSlots.length
 
       // ── Sección A: Propiedades activas (código sin cambios) ──
@@ -4183,11 +4232,11 @@
         const proyNombre = proy?.nombre || prop?.titulo || slot.nombre || slot.codigo
         const attrSrc    = prop || proy
         const scans      = scansPorSlot[slot.codigo] || 0
-        const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
-        const slotConsWeb = slotCons.filter(c => c.origen !== 'manual')
-        const conv       = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
+        const scansDigitales = visitas.filter(v => v.canal_ref === slot.codigo && esEntrada(v)).length
+        const slotCons   = contactos.filter(c => contactoPerteneceSlot(c, slot))
+        const slotConsWeb = slotCons.filter(esEntrada)
+        const conv       = scansDigitales > 0 ? ((slotConsWeb.length / scansDigitales) * 100).toFixed(1) + '%' : '—'
         const esActivo   = slot.activo !== false
-        const redirectUrl = `${location.origin}/r/${slot.codigo}`
         const imgStyle = fotoUrl ? `background-image:url('${fotoUrl.replace(/'/g,"\\'")}')` : ''
         const ptrOff = !esActivo ? 'pointer-events:none' : ''
         const colorHex = colorDeSlot(slot.codigo)
@@ -4242,14 +4291,14 @@
                 </div>
                 <div style="display:flex;flex-direction:column;gap:.35rem;">
                   <button class="qr-slot-btn" onclick="descargarQR('qr-canvas-${slot.id}','${slot.codigo}')">Descargar QR</button>
-                  <button class="qr-slot-btn" onclick="copiarLink('${redirectUrl}',this)">Copiar link</button>
+                  <button class="qr-slot-btn" onclick="copiarLinkSlot('${slot.codigo}',this)">Copiar link</button>
                 </div>
               </div>
               ${!esActivo ? '<div class="qr-slot-inactivo-banner">Esta propiedad ya no está disponible · Retirá el material impreso.</div>' : ''}
             </div>
           </div>
           <div class="slot-full-right">
-            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Interacciones · últimos 30 días</div>
+            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Interacciones digitales · últimos 30 días</div>
             <div class="slot-chart-wrap"><canvas id="slot-chart-${slot.id}"></canvas></div>
             <div class="slot-chart-total" id="slot-chart-tot-${slot.id}">${scans} total</div>
           </div>
@@ -4259,11 +4308,11 @@
       // ── Sección B: Canales generales (ETAPA 1C) ──
       const canalCards = canalSlots.map(slot => {
         const scans      = scansPorSlot[slot.codigo] || 0
-        const slotCons   = contactos.filter(c => c.canal_ref === slot.codigo)
-        const slotConsWeb = slotCons.filter(c => c.origen !== 'manual')
-        const conv       = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
+        const scansDigitales = visitas.filter(v => v.canal_ref === slot.codigo && esEntrada(v)).length
+        const slotCons   = contactos.filter(c => contactoPerteneceSlot(c, slot))
+        const slotConsWeb = slotCons.filter(esEntrada)
+        const conv       = scansDigitales > 0 ? ((slotConsWeb.length / scansDigitales) * 100).toFixed(1) + '%' : '—'
         const esActivo   = slot.activo !== false
-        const redirectUrl = `${location.origin}/r/${slot.codigo}`
         const dest       = slot.destino || '/'
         const esExterno  = dest.startsWith('http://') || dest.startsWith('https://')
         const colorHex   = colorDeSlot(slot.codigo)
@@ -4317,14 +4366,14 @@
                 </div>
                 <div style="display:flex;flex-direction:column;gap:.35rem;">
                   <button class="qr-slot-btn" onclick="descargarQR('qr-canvas-${slot.id}','${slot.codigo}')">Descargar QR</button>
-                  <button class="qr-slot-btn" onclick="copiarLink('${redirectUrl}',this)">Copiar link</button>
+                  <button class="qr-slot-btn" onclick="copiarLinkSlot('${slot.codigo}',this)">Copiar link</button>
                 </div>
               </div>
               ${!esActivo ? '<div class="qr-slot-inactivo-banner">Este canal ya no está disponible · Retirá el material impreso.</div>' : ''}
             </div>
           </div>
           <div class="slot-full-right">
-            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Interacciones · últimos 30 días</div>
+            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Interacciones digitales · últimos 30 días</div>
             <div class="slot-chart-wrap"><canvas id="slot-chart-${slot.id}"></canvas></div>
             <div class="slot-chart-total" id="slot-chart-tot-${slot.id}">${scans} total</div>
           </div>
@@ -4338,7 +4387,7 @@
               <div class="pv-sec-titulo">Mis propiedades activas</div>
               <div class="pv-sec-sub">QR, estadísticas y actividad individual de cada propiedad.</div>
             </div>
-            <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activosCount} activa${activosCount!==1?'s':''}</span>
+            <span style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c9a84c;background:rgba(255,255,255,.06);border:1px solid rgba(201,168,76,.22);border-radius:999px;padding:.28rem .85rem;">${activosCount} activa${activosCount!==1?'s':''}</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:.85rem;">${cards}</div>
         </div>` : ''
@@ -4385,7 +4434,7 @@
         const colorHex = colorDeSlot(slot.codigo)
         const rgba = (a) => colorHex.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)).join(',')+`,${a}`
         const slotVis  = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo)
-        const slotCons = contactos.filter(c => c.canal_ref === slot.codigo)
+        const slotCons = contactos.filter(c => contactoPerteneceSlot(c, slot) && esEntrada(c))
         // HOY → contar por hora; multiday → contar por día
         let data, dataCons
         if (isSingleDay) {
@@ -4497,7 +4546,7 @@
         })
         // Actualizar etiqueta y total por período vía DOM
         const lblEl = document.getElementById(`slot-chart-lbl-${slot.id}`)
-        if (lblEl) lblEl.textContent = `Interacciones · ${lblPeriodo}`
+        if (lblEl) lblEl.textContent = `Interacciones digitales · ${lblPeriodo}`
         const totEl = document.getElementById(`slot-chart-tot-${slot.id}`)
         if (totEl) totEl.textContent = `${data.reduce((s,v)=>s+v,0)} total`
       })
@@ -4512,24 +4561,24 @@
 
       // ── Panel 1: Actividad general · últimos 30 días ──
       const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
-      const mes0 = new Date(hoy0 - 30*86400000)
+      const mes0 = new Date(hoy0 - 29*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
       const labels = dias.map(d => d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}))
       const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
-      const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
-      const slotLines = comerciosDelAliado.map(com => {
-        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&com.codigos.has(v.canal_ref)&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
-        return { codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr }
-      }).filter(ln => ln.data.some(x=>x>0))
+      const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{if(!esEntrada(c))return false;const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
+      const slotLines = unidadesGrafico().map(unidad => {
+        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&unidad.codigos.has(v.canal_ref)&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        return { key:unidad.key, codigo:unidad.codigo, nombre:unidad.nombre, color:unidad.color, data:arr }
+      })
 
       const ctxAct = document.getElementById('pvPanelAct30')?.getContext('2d')
       if (ctxAct && (dataScans.some(x=>x>0) || dataCons.some(x=>x>0))) {
         const datasets = [
-          { label:'Total interacciones', data:dataScans, order:2, borderColor:'#7aaeff', borderWidth:3.5, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
+          { label:'Total interacciones digitales', data:dataScans, order:2, borderColor:'#7aaeff', borderWidth:3.5, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
             backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.32)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.72)'); g.addColorStop(0.45,'rgba(122,174,255,.34)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g } },
           { label:'Consultas', data:dataCons, order:1, borderColor:'#e8c96a', borderWidth:2.5, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#e8c96a', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2 }
         ]
-        slotLines.forEach((ln,i) => datasets.push({ label:ln.nombre, _slotCodigo:ln.codigo, data:ln.data, order:10+i, borderColor:ln.color, borderWidth:1.4, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor:ln.color, pointHoverBorderColor:'#fff', pointHoverBorderWidth:1.5, hidden: window._pvPanelHidden?.[ln.codigo] === true }))
+        slotLines.forEach((ln,i) => datasets.push({ label:ln.nombre, _seriesKey:ln.key, data:ln.data, order:10+i, borderColor:ln.color, borderWidth:1.4, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor:ln.color, pointHoverBorderColor:'#fff', pointHoverBorderWidth:1.5, hidden: window._pvPanelHidden?.[ln.key] === true }))
         _pvPanelAct = new Chart(ctxAct, {
           type:'line', data:{labels, datasets},
           options:{ responsive:true, maintainAspectRatio:false, animation:{duration:700,easing:'easeOutQuart'}, interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)', titleFont:{size:11,weight:'600'}, bodyFont:{size:11}, displayColors:true, usePointStyle:true, padding:10, cornerRadius:8, callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } } } }, scales:{ x:{display:false}, y:{beginAtZero:true,display:false,grace:'10%'} } }
@@ -4538,29 +4587,34 @@
         const legendHost = document.getElementById('pvPanelActLegend')
         if (legendHost) {
           if (typeof window._pvPanelHidden !== 'object' || window._pvPanelHidden === null) window._pvPanelHidden = {}
-          const chips = [`<div class="pv-legend-chip locked"><span class="pv-legend-dot" style="background:#7aaeff;color:#7aaeff;"></span><span class="pv-legend-name">Total</span></div>`,
-                         `<div class="pv-legend-chip locked"><span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;"></span><span class="pv-legend-name">Consultas</span></div>`]
+          const chips = [`<div class="pv-legend-chip locked"><span class="pv-legend-dot" style="background:#7aaeff;color:#7aaeff;box-shadow:none"></span><span class="pv-legend-name">Total</span></div>`,
+                         `<div class="pv-legend-chip locked"><span class="pv-legend-dot" style="background:#e8c96a;color:#e8c96a;box-shadow:none"></span><span class="pv-legend-name">Consultas</span></div>`]
           slotLines.forEach(ln => {
-            const off = window._pvPanelHidden[ln.codigo] === true ? ' off' : ''
-            chips.push(`<div class="pv-legend-chip${off}" data-slot="${esc(ln.codigo)}" title="Click para mostrar/ocultar"><span class="pv-legend-dot" style="background:${ln.color};color:${ln.color};"></span><span class="pv-legend-name">${esc(ln.nombre)}</span></div>`)
+            const off = window._pvPanelHidden[ln.key] === true ? ' off' : ''
+            chips.push(`<button type="button" class="pv-legend-chip${off}" data-series-key="${esc(ln.key)}" aria-pressed="${off ? 'false' : 'true'}" title="Mostrar u ocultar ${esc(ln.nombre)}"><span class="pv-legend-dot" style="background:${ln.color};color:${ln.color};box-shadow:none"></span><span class="pv-legend-name">${esc(ln.nombre)}</span></button>`)
           })
           legendHost.innerHTML = `<div class="pv-legend">${chips.join('')}</div>`
-          legendHost.querySelectorAll('.pv-legend-chip[data-slot]').forEach(chip => {
-            chip.addEventListener('click', () => {
-              const codigo = chip.dataset.slot
-              window._pvPanelHidden[codigo] = !(window._pvPanelHidden[codigo] === true)
+          legendHost.querySelectorAll('.pv-legend-chip[data-series-key]').forEach(chip => {
+            const alternar = () => {
+              const key = chip.dataset.seriesKey
+              window._pvPanelHidden[key] = !(window._pvPanelHidden[key] === true)
               if (_pvPanelAct) {
-                _pvPanelAct.data.datasets.forEach(ds => { if (ds._slotCodigo === codigo) ds.hidden = window._pvPanelHidden[codigo] === true })
+                _pvPanelAct.data.datasets.forEach(ds => { if (ds._seriesKey === key) ds.hidden = window._pvPanelHidden[key] === true })
                 _pvPanelAct.update('none')
               }
               chip.classList.toggle('off')
+              chip.setAttribute('aria-pressed', window._pvPanelHidden[key] === true ? 'false' : 'true')
+            }
+            chip.addEventListener('click', alternar)
+            chip.addEventListener('keydown', ev => {
+              if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); alternar() }
             })
           })
         }
       }
 
       // ── Panel 2: Conversión · últimos 30 días ──
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&esEntrada(x)}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
       const ctxConv = document.getElementById('pvPanelConv30')?.getContext('2d')
       if (ctxConv && convDiaria.some(x=>x>0)) {
         _pvPanelConv = new Chart(ctxConv, {
@@ -4576,8 +4630,8 @@
         <div class="pv-sec">
           <div class="pv-sec-head">
             <div>
-              <div class="pv-sec-titulo">Evolución de la actividad</div>
-              <div class="pv-sec-sub">Interacciones y consultas de todos tus slots combinados.</div>
+              <div class="pv-sec-titulo">Evolución de la actividad digital</div>
+              <div class="pv-sec-sub">Interacciones y consultas desde QR o enlace de todas tus propiedades.</div>
             </div>
           </div>
           <div id="pvLiveBar4" class="pv-live-bar">
@@ -4639,22 +4693,18 @@
     // Panel 1 — Actividad general · últimos 30 días
     function panelActividad30d(contactos) {
       const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
-      const mes0 = new Date(hoy0 - 30*86400000)
+      const mes0 = new Date(hoy0 - 29*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
       const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
-      const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
-      const slotLines = comerciosDelAliado.map(com => {
-        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&com.codigos.has(v.canal_ref)&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
-        return { codigo: com.codigo, nombre: com.nombre, color: com.color, data: arr }
-      }).filter(ln => ln.data.some(x=>x>0))
+      const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{if(!esEntrada(c))return false;const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
       const totalScans = dataScans.reduce((s,v)=>s+v,0)
       const hayDatos = totalScans > 0 || dataCons.reduce((s,v)=>s+v,0) > 0
       return `
         <div class="pv-panel">
           <div class="pv-panel-head">
             <div>
-              <div class="pv-panel-titulo" id="pvPanelAct30Tit">Actividad general · últimos 30 días</div>
-              <div class="pv-panel-sub">Total de interacciones, consultas y cada propiedad.</div>
+              <div class="pv-panel-titulo" id="pvPanelAct30Tit">Actividad digital · últimos 30 días</div>
+              <div class="pv-panel-sub">Interacciones y consultas desde QR o enlace, totales y por propiedad.</div>
             </div>
           </div>
           ${hayDatos ? `<div class="pv-panel-chart"><canvas id="pvPanelAct30"></canvas></div>
@@ -4666,14 +4716,14 @@
     // Panel 2 — Conversión · últimos 30 días
     function panelConversion30d(contactos) {
       const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
-      const mes0 = new Date(hoy0 - 30*86400000)
-      const prev0 = new Date(hoy0 - 60*86400000)
+      const mes0 = new Date(hoy0 - 29*86400000)
+      const prev0 = new Date(hoy0 - 59*86400000)
       const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&x.origen!=='manual'}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&esEntrada(x)}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
       const v30 = visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=mes0).length
-      const c30 = contactos.filter(c=>new Date(c.created_at)>=mes0 && c.origen !== 'manual').length
+      const c30 = contactos.filter(c=>new Date(c.created_at)>=mes0 && esEntrada(c)).length
       const vAnt = visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=prev0&&d<mes0}).length
-      const cAnt = contactos.filter(c=>{const d=new Date(c.created_at);return d>=prev0&&d<mes0&&c.origen!=='manual'}).length
+      const cAnt = contactos.filter(c=>{const d=new Date(c.created_at);return d>=prev0&&d<mes0&&esEntrada(c)}).length
       const conv30 = v30 > 0 ? Number((c30/v30*100).toFixed(1)) : 0
       const convAnt = vAnt > 0 ? Number((cAnt/vAnt*100).toFixed(1)) : null
       const delta = convAnt !== null ? Number((conv30-convAnt).toFixed(1)) : null
@@ -4701,12 +4751,14 @@
 
     // Panel 3 — Origen de las interacciones
     function panelOrigenInteracciones() {
-      const qr = visitas.filter(v => v.canal_via === 'qr').length
-      const link = visitas.filter(v => v.canal_via === 'link').length
-      const total = qr + link
+      const qr = visitas.filter(v => clasificarVia(v) === 'qr').length
+      const link = visitas.filter(v => clasificarVia(v) === 'link').length
+      const directo = visitas.filter(v => clasificarVia(v) === 'directo').length
+      const total = qr + link + directo
       const items = [
         { key:'qr', label:'QR físico', color:'#50c878', n: qr },
         { key:'link', label:'Link compartido', color:'#6495ed', n: link },
+        { key:'directo', label:'Directo', color:'rgba(245,243,240,.55)', n: directo },
       ].filter(i => i.n > 0)
       if (total === 0) return `
         <div class="pv-panel">
@@ -4741,7 +4793,8 @@
 
     // Panel 4 — Rendimiento por canal (ranking)
     function panelRendimientoPropiedad(contactos) {
-      if (!misSlots.length) return `
+      const unidades = unidadesGrafico().filter(u => u.propiedadId)
+      if (!unidades.length) return `
         <div class="pv-panel">
           <div class="pv-panel-head"><div>
             <div class="pv-panel-titulo">Rendimiento por canal</div>
@@ -4749,13 +4802,13 @@
           </div></div>
           <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Aún no tenés canales asignados.</div></div>
         </div>`
-      const rows = misSlots.filter(s => s.activo !== false).map(slot => {
-        const scans = scansPorSlot[slot.codigo] || 0
-        const slotConsTodos = contactos.filter(c => c.canal_ref === slot.codigo)
-        const slotConsWeb = slotConsTodos.filter(c => c.origen !== 'manual').length
-        const conv = scans > 0 ? Number((slotConsWeb/scans*100).toFixed(1)) : 0
-        const proy = proyImgs[slot.proyecto_slug]
-        return { codigo: slot.codigo, nombre: proy?.nombre || slot.nombre || slot.codigo, color: colorDeSlot(slot.codigo), scans, consultas: slotConsTodos.length, conv }
+      const rows = unidades.map(unidad => {
+        const scans = visitas.filter(v => esInteraccion(v) && unidad.codigos.has(v.canal_ref)).length
+        const scansDigitales = visitas.filter(v => esEntrada(v) && unidad.codigos.has(v.canal_ref)).length
+        const slotConsTodos = contactos.filter(c => propiedadAtribuida(c) === unidad.propiedadId)
+        const slotConsWeb = slotConsTodos.filter(esEntrada).length
+        const conv = scansDigitales > 0 ? Number((slotConsWeb/scansDigitales*100).toFixed(1)) : 0
+        return { codigo: unidad.codigo, nombre: unidad.nombre, color: unidad.color, scans, scansDigitales, consultas: slotConsTodos.length, conv }
       }).sort((a,b) => b.scans - a.scans)
       return `
         <div class="pv-panel">
@@ -4770,7 +4823,7 @@
               <div class="pv-rank-nombre"><span class="pv-rank-dot" style="background:${r.color};color:${r.color};"></span><span>${esc(r.nombre)}</span></div>
               <div class="pv-rank-num" style="color:${r.color};">${r.scans}</div>
               <div class="pv-rank-num" style="color:#e8c96a;">${r.consultas}</div>
-              <div class="pv-rank-conv">${r.scans>0?r.conv+'%':'—'}</div>
+              <div class="pv-rank-conv">${r.scansDigitales>0?r.conv+'%':'—'}</div>
             </div>`).join('')}
         </div>`
     }
@@ -4780,8 +4833,8 @@
       if (!misSlots.length) return ''
       const rows = misSlots.map(slot => {
         const scans     = scansPorSlot[slot.codigo] || 0
-        const slotCons  = contactos.filter(c => c.canal_ref === slot.codigo)
-        const slotConsWeb = slotCons.filter(c => c.origen !== 'manual')
+        const slotCons  = contactos.filter(c => contactoPerteneceSlot(c, slot))
+        const slotConsWeb = slotCons.filter(esEntrada)
         const conv      = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
         const proy      = proyImgs[slot.proyecto_slug]
         const nombre    = proy?.nombre || slot.nombre || slot.codigo
@@ -4854,13 +4907,26 @@
         return
       }
 
-      const { data: proyectosActivos, error: proyectosError } = await supabase
-        .from('proyectos')
-        .select('nombre, slug, estado')
-        .eq('estado', 'activo')
-        .order('nombre')
-      if (proyectosError) {
-        alert('No se pudo cargar el catálogo de proyectos: ' + proyectosError.message)
+      let proyectosActivos, propiedadesActivas
+      try {
+        ;[proyectosActivos, propiedadesActivas] = await Promise.all([
+          cargarKeyset('proyectos activos', (cursor, contar) => {
+            let q = supabase.from('proyectos')
+              .select('id,nombre,slug,estado', { count: contar ? 'exact' : undefined })
+              .eq('estado', 'activo').order('id').limit(PAGE_SIZE)
+            if (cursor) q = q.gt('id', cursor.id)
+            return q
+          }, fila => ({id:fila.id})),
+          cargarKeyset('propiedades activas para derivación', (cursor, contar) => {
+            let q = supabase.from('propiedades')
+              .select('id,titulo', { count: contar ? 'exact' : undefined })
+              .eq('activa', true).order('id').limit(PAGE_SIZE)
+            if (cursor) q = q.gt('id', cursor.id)
+            return q
+          }, fila => ({id:fila.id}))
+        ])
+      } catch (error) {
+        alert('No se pudo cargar el catálogo de destinos: ' + error.message)
         return
       }
 
@@ -4872,7 +4938,6 @@
       canalSelect.innerHTML = elegibles.map(({ canal }) => `<option value="${esc(canal.id)}">${esc(canal.nombre)}</option>`).join('')
       canalSelect.disabled = elegibles.length === 1
 
-      const propiedadesActivas = rPropAll.data || []
       document.getElementById('derDestino').innerHTML = '<option value="">Sin destino — consulta general</option>'
         + propiedadesActivas.map(p => `<option value="prop:${esc(p.id)}">Propiedad · ${esc(p.titulo)}</option>`).join('')
         + (proyectosActivos || []).filter(p => p.slug).map(p => `<option value="proy:${esc(p.slug)}">Proyecto · ${esc(p.nombre)}</option>`).join('')
@@ -4931,7 +4996,8 @@
           errorEl.textContent = 'No se pudo guardar: ' + (error.message || 'error desconocido')
           return
         }
-        location.reload()
+        window.cerrarDerivar()
+        await window.actualizarPanelSeguro({ automatico:false })
       } catch (error) {
         errorEl.textContent = 'No se pudo guardar: ' + (error?.message || 'error de conexión')
       } finally {
@@ -4947,6 +5013,11 @@
 
     // ── Canal activo: tabla de contactos enriquecida ─────────────────────────
     function renderContactosActivo_pv(contactos) {
+      const limiteVisible = 50
+      const contactosOrdenados = [...contactos].sort((a, b) => {
+        const porFecha = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        return porFecha || String(b.id || '').localeCompare(String(a.id || ''))
+      })
       const nombreSlot = {}
       ;(misSlots || []).forEach(s => {
         // El aliado ve el nombre del COMERCIO, nunca el del punto QR (interno).
@@ -4955,8 +5026,8 @@
       })
       canales.forEach(c => { if (!nombreSlot[c.codigo]) nombreSlot[c.codigo] = c.nombre })
 
-      const filas = contactos.length
-        ? contactos.slice(0, 50).map(c => `
+      const filas = contactosOrdenados.length
+        ? contactosOrdenados.slice(0, limiteVisible).map(c => `
           <tr>
             <td style="width:10px">${(c.estado||'nueva')==='nueva' ? '<div class="pv-dot-nueva"></div>' : ''}</td>
             <td class="pv-fecha">${fmt(c.created_at)}</td>
@@ -4988,6 +5059,7 @@
               <tbody>${filas}</tbody>
             </table>
           </div>
+          ${contactos.length > limiteVisible ? `<div class="pv-sec-sub" style="margin-top:.55rem">Mostrando ${limiteVisible.toLocaleString('es-AR')} de ${contactos.length.toLocaleString('es-AR')} consultas. Los totales y gráficos incluyen todas.</div>` : ''}
         </div>
         <div class="der-modal" id="derModal" hidden onclick="if(event.target===this) cerrarDerivar()">
           <section class="der-card" role="dialog" aria-modal="true" aria-labelledby="derTitulo">
@@ -5012,79 +5084,404 @@
         </div>`
     }
 
-    function renderActivo(contactos) {
-      if (!contactos.length) return `
-        <div class="seccion">
-          <div class="sec-titulo">Consultas</div>
-          <div class="empty-msg">Aún no hay consultas de tus canales.</div>
-        </div>`
-
-      // Mapa codigo → nombre de canal para la columna Canal
-      const nombreCanal = {}
-      canales.forEach(c => { nombreCanal[c.codigo] = c.nombre })
-
-      const filas = contactos.slice(0, 50).map(c => `
-        <tr>
-          <td style="white-space:nowrap">${fmt(c.created_at)}</td>
-          <td>
-            <span style="font-weight:500">${esc(c.nombre)}</span>
-            ${c.mensaje ? `<span style="display:block;font-size:.67rem;color:var(--gris);margin-top:.15rem;">${esc(c.mensaje.slice(0,70))}${c.mensaje.length > 70 ? '…':''}</span>` : ''}
-          </td>
-          <td style="font-size:.72rem;color:var(--gris);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
-          <td style="font-size:.7rem;color:var(--gris);">${esc(nombreCanal[c.canal_ref] || c.canal_ref || '—')}</td>
-          <td><span class="via-badge ${c.canal_via === 'qr' ? 'qr':''}">${c.canal_via === 'qr' ? '⬛ QR' : c.canal_via === 'link' ? '🔗 Link' : '● Directo'}</span></td>
-          <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
-        </tr>`).join('')
-
-      return `
-        <div class="seccion">
-          <div class="sec-titulo">Tus consultas — todos los canales</div>
-          <div style="overflow-x:auto;">
-            <table class="tabla">
-              <thead>
-                <tr>
-                  <th>Fecha</th><th>Nombre</th><th>Propiedad</th><th>Canal</th><th>Origen</th><th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>${filas}</tbody>
-            </table>
-          </div>
-        </div>`
-    }
-
     // ── Mensajes: toggle y respuesta ──
-    window.toggleMsg = (i) => {
-      document.getElementById(`msgBody-${i}`).classList.toggle('open')
-      const dot = document.getElementById(`dot-${i}`)
-      if (dot) dot.classList.add('leido')
+    window.toggleMsg = mensajeId => {
+      const domId = mensajeDomId(mensajeId)
+      const body = document.getElementById(`${domId}-body`)
+      const head = document.getElementById(`${domId}-head`)
+      if (!body || !head) return
+      const abrir = !body.classList.contains('open')
+      body.classList.toggle('open', abrir)
+      head.setAttribute('aria-expanded', String(abrir))
+      if (abrir) mensajesAbiertos.add(mensajeId); else mensajesAbiertos.delete(mensajeId)
+      document.getElementById(`${domId}-dot`)?.classList.add('leido')
     }
 
-    window.enviarRespuesta = async (mensajeId, i) => {
-      const input = document.getElementById(`replyInput-${i}`)
+    window.enviarRespuesta = async (btn, mensajeId) => {
+      const domId = mensajeDomId(mensajeId)
+      const input = document.getElementById(`${domId}-input`)
+      const status = document.getElementById(`${domId}-status`)
+      if (!input || !btn) return
       const cuerpo = input.value.trim()
       if (!cuerpo) return
-      const btn = input.nextElementSibling
-      btn.disabled = true; btn.textContent = 'Enviando...'
-      const { error } = await supabase.from('mensajes_respuestas').insert({
-        mensaje_id: mensajeId,
-        usuario_id: userId,
-        cuerpo
-      })
-      if (error) {
-        btn.textContent = 'Error — intentá de nuevo'
-        btn.disabled = false
-      } else {
+      // Una respuesta del usuario invalida cualquier snapshot que ya estuviera
+      // viajando: ese resultado no puede borrar una confirmación más nueva.
+      refreshGeneration++
+      btn.disabled = true
+      btn.textContent = 'Enviando...'
+      if (status) status.textContent = ''
+      try {
+        const { error } = await supabase.from('mensajes_respuestas').insert({
+          mensaje_id: mensajeId,
+          usuario_id: userId,
+          cuerpo
+        })
+        if (error) throw error
         input.value = ''
-        btn.textContent = '✓ Respuesta enviada'
-        // Mostrar respuesta en pantalla
+        const mensaje = misMensajes.find(item => item.id === mensajeId)
+        if (mensaje) {
+          if (!Array.isArray(mensaje.mensajes_respuestas)) mensaje.mensajes_respuestas = []
+          mensaje.mensajes_respuestas.push({
+            id:`local-${Date.now()}`,
+            mensaje_id:mensajeId,
+            cuerpo,
+            created_at:new Date().toISOString()
+          })
+        }
         const replyArea = input.parentNode
         const newItem = document.createElement('div')
         newItem.className = 'reply-item-colab'
         newItem.innerHTML = `<div class="reply-cuerpo">${esc(cuerpo)}</div><div class="reply-meta">Ahora</div>`
         replyArea.insertBefore(newItem, input)
-        setTimeout(() => { btn.textContent = 'Enviar respuesta'; btn.disabled = false }, 2000)
+        if (status) status.textContent = 'Respuesta enviada.'
+      } catch (error) {
+        console.error('[mensajes] No se pudo confirmar la respuesta:', error)
+        if (status) status.textContent = 'No pudimos confirmar el envío. Conservamos tu texto; verificá Mensajes antes de reintentar.'
+      } finally {
+        btn.textContent = 'Enviar respuesta'
+        btn.disabled = false
+        if (!input.value) queueMicrotask(() => window.actualizarPanelSeguro({ automatico:false }))
       }
     }
+
+    // Refresco único y atómico: arma una generación completa en memoria y recién
+    // entonces la publica. Ante error conserva el último snapshot sano y su DOM.
+    let refreshEnCurso = false
+    let refreshPendiente = false
+    let refreshTimer = null
+    let refreshGeneration = 0
+
+    function capturarEstadoVisual() {
+      const borradores = {}
+      document.querySelectorAll('.reply-input[id]').forEach(el => { if (el.value) borradores[el.id] = el.value })
+      return {
+        periodo: window._pvPeriodoSeleccionado || document.querySelector('.pv-flt-btn.activo')?.dataset?.dias || null,
+        desde: document.getElementById('pvEvolDesde')?.value || '',
+        hasta: document.getElementById('pvEvolHasta')?.value || '',
+        zoomFrom: window._pvZoomFrom || null,
+        zoomTo: window._pvZoomTo || null,
+        seriesOcultas: window._pvSlotHidden || {},
+        seriesPanelOcultas: window._pvPanelHidden || {},
+        mensajesAbiertos: [...mensajesAbiertos],
+        borradores,
+        detalleAbierto: document.querySelector('.pv-detalle')?.open === true,
+        foco: document.activeElement?.id || null,
+        scrollY: window.scrollY
+      }
+    }
+
+    function hayEdicionEnCurso() {
+      if (!document.getElementById('derModal')?.hidden) return true
+      return [...document.querySelectorAll('.reply-input')].some(el => el.value.trim())
+    }
+
+    function adjuntarRespuestas(mensajes, respuestas) {
+      const porMensaje = new Map()
+      respuestas.forEach(r => {
+        if (!porMensaje.has(r.mensaje_id)) porMensaje.set(r.mensaje_id, [])
+        porMensaje.get(r.mensaje_id).push(r)
+      })
+      mensajes.forEach(m => { m.mensajes_respuestas = porMensaje.get(m.id) || [] })
+      return mensajes
+    }
+
+    async function cargarSnapshotActualizado() {
+      const canalesNuevos = await cargarKeyset('canales', (cursor, contar) => {
+        let q = supabase.from('canales')
+          .select('id,codigo,nombre,activo,ciudad,provincia,latitud,longitud,color_index,destino', { count: contar ? 'exact' : undefined })
+          .eq('user_id', userId).order('nombre').order('id').limit(PAGE_SIZE)
+        if (cursor) q = despuesAsc(q, 'nombre', cursor.nombre, 'id', cursor.id)
+        return q
+      }, fila => ({nombre:fila.nombre,id:fila.id}))
+      if (!canalesNuevos.length) throw new Error('La actualización no devolvió canales asignados.')
+
+      const idsNuevos = canalesNuevos.map(c => c.id)
+      const codigosNuevos = canalesNuevos.map(c => c.codigo)
+      const referenciasNuevas = await cargarPorBloques('referencias', idsNuevos, (ids, bloque) => cargarKeyset(`referencias [${bloque + 1}]`, (cursor, contar) => {
+        let q = supabase.from('referencias')
+          .select('id,codigo,nombre,destino,activo,proyecto_slug,canal_id,punto_tipo,created_at', { count: contar ? 'exact' : undefined })
+          .in('canal_id', ids).order('created_at').order('id').limit(PAGE_SIZE)
+        if (cursor) q = despuesAsc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+        return q
+      }, fila => ({created_at:fila.created_at,id:fila.id})))
+
+      const codigoCanalNuevo = Object.fromEntries(canalesNuevos.map(c => [c.id, c.codigo]))
+      referenciasNuevas.forEach(ref => {
+        if (ref.proyecto_slug) return
+        const prefijo = `${codigoCanalNuevo[ref.canal_id] || ''}-`
+        ref.proyecto_slug = ref.codigo.startsWith(prefijo) ? ref.codigo.slice(prefijo.length) : ref.codigo
+      })
+      const codigosFiltro = [...new Set([...referenciasNuevas.map(r => r.codigo), ...codigosNuevos])]
+      const slugs = [...new Set(referenciasNuevas.map(r => r.proyecto_slug).filter(Boolean))]
+      const propiedadIds = [...new Set(referenciasNuevas
+        .filter(r => r.activo !== false)
+        .map(r => propiedadIdDesdeDestino(r.destino))
+        .filter(Boolean))]
+
+      const cargarVisitas = () => cargarPorBloques('visitas', codigosFiltro, (refs, bloque) => cargarKeyset(`visitas [${bloque + 1}]`, (cursor, contar) => {
+        let q = supabase.from('visitas')
+          .select('id,created_at,canal_via,canal_ref', { count: contar ? 'exact' : undefined })
+          .in('canal_ref', refs).order('created_at', {ascending:false}).order('id', {ascending:false}).limit(PAGE_SIZE)
+        if (cursor) q = despuesDesc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+        return q
+      }, fila => ({created_at:fila.created_at,id:fila.id})))
+      const cargarContactos = () => esPasivo ? cargarContactosPasivos() : cargarPorBloques('contactos', codigosFiltro, (refs, bloque) => cargarKeyset(`contactos [${bloque + 1}]`, (cursor, contar) => {
+        let q = supabase.from('contactos')
+          .select('id,created_at,fecha,nombre,mensaje,estado,origen,canal_ref,canal_via,propiedad_id,proyecto_slug,persona_id,propiedades(titulo)', { count: contar ? 'exact' : undefined })
+          .in('canal_ref', refs).order('created_at', {ascending:false}).order('id', {ascending:false}).limit(PAGE_SIZE)
+        if (cursor) q = despuesDesc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+        return q
+      }, fila => ({created_at:fila.created_at,id:fila.id})))
+      const cargarCampanas = () => cargarPorBloques('campañas', idsNuevos, (ids, bloque) => cargarKeyset(`campañas [${bloque + 1}]`, (cursor, contar) => {
+        let q = supabase.from('campanas_canales')
+          .select('canal_id,campana_id,campanas(nombre,url_destino,activa,fecha_inicio,fecha_fin)', { count: contar ? 'exact' : undefined })
+          .in('canal_id', ids).order('campana_id').order('canal_id').limit(PAGE_SIZE)
+        if (cursor) q = despuesAsc(q, 'campana_id', cursor.campana_id, 'canal_id', cursor.canal_id)
+        return q
+      }, fila => ({campana_id:fila.campana_id,canal_id:fila.canal_id}), fila => `${fila.campana_id}:${fila.canal_id}`))
+      const cargarMensajes = () => cargarKeyset('mensajes', (cursor, contar) => {
+        let q = supabase.from('mensajes')
+          .select('id,asunto,cuerpo,created_at', { count: contar ? 'exact' : undefined })
+          .order('created_at', {ascending:false}).order('id', {ascending:false}).limit(PAGE_SIZE)
+        if (cursor) q = despuesDesc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+        return q
+      }, fila => ({created_at:fila.created_at,id:fila.id}))
+      const cargarPropiedades = () => propiedadIds.length ? cargarPorBloques('propiedades vinculadas', propiedadIds, (ids, bloque) => cargarKeyset(`propiedades vinculadas [${bloque + 1}]`, (cursor, contar) => {
+        let q = supabase.from('propiedades')
+          .select('id,titulo,imagenes,dormitorios,banos,superficie_cubierta,superficie_total', { count: contar ? 'exact' : undefined })
+          .in('id', ids).eq('activa', true).order('id').limit(PAGE_SIZE)
+        if (cursor) q = q.gt('id', cursor.id)
+        return q
+      }, fila => ({id:fila.id}))) : Promise.resolve([])
+      const cargarProyectos = () => slugs.length ? cargarPorBloques('proyectos referenciados', slugs, (grupo, bloque) => cargarKeyset(`proyectos referenciados [${bloque + 1}]`, (cursor, contar) => {
+        let q = supabase.from('proyectos')
+          .select('id,slug,nombre,foto_portada', { count: contar ? 'exact' : undefined })
+          .in('slug', grupo).order('id').limit(PAGE_SIZE)
+        if (cursor) q = q.gt('id', cursor.id)
+        return q
+      }, fila => ({id:fila.id}))) : Promise.resolve([])
+      const rpcTraza = esPasivo ? 'rpc_pasivo_trazabilidad_comercial_snapshot_v1' : 'rpc_activo_trazabilidad_comercial_snapshot_v1'
+      const cargarTraza = () => cargarTrazabilidadSnapshot(rpcTraza)
+
+      const [visitasNuevas, contactosNuevos, campanasNuevas, mensajesNuevos, propiedadesNuevas, proyectosNuevos, trazaNueva] = await Promise.all([
+        cargarVisitas(), cargarContactos(), cargarCampanas(), cargarMensajes(), cargarPropiedades(), cargarProyectos(), cargarTraza()
+      ])
+      const idsMensajes = mensajesNuevos.map(m => m.id)
+      const respuestasNuevas = idsMensajes.length ? await cargarPorBloques('respuestas', idsMensajes, (ids, bloque) => cargarKeyset(`respuestas [${bloque + 1}]`, (cursor, contar) => {
+        let q = supabase.from('mensajes_respuestas')
+          .select('id,mensaje_id,cuerpo,created_at', { count: contar ? 'exact' : undefined })
+          .in('mensaje_id', ids).order('created_at').order('id').limit(PAGE_SIZE)
+        if (cursor) q = despuesAsc(q, 'created_at', cursor.created_at, 'id', cursor.id)
+        return q
+      }, fila => ({created_at:fila.created_at,id:fila.id}))) : []
+
+      return {
+        canales: canalesNuevos,
+        referencias: referenciasNuevas,
+        visitas: visitasNuevas,
+        contactos: contactosNuevos,
+        campanas: campanasNuevas,
+        mensajes: adjuntarRespuestas(mensajesNuevos, respuestasNuevas),
+        propiedades: propiedadesNuevas,
+        proyectos: proyectosNuevos,
+        traza: trazaNueva
+      }
+    }
+
+    const vaciarObjeto = objeto => Object.keys(objeto).forEach(clave => { delete objeto[clave] })
+
+    function destruirVisualizaciones() {
+      if (_pvChart4) { try { _pvChart4.destroy() } catch (_) {} ; _pvChart4 = null }
+      if (_pvPanelAct) { try { _pvPanelAct.destroy() } catch (_) {} ; _pvPanelAct = null }
+      if (_pvPanelConv) { try { _pvPanelConv.destroy() } catch (_) {} ; _pvPanelConv = null }
+      if (_pvMiniMap) { try { _pvMiniMap.remove() } catch (_) {} ; _pvMiniMap = null }
+      if (_pvLiveRAF) { cancelAnimationFrame(_pvLiveRAF); _pvLiveRAF = null }
+      if (_pvDocMoveH) { document.removeEventListener('mousemove', _pvDocMoveH); _pvDocMoveH = null }
+      if (_pvDocUpH) { document.removeEventListener('mouseup', _pvDocUpH); _pvDocUpH = null }
+      Object.keys(_slotCharts).forEach(id => {
+        if (_slotCharts[id]) { try { _slotCharts[id].destroy() } catch (_) {} }
+        delete _slotCharts[id]
+      })
+    }
+
+    function publicarSnapshot(snapshot, estado) {
+      destruirVisualizaciones()
+      canales = snapshot.canales
+      codigos = canales.map(c => c.codigo)
+      canalIds = canales.map(c => c.id)
+      misRefs = snapshot.referencias
+      misSlots = misRefs
+      refCodigos = misRefs.map(r => r.codigo)
+      codigosRef = [...new Set([...refCodigos, ...codigos])]
+      visitas = snapshot.visitas
+      contactos = snapshot.contactos
+      campanasRows = snapshot.campanas
+      misMensajes = snapshot.mensajes
+      propiedadesRows = snapshot.propiedades
+      proyectosRows = snapshot.proyectos
+      filasTraza = snapshot.traza
+      ahora = new Date()
+      hace30 = new Date(ahora - 30 * 86400000).toISOString()
+
+      vaciarObjeto(canalCodigoMap)
+      canales.forEach(c => { canalCodigoMap[c.id] = c.codigo })
+      misSlots.forEach(slot => {
+        if (!slot.proyecto_slug) {
+          const prefijo = `${canalCodigoMap[slot.canal_id] || ''}-`
+          slot.proyecto_slug = slot.codigo.startsWith(prefijo) ? slot.codigo.slice(prefijo.length) : slot.codigo
+        }
+      })
+      ;[...misSlots].sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(s => colorDeSlot(s.codigo))
+
+      comerciosDelAliado = canales.map(c => {
+        const refs = misSlots.filter(s => s.canal_id === c.id && s.activo !== false)
+        const principal = refs.find(r => r.punto_tipo === 'principal') || refs[0]
+        return {
+          codigo:c.codigo,
+          nombre:c.nombre,
+          codigos:new Set([c.codigo, ...refs.map(r => r.codigo)]),
+          color:(window.SPCanalColors?.colorCanalDesdeIndex ? window.SPCanalColors.colorCanalDesdeIndex(c.color_index) : null) || colorDeSlot(principal ? principal.codigo : c.codigo)
+        }
+      })
+      slotCodigos = misSlots.map(s => s.codigo)
+      derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
+
+      vaciarObjeto(scansPorSlot)
+      visitas.filter(v => slotCodigos.includes(v.canal_ref) && esInteraccion(v) && new Date(v.created_at) >= new Date(hace30))
+        .forEach(v => { scansPorSlot[v.canal_ref] = (scansPorSlot[v.canal_ref] || 0) + 1 })
+      vaciarObjeto(proyImgs)
+      proyectosRows.forEach(p => { proyImgs[p.slug] = p })
+      vaciarObjeto(propDataMap)
+      vaciarObjeto(propDataById)
+      propiedadesRows.forEach(p => {
+        propDataMap[slugify(p.titulo)] = p
+        propDataById[String(p.id).toLowerCase()] = p
+      })
+
+      totalScans = visitas.filter(esInteraccion).length
+      vaciarObjeto(campanaActiva)
+      vaciarObjeto(campanaDestino)
+      campanasRows.forEach(row => {
+        const campana = row.campanas
+        if (!campana?.activa) return
+        const inicio = campana.fecha_inicio ? new Date(campana.fecha_inicio) : null
+        const fin = campana.fecha_fin ? new Date(campana.fecha_fin) : null
+        if ((!inicio || inicio <= ahora) && (!fin || fin >= ahora)) {
+          campanaActiva[row.canal_id] = campana.nombre
+          campanaDestino[row.canal_id] = campana.url_destino || null
+        }
+      })
+      vaciarObjeto(refACanal)
+      misRefs.forEach(r => { refACanal[r.codigo] = r.canal_id })
+
+      headerCanalEl.hidden = esPasivo
+      if (esPasivo) headerCanalEl.innerHTML = ''
+      else headerCanalEl.innerHTML = `<div style="display:flex;align-items:center;gap:.65rem;"><div><strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}</div></div>`
+
+      mensajesAbiertos.clear()
+      const idsVigentes = new Set(misMensajes.map(m => m.id))
+      ;(estado.mensajesAbiertos || []).forEach(id => { if (idsVigentes.has(id)) mensajesAbiertos.add(id) })
+      window._pvSlotHidden = estado.seriesOcultas || {}
+      window._pvPanelHidden = estado.seriesPanelOcultas || {}
+      renderizarPanelCompleto()
+    }
+
+    const capturarSnapshotPublicado = () => ({
+      canales,
+      referencias:misRefs,
+      visitas,
+      contactos,
+      campanas:campanasRows,
+      mensajes:misMensajes,
+      propiedades:propiedadesRows,
+      proyectos:proyectosRows,
+      traza:filasTraza
+    })
+
+    function mostrarErrorRefresco(error) {
+      let aviso = document.getElementById('pvRefreshError')
+      if (!aviso) {
+        aviso = document.createElement('div')
+        aviso.id = 'pvRefreshError'
+        aviso.className = 'empty-msg'
+        aviso.setAttribute('role', 'alert')
+        document.getElementById('mainContent')?.prepend(aviso)
+      }
+      aviso.textContent = `No se pudo actualizar el panel. Conservamos los últimos datos completos. ${error?.message || 'Error de conexión.'}`
+    }
+
+    window.actualizarPanelSeguro = async function({automatico = false} = {}) {
+      if (refreshEnCurso) {
+        refreshPendiente = true
+        return false
+      }
+      if (hayEdicionEnCurso()) return false
+      refreshEnCurso = true
+      const generacion = ++refreshGeneration
+      try {
+        const snapshot = await cargarSnapshotActualizado()
+        if (generacion !== refreshGeneration) return false
+        // Si el usuario empezó a editar durante la carga, se descarta esta
+        // generación completa: nunca se pisa un borrador ni un modal abierto.
+        if (hayEdicionEnCurso()) return false
+        const estado = capturarEstadoVisual()
+        const snapshotAnterior = capturarSnapshotPublicado()
+        try {
+          publicarSnapshot(snapshot, estado)
+        } catch (errorPublicacion) {
+          try {
+            publicarSnapshot(snapshotAnterior, estado)
+            setTimeout(() => restaurarEstadoVisual(estado), 0)
+          } catch (errorRestauracion) {
+            throw new Error(`Falló la publicación y también la restauración del panel: ${errorRestauracion?.message || errorRestauracion}`)
+          }
+          throw errorPublicacion
+        }
+        setTimeout(() => restaurarEstadoVisual(estado), 0)
+        return true
+      } catch (error) {
+        console.error('[actualización] Se conserva el último snapshot sano:', error)
+        if (generacion === refreshGeneration) mostrarErrorRefresco(error)
+        return false
+      } finally {
+        refreshEnCurso = false
+        if (refreshPendiente) {
+          refreshPendiente = false
+          if (!hayEdicionEnCurso()) queueMicrotask(() => window.actualizarPanelSeguro({ automatico:true }))
+        }
+      }
+    }
+
+    const restaurarEstadoVisual = estado => {
+      if (!estado) return
+      window._pvSlotHidden = estado.seriesOcultas || {}
+      window._pvPanelHidden = estado.seriesPanelOcultas || {}
+      const boton = estado.periodo ? document.querySelector(`.pv-flt-btn[data-dias="${estado.periodo}"]`) : null
+      if (boton && estado.periodo === 'custom') {
+        boton.click()
+        const desde = document.getElementById('pvEvolDesde'), hasta = document.getElementById('pvEvolHasta')
+        if (desde) desde.value = estado.desde || ''
+        if (hasta) hasta.value = estado.hasta || ''
+        if (desde?.value && hasta?.value) window.pvAplicarFechas()
+      } else if (boton) boton.click()
+      Object.entries(estado.borradores || {}).forEach(([id, valor]) => { const el=document.getElementById(id); if(el) el.value=valor })
+      const detalle = document.querySelector('.pv-detalle')
+      if (detalle) detalle.open = estado.detalleAbierto === true
+      if (estado.zoomFrom && estado.zoomTo && _pvChart4) pvApplyViewport(estado.zoomFrom, estado.zoomTo)
+      requestAnimationFrame(() => {
+        window.scrollTo(0, Number(estado.scrollY) || 0)
+        if (estado.foco) document.getElementById(estado.foco)?.focus()
+      })
+    }
+
+    refreshTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') window.actualizarPanelSeguro({ automatico:true })
+    }, REFRESH_MS)
+    window.addEventListener('pagehide', () => {
+      refreshGeneration++
+      if (refreshTimer) clearInterval(refreshTimer)
+      destruirVisualizaciones()
+    }, { once:true })
 
   })()
 </script>
