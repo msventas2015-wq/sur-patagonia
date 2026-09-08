@@ -87,12 +87,12 @@ set local role authenticated;
 do $all_proration_modes$
 declare d jsonb; b jsonb; i jsonb;
 begin
-  d:=public.alq_admin_alta_proforma(450000,'2026-10-16','2026-10-31',
-    '2026-10-01','dias_reales','centavos',0.08,0,0,0);
-  b:=public.alq_admin_alta_proforma(450000,'2026-10-16','2026-10-31',
-    '2026-10-01','base_30','centavos',0.08,0,0,0);
-  i:=public.alq_admin_alta_proforma(450000,'2026-10-16','2026-10-31',
-    '2026-10-01','importe_pactado','centavos',0.08,0,0,0);
+  d:=public.alq_admin_alta_proforma(450000,'2025-10-16','2025-10-31',
+    '2025-10-01','dias_reales','centavos',0.08,0,0,0);
+  b:=public.alq_admin_alta_proforma(450000,'2025-10-16','2025-10-31',
+    '2025-10-01','base_30','centavos',0.08,0,0,0);
+  i:=public.alq_admin_alta_proforma(450000,'2025-10-16','2025-10-31',
+    '2025-10-01','importe_pactado','centavos',0.08,0,0,0);
   if (d->>'alquiler_monto')::numeric<>232258.06
      or (b->>'alquiler_monto')::numeric<>225000
      or (i->>'alquiler_monto')::numeric<>450000
@@ -110,10 +110,10 @@ select set_config('alq_f4.fixed_payload',jsonb_build_object(
     'propietario',jsonb_build_object('tipo_persona','fisica','nombre','Propietaria F4 fija','documento_tipo','DNI','documento_numero','F4-FIX-OWNER'),
     'inquilino',jsonb_build_object('tipo_persona','fisica','nombre','Inquilino F4 fijo','documento_tipo','DNI','documento_numero','F4-FIX-TENANT'),
     'propiedad',jsonb_build_object('direccion','F4 fija 100','ciudad','Local','provincia','Río Negro'),
-    'mandato',jsonb_build_object('inicio','2026-09-11','fin','2027-08-20',
+    'mandato',jsonb_build_object('inicio','2025-09-11','fin','2026-08-20',
       'honorario_base','devengado','honorario_pct','0.08','honorario_minimo','0',
       'honorario_fijo','0','incluye_punitorios',true,'moneda','ARS','tratamiento_impuestos',jsonb_build_object()),
-    'contrato',jsonb_build_object('inicio','2026-09-11','fin_pactado','2027-08-20',
+    'contrato',jsonb_build_object('inicio','2025-09-11','fin_pactado','2026-08-20',
       'monto','450000','moneda','ARS','dia_pago_desde','1','dia_pago_hasta','10',
       'ajuste_tipo','porcentaje_fijo','pct_fijo','0.10','frecuencia_ajuste_meses','3',
       'punitorio_pct_dia','0.001','punitorio_desde_dia','2','formula_punitorio_version','simple_diaria_v1',
@@ -172,7 +172,7 @@ do $fixed_preview$
 declare r jsonb:=current_setting('alq_f4.fixed')::jsonb; p jsonb;
 begin
   p:=public.alq_admin_mes_previsualizar((r->>'propiedad_id')::uuid,
-    (r->>'contrato_id')::uuid,'2026-09-01',0);
+    (r->>'contrato_id')::uuid,'2025-09-01',0);
   if p->>'estado'<>'listo' or (p->>'alquiler_monto')::numeric<>300000
      or (p->>'honorario_monto')::numeric<>36000
      or (p->>'numerador')::integer<>20 or (p->>'denominador')::integer<>30 then
@@ -184,21 +184,21 @@ $fixed_preview$;
 select set_config('alq_f4.sep',pg_temp.alq_f4_rpc('mes_normal_generar',
   jsonb_build_object('propiedad_id',current_setting('alq_f4.fixed')::jsonb->>'propiedad_id',
     'contrato_id',current_setting('alq_f4.fixed')::jsonb->>'contrato_id',
-    'mes','2026-09-01','expensas_monto','60000'))::text,true);
+    'mes','2025-09-01','expensas_monto','60000'))::text,true);
 
 do $contractual_mora$
 declare s jsonb:=current_setting('alq_f4.sep')::jsonb; p jsonb; c jsonb;
 begin
   begin
     perform pg_temp.alq_f4_rpc('mora_proponer',jsonb_build_object(
-      'cargo_id',s->>'alquiler_cargo_id','calculada_hasta','2026-09-22',
+      'cargo_id',s->>'alquiler_cargo_id','calculada_hasta','2025-09-22',
       'porcentaje_diario','9.9'));
     raise exception 'ALQ_F4_MORA_CLIENTE_PUDO_CAMBIAR_REGLA';
   exception when sqlstate 'P0001' then
     if sqlerrm<>'ALQ_F4_MORA_PARAMETROS_INVALIDOS' then raise; end if;
   end;
   p:=pg_temp.alq_f4_rpc('mora_proponer',jsonb_build_object(
-    'cargo_id',s->>'alquiler_cargo_id','calculada_hasta','2026-09-22'));
+    'cargo_id',s->>'alquiler_cargo_id','calculada_hasta','2025-09-22'));
   if (p->>'capital')::numeric<>300000 or (p->>'porcentaje_diario')::numeric<>0.1
      or (p->>'dias_gracia')::integer<>2 or (p->>'dias_mora')::integer<>9
      or (p->>'monto_propuesto')::numeric<>2700
@@ -218,7 +218,7 @@ begin
   end if;
 
   p:=pg_temp.alq_f4_rpc('mora_proponer',jsonb_build_object(
-    'cargo_id',s->>'alquiler_cargo_id','calculada_hasta','2026-09-23'));
+    'cargo_id',s->>'alquiler_cargo_id','calculada_hasta','2025-09-23'));
   c:=pg_temp.alq_f4_rpc('mora_resolver',jsonb_build_object(
     'propuesta_id',p->>'propuesta_id','decision','aplicar',
     'motivo','Aplicación humana focalizada'));
@@ -244,7 +244,7 @@ begin
   begin
     perform pg_temp.alq_f4_rpc('mes_normal_generar',jsonb_build_object(
       'propiedad_id',r->>'propiedad_id','contrato_id',r->>'contrato_id',
-      'mes','2026-12-01','expensas_monto','0'));
+      'mes','2025-12-01','expensas_monto','0'));
     raise exception 'ALQ_F4_MES_SIN_AJUSTE_ACEPTADO';
   exception when sqlstate 'P0001' then
     if sqlerrm<>'ALQ_F4_AJUSTE_PENDIENTE_ANTES_DE_GENERAR_MES' then raise; end if;
@@ -279,7 +279,7 @@ declare s jsonb:=current_setting('alq_f4.sep')::jsonb;
 begin
   p:=public.alq_admin_pago_otra_moneda_previsualizar(
     array[(s->>'alquiler_cargo_id')::uuid,(s->>'expensas_cargo_id')::uuid],
-    'USD',300,1000,'2026-09-24');
+    'USD',300,1000,'2025-09-24');
   if p->>'estado'<>'listo' or p->>'fuente'<>'Banco Nación · divisa vendedor'
      or (p->>'monto_origen')::numeric<>300
      or (p->>'monto_destino')::numeric<>300000
@@ -299,7 +299,7 @@ begin
       where id=(r->>'contrato_id')::uuid),
     'beneficiario_parte_id',(select acreedor_parte_id from alq.alq_cargo
       where id=(s->>'alquiler_cargo_id')::uuid),
-    'moneda','USD','monto','300','fecha','2026-09-24T12:00:00Z',
+    'moneda','USD','monto','300','fecha','2025-09-24T12:00:00Z',
     'medio','transferencia_directa_al_propietario',
     'comprobante_documento_id',d->>'id','aplicaciones',aplicaciones));
   if x->>'operacion'<>'pago_multimoneda'
@@ -318,7 +318,7 @@ $multi_currency$;
 select set_config('alq_f4.dec',pg_temp.alq_f4_rpc('mes_normal_generar',
   jsonb_build_object('propiedad_id',current_setting('alq_f4.fixed')::jsonb->>'propiedad_id',
     'contrato_id',current_setting('alq_f4.fixed')::jsonb->>'contrato_id',
-    'mes','2026-12-01','expensas_monto','0'))::text,true);
+    'mes','2025-12-01','expensas_monto','0'))::text,true);
 
 -- Segundo contrato: índice mensual con observaciones trazables.
 select set_config('alq_f4.indexed',public.alq_admin_alta_integral(
@@ -327,10 +327,10 @@ select set_config('alq_f4.indexed',public.alq_admin_alta_integral(
     'propietario',jsonb_build_object('tipo_persona','fisica','nombre','Propietaria F4 índice','documento_tipo','DNI','documento_numero','F4-IDX-OWNER'),
     'inquilino',jsonb_build_object('tipo_persona','fisica','nombre','Inquilino F4 índice','documento_tipo','DNI','documento_numero','F4-IDX-TENANT'),
     'propiedad',jsonb_build_object('direccion','F4 índice 200','ciudad','Local','provincia','Río Negro'),
-    'mandato',jsonb_build_object('inicio','2026-09-01','fin','2027-08-31',
+    'mandato',jsonb_build_object('inicio','2025-09-01','fin','2026-08-31',
       'honorario_base','devengado','honorario_pct','0.08','honorario_minimo','0',
       'honorario_fijo','0','incluye_punitorios',false,'moneda','ARS','tratamiento_impuestos',jsonb_build_object()),
-    'contrato',jsonb_build_object('inicio','2026-09-01','fin_pactado','2027-08-31',
+    'contrato',jsonb_build_object('inicio','2025-09-01','fin_pactado','2026-08-31',
       'monto','450000','moneda','ARS','dia_pago_desde','1','dia_pago_hasta','10',
       'ajuste_tipo','indice','indice_organismo','INDEC','indice_codigo','IPC',
       'indice_base','Nivel general nacional · serie 148.3_INIVELNAL_DICI_M_26',
@@ -349,10 +349,10 @@ begin
       'f4000000-0000-4000-8000-000000002190',jsonb_build_object(
         'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
           where contrato_id=(current_setting('alq_f4.indexed')::jsonb->>'contrato_id')::uuid),
-        'periodo_desde','2026-08-01','periodo_hasta_exclusivo','2026-09-01','valor','100',
-        'publicada_at','2026-09-10T12:00:00Z',
-        'fuente_url','https://apis.datos.gob.ar/series/api/series/?ids=SERIE_EQUIVOCADA&start_date=2026-08-01',
-        'hash_insumo',repeat('e',64),'fecha_descarga','2026-09-10T12:00:00Z','origen','oficial_manual'));
+        'periodo_desde','2025-08-01','periodo_hasta_exclusivo','2025-09-01','valor','100',
+        'publicada_at','2025-09-10T12:00:00Z',
+        'fuente_url','https://apis.datos.gob.ar/series/api/series/?ids=SERIE_EQUIVOCADA&start_date=2025-08-01',
+        'hash_insumo',repeat('e',64),'fecha_descarga','2025-09-10T12:00:00Z','origen','oficial_manual'));
   exception when sqlstate 'P0001' then
     if sqlerrm='ALQ_F4_INDICE_FUENTE_IPC_INVALIDA' then
       v_rechazada:=true;
@@ -370,16 +370,16 @@ select public.alq_admin_indice_observacion_importar(
   'f4000000-0000-4000-8000-000000002101',jsonb_build_object(
     'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
       where contrato_id=(current_setting('alq_f4.indexed')::jsonb->>'contrato_id')::uuid),
-    'periodo_desde','2026-08-01','periodo_hasta_exclusivo','2026-09-01','valor','100',
-    'publicada_at','2026-09-10T12:00:00Z','fuente_url','https://apis.datos.gob.ar/series/api/series/?ids=148.3_INIVELNAL_DICI_M_26&start_date=2026-08-01',
-    'hash_insumo',repeat('a',64),'fecha_descarga','2026-09-10T12:00:00Z','origen','oficial_automatico'));
+    'periodo_desde','2025-08-01','periodo_hasta_exclusivo','2025-09-01','valor','100',
+    'publicada_at','2025-09-10T12:00:00Z','fuente_url','https://apis.datos.gob.ar/series/api/series/?ids=148.3_INIVELNAL_DICI_M_26&start_date=2025-08-01',
+    'hash_insumo',repeat('a',64),'fecha_descarga','2025-09-10T12:00:00Z','origen','oficial_automatico'));
 select public.alq_admin_indice_observacion_importar(
   'f4000000-0000-4000-8000-000000002102',jsonb_build_object(
     'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
       where contrato_id=(current_setting('alq_f4.indexed')::jsonb->>'contrato_id')::uuid),
-    'periodo_desde','2026-11-01','periodo_hasta_exclusivo','2026-12-01','valor','110',
-    'publicada_at','2026-12-10T12:00:00Z','fuente_url','https://apis.datos.gob.ar/series/api/series/?ids=148.3_INIVELNAL_DICI_M_26&start_date=2026-11-01',
-    'hash_insumo',repeat('b',64),'fecha_descarga','2026-12-10T12:00:00Z','origen','oficial_automatico'));
+    'periodo_desde','2025-11-01','periodo_hasta_exclusivo','2025-12-01','valor','110',
+    'publicada_at','2025-12-10T12:00:00Z','fuente_url','https://apis.datos.gob.ar/series/api/series/?ids=148.3_INIVELNAL_DICI_M_26&start_date=2025-11-01',
+    'hash_insumo',repeat('b',64),'fecha_descarga','2025-12-10T12:00:00Z','origen','oficial_automatico'));
 
 do $index_adjust$
 declare r jsonb:=current_setting('alq_f4.indexed')::jsonb; p jsonb; a jsonb;
@@ -408,10 +408,10 @@ select set_config('alq_f4.icl',public.alq_admin_alta_integral(
     'propietario',jsonb_build_object('tipo_persona','fisica','nombre','Propietaria F4 ICL','documento_tipo','DNI','documento_numero','F4-ICL-OWNER'),
     'inquilino',jsonb_build_object('tipo_persona','fisica','nombre','Inquilino F4 ICL','documento_tipo','DNI','documento_numero','F4-ICL-TENANT'),
     'propiedad',jsonb_build_object('direccion','F4 ICL 300','ciudad','Local','provincia','Río Negro'),
-    'mandato',jsonb_build_object('inicio','2026-09-01','fin','2027-08-31',
+    'mandato',jsonb_build_object('inicio','2025-09-01','fin','2026-08-31',
       'honorario_base','devengado','honorario_pct','0.08','honorario_minimo','0',
       'honorario_fijo','0','incluye_punitorios',false,'moneda','ARS','tratamiento_impuestos',jsonb_build_object()),
-    'contrato',jsonb_build_object('inicio','2026-09-01','fin_pactado','2027-08-31',
+    'contrato',jsonb_build_object('inicio','2025-09-01','fin_pactado','2026-08-31',
       'monto','450000','moneda','ARS','dia_pago_desde','1','dia_pago_hasta','10',
       'ajuste_tipo','indice','indice_organismo','BCRA','indice_codigo','ICL',
       'indice_base','Ley 27.551 · variable BCRA 40','indice_version','bcra_v4',
@@ -430,10 +430,10 @@ begin
       'f4000000-0000-4000-8000-000000003190',jsonb_build_object(
         'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
           where contrato_id=(current_setting('alq_f4.icl')::jsonb->>'contrato_id')::uuid),
-        'periodo_desde','2026-09-01','periodo_hasta_exclusivo','2026-09-02','valor','1.5',
-        'publicada_at','2026-09-01T12:00:00Z',
-        'fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/400?desde=2026-09-01&hasta=2026-09-01',
-        'hash_insumo',repeat('f',64),'fecha_descarga','2026-09-01T12:00:00Z','origen','oficial_manual'));
+        'periodo_desde','2025-09-01','periodo_hasta_exclusivo','2025-09-02','valor','1.5',
+        'publicada_at','2025-09-01T12:00:00Z',
+        'fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/400?desde=2025-09-01&hasta=2025-09-01',
+        'hash_insumo',repeat('f',64),'fecha_descarga','2025-09-01T12:00:00Z','origen','oficial_manual'));
   exception when sqlstate 'P0001' then
     if sqlerrm='ALQ_F4_INDICE_FUENTE_ICL_INVALIDA' then
       v_rechazada:=true;
@@ -451,16 +451,16 @@ select public.alq_admin_indice_observacion_importar(
   'f4000000-0000-4000-8000-000000003101',jsonb_build_object(
     'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
       where contrato_id=(current_setting('alq_f4.icl')::jsonb->>'contrato_id')::uuid),
-    'periodo_desde','2026-09-01','periodo_hasta_exclusivo','2026-09-02','valor','1.5',
-    'publicada_at','2026-09-01T12:00:00Z','fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/40?desde=2026-09-01&hasta=2026-09-01',
-    'hash_insumo',repeat('c',64),'fecha_descarga','2026-09-01T12:00:00Z','origen','oficial_automatico'));
+    'periodo_desde','2025-09-01','periodo_hasta_exclusivo','2025-09-02','valor','1.5',
+    'publicada_at','2025-09-01T12:00:00Z','fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/40?desde=2025-09-01&hasta=2025-09-01',
+    'hash_insumo',repeat('c',64),'fecha_descarga','2025-09-01T12:00:00Z','origen','oficial_automatico'));
 select public.alq_admin_indice_observacion_importar(
   'f4000000-0000-4000-8000-000000003102',jsonb_build_object(
     'schema_version',1,'serie_id',(select indice_serie_id from alq_v_contrato_version
       where contrato_id=(current_setting('alq_f4.icl')::jsonb->>'contrato_id')::uuid),
-    'periodo_desde','2026-12-01','periodo_hasta_exclusivo','2026-12-02','valor','1.65',
-    'publicada_at','2026-12-01T12:00:00Z','fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/40?desde=2026-12-01&hasta=2026-12-01',
-    'hash_insumo',repeat('d',64),'fecha_descarga','2026-12-01T12:00:00Z','origen','oficial_automatico'));
+    'periodo_desde','2025-12-01','periodo_hasta_exclusivo','2025-12-02','valor','1.65',
+    'publicada_at','2025-12-01T12:00:00Z','fuente_url','https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/40?desde=2025-12-01&hasta=2025-12-01',
+    'hash_insumo',repeat('d',64),'fecha_descarga','2025-12-01T12:00:00Z','origen','oficial_automatico'));
 
 do $icl_preview$
 declare r jsonb:=current_setting('alq_f4.icl')::jsonb; p jsonb;
@@ -494,7 +494,7 @@ declare c uuid[]:=array[
 begin
   p:=public.alq_admin_factura_reparto_previsualizar(
     (current_setting('alq_f4.shared_account')::jsonb->>'id')::uuid,c,'porcentaje',
-    array[40,60]::numeric[],100000,'ARS','2026-10-25','propietario');
+    array[40,60]::numeric[],100000,'ARS','2025-10-25','propietario');
   if p->>'estado'<>'listo' or jsonb_array_length(p->'lineas')<>2
      or (select sum((l->>'monto')::numeric) from jsonb_array_elements(p->'lineas') l)<>100000
      or (p#>>'{lineas,0,monto}')::numeric<>40000
@@ -504,16 +504,16 @@ begin
   x:=public.alq_admin_factura_repartida_registrar(
     'f4000000-0000-4000-8000-000000004001',jsonb_build_object(
       'schema_version',1,'cuenta_id',current_setting('alq_f4.shared_account')::jsonb->>'id',
-      'desde','2026-10-01','hasta','2026-11-01','moneda','ARS','monto','100000',
-      'vence_at','2026-10-25','comprobante_documento_id',
+      'desde','2025-10-01','hasta','2025-11-01','moneda','ARS','monto','100000',
+      'vence_at','2025-10-25','comprobante_documento_id',
         current_setting('alq_f4.shared_doc')::jsonb->>'id','modo','porcentaje',
       'contrato_ids',to_jsonb(c),'valores',jsonb_build_array(40,60),
       'acreedor_tipo','propietario','preview_sha256',p->>'preview_sha256'));
   y:=public.alq_admin_factura_repartida_registrar(
     'f4000000-0000-4000-8000-000000004001',jsonb_build_object(
       'schema_version',1,'cuenta_id',current_setting('alq_f4.shared_account')::jsonb->>'id',
-      'desde','2026-10-01','hasta','2026-11-01','moneda','ARS','monto','100000',
-      'vence_at','2026-10-25','comprobante_documento_id',
+      'desde','2025-10-01','hasta','2025-11-01','moneda','ARS','monto','100000',
+      'vence_at','2025-10-25','comprobante_documento_id',
         current_setting('alq_f4.shared_doc')::jsonb->>'id','modo','porcentaje',
       'contrato_ids',to_jsonb(c),'valores',jsonb_build_array(40,60),
       'acreedor_tipo','propietario','preview_sha256',p->>'preview_sha256'));
@@ -573,7 +573,7 @@ begin
     'propiedad_id',v_fixed->>'propiedad_id','contrato_id',v_fixed->>'contrato_id',
     'documento_id',current_setting('alq_f4.shared_pay_doc_fixed')::jsonb->>'id',
     'cargo_ids',jsonb_build_array(v_cargo_fixed),'monto',v_monto_fixed,
-    'fecha','2026-10-26T12:00:00Z','medio','transferencia_directa_al_propietario'));
+    'fecha','2025-10-26T12:00:00Z','medio','transferencia_directa_al_propietario'));
   if (select saldada from alq.alq_servicio_factura where id=v_factura)
      or (select saldo_pendiente from alq.alq_cargo where id=v_cargo_fixed)<>0
      or (select saldo_pendiente from alq.alq_cargo where id=v_cargo_indexed)<>v_monto_indexed
@@ -586,7 +586,7 @@ begin
     'propiedad_id',v_indexed->>'propiedad_id','contrato_id',v_indexed->>'contrato_id',
     'documento_id',current_setting('alq_f4.shared_pay_doc_indexed')::jsonb->>'id',
     'cargo_ids',jsonb_build_array(v_cargo_indexed),'monto',v_monto_indexed,
-    'fecha','2026-10-26T12:01:00Z','medio','transferencia_directa_al_propietario'));
+    'fecha','2025-10-26T12:01:00Z','medio','transferencia_directa_al_propietario'));
   if not (select saldada from alq.alq_servicio_factura where id=v_factura)
      or exists(select 1 from alq.alq_servicio_factura_reparto fr
        join alq.alq_cargo c on c.id=fr.cargo_id
@@ -609,7 +609,7 @@ begin
   v_reversa:=pg_temp.alq_f4_rpc('reversa_con_reapertura',jsonb_build_object(
     'original_id',v_pago_indexed->>'transaccion_id',
     'contraparte_parte_id',v_acreedor,'beneficiario_parte_id',v_deudor,
-    'monto',v_monto_indexed,'fecha','2026-10-27T12:00:00Z','medio','transferencia',
+    'monto',v_monto_indexed,'fecha','2025-10-27T12:00:00Z','medio','transferencia',
     'reaperturas',jsonb_build_array(jsonb_build_object(
       'aplicacion_original_id',v_aplicacion,
       'importe_origen_revertido',v_monto_indexed,'moneda_origen',v_moneda,
@@ -636,7 +636,7 @@ begin
   perform pg_temp.alq_f4_rpc('nota_emitir',jsonb_build_object(
     'tipo','credito','cargo_id',v_cargo_indexed,'monto',v_monto_indexed,
     'moneda',v_moneda,
-    'motivo','F4 volver a saldar factura compartida','fecha','2026-10-28T12:00:00Z'));
+    'motivo','F4 volver a saldar factura compartida','fecha','2025-10-28T12:00:00Z'));
   if not (select saldada from alq.alq_servicio_factura where id=v_factura) then
     raise exception 'ALQ_F4_FACTURA_COMPARTIDA_RESALDADO_FALLO';
   end if;
@@ -650,14 +650,14 @@ $shared_invoice_balance$;
 -- mismo acto; rescindir sigue siendo una acción humana separada y trazable.
 select pg_temp.alq_f4_rpc('contrato_continuacion_marcar',jsonb_build_object(
   'contrato_id',current_setting('alq_f4.fixed')::jsonb->>'contrato_id',
-  'continuacion_desde','2027-09-01'));
+  'continuacion_desde','2026-09-01'));
 
 do $continuation$
 begin
   if (select estado from alq.alq_contrato
       where id=(current_setting('alq_f4.fixed')::jsonb->>'contrato_id')::uuid)<>'continuacion_legal'
      or (select continuacion_desde from alq.alq_contrato
-         where id=(current_setting('alq_f4.fixed')::jsonb->>'contrato_id')::uuid)<>date '2027-09-01' then
+         where id=(current_setting('alq_f4.fixed')::jsonb->>'contrato_id')::uuid)<>date '2026-09-01' then
     raise exception 'ALQ_F4_CONTINUACION_LEGAL_FALLO';
   end if;
 end
@@ -666,7 +666,7 @@ $continuation$;
 select set_config('alq_f4.renewed',public.alq_admin_contrato_renovar_integral(
   'f4000000-0000-4000-8000-000000005001',jsonb_build_object(
     'schema_version',1,'predecesor_id',current_setting('alq_f4.fixed')::jsonb->>'contrato_id',
-    'contrato',jsonb_build_object('inicio','2027-09-01','fin_pactado','2028-08-31',
+    'contrato',jsonb_build_object('inicio','2026-09-01','fin_pactado','2027-08-31',
       'monto','550000','moneda','ARS','dia_pago_desde','1','dia_pago_hasta','10',
       'ajuste_tipo','porcentaje_fijo','pct_fijo','0.12','frecuencia_ajuste_meses','3',
       'punitorio_pct_dia','0.001','punitorio_desde_dia','2',
@@ -676,7 +676,7 @@ select set_config('alq_f4.renewed',public.alq_admin_contrato_renovar_integral(
     'mandato',jsonb_build_object('honorario_base','devengado','honorario_pct','0.09',
       'honorario_minimo','0','honorario_fijo','0','incluye_punitorios',true,
       'moneda','ARS','tratamiento_impuestos',jsonb_build_object('nota','renovado'),
-      'extender_hasta','2028-08-31'),'copiar_garantia',false))::text,true);
+      'extender_hasta','2027-08-31'),'copiar_garantia',false))::text,true);
 
 do $renew_and_rescind$
 declare r jsonb:=current_setting('alq_f4.renewed')::jsonb; x jsonb;
@@ -684,7 +684,7 @@ begin
   if (select estado from alq.alq_contrato
       where id=(r->>'predecesor_id')::uuid)<>'cerrado'
      or (select fin_efectivo from alq.alq_contrato
-         where id=(r->>'predecesor_id')::uuid)<>date '2027-08-31'
+         where id=(r->>'predecesor_id')::uuid)<>date '2026-08-31'
      or (select monto from alq.alq_contrato_version
          where id=(r->>'contrato_version_id')::uuid)<>550000
      or (select honorario_pct from alq.alq_mandato_version
@@ -692,9 +692,9 @@ begin
     raise exception 'ALQ_F4_RENOVACION_INTEGRAL_FALLO:%',r;
   end if;
   x:=pg_temp.alq_f4_rpc('contrato_rescindir',jsonb_build_object(
-    'contrato_id',r->>'contrato_id','notificada_at','2027-09-15T12:00:00Z',
-    'efectiva_at','2027-10-01T12:00:00Z','causal','Acuerdo de partes',
-    'preaviso_dias','16','entrega_llaves_at','2027-10-01T12:00:00Z'));
+    'contrato_id',r->>'contrato_id','notificada_at','2026-09-15T12:00:00Z',
+    'efectiva_at','2026-10-01T12:00:00Z','causal','Acuerdo de partes',
+    'preaviso_dias','16','entrega_llaves_at','2026-10-01T12:00:00Z'));
   if (select estado from alq.alq_contrato where id=(r->>'contrato_id')::uuid)<>'rescindido'
      or (select count(*) from alq.alq_rescision where contrato_id=(r->>'contrato_id')::uuid)<>1 then
     raise exception 'ALQ_F4_RESCISION_VISIBLE_FALLO:%',x;
