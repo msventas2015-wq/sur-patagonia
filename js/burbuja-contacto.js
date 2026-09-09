@@ -52,7 +52,12 @@ if (!window.__SP_BURBUJA__) {
     body.bc-abierto .bc-panel { transform: translateY(0); opacity: 1; pointer-events: all; }
     .bc-fondo { background: rgba(8,8,8,0.35); }
   }
-  @media (max-width: 899px) { .bc-row { grid-template-columns: 1fr; } }
+  @media (max-width: 899px) {
+    .bc-row { grid-template-columns: 1fr; }
+    .bc-btn { right: max(0.75rem, env(safe-area-inset-right, 0px)); bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px; padding: 0; gap: 0; }
+    .bc-btn span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .bc-btn svg { width: 20px; height: 20px; }
+  }
   `
 
   const HTML = `
@@ -119,8 +124,14 @@ if (!window.__SP_BURBUJA__) {
 
   // Se esconde cuando el formulario de contacto de la página está a la vista (ahí ya no hace falta)
   const contacto = document.getElementById('contacto') || document.getElementById('contacto-nuevo')
-  if (contacto && 'IntersectionObserver' in window) {
-    new IntersectionObserver(entries => entries.forEach(en => btn.classList.toggle('bc-oculta', en.isIntersecting)), { threshold: 0.15 }).observe(contacto)
+  const zonasSinBurbuja = [contacto, document.querySelector('footer')].filter(Boolean)
+  if (zonasSinBurbuja.length && 'IntersectionObserver' in window) {
+    const zonasVisibles = new Set()
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(en => en.isIntersecting ? zonasVisibles.add(en.target) : zonasVisibles.delete(en.target))
+      btn.classList.toggle('bc-oculta', zonasVisibles.size > 0)
+    }, { threshold: 0.15 })
+    zonasSinBurbuja.forEach(zona => observer.observe(zona))
   }
 
   // Cursor personalizado del sitio (si la página lo tiene)
