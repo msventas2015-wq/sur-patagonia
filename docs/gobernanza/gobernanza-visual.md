@@ -1,6 +1,6 @@
 # CANON VISUAL — Sur Patagonian / Netin
 
-**Versión:** 03 · **Estado:** VIGENTE · **Firmado por Mariano:** 2 de septiembre de 2026
+**Versión:** 03.1 · **Estado:** VIGENTE · **Firmado por Mariano:** 2 de septiembre de 2026 · **Enmienda firmada:** 12 de septiembre de 2026
 **Reemplaza y deroga:** la v02 (3-ago-2026, Mac) · la "Gobernanza Visual v1.0 borrador" (30-jun-2026, GitHub) · `docs/gobernanza/paleta-canales.md` · cualquier resumen de gobernanza en skills o configuraciones.
 
 > **Único documento de gobernanza visual.** Vive en `docs/gobernanza/gobernanza-visual.md` en GitHub. Lo que no está acá, no existe. Toda orden visual a Codex o a Claude cita "canon v03".
@@ -55,7 +55,7 @@ Los mismos diez en `colaboradores/index.html` y `colaboradores/desarrollador.htm
 }
 ```
 
-Fuera de `:root`, de uso fijo: `#e8c96a` dorado claro (texto activo, hover, cifras de consultas) · `#6ee89a` verde menta (QR activo, "en vivo", botón Descargar QR, contador del hero) · `#3bbf88` conversión · `#6495ed` link e interacciones de KPI · `#8fb2ff` texto de botón azul · `#f8f6f2` número grande de titular y pipeline · `#9d4eff` rótulo "Red de aliados" del header.
+Fuera de `:root`, de uso fijo: `#e8c96a` dorado claro (texto activo, hover, cifras de consultas) · `#6ee89a` verde menta (QR activo, "en vivo", botón Descargar QR, contador del hero) · `#3bbf88` verde dinero (conversión y estado "Oferta enviada", uso compartido autorizado) · `#6495ed` link e interacciones de KPI · `#8fb2ff` texto de botón azul · `#f8f6f2` número grande de titular y pipeline · `#9d4eff` rótulo "Red de aliados" del header.
 
 **Jerarquía por opacidad del blanco:** .78 cuerpo de tabla · .67 feed · .55/.52 subtítulos · .42 kickers · .38/.36 sub de KPI · .3 sub y ticks · .28 vacíos · .25 fechas · .2 "descartadas".
 
@@ -146,7 +146,7 @@ Se quitan del pasivo los estados legacy `en_contacto` (dorado) y `en_negociacion
 
 ### 7.1 Estados CRM
 
-`nueva #b39ddb` · `contactado #35c6b4` · `visita #f29a5a` · `visita_realizada #7fd1c6` · `oferta #d9a7ff` · `cerrado #a9dc7a` · `descartado #7b7f88` · vacío `#6f6b72`.
+`nueva #b39ddb` · `contactado #35c6b4` · `visita #f29a5a` · `visita_realizada #7fd1c6` · `oferta #3bbf88` · `cerrado #a9dc7a` · `descartado #7b7f88` · vacío `#6f6b72`.
 
 ### 7.2 Tipos de canal
 
@@ -154,8 +154,8 @@ Se quitan del pasivo los estados legacy `en_contacto` (dorado) y `en_negociacion
 
 ### 7.3 Dos embudos, a propósito (firmado 2-sep)
 
-- **Pasivo** (`.pv-pipe-step` en I): p0 interacciones neutro `.16` · p1 consultas `#e8c96a` · p2 contactado `#35c6b4` · p3 visita `#f29a5a` · p4 oferta `#d9a7ff` · p5 cerrado `#a9dc7a`.
-- **Desarrollador** (D): p0 nueva `#b39ddb` · p1 contactado `#35c6b4` · p2 visita `#f29a5a` · p3 visita realizada `#7fd1c6` · oferta `#d9a7ff` · cierre con logro `#a9dc7a` (glow verde y número en degradado, único KPI con color) · cierre vacío `#6f6b72` punteado.
+- **Pasivo** (`.pv-pipe-step` en I): p0 interacciones neutro `.16` · p1 consultas `#e8c96a` · p2 contactado `#35c6b4` · p3 visita `#f29a5a` · p4 oferta `#3bbf88` · p5 cerrado `#a9dc7a`.
+- **Desarrollador** (D): p0 nueva `#b39ddb` · p1 contactado `#35c6b4` · p2 visita `#f29a5a` · p3 visita realizada `#7fd1c6` · oferta `#3bbf88` · cierre con logro `#a9dc7a` (glow verde y número en degradado, único KPI con color) · cierre vacío `#6f6b72` punteado.
 
 ### 7.4 Lotes y termómetro (D)
 
@@ -164,6 +164,10 @@ Lotes: disponible `#4dc992` · reservado `#b8955a` · vendido `#993C1D` (popup `
 ### 7.5 Reservados de sistema
 
 Interacciones/clics `#7aaeff` · consultas `#e8c96a` · QR `#50c878` · link `#6495ed` · directo/neutro `#8a8a82` · activo/en vivo `#6ee89a` · conversión `#3bbf88` · error `#e05c5c` · WhatsApp (solo envío directo) `#25d366`.
+
+### 7.6 Oferta enviada — decisión firmada 12-sep-2026
+
+**"Oferta enviada" es verde dinero `#3bbf88` en todo el sistema**, incluidos CRM, Contactos, informes y paneles de colaboradores activo, pasivo, propietario y desarrollador. El violeta `#d9a7ff` queda derogado para este estado. "Cerrado" conserva su verde propio `#a9dc7a`, por lo que ambas etapas siguen siendo visualmente distinguibles. Esta es una excepción explícita a la regla general de un HEX por concepto: `#3bbf88` representa conversión y avance económico/oferta.
 
 ---
 
@@ -296,6 +300,7 @@ Paleta SPORT (8: `#EA3341 #CCFF00 #39FF14 #FF5C00 #0099E5 #E0186B #74EE15 #D4ED0
 5. Asignación de color de canal: regla de §8.1 (distancia 20, veto al vecino, aviso sin bloquear, archivados liberan).
 6. Los tres azules 0/1/2 quedan como están.
 7. Gráfico de actividad: regla de §9.1 (pasivo por negocios, activo por propiedades, mismo dibujo en todos los períodos).
+8. Oferta enviada: verde dinero `#3bbf88` en todas las superficies; violeta `#d9a7ff` derogado para ese estado (12-sep-2026).
 
 ---
 
@@ -325,7 +330,7 @@ Paleta SPORT (8: `#EA3341 #CCFF00 #39FF14 #FF5C00 #0099E5 #E0186B #74EE15 #D4ED0
 
 ## 17. Alcance de un cambio visual
 
-Sin cambios respecto de la v02: no se toca Supabase, queries, RLS, auth, tracking, lógica de QR, descargar QR, copiar link, rutas, Service Worker, `_headers`, KPIs funcionales, cálculos ni datos productivos. Se puede tocar CSS visual, tokens, datasets visuales de Chart.js, tooltips, ejes, leyendas y layout autorizado. Prohibido: refactor general, rediseño, cambiar la semántica de un dato, reutilizar un HEX para otro concepto, inventar estados o métricas.
+Sin cambios respecto de la v02: no se toca Supabase, queries, RLS, auth, tracking, lógica de QR, descargar QR, copiar link, rutas, Service Worker, `_headers`, KPIs funcionales, cálculos ni datos productivos. Se puede tocar CSS visual, tokens, datasets visuales de Chart.js, tooltips, ejes, leyendas y layout autorizado. Prohibido: refactor general, rediseño, cambiar la semántica de un dato, reutilizar un HEX para otro concepto salvo la excepción firmada en §7.6, inventar estados o métricas.
 
 **Archivos con restricción absoluta** (nunca sin aprobación explícita y puntual de Mariano): `admin/crm.html` · `admin/contactos.html` · `admin/canales.html`.
 
@@ -339,7 +344,7 @@ Sin cambios respecto de la v02: no se toca Supabase, queries, RLS, auth, trackin
 - [ ] ¿Sin glow dorado, sin fondo dorado, sin radial naranja?
 - [ ] ¿Dorado en gráfico solo como línea fina de consultas?
 - [ ] ¿`--gris:#aaa`, fondo `#090909`, ghost de marca presente?
-- [ ] ¿Un HEX = un concepto? ¿Ningún reservado usado para otra cosa?
+- [ ] ¿Un HEX = un concepto, salvo la excepción firmada de §7.6? ¿Ningún reservado usado para otra cosa?
 - [ ] ¿Canal desde `colorCanalDesdeIndex(color_index)`, sin array local?
 - [ ] ¿Estado CRM en píldora? ¿Tipo de canal en rect 5px? ¿Vía en cuadradito hueco?
 - [ ] ¿KPI con número blanco degradado, peso 300, barra 2px opacidad 1?
