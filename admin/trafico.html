@@ -6,124 +6,14 @@
   <title>Tráfico — Sur Patagonian Admin</title>
   <link rel="stylesheet" href="../css/estilos.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <style>
-    :root { --card-bg:#161513; --card-border:rgba(255,255,255,0.07); --card-radius:14px; --accent:#d76f3f; --gris-claro:#888; --blanco:#f5f3f0; }
-    .admin-main { font-family:'Inter',system-ui,sans-serif; max-width:1200px; }
-
-    /* ── Rango ── */
-    .rango-bar {
-      display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;
-      margin-bottom:1.5rem;
-    }
-    .rango-btn {
-      font-size:0.72rem; font-weight:600; padding:0.4rem 0.9rem;
-      border-radius:999px; border:1px solid var(--card-border);
-      background:none; color:var(--gris-claro);
-      font-family:'Inter',sans-serif; cursor:pointer; transition:all .18s;
-    }
-    .rango-btn:hover { border-color:var(--accent); color:var(--accent); }
-    .rango-btn.activo { background:var(--accent); border-color:var(--accent); color:#fff; }
-    .ga4-link {
-      margin-left:auto; font-size:0.72rem; font-weight:600;
-      color:var(--accent); text-decoration:none;
-      display:flex; align-items:center; gap:0.4rem;
-      padding:0.4rem 0.9rem; border:1px solid rgba(215,111,63,0.3);
-      border-radius:999px; transition:all .18s;
-    }
-    .ga4-link:hover { background:rgba(215,111,63,0.1); }
-
-    /* ── KPI cards ── */
-    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:0.8rem; margin-bottom:1.5rem; }
-    .kpi-card {
-      background:var(--card-bg); border:1px solid var(--card-border);
-      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
-    }
-    .kpi-label { font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--gris-claro); margin-bottom:0.5rem; }
-    .kpi-val { font-size:1.9rem; font-weight:700; color:var(--blanco); line-height:1; margin-bottom:0.2rem; }
-    .kpi-sub { font-size:0.68rem; color:var(--gris-claro); }
-    .kpi-sub.up { color:#4ad0c4; }
-    .kpi-sub.dn { color:#e05c5c; }
-
-    /* ── Charts row ── */
-    .charts-row { display:grid; grid-template-columns:2fr 1fr; gap:1rem; margin-bottom:1rem; }
-    @media(max-width:900px){ .charts-row{grid-template-columns:1fr;} }
-    .chart-card {
-      background:var(--card-bg); border:1px solid var(--card-border);
-      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
-    }
-    .chart-titulo { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris-claro); margin-bottom:1rem; }
-    .chart-wrap { position:relative; }
-
-    /* ── Tablas ── */
-    .tablas-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
-    @media(max-width:900px){ .tablas-row{grid-template-columns:1fr;} }
-    .tabla-card {
-      background:var(--card-bg); border:1px solid var(--card-border);
-      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
-    }
-    .tabla-titulo { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris-claro); margin-bottom:0.8rem; }
-    .tabla-item {
-      display:flex; align-items:center; justify-content:space-between;
-      padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.04);
-      font-size:0.75rem;
-    }
-    .tabla-item:last-child { border-bottom:none; }
-    .tabla-item-name { color:var(--blanco); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .tabla-item-bar-wrap { width:80px; height:4px; background:rgba(255,255,255,0.07); border-radius:999px; margin:0 0.8rem; flex-shrink:0; }
-    .tabla-item-bar { height:100%; background:var(--accent); border-radius:999px; }
-    .tabla-item-val { color:var(--gris-claro); font-size:0.7rem; font-weight:600; flex-shrink:0; }
-    .tabla-empty { text-align:center; padding:2rem; color:var(--gris-claro); font-size:0.75rem; }
-
-    /* ── Conversión ── */
-    .conv-card {
-      background:var(--card-bg); border:1px solid var(--card-border);
-      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
-      margin-bottom:1rem;
-    }
-    .conv-titulo { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris-claro); margin-bottom:1rem; }
-    .conv-row { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
-    .conv-step {
-      display:flex; flex-direction:column; align-items:center; gap:0.3rem;
-      background:rgba(255,255,255,0.03); border:1px solid var(--card-border);
-      border-radius:10px; padding:0.9rem 1.4rem; min-width:120px;
-    }
-    .conv-step-val { font-size:1.5rem; font-weight:700; color:var(--blanco); }
-    .conv-step-lbl { font-size:0.62rem; color:var(--gris-claro); text-transform:uppercase; letter-spacing:0.08em; }
-    .conv-arrow { color:rgba(255,255,255,0.2); font-size:1.2rem; }
-    .conv-pct { font-size:0.75rem; font-weight:700; color:#4ad0c4; }
-
-    /* ── Por canal ── */
-    .canal-card {
-      background:var(--card-bg); border:1px solid var(--card-border);
-      border-radius:var(--card-radius); padding:1.2rem 1.4rem;
-      margin-bottom:1rem;
-    }
-    .canal-titulo { font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--gris-claro); margin-bottom:0.8rem; }
-    .canal-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
-    .canal-table th { text-align:left; color:var(--gris-claro); font-weight:600; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; padding:0 0 0.6rem; border-bottom:1px solid rgba(255,255,255,0.06); }
-    .canal-table th:not(:first-child) { text-align:center; }
-    .canal-table td { padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--blanco); vertical-align:middle; }
-    .canal-table td:not(:first-child) { text-align:center; color:var(--gris-claro); }
-    .canal-table tr:last-child td { border-bottom:none; }
-    .canal-badge {
-      display:inline-block; font-size:0.6rem; font-weight:700; text-transform:uppercase;
-      padding:0.18rem 0.5rem; border-radius:999px; letter-spacing:0.06em;
-    }
-    .canal-badge.qr  { background:rgba(215,111,63,0.15); color:#d76f3f; border:1px solid rgba(215,111,63,0.3); }
-    .canal-badge.link { background:rgba(74,208,196,0.12); color:#4ad0c4; border:1px solid rgba(74,208,196,0.25); }
-    .canal-badge.directo { background:rgba(255,255,255,0.06); color:#aaa; border:1px solid rgba(255,255,255,0.12); }
-    .canal-badge.otro { background:rgba(255,255,255,0.06); color:#888; border:1px solid rgba(255,255,255,0.1); }
-    .canal-bar-wrap { display:inline-block; width:60px; height:3px; background:rgba(255,255,255,0.07); border-radius:999px; vertical-align:middle; margin-left:0.4rem; }
-    .canal-bar { height:100%; background:var(--accent); border-radius:999px; }
-
-    /* spinner */
-    .sp { width:24px; height:24px; border:2px solid rgba(255,255,255,0.1); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin:2rem auto; }
-    @keyframes spin{to{transform:rotate(360deg);}}
-  </style>
+  <link rel="stylesheet" href="../css/admin-theme.css?v=traffic-dashboard-v2" />
+  <link rel="stylesheet" href="./trafico.css?v=traffic-dashboard-v2" />
 </head>
 <body>
+<div class="adm-bg-brand" aria-hidden="true"></div>
 <div class="admin-layout">
 
   <!-- SIDEBAR -->
@@ -215,316 +105,128 @@
   </aside>
 
   <main class="admin-main">
-    <div class="admin-header">
-      <div>
-        <h2>Tráfico</h2>
-        <p>Visitas al sitio, propiedades más vistas y conversión</p>
-      </div>
-    </div>
-
-    <!-- Rango de fechas -->
-    <div class="rango-bar">
-      <button class="rango-btn activo" data-dias="7">7 días</button>
-      <button class="rango-btn" data-dias="30">30 días</button>
-      <button class="rango-btn" data-dias="90">90 días</button>
-      <a class="ga4-link" href="https://analytics.google.com/analytics/web/#/a114422610p362179544/reports/intelligenthome" target="_blank" rel="noopener">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Ver en Google Analytics →
-      </a>
-    </div>
-
-    <!-- KPIs -->
-    <div class="kpi-grid" id="kpiGrid">
-      <div class="kpi-card"><div class="sp"></div></div>
-    </div>
-
-    <!-- Gráfico de visitas + dispositivos -->
-    <div class="charts-row">
-      <div class="chart-card">
-        <div class="chart-titulo">Visitas por día</div>
-        <div class="chart-wrap" style="height:200px;">
-          <canvas id="chartVisitas"></canvas>
+    <div class="traffic-shell">
+      <header class="traffic-header">
+        <div>
+          <div class="traffic-kicker"><span class="traffic-live-dot"></span>Inteligencia comercial</div>
+          <h2>Tráfico y rendimiento</h2>
+          <p>Audiencia, contenido, procedencia y resultados de la Red. Cada cifra identifica su fuente y su unidad para no confundir personas, sesiones y cargas de página.</p>
         </div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-titulo">Dispositivos</div>
-        <div class="chart-wrap" style="height:200px;">
-          <canvas id="chartDisp"></canvas>
+        <div class="traffic-updated" id="trafficUpdated">Esperando actualización</div>
+      </header>
+
+      <div class="traffic-toolbar" aria-label="Filtros del panel">
+        <div class="traffic-periods">
+          <button class="traffic-period" data-days="1">Hoy</button>
+          <button class="traffic-period" data-days="7">7 días</button>
+          <button class="traffic-period is-active" data-days="30">30 días</button>
+          <button class="traffic-period" data-days="90">90 días</button>
         </div>
+        <div class="traffic-custom">
+          <label class="traffic-date"><span>Desde</span><input type="date" id="trafficFrom"></label>
+          <label class="traffic-date"><span>Hasta</span><input type="date" id="trafficTo"></label>
+          <button class="traffic-action" id="trafficApply">Aplicar</button>
+        </div>
+        <div class="traffic-toolbar-spacer"></div>
+        <button class="traffic-action" id="trafficRefresh">Actualizar</button>
+        <a class="ga4-link" id="trafficGaLink" href="#" target="_blank" rel="noopener">Abrir GA4</a>
       </div>
-    </div>
 
-    <!-- Propiedades más vistas + fuentes -->
-    <div class="tablas-row">
-      <div class="tabla-card">
-        <div class="tabla-titulo">Propiedades más vistas</div>
-        <div id="tblProps"><div class="sp"></div></div>
-      </div>
-      <div class="tabla-card">
-        <div class="tabla-titulo">Fuentes de tráfico</div>
-        <div id="tblRefs"><div class="sp"></div></div>
-      </div>
-    </div>
+      <div class="traffic-status" id="trafficStatus" role="status"></div>
 
-    <!-- Por canal -->
-    <div class="canal-card">
-      <div class="canal-titulo">Por canal y medio</div>
-      <div id="tblCanal"><div class="sp"></div></div>
-    </div>
+      <section class="traffic-kpis" id="trafficKpis" aria-label="Indicadores principales"></section>
 
-    <!-- Conversión -->
-    <div class="conv-card">
-      <div class="conv-titulo">Embudo de conversión</div>
-      <div class="conv-row" id="convRow">
-        <div class="sp"></div>
-      </div>
-    </div>
+      <section class="traffic-grid traffic-grid--hero">
+        <article class="traffic-panel">
+          <div class="traffic-panel-head">
+            <div><div class="traffic-panel-title">Actividad diaria</div><div class="traffic-panel-sub" id="trafficRangeLabel">Últimos 30 días</div></div>
+            <span class="traffic-source-chip is-supabase">Supabase · histórico completo</span>
+          </div>
+          <div class="traffic-chart"><canvas id="trafficActivityChart"></canvas></div>
+        </article>
+        <article class="traffic-panel">
+          <div class="traffic-panel-head"><div><div class="traffic-panel-title">Calidad del dato</div><div class="traffic-panel-sub">Cobertura y advertencias antes de decidir.</div></div></div>
+          <div class="traffic-quality" id="trafficQuality"></div>
+        </article>
+      </section>
 
+      <section class="traffic-grid traffic-grid--half">
+        <article class="traffic-panel">
+          <div class="traffic-panel-head"><div><div class="traffic-panel-title">Qué miran</div><div class="traffic-panel-sub">Inicio, listados, fichas, servicios y miniwebs, agrupados sin variantes duplicadas.</div></div></div>
+          <div id="trafficPages"></div>
+        </article>
+        <article class="traffic-panel">
+          <div class="traffic-panel-head"><div><div class="traffic-panel-title">Dispositivos</div><div class="traffic-panel-sub">Distribución de las cargas registradas.</div></div></div>
+          <div class="traffic-chart traffic-chart--small"><canvas id="trafficDeviceChart"></canvas></div>
+        </article>
+      </section>
+
+      <section class="traffic-grid traffic-grid--half">
+        <article class="traffic-panel">
+          <div class="traffic-panel-head"><div><div class="traffic-panel-title">Procedencia aproximada</div><div class="traffic-panel-sub">Separa acceso directo, buscadores, redes, otros sitios y navegación interna.</div></div></div>
+          <div id="trafficSources"></div>
+        </article>
+        <article class="traffic-panel">
+          <div class="traffic-panel-head"><div><div class="traffic-panel-title">Referencias externas</div><div class="traffic-panel-sub">Dominios que enviaron una carga. No equivale a adquisición por sesión.</div></div></div>
+          <div id="trafficReferrers"></div>
+        </article>
+      </section>
+
+      <section class="traffic-panel" style="margin-bottom:1rem">
+        <div class="traffic-panel-head">
+          <div><div class="traffic-panel-title">Rendimiento de la Red</div><div class="traffic-panel-sub">Canal con nombre legible, medio registrado, cargas y consultas digitales.</div></div>
+          <label class="traffic-source-chip"><input type="checkbox" id="trafficHideTests" checked> Ocultar pruebas obvias · <span id="trafficTestCount"></span></label>
+        </div>
+        <div id="trafficChannels"></div>
+      </section>
+
+      <section class="traffic-grid traffic-grid--half">
+        <article class="traffic-panel">
+          <div class="traffic-panel-head"><div><div class="traffic-panel-title">Propiedades con más interés</div><div class="traffic-panel-sub">Cargas de ficha y consultas digitales agregadas por propiedad.</div></div></div>
+          <div id="trafficProperties"></div>
+        </article>
+        <article class="traffic-panel">
+          <div class="traffic-panel-head"><div><div class="traffic-panel-title">Desarrollos con más interés</div><div class="traffic-panel-sub">Actividad de miniwebs y consultas digitales por proyecto.</div></div></div>
+          <div id="trafficProjects"></div>
+        </article>
+      </section>
+
+      <section class="traffic-panel" id="trafficGaPanel">
+        <div class="traffic-panel-head">
+          <div><div class="traffic-panel-title">Audiencia y geografía</div><div class="traffic-panel-sub">Usuarios, sesiones y ubicación estimada por la conexión de internet.</div></div>
+          <span class="traffic-source-chip is-ga4" id="trafficGaStatus">GA4</span>
+        </div>
+        <div class="traffic-ga-summary" id="trafficGaSummary"></div>
+        <div class="traffic-ga-note" id="trafficGaNote"></div>
+        <div class="traffic-grid traffic-grid--geo" style="margin-bottom:0">
+          <div>
+            <div id="trafficGeoMap" aria-label="Mapa de audiencia aproximada"></div>
+            <div class="geo-disclaimer">Ubicación aproximada obtenida por GA4 a partir de la conexión. Puede corresponder al proveedor de internet, una VPN o una ciudad cercana; no representa un domicilio.</div>
+          </div>
+          <div id="trafficGeoRows"></div>
+        </div>
+        <div class="traffic-ga-details">
+          <section class="traffic-ga-block">
+            <div class="traffic-panel-title">Cómo llegaron · GA4</div>
+            <div class="traffic-panel-sub">Fuente y medio reales por sesión desde que se instaló la nueva propiedad.</div>
+            <div id="trafficGaAcquisition"></div>
+          </section>
+          <section class="traffic-ga-block">
+            <div class="traffic-panel-title">Contenido · GA4</div>
+            <div class="traffic-panel-sub">Páginas vistas y usuarios, sin confundirlos con las cargas históricas.</div>
+            <div id="trafficGaPages"></div>
+          </section>
+          <section class="traffic-ga-block">
+            <div class="traffic-panel-title">Eventos registrados</div>
+            <div class="traffic-panel-sub">Interacciones que GA4 recibió en el período.</div>
+            <div id="trafficGaEvents"></div>
+          </section>
+        </div>
+      </section>
+    </div>
   </main>
 </div>
-
-<script type="module">
-import { supabase } from '../js/config.js'
-
-// ── Auth ──
-const { data: { session } } = await supabase.auth.getSession()
-if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
-if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
-document.getElementById('btnLogout').addEventListener('click', async e => {
-  e.preventDefault(); await supabase.auth.signOut(); window.location.href = 'login.html'
-})
-
-// ── Estado ──
-let _dias = 7
-let _chartVisitas = null
-let _chartDisp = null
-
-// ── Helpers ──
-function fechaDesde(dias) {
-  const d = new Date(); d.setDate(d.getDate() - dias); return d.toISOString()
-}
-function fmt(n) { return Number(n).toLocaleString('es-AR') }
-
-// ── Carga principal ──
-async function cargar() {
-  const desde = fechaDesde(_dias)
-
-  const [{ data: visitas, count: totalVisitas }, { data: contactos }, { data: props }] = await Promise.all([
-    supabase.from('visitas').select('pagina, propiedad_id, dispositivo, canal_ref, canal_via, created_at', { count: 'exact' }).gte('created_at', desde).limit(10000),
-    supabase.from('contactos').select('id, origen, created_at').gte('created_at', desde).limit(5000),
-    supabase.from('propiedades').select('id, titulo').limit(500)
-  ])
-  // Advertir si se alcanzó el límite (datos incompletos)
-  if (totalVisitas > 10000) console.warn(`[Tráfico] ${totalVisitas} visitas en el período — mostrando las primeras 10.000`)
-
-  const vs = visitas || []
-  const cs = contactos || []
-  const csWeb = cs.filter(c => c.origen !== 'manual')
-
-  // ── KPIs ──
-  const total = vs.length
-  const propVistas = vs.filter(v => v.pagina === 'propiedad' || v.propiedad_id).length
-  const tours = vs.filter(v => v.pagina === 'tour').length
-  const tasa = total > 0 ? ((csWeb.length / total) * 100).toFixed(1) : '0.0'
-
-  document.getElementById('kpiGrid').innerHTML = `
-    <div class="kpi-card">
-      <div class="kpi-label">Visitas totales</div>
-      <div class="kpi-val">${fmt(total)}</div>
-      <div class="kpi-sub">últimos ${_dias} días</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Visitas a propiedades</div>
-      <div class="kpi-val">${fmt(propVistas)}</div>
-      <div class="kpi-sub">${total > 0 ? ((propVistas/total)*100).toFixed(0) : 0}% del total</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Consultas recibidas</div>
-      <div class="kpi-val">${fmt(cs.length)}</div>
-      <div class="kpi-sub">en el período</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Tasa de conversión</div>
-      <div class="kpi-val">${tasa}%</div>
-      <div class="kpi-sub class="${parseFloat(tasa) >= 2 ? 'up' : ''}">visitas → consultas</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Mobile</div>
-      <div class="kpi-val">${fmt(vs.filter(v => v.dispositivo === 'mobile').length)}</div>
-      <div class="kpi-sub">${total > 0 ? ((vs.filter(v=>v.dispositivo==='mobile').length/total)*100).toFixed(0) : 0}% del tráfico</div>
-    </div>
-  `
-
-  // ── Gráfico visitas por día ──
-  const dias = []
-  const counts = []
-  for (let i = _dias - 1; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i)
-    const label = d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' })
-    const key = d.toISOString().slice(0, 10)
-    dias.push(label)
-    counts.push(vs.filter(v => v.created_at?.slice(0,10) === key).length)
-  }
-
-  if (_chartVisitas) _chartVisitas.destroy()
-  _chartVisitas = new Chart(document.getElementById('chartVisitas'), {
-    type: 'line',
-    data: {
-      labels: dias,
-      datasets: [{
-        data: counts,
-        borderColor: '#d76f3f',
-        backgroundColor: 'rgba(215,111,63,0.08)',
-        fill: true,
-        tension: 0.4,
-        pointRadius: 3,
-        pointBackgroundColor: '#d76f3f'
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color:'#888', font:{size:10} }, grid: { color:'rgba(255,255,255,0.04)' } },
-        y: { ticks: { color:'#888', font:{size:10}, precision:0 }, grid: { color:'rgba(255,255,255,0.04)' }, beginAtZero:true }
-      }
-    }
-  })
-
-  // ── Gráfico dispositivos ──
-  const mob  = vs.filter(v => v.dispositivo === 'mobile').length
-  const desk = vs.filter(v => v.dispositivo === 'desktop').length
-  const tab  = vs.filter(v => v.dispositivo === 'tablet').length
-
-  if (_chartDisp) _chartDisp.destroy()
-  _chartDisp = new Chart(document.getElementById('chartDisp'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Mobile', 'Desktop', 'Tablet'],
-      datasets: [{ data: [mob, desk, tab], backgroundColor: ['#d76f3f','#4ad0c4','#a78bfa'], borderWidth: 0 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position:'bottom', labels:{ color:'#888', font:{size:11}, padding:12 } }
-      },
-      cutout: '65%'
-    }
-  })
-
-  // ── Propiedades más vistas ──
-  const propMap = {}
-  vs.filter(v => v.propiedad_id).forEach(v => {
-    propMap[v.propiedad_id] = (propMap[v.propiedad_id] || 0) + 1
-  })
-  const propsOrdenadas = Object.entries(propMap).sort((a,b) => b[1]-a[1]).slice(0,8)
-  const propNombres = {}
-  ;(props||[]).forEach(p => propNombres[p.id] = p.titulo)
-  const maxProp = propsOrdenadas[0]?.[1] || 1
-
-  document.getElementById('tblProps').innerHTML = propsOrdenadas.length === 0
-    ? `<div class="tabla-empty">Sin datos todavía. Las visitas aparecerán aquí en las próximas horas.</div>`
-    : propsOrdenadas.map(([id, n]) => `
-        <div class="tabla-item">
-          <div class="tabla-item-name">${propNombres[id] || id.slice(0,8)}</div>
-          <div class="tabla-item-bar-wrap"><div class="tabla-item-bar" style="width:${(n/maxProp*100).toFixed(0)}%"></div></div>
-          <div class="tabla-item-val">${n}</div>
-        </div>`).join('')
-
-  // ── Fuentes de tráfico ──
-  const refMap = {}
-  vs.forEach(v => {
-    const ref = v.referrer || 'directo'
-    refMap[ref] = (refMap[ref] || 0) + 1
-  })
-  const refsOrdenadas = Object.entries(refMap).sort((a,b) => b[1]-a[1]).slice(0,8)
-  const maxRef = refsOrdenadas[0]?.[1] || 1
-
-  document.getElementById('tblRefs').innerHTML = refsOrdenadas.length === 0
-    ? `<div class="tabla-empty">Sin datos todavía.</div>`
-    : refsOrdenadas.map(([ref, n]) => `
-        <div class="tabla-item">
-          <div class="tabla-item-name">${ref}</div>
-          <div class="tabla-item-bar-wrap"><div class="tabla-item-bar" style="width:${(n/maxRef*100).toFixed(0)}%"></div></div>
-          <div class="tabla-item-val">${n} (${total>0?((n/total)*100).toFixed(0):0}%)</div>
-        </div>`).join('')
-
-  // ── Por canal y medio ──
-  const canalMap = {}
-  vs.filter(v => v.canal_ref).forEach(v => {
-    const key = v.canal_ref
-    const via = v.canal_via || 'directo'
-    if (!canalMap[key]) canalMap[key] = { qr: 0, link: 0, directo: 0 }
-    canalMap[key][via] = (canalMap[key][via] || 0) + 1
-  })
-  const canalesOrdenados = Object.entries(canalMap)
-    .map(([nombre, vias]) => {
-      const qr = vias.qr || 0
-      const link = vias.link || 0
-      const directo = vias.directo || 0
-      return { nombre, qr, link, directo, total: qr + link + directo }
-    })
-    .sort((a,b) => b.total - a.total)
-  const maxCanal = canalesOrdenados[0]?.total || 1
-
-  document.getElementById('tblCanal').innerHTML = canalesOrdenados.length === 0
-    ? `<div class="tabla-empty">Sin datos todavía. Aparecerán cuando haya visitas atribuidas a un canal.</div>`
-    : `<table class="canal-table">
-        <thead><tr>
-          <th>Canal</th><th>Medio</th><th>Visitas</th><th>Progreso</th>
-        </tr></thead>
-        <tbody>${canalesOrdenados.flatMap(c => {
-          const rows = []
-          if (c.qr > 0)      rows.push({ via:'qr',      etiqueta:'▣ QR',       n:c.qr,      nombre:c.nombre })
-          if (c.link > 0)    rows.push({ via:'link',    etiqueta:'🔗 Link',    n:c.link,    nombre:c.nombre })
-          if (c.directo > 0) rows.push({ via:'directo', etiqueta:'● Directo', n:c.directo, nombre:c.nombre })
-          return rows
-        }).map((r,i,arr) => {
-          const prev = arr[i-1]
-          const showName = i === 0 || prev?.nombre !== r.nombre
-          return `<tr>
-            ${showName ? `<td rowspan="${arr.filter(x=>x.nombre===r.nombre).length}" style="font-weight:600;padding-right:1rem">${r.nombre}</td>` : ''}
-            <td><span class="canal-badge ${r.via}">${r.etiqueta}</span></td>
-            <td style="font-weight:600;color:var(--blanco)">${r.n}</td>
-            <td><span class="canal-bar-wrap"><span class="canal-bar" style="width:${(r.n/maxCanal*100).toFixed(0)}%"></span></span></td>
-          </tr>`
-        }).join('')}</tbody>
-      </table>`
-
-  // ── Embudo de conversión ──
-  const pctProp = total > 0 ? ((propVistas/total)*100).toFixed(0) : 0
-  const pctConv = propVistas > 0 ? ((cs.length/propVistas)*100).toFixed(1) : 0
-  document.getElementById('convRow').innerHTML = `
-    <div class="conv-step">
-      <div class="conv-step-val">${fmt(total)}</div>
-      <div class="conv-step-lbl">Visitas totales</div>
-    </div>
-    <div class="conv-arrow">→</div>
-    <div class="conv-step">
-      <div class="conv-step-val">${fmt(propVistas)}</div>
-      <div class="conv-step-lbl">Ven propiedades</div>
-      <div class="conv-pct">${pctProp}%</div>
-    </div>
-    <div class="conv-arrow">→</div>
-    <div class="conv-step">
-      <div class="conv-step-val">${fmt(cs.length)}</div>
-      <div class="conv-step-lbl">Consultan</div>
-      <div class="conv-pct">${pctConv}%</div>
-    </div>
-  `
-}
-
-// ── Botones de rango ──
-document.querySelectorAll('.rango-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.rango-btn').forEach(b => b.classList.remove('activo'))
-    btn.classList.add('activo')
-    _dias = parseInt(btn.dataset.dias)
-    cargar()
-  })
-})
-
-cargar()
-</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="./trafico.js?v=traffic-dashboard-v2"></script>
 </body>
 </html>
