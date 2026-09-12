@@ -320,23 +320,20 @@
     .crm-etapa-select { width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.78rem; margin-top:0.8rem; outline:none; }
     .crm-etapa-select:focus { border-color:rgba(255,255,255,.22); }
 
-    /* ── Nota ── */
-    .crm-nota-wrap { margin-top:0; }
+    /* ── Bitácora inmutable ── */
+    .crm-nota-wrap { margin-top:0; padding:1rem; border:1px solid rgba(255,255,255,.08); border-radius:10px; background:rgba(255,255,255,.025); }
     .crm-nota-input { width:100%; padding:0.5rem 0.7rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--blanco); border-radius:8px; font-family:'Inter',sans-serif; font-size:0.75rem; resize:vertical; min-height:60px; box-sizing:border-box; outline:none; }
     .crm-nota-input:focus { border-color:rgba(255,255,255,.22); }
     .crm-nota-save { margin-top:0.4rem; padding:0.4rem 1rem; background:var(--accent); color:#fff; border:none; border-radius:6px; font-size:0.72rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
-
-    /* ── Log de notas ── */
-    .crm-notas-titulo { font-size:0.6rem; color:var(--gris); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem; margin-top:0.8rem; }
-    .crm-notas-log { display:flex; flex-direction:column; gap:0.4rem; max-height:210px; overflow-y:auto; margin-bottom:0.8rem; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.1) transparent; }
-    .crm-nota-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-top-color:rgba(255,255,255,.11); border-radius:8px; padding:0.55rem 0.75rem; }
-    .crm-nota-item-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.28rem; }
-    .crm-nota-item-fecha { font-size:0.6rem; color:var(--gris); }
-    .crm-nota-item-del { background:none; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size:0.65rem; padding:0; line-height:1; transition:color .15s; font-family:'Inter',sans-serif; }
-    .crm-nota-item-del:hover { color:#e05c5c; }
-    .crm-nota-item-texto { font-size:0.75rem; color:rgba(255,255,255,0.8); line-height:1.5; white-space:pre-wrap; word-break:break-word; }
-    .crm-notas-empty { font-size:0.7rem; color:rgba(255,255,255,0.2); text-align:center; padding:0.7rem 0; }
+    .crm-nota-save:disabled { opacity:.55; cursor:wait; }
     .crm-nota-new-label { font-size:0.6rem; color:var(--gris); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem; }
+    .crm-nota-ayuda { margin-top:.45rem; font-size:.62rem; color:rgba(255,255,255,.38); line-height:1.45; }
+    .crm-nota-status { min-height:1rem; margin-top:.35rem; font-size:.65rem; color:rgba(255,255,255,.55); }
+    .crm-nota-status.ok { color:#7fd1c6; }
+    .crm-nota-status.error { color:#e98080; }
+    .crm-evento-item.nota { border-left-color:var(--accent); background:rgba(215,111,63,.045); }
+    .crm-evento-nota { margin-top:.45rem; font-size:.75rem; color:rgba(255,255,255,.82); line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+    .crm-evento-legacy { display:inline-flex; margin-top:.45rem; font-size:.55rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,.32); }
 
     @media (max-width:640px) {
       .crm-modal { padding:1.5rem; max-width:100%; }
@@ -559,18 +556,18 @@
     <h3 id="modalNombre">—</h3>
     <div class="crm-modal-body">
       <div id="modalRows" class="crm-modal-datos"></div>
-      <div id="modalPersonaFicha"></div>
-      <div id="modalPersonaOportunidades"></div>
-      <div id="modalPersonaHistorial"></div>
       <div class="crm-modal-msg" id="modalMensaje" style="display:none;"></div>
       <select class="crm-etapa-select" id="modalEtapa"></select>
       <div class="crm-nota-wrap">
-        <div class="crm-notas-titulo">Notas internas</div>
-        <div class="crm-notas-log" id="modalNotasLog"></div>
-        <div class="crm-nota-new-label">Nueva nota</div>
-        <textarea class="crm-nota-input" id="modalNota" placeholder="Escribí tu nota..."></textarea>
-        <button class="crm-nota-save" id="modalNotaSave">+ Agregar nota</button>
+        <div class="crm-nota-new-label">Nueva nota en la bitácora</div>
+        <textarea class="crm-nota-input" id="modalNota" maxlength="4000" placeholder="Escribí qué pasó con este lead..."></textarea>
+        <div class="crm-nota-ayuda">Quedará guardada con tu usuario, fecha y hora. Las notas no se pisan ni se borran.</div>
+        <button class="crm-nota-save" id="modalNotaSave">+ Registrar nota</button>
+        <div class="crm-nota-status" id="modalNotaStatus" role="status" aria-live="polite"></div>
       </div>
+      <div id="modalPersonaHistorial"></div>
+      <div id="modalPersonaFicha"></div>
+      <div id="modalPersonaOportunidades"></div>
       <div class="crm-modal-actions" id="modalActions"></div>
     </div>
   </div>
@@ -625,6 +622,9 @@ let _leads = []
 let _dragged = null
 let _modalId = null
 let _mapasFiltrosCargados = false
+let _crmUsuariosCargados = false
+let _crmUsuariosPorId = new Map()
+let _notaGuardadoToken = 0
 let _canalPorCodigo = new Map()
 let _canalPorReferencia = new Map()
 let _proyectoPorSlug = new Map()
@@ -652,6 +652,34 @@ function normalizarEmailFiltro(v) {
 
 function claveMapa(v) {
   return textoPlano(v).toLowerCase()
+}
+
+async function cargarUsuariosCrm() {
+  if (_crmUsuariosCargados) return
+  _crmUsuariosCargados = true
+  _crmUsuariosPorId = new Map()
+
+  const actual = session.user
+  _crmUsuariosPorId.set(String(actual.id), {
+    nombre_completo: actual.user_metadata?.nombre_completo || actual.user_metadata?.nombre || '',
+    email: actual.email || ''
+  })
+
+  try {
+    const { data, error } = await supabase.rpc('admin_listar_usuarios_2f')
+    if (error) throw error
+    ;(Array.isArray(data) ? data : []).forEach(u => {
+      if (u?.id) _crmUsuariosPorId.set(String(u.id), u)
+    })
+  } catch (error) {
+    console.warn('[crm bitácora] no se pudo cargar el directorio de autores', error)
+  }
+}
+
+function nombreActor(actorId, legacy = false) {
+  if (legacy || !actorId) return 'Autor no registrado'
+  const u = _crmUsuariosPorId.get(String(actorId))
+  return textoPlano(u?.nombre_completo) || textoPlano(u?.email) || 'Usuario no disponible'
 }
 
 function infoVia(canalVia, directo = false, origenCaptura = null) {
@@ -1019,7 +1047,7 @@ async function cargar() {
     .select('*, propiedades(id, titulo, codigo_interno)')
     .order('created_at', { ascending: false })
 
-  await cargarMapasFiltros()
+  await Promise.all([cargarMapasFiltros(), cargarUsuariosCrm()])
 
   if (error || !data) return
   _leads = data.map(enriquecerLead)
@@ -1314,6 +1342,7 @@ function fmtEventoFecha(v) {
 
 function eventoLabel(v) {
   const txt = textoPlano(v)
+  if (txt === 'nota' || txt === 'nota_legacy') return 'Nota interna'
   return txt ? txt.replace(/_/g, ' ') : 'Evento CRM'
 }
 
@@ -1338,37 +1367,105 @@ function renderHistorialError() {
     </div>`
 }
 
+function eventosLegacyPersona(lead) {
+  const relacionados = lead.persona_id
+    ? _leads.filter(l => String(l.persona_id || '') === String(lead.persona_id))
+    : [lead]
+  const salida = []
+
+  relacionados.forEach(l => {
+    const textosLog = new Set()
+    ;(Array.isArray(l.notas_log) ? l.notas_log : []).forEach((n, i) => {
+      const texto = textoPlano(n?.texto)
+      if (!texto) return
+      textosLog.add(texto)
+      salida.push({
+        id: `legacy-log-${l.id}-${i}`,
+        contacto_id: l.id,
+        persona_id: l.persona_id || null,
+        tipo_evento: 'nota_legacy',
+        origen: 'notas_log_legacy',
+        actor_id: null,
+        nota: texto,
+        fecha_evento: n?.fecha || l.created_at,
+        created_at: n?.fecha || l.created_at,
+        _legacy: true
+      })
+    })
+
+    const notaSimple = textoPlano(l.notas)
+    if (notaSimple && !textosLog.has(notaSimple)) {
+      salida.push({
+        id: `legacy-notas-${l.id}`,
+        contacto_id: l.id,
+        persona_id: l.persona_id || null,
+        tipo_evento: 'nota_legacy',
+        origen: 'contactos_notas_legacy',
+        actor_id: null,
+        nota: notaSimple,
+        fecha_evento: l.created_at,
+        created_at: l.created_at,
+        _legacy: true
+      })
+    }
+  })
+
+  return salida
+}
+
+function ordenarEventos(eventos) {
+  return [...eventos].sort((a, b) => {
+    const fa = new Date(a.fecha_evento || a.created_at || 0).getTime() || 0
+    const fb = new Date(b.fecha_evento || b.created_at || 0).getTime() || 0
+    return (fb - fa) || String(b.id || '').localeCompare(String(a.id || ''))
+  })
+}
+
 function renderHistorialPersona(eventos, actualId) {
   const lista = Array.isArray(eventos) ? eventos : []
   if (!lista.length) {
     return `
       <div class="crm-persona-card muted">
-        <div class="crm-persona-kicker">Historial</div>
-        <div class="crm-persona-title">Historial CRM</div>
-        <p class="crm-persona-copy">Todavía no hay eventos registrados para esta oportunidad.</p>
+        <div class="crm-persona-kicker">Bitácora</div>
+        <div class="crm-persona-title">Recorrido del lead</div>
+        <p class="crm-persona-copy">Todavía no hay movimientos ni notas registrados para esta oportunidad.</p>
       </div>`
   }
 
   return `
     <div class="crm-persona-card">
-      <div class="crm-persona-kicker">Historial</div>
-      <div class="crm-persona-title">Historial CRM</div>
+      <div class="crm-persona-kicker">Bitácora</div>
+      <div class="crm-persona-title">Recorrido del lead</div>
       <div class="crm-eventos-list">
         ${lista.map(e => {
           const actual = String(e.contacto_id) === String(actualId)
-          const meta = [
-            `<span>${esc(fmtEventoFecha(e.fecha_evento || e.created_at))}</span>`,
-            eventoEstados(e),
-            eventoCanal(e),
-            e.origen ? `<span>${esc(e.origen)}</span>` : ''
-          ].filter(Boolean)
+          const esNota = e.tipo_evento === 'nota' || e.tipo_evento === 'nota_legacy'
+          const meta = esNota
+            ? [
+                `<span>${esc(fmtEventoFecha(e.fecha_evento || e.created_at))}</span>`,
+                `<span>${esc(nombreActor(e.actor_id, e._legacy))}</span>`
+              ]
+            : [
+                `<span>${esc(fmtEventoFecha(e.fecha_evento || e.created_at))}</span>`,
+                eventoEstados(e),
+                eventoCanal(e),
+                e.origen ? `<span>${esc(e.origen)}</span>` : ''
+              ]
+          const nota = esNota && textoPlano(e.nota)
+            ? `<div class="crm-evento-nota">${esc(e.nota)}</div>`
+            : ''
+          const legacy = e._legacy
+            ? '<span class="crm-evento-legacy">Nota histórica · autor no registrado</span>'
+            : ''
           return `
-            <div class="crm-evento-item${actual ? ' actual' : ''}">
+            <div class="crm-evento-item${actual ? ' actual' : ''}${esNota ? ' nota' : ''}">
               <div class="crm-evento-head">
                 <div class="crm-evento-tipo">${esc(eventoLabel(e.tipo_evento))}</div>
                 ${actual ? '<span class="crm-evento-badge">Esta oportunidad</span>' : ''}
               </div>
               <div class="crm-evento-meta">${meta.join('<span>·</span>')}</div>
+              ${nota}
+              ${legacy}
             </div>`
         }).join('')}
       </div>
@@ -1423,8 +1520,10 @@ async function cargarPersonaHistorial(lead) {
   try {
     let query = supabase
       .from('crm_eventos')
-      .select('id, contacto_id, persona_id, tipo_evento, estado_anterior, estado_nuevo, origen, canal_ref, canal_via, fecha_evento, created_at')
+      .select('id, contacto_id, persona_id, tipo_evento, estado_anterior, estado_nuevo, origen, actor_id, canal_ref, canal_via, nota, metadata, fecha_evento, fecha_programada, created_at')
       .order('fecha_evento', { ascending: false })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
 
     if (lead.persona_id) {
       query = query.or(`persona_id.eq.${lead.persona_id},contacto_id.eq.${lead.id}`)
@@ -1440,7 +1539,8 @@ async function cargarPersonaHistorial(lead) {
       cont.innerHTML = renderHistorialError()
       return
     }
-    cont.innerHTML = renderHistorialPersona(data || [], lead.id)
+    const unificados = ordenarEventos([...(data || []), ...eventosLegacyPersona(lead)])
+    cont.innerHTML = renderHistorialPersona(unificados, lead.id)
   } catch (error) {
     if (_modalId !== leadId) return
     console.warn('[crm persona] error cargando historial', error)
@@ -1486,6 +1586,7 @@ async function cargarPersonaOportunidades(lead) {
 function abrirModal(id) {
   const l = _leads.find(l => l.id === id)
   if (!l) return
+  _notaGuardadoToken += 1
   _modalId = id
 
   document.getElementById('modalNombre').textContent = l.nombre || 'Sin nombre'
@@ -1518,8 +1619,13 @@ function abrirModal(id) {
     await supabase.from('contactos').update({ estado: nueva, leido: true }).eq('id', id)
   }
 
-  renderNotasLog(l)
   document.getElementById('modalNota').value = ''
+  const notaBtn = document.getElementById('modalNotaSave')
+  notaBtn.disabled = false
+  notaBtn.textContent = '+ Registrar nota'
+  const notaStatus = document.getElementById('modalNotaStatus')
+  notaStatus.textContent = ''
+  notaStatus.className = 'crm-nota-status'
 
   const actions = document.getElementById('modalActions')
   actions.innerHTML = ''
@@ -1540,61 +1646,62 @@ function abrirModal(id) {
 
 document.getElementById('crmModalClose').addEventListener('click', () => {
   document.getElementById('crmOverlay').classList.remove('open')
+  _notaGuardadoToken += 1
   _modalId = null
 })
 document.getElementById('crmOverlay').addEventListener('click', e => {
   if (e.target === document.getElementById('crmOverlay')) {
     document.getElementById('crmOverlay').classList.remove('open')
+    _notaGuardadoToken += 1
     _modalId = null
   }
 })
 
-function renderNotasLog(lead) {
-  const cont = document.getElementById('modalNotasLog')
-  if (!cont) return
-  const lista = Array.isArray(lead.notas_log) ? lead.notas_log : []
-  if (!lista.length) {
-    cont.innerHTML = '<div class="crm-notas-empty">Sin notas aún</div>'
-    return
-  }
-  cont.innerHTML = lista.map((n, i) => {
-    const d = new Date(n.fecha)
-    const fecha = d.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' })
-      + ' ' + d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
-    return `
-      <div class="crm-nota-item">
-        <div class="crm-nota-item-header">
-          <span class="crm-nota-item-fecha">${fecha}</span>
-          <button class="crm-nota-item-del" onclick="window._eliminarNota(${i})" title="Eliminar">✕</button>
-        </div>
-        <div class="crm-nota-item-texto">${esc(n.texto)}</div>
-      </div>`
-  }).join('')
-}
-
-window._eliminarNota = async (i) => {
-  if (!_modalId) return
-  const lead = _leads.find(l => l.id === _modalId)
-  if (!lead || !Array.isArray(lead.notas_log)) return
-  lead.notas_log.splice(i, 1)
-  renderNotasLog(lead)
-  await supabase.from('contactos').update({ notas_log: lead.notas_log }).eq('id', _modalId)
-}
-
 document.getElementById('modalNotaSave').addEventListener('click', async () => {
   if (!_modalId) return
-  const texto = document.getElementById('modalNota').value.trim()
+  const input = document.getElementById('modalNota')
+  const btn = document.getElementById('modalNotaSave')
+  const status = document.getElementById('modalNotaStatus')
+  const texto = input.value.trim()
   if (!texto) return
+  if (texto.length > 4000) {
+    status.textContent = 'La nota no puede superar los 4000 caracteres.'
+    status.className = 'crm-nota-status error'
+    return
+  }
   const lead = _leads.find(l => l.id === _modalId)
   if (!lead) return
-  if (!Array.isArray(lead.notas_log)) lead.notas_log = []
-  lead.notas_log.unshift({ texto, fecha: new Date().toISOString() })
-  document.getElementById('modalNota').value = ''
-  renderNotasLog(lead)
-  await supabase.from('contactos').update({ notas_log: lead.notas_log }).eq('id', _modalId)
-  const btn = document.getElementById('modalNotaSave')
-  btn.textContent = '✓ Guardada'
-  setTimeout(() => { btn.textContent = '+ Agregar nota' }, 1200)
+  const leadId = lead.id
+  const guardadoToken = ++_notaGuardadoToken
+
+  btn.disabled = true
+  btn.textContent = 'Guardando…'
+  status.textContent = ''
+  status.className = 'crm-nota-status'
+
+  try {
+    const { error } = await supabase.rpc('rpc_admin_agregar_nota_crm', {
+      p_contacto_id: leadId,
+      p_nota: texto
+    })
+    if (error) throw error
+    if (_modalId !== leadId || guardadoToken !== _notaGuardadoToken) return
+    input.value = ''
+    status.textContent = '✓ Nota registrada en la bitácora.'
+    status.className = 'crm-nota-status ok'
+    await cargarPersonaHistorial(lead)
+  } catch (error) {
+    console.warn('[crm bitácora] error guardando nota', error)
+    if (_modalId === leadId && guardadoToken === _notaGuardadoToken) {
+      status.textContent = 'No se pudo guardar. La nota sigue en el cuadro para que puedas reintentar.'
+      status.className = 'crm-nota-status error'
+    }
+  } finally {
+    if (_modalId === leadId && guardadoToken === _notaGuardadoToken) {
+      btn.disabled = false
+      btn.textContent = '+ Registrar nota'
+    }
+  }
 })
 
 inicializarFiltros()
