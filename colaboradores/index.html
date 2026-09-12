@@ -1344,6 +1344,40 @@
     return filas
   }
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+  async function cargarRelacionesPropiedadActiva() {
+    const { data, error } = await supabase.rpc('rpc_activo_referencias_propiedad_v1')
+    if (error) throw new Error(`relaciones propiedad: ${error.message || error}`)
+    const total = Number(data?.total_filas)
+    const filas = data?.filas
+    if (!Number.isSafeInteger(total) || total < 0 || !Array.isArray(filas) || filas.length !== total) {
+      throw new Error('relaciones propiedad: respuesta incompleta o mal formada')
+    }
+    if (total > MAX_ROWS) throw new Error(`relaciones propiedad: superó el máximo seguro de ${MAX_ROWS} filas`)
+    const referenciasVistas = new Set()
+    filas.forEach(fila => {
+      const referenciaId = String(fila?.referencia_id || '').toLowerCase()
+      const propiedadId = String(fila?.propiedad_id || '').toLowerCase()
+      if (!UUID_RE.test(referenciaId) || !UUID_RE.test(propiedadId) || !fila?.referencia_codigo || referenciasVistas.has(referenciaId)) {
+        throw new Error('relaciones propiedad: fila inválida o referencia repetida')
+      }
+      referenciasVistas.add(referenciaId)
+    })
+    return filas
+  }
+
+  function validarRelacionesPropiedad(filas, referencias) {
+    const porId = new Map((referencias || []).map(ref => [String(ref?.id || '').toLowerCase(), String(ref?.codigo || '')]))
+    ;(filas || []).forEach(fila => {
+      const referenciaId = String(fila?.referencia_id || '').toLowerCase()
+      if (!porId.has(referenciaId) || porId.get(referenciaId) !== String(fila?.referencia_codigo || '')) {
+        throw new Error('relaciones propiedad: la RPC devolvió una referencia ajena o con código inconsistente')
+      }
+    })
+    return filas
+  }
+
   const literalPostgrest = valor => `"${String(valor).replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"`
   const despuesAsc = (query, a, va, b, vb) => query.or(`${a}.gt.${literalPostgrest(va)},and(${a}.eq.${literalPostgrest(va)},${b}.gt.${literalPostgrest(vb)})`)
   const despuesDesc = (query, a, va, b, vb) => query.or(`${a}.lt.${literalPostgrest(va)},and(${a}.eq.${literalPostgrest(va)},${b}.lt.${literalPostgrest(vb)})`)
@@ -1404,6 +1438,7 @@
   }
   const esEntrada = v => ['qr','link'].includes(clasificarVia(v))
   const esInteraccion = v => clasificarVia(v) !== 'manual'
+  const esOportunidadAbierta = contacto => !['descartado','cerrado'].includes(contacto?.estado || 'nueva') && !contacto?.fecha_cierre
   const fmt  = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
   const ESTADO_LABEL = { nueva:'Sin avance', contactado:'Contactado', visita:'Visita', visita_realizada:'Visita realizada', oferta:'Oferta', cerrado:'Cerrado', descartado:'Descartado' }
   const ESTADO_LABEL_PASIVO = { nueva:'Sin avance', contactado:'Contactado', visita:'En visita', visita_realizada:'Visita realizada', oferta:'Oferta', cerrado:'Cerrada', descartado:'Descartado' }
@@ -1784,7 +1819,6 @@
     const esPasivo  = meta.tipo_acceso === 'pasivo'
     let codigos   = canales.map(c => c.codigo)
     let ahora     = new Date()
-    let hace30    = new Date(ahora - 30 * 86400000).toISOString()
 
     // Header
     const headerCanalEl = document.getElementById('headerCanal')
@@ -1821,7 +1855,7 @@
     // codigos de filtrado = referencia codes + canal codes (fallback)
     let codigosRef = [...new Set([...refCodigos, ...codigos])]
 
-    let visitas = [], contactos = [], campanasRows = [], misMensajes = []
+    let visitas = [], contactos = [], campanasRows = [], misMensajes = [], relacionesPropiedadRows = []
     let misSlots = misRefs
     try {
       const cargas = [
@@ -1834,7 +1868,7 @@
         }, fila => ({created_at:fila.created_at,id:fila.id}))),
         esPasivo ? cargarContactosPasivos() : cargarPorBloques('contactos', codigosRef, (refs, bloque) => cargarKeyset(`contactos [${bloque + 1}]`, (cursor, contar) => {
           let q = supabase.from('contactos')
-            .select('id,created_at,fecha,nombre,mensaje,estado,origen,canal_ref,canal_via,propiedad_id,proyecto_slug,persona_id,propiedades(titulo)', { count: contar ? 'exact' : undefined })
+            .select('id,created_at,fecha,nombre,mensaje,estado,origen,canal_ref,canal_via,propiedad_id,proyecto_slug,persona_id,fecha_cierre,propiedades(titulo)', { count: contar ? 'exact' : undefined })
             .in('canal_ref', refs).order('created_at', {ascending:false}).order('id', {ascending:false}).limit(PAGE_SIZE)
           if (cursor) q = despuesDesc(q, 'created_at', cursor.created_at, 'id', cursor.id)
           return q
@@ -1852,9 +1886,11 @@
             .order('created_at', {ascending:false}).order('id', {ascending:false}).limit(PAGE_SIZE)
           if (cursor) q = despuesDesc(q, 'created_at', cursor.created_at, 'id', cursor.id)
           return q
-        }, fila => ({created_at:fila.created_at,id:fila.id}))
+        }, fila => ({created_at:fila.created_at,id:fila.id})),
+        esPasivo ? Promise.resolve([]) : cargarRelacionesPropiedadActiva()
       ]
-      ;[visitas, contactos, campanasRows, misMensajes] = await Promise.all(cargas)
+      ;[visitas, contactos, campanasRows, misMensajes, relacionesPropiedadRows] = await Promise.all(cargas)
+      validarRelacionesPropiedad(relacionesPropiedadRows, misRefs)
       const mensajeIds = misMensajes.map(m => m.id)
       const respuestas = mensajeIds.length ? await cargarPorBloques('respuestas', mensajeIds, (ids, bloque) => cargarKeyset(`respuestas [${bloque + 1}]`, (cursor, contar) => {
         let q = supabase.from('mensajes_respuestas')
@@ -2043,23 +2079,19 @@
       }
     })
 
-    function propiedadIdDesdeDestino(destino) {
-      if (!destino) return null
-      try {
-        const url = new URL(String(destino), location.origin)
-        if (!/(^|\/)propiedad(?:\.html)?\/?$/.test(url.pathname)) return null
-        const id = String(url.searchParams.get('id') || '').toLowerCase()
-        return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id) ? id : null
-      } catch (_) {
-        return null
-      }
+    const crearMapaRelacionesPropiedad = filas => new Map(
+      (filas || []).map(fila => [String(fila.referencia_id).toLowerCase(), String(fila.propiedad_id).toLowerCase()])
+    )
+    let propiedadPorReferenciaId = crearMapaRelacionesPropiedad(relacionesPropiedadRows)
+    const propiedadIdDeSlot = (slot, mapa = propiedadPorReferenciaId) => {
+      const referenciaId = String(slot?.id || '').toLowerCase()
+      return referenciaId ? (mapa.get(referenciaId) || null) : null
     }
 
-    let slotCodigos  = misSlots.map(s => s.codigo)
     let derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
     const propiedadIdsVinculadas = [...new Set(misSlots
       .filter(s => s.activo !== false)
-      .map(s => propiedadIdDesdeDestino(s.destino))
+      .map(s => propiedadIdDeSlot(s))
       .filter(Boolean))]
     let proyectosRows = [], propiedadesRows = []
     try {
@@ -2084,9 +2116,6 @@
       document.getElementById('mainContent').innerHTML = '<div class="empty-msg">No pudimos completar propiedades y proyectos. El panel se detuvo para no mostrar métricas parciales.</div>'
       return
     }
-    const scansPorSlot = {}
-    visitas.filter(v => slotCodigos.includes(v.canal_ref) && esInteraccion(v) && new Date(v.created_at) >= new Date(hace30))
-      .forEach(v => { scansPorSlot[v.canal_ref] = (scansPorSlot[v.canal_ref] || 0) + 1 })
     const proyImgs = {}
     proyectosRows.forEach(p => { proyImgs[p.slug] = p })
     const propDataMap = {}
@@ -2097,17 +2126,13 @@
     })
     function findPropData(slotOslug) {
       const slot = slotOslug && typeof slotOslug === 'object' ? slotOslug : null
-      const id = slot ? propiedadIdDesdeDestino(slot.destino) : null
+      const id = slot ? propiedadIdDeSlot(slot) : null
       if (id && propDataById[id]) return propDataById[id]
       const slug = slot ? slot.proyecto_slug : slotOslug
       if (!slug) return null
       if (propDataMap[slug]) return propDataMap[slug]
       for (const [k, v] of Object.entries(propDataMap)) { if (k.startsWith(slug) || slug.startsWith(k)) return v }
       return null
-    }
-    const propiedadVisibleDeSlot = slot => {
-      const propiedadId = propiedadIdDesdeDestino(slot.destino)
-      return propiedadId ? (propDataById[propiedadId] || null) : null
     }
     // Fuente única de las líneas del gráfico. El pasivo agrupa por negocio;
     // el activo agrupa por propiedad real vinculada a sus referencias.
@@ -2132,7 +2157,7 @@
         })
       })
       misSlots.filter(s => s.activo !== false).forEach(slot => {
-        const propiedadId = propiedadIdDesdeDestino(slot.destino)
+        const propiedadId = propiedadIdDeSlot(slot)
         const propiedad = propiedadId ? propDataById[propiedadId] : null
         if (!propiedad) return
         const key = `propiedad:${propiedadId}`
@@ -2149,16 +2174,33 @@
       return [...porPropiedad.values()].sort((a,b) => a.nombre.localeCompare(b.nombre, 'es'))
     }
 
-    function propiedadAtribuida(contacto) {
-      const idDirecto = contacto?.propiedad_id ? String(contacto.propiedad_id).toLowerCase() : null
-      if (idDirecto) return propDataById[idDirecto] ? idDirecto : null
-      if (!contacto?.canal_ref) return null
-      const candidatas = unidadesGrafico().filter(u => u.propiedadId && u.codigos.has(contacto.canal_ref))
-      return candidatas.length === 1 ? candidatas[0].propiedadId : null
+    function unidadesTarjetaActiva() {
+      const slotsActivos = misSlots.filter(slot => slot.activo !== false)
+      const propiedades = unidadesGrafico()
+        .filter(unidad => unidad.propiedadId && unidad.codigos.size > 0)
+        .map(unidad => ({
+          ...unidad,
+          slot: slotsActivos.find(slot => propiedadIdDeSlot(slot) === unidad.propiedadId) || null
+        }))
+        .filter(unidad => unidad.slot)
+      const generales = slotsActivos
+        .filter(slot => !propiedadIdDeSlot(slot))
+        .map(slot => ({
+          key: `referencia:${slot.id}`,
+          codigo: slot.codigo,
+          propiedadId: null,
+          nombre: slot.nombre || slot.codigo,
+          color: colorDeSlot(slot.codigo),
+          codigos: new Set([slot.codigo]),
+          slot
+        }))
+      return [...propiedades, ...generales]
     }
-    function contactoPerteneceSlot(contacto, slot) {
-      const propiedadId = propiedadIdDesdeDestino(slot?.destino)
-      return propiedadId ? propiedadAtribuida(contacto) === propiedadId : contacto?.canal_ref === slot?.codigo
+    function contactoPerteneceUnidad(contacto, unidad, unidades) {
+      if (!contacto?.canal_ref) return false
+      const candidatas = (unidades || unidadesTarjetaActiva())
+        .filter(candidata => candidata.codigos.has(contacto.canal_ref))
+      return candidatas.length === 1 && candidatas[0].key === unidad.key
     }
     // ── Trazabilidad CRM ─────────────────────────────────────────────────────
     // Lee crm_eventos SOLO via RPC con SECURITY DEFINER — nunca directo.
@@ -2226,7 +2268,9 @@
         labelFn = t => new Date(t).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})
       }
       window._pvZoomBucketMs = bucketMs
-      const snapFrom = Math.floor(fromMs / bucketMs) * bucketMs
+      const snapFrom = bucketMs === 86400000
+        ? (() => { const d = new Date(fromMs); d.setHours(0,0,0,0); return d.getTime() })()
+        : Math.floor(fromMs / bucketMs) * bucketMs
       const numBuckets = Math.max(1, Math.ceil((toMs - snapFrom) / bucketMs))
       const bucketStarts = Array.from({length:numBuckets}, (_,i) => snapFrom + i*bucketMs)
       const newLbls = bucketStarts.map(t => labelFn(t))
@@ -2851,7 +2895,7 @@
 
         <div class="pv-kpi-grid">
           <div class="pv-kpi" style="--pv-c:#6495ed">
-            <div class="pv-kpi-label">Interacciones del período</div>
+            <div class="pv-kpi-label">Interacciones atribuibles</div>
             <div class="pv-kpi-n" id="pvKpi1N">—</div>
             <div class="pv-kpi-sub" id="pvKpi1Sub">Calculando el período…</div>
           </div>
@@ -2862,7 +2906,7 @@
             <div class="pv-kpi-sub" id="pvKpi2Sub">Calculando el período…</div>
           </div>
           <div class="pv-kpi" style="--pv-c:#c9a84c">
-            <div class="pv-kpi-label">Consultas del período</div>
+            <div class="pv-kpi-label">Consultas atribuibles</div>
             <div class="pv-kpi-n pv-dorado" id="pvKpi3N">—</div>
             <div id="pvKpi3Delta"></div>
             <div class="pv-kpi-sub" id="pvKpi3Sub">Calculando el período…</div>
@@ -2903,7 +2947,7 @@
       const _h = new Date(); const _d = new Date(_h); _d.setHours(0,0,0,0)
       requestAnimationFrame(() => {
         renderGraficoPasivo(contactos, 0, null, null, { multiSlot: _modoMultiSlot() })
-        renderPanelesActivos(contactos)
+        actualizarPanelesResumenActivo(_d, _h, 'hoy')
         if (misSlots.length) {
           generarQRCanvases()
         }
@@ -3032,9 +3076,9 @@
 
     function renderFunnelCRM(contactos) {
       const totalInteracciones = visitas.filter(esEntrada).length
-      const contactosFunnel = contactos.filter(c => c.estado !== 'descartado')
+      const contactosFunnel = contactos.filter(c => esEntrada(c) && c.estado !== 'descartado')
       const totalConsultas = contactosFunnel.length
-      const totalDescartadas = contactos.filter(c => c.estado === 'descartado').length
+      const totalDescartadas = contactos.filter(c => esEntrada(c) && c.estado === 'descartado').length
       const ordenEstado = {
         nueva: 0,
         contactado: 1,
@@ -3053,8 +3097,7 @@
       const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : null
       const fmtPct = (a, b) => { const v = pct(a, b); return v !== null ? `${v}% convirtió` : null }
 
-      const consultasWeb = contactosFunnel.filter(esEntrada).length
-      const convC = fmtPct(consultasWeb, totalInteracciones)
+      const convC = fmtPct(totalConsultas, totalInteracciones)
       const convCo = fmtPct(totalContactadas, totalConsultas)
       const convV = fmtPct(totalVisitas, totalContactadas)
       const convO = fmtPct(totalOfertas, totalVisitas)
@@ -3073,14 +3116,14 @@
       return `<div class="pv-sec">
         <div class="pv-sec-head">
           <div>
-            <div class="pv-sec-titulo">Tu trayectoria comercial</div>
-            <div class="pv-sec-sub">Cada etapa que avanza acerca una operación al cierre.</div>
+            <div class="pv-sec-titulo">Tu trayectoria comercial · histórico acumulado</div>
+            <div class="pv-sec-sub">Cada etapa que avanza acerca una operación al cierre, independientemente del filtro superior.</div>
           </div>
         </div>
         <div class="pv-pipeline">
-          ${paso('p0',totalInteracciones,'Interacciones',null)}
+          ${paso('p0',totalInteracciones,'Interacciones atribuibles',null)}
           ${arrow}
-          ${paso('p1',totalConsultas,'Consultas',convC)}
+          ${paso('p1',totalConsultas,'Consultas atribuibles',convC)}
           ${arrow}
           ${paso('p2',totalContactadas,'Contactados',convCo)}
           ${arrow}
@@ -3639,8 +3682,8 @@
       return `<div class="pv-sec pv-activo-recorrido-sec">
         <div class="pv-sec-head">
           <div>
-            <div class="pv-sec-titulo">El recorrido de tus leads</div>
-            <div class="pv-sec-sub">Cada color es un mes de ingreso. El número dice cuántos leads de ese mes están en esa etapa.</div>
+            <div class="pv-sec-titulo">El recorrido de tus leads · histórico acumulado</div>
+            <div class="pv-sec-sub">Cada color es un mes de ingreso. El número dice cuántos leads de ese mes están en esa etapa, independientemente del filtro superior.</div>
           </div>
           <span class="pv-activo-hoy-ancla">HOY · ${fmtDia(hoy.toISOString())}</span>
         </div>
@@ -3649,8 +3692,8 @@
       <div class="pv-sec pv-activo-registro-sec">
         <div class="pv-sec-head">
           <div>
-            <div class="pv-sec-titulo">Registro de movimientos</div>
-            <div class="pv-sec-sub">El detalle de cada tarjeta del gráfico — quién es, qué propiedad, y su camino con fechas.</div>
+            <div class="pv-sec-titulo">Registro de movimientos · histórico acumulado</div>
+            <div class="pv-sec-sub">El detalle de cada tarjeta del gráfico — quién es, qué propiedad y su camino con fechas, independientemente del filtro superior.</div>
           </div>
         </div>
         <div class="pv-activo-registro">${registroHtml}</div>
@@ -3908,7 +3951,7 @@
       const datasetsBase = (lblsData, slotLines = []) => {
         const base = [
           {
-            label:'Clics', data:lblsData[0], order:2,
+            label:'Interacciones', data:lblsData[0], order:2,
             borderColor:'#7aaeff', borderWidth: multiSlot ? 2 : 1.8, tension:0.4, fill: true,
             cubicInterpolationMode:'monotone',
             backgroundColor: gradAzul,
@@ -3925,7 +3968,7 @@
           }
         ]
         if (multiSlot) {
-          base[0].label = 'Total de clics'
+          base[0].label = 'Total de interacciones'
           slotLines.forEach((ln, i) => {
             base.push({
               label: ln.nombre, _seriesKey: ln.key, data: ln.data, order: 10 + i,
@@ -4112,7 +4155,7 @@
         const scansLEl = document.getElementById('pvLiveScansL')
         const consultasLEl = document.getElementById('pvLiveConsultasL')
         if (tagEl) tagEl.textContent = desdeCustom ? `${desdeCustom.replace(/-/g,'/')} → ${hastaCustom.replace(/-/g,'/')}` : `Últimos ${dias} días`
-        if (scansLEl) scansLEl.textContent = 'período · clics'
+        if (scansLEl) scansLEl.textContent = 'período · interacciones'
         if (consultasLEl) consultasLEl.textContent = 'período · consultas'
         setText('pvLiveScans4', dataScans.reduce((s,v)=>s+v,0))
         setText('pvLiveConsultas4', dataConsultas.reduce((s,v)=>s+v,0))
@@ -4162,27 +4205,29 @@
       const d0 = new Date(desde); d0.setHours(0,0,0,0)
       const d1 = new Date(hasta); d1.setHours(23,59,59,999)
 
-      const vP  = visitas.filter(v  => { if (!esInteraccion(v)) return false; const d=new Date(v.created_at);  return d>=d0 && d<=d1 }).length
       const vDigitalP = visitas.filter(v => { if (!esEntrada(v)) return false; const d=new Date(v.created_at); return d>=d0 && d<=d1 }).length
       const qrP = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 && clasificarVia(v)==='qr' }).length
-      const cP  = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 }).length
       const cWebP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && esEntrada(c) }).length
-      const conv = vDigitalP > 0 ? Number((cWebP / vDigitalP * 100).toFixed(1)) : 0
+      const cManualP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && clasificarVia(c)==='manual' }).length
+      const cDirectaP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && clasificarVia(c)==='directo' }).length
+      const conv = vDigitalP > 0 ? Number((cWebP / vDigitalP * 100).toFixed(1)) : null
+      const oportunidadesAbiertas = contactos.filter(esOportunidadAbierta).length
 
       const setEl   = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v }
       const clearEl = (id)    => { const el=document.getElementById(id); if(el) el.innerHTML='' }
 
-      setEl('pvKpi1N',   vP.toLocaleString('es-AR'))
-      setEl('pvKpi1Sub', 'Interacciones en el período seleccionado.')
+      setEl('pvKpi1N',   vDigitalP.toLocaleString('es-AR'))
+      setEl('pvKpi1Sub', 'Entradas por QR o enlace en el período.')
       setEl('pvKpi2N',   qrP.toLocaleString('es-AR'))
       clearEl('pvKpi2Delta')
       setEl('pvKpi2Sub', 'Escaneos desde QR físico en el período.')
-      setEl('pvKpi3N',   cP.toLocaleString('es-AR'))
+      setEl('pvKpi3N',   cWebP.toLocaleString('es-AR'))
       clearEl('pvKpi3Delta')
-      setEl('pvKpi3Sub', `${cP.toLocaleString('es-AR')} consultas en el período.`)
-      setEl('pvKpi4N',   `${conv}%`)
+      setEl('pvKpi3Sub', `${cManualP} manual${cManualP===1?'':'es'} · ${cDirectaP} directa${cDirectaP===1?'':'s'} separadas.`)
+      setEl('pvKpi4N',   conv === null ? '—' : `${conv}%`)
       clearEl('pvKpi4Delta')
-      setEl('pvKpi4Sub', 'Consultas sobre interacciones del período.')
+      setEl('pvKpi4Sub', 'Consultas atribuibles ÷ interacciones atribuibles.')
+      setEl('pvLiveComisiones4', oportunidadesAbiertas.toLocaleString('es-AR'))
     }
 
     window.pvSetPeriodo = function(btn) {
@@ -4205,7 +4250,7 @@
         const _lbl = valor === 'hoy' ? 'hoy' : `últimos ${dias} días`
         renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot() })
         if (esPasivo) return
-        renderPanelesActivos(contactos)
+        actualizarPanelesResumenActivo(desde, hasta, _lbl)
         actualizarKpisActivo(desde, hasta)
         actualizarSlotCards(desde, hasta)
         if (misSlots.length) renderSlotMiniCharts(desde, hasta, _lbl)
@@ -4221,9 +4266,11 @@
       const fechaLocal = val => { const [y,m,d] = val.split('-').map(Number); return new Date(y, m-1, d) }
       renderGraficoPasivo(contactos, 30, desde, hasta, { multiSlot: _modoMultiSlot() })
       if (esPasivo) return
-      renderPanelesActivos(contactos)
-      actualizarKpisActivo(fechaLocal(desde), fechaLocal(hasta))
-      actualizarSlotCards(fechaLocal(desde), fechaLocal(hasta))
+      const desdeLocal = fechaLocal(desde)
+      const hastaLocal = fechaLocal(hasta)
+      actualizarPanelesResumenActivo(desdeLocal, hastaLocal, 'período seleccionado')
+      actualizarKpisActivo(desdeLocal, hastaLocal)
+      actualizarSlotCards(desdeLocal, hastaLocal)
       if (misSlots.length) renderSlotMiniCharts(fechaLocal(desde), fechaLocal(hasta), 'período seleccionado')
     }
 
@@ -4233,16 +4280,16 @@
       const d1 = new Date(hasta); d1.setHours(23,59,59,999)
       const en  = t => { const d = new Date(t); return d >= d0 && d <= d1 }
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
-      misSlots.filter(s => s.activo !== false).forEach(slot => {
-        const vSlot = visitas.filter(v => esInteraccion(v) && v.canal_ref === slot.codigo && en(v.created_at))
-        const vSlotDigital = vSlot.filter(esEntrada)
-        const int   = vSlot.length
-        const qrN   = vSlot.filter(v => clasificarVia(v) === 'qr').length
-        const lnkN  = vSlot.filter(v => clasificarVia(v) === 'link').length
-        const consultasSlot = contactos.filter(c => contactoPerteneceSlot(c, slot) && en(c.created_at))
-        const cons  = consultasSlot.length
-        const consWeb = consultasSlot.filter(esEntrada).length
-        const conv  = vSlotDigital.length > 0 ? (consWeb / vSlotDigital.length * 100).toFixed(1) + '%' : '—'
+      const unidadesActivas = unidadesTarjetaActiva()
+      unidadesActivas.forEach(unidad => {
+        const slot = unidad.slot
+        const vSlotDigital = visitas.filter(v => esEntrada(v) && unidad.codigos.has(v.canal_ref) && en(v.created_at))
+        const int   = vSlotDigital.length
+        const qrN   = vSlotDigital.filter(v => clasificarVia(v) === 'qr').length
+        const lnkN  = vSlotDigital.filter(v => clasificarVia(v) === 'link').length
+        const consultasAtribuibles = contactos.filter(c => contactoPerteneceUnidad(c, unidad, unidadesActivas) && esEntrada(c) && en(c.created_at))
+        const cons  = consultasAtribuibles.length
+        const conv  = vSlotDigital.length > 0 ? (cons / vSlotDigital.length * 100).toFixed(1) + '%' : '—'
         set(`slot-n-int-${slot.id}`,  int)
         set(`slot-n-cons-${slot.id}`, cons)
         set(`slot-n-conv-${slot.id}`, conv)
@@ -4262,29 +4309,20 @@
         </div>`
 
       // ── ETAPA 1C: separar propiedades reales de canales generales ──
+      const unidadesActivas = unidadesTarjetaActiva()
+      const propUnits   = unidadesActivas.filter(unidad => unidad.propiedadId)
       const slotsActivos = misSlots.filter(s => s.activo !== false)
-      const propiedadesVistas = new Set()
-      const propSlots    = slotsActivos.filter(slot => propiedadVisibleDeSlot(slot)).filter(slot => {
-        const key = propiedadIdDesdeDestino(slot.destino) || slot.codigo
-        if (propiedadesVistas.has(key)) return false
-        propiedadesVistas.add(key)
-        return true
-      })
-      const canalSlots   = slotsActivos.filter(slot => !propiedadVisibleDeSlot(slot))
-      const activosCount = propSlots.length
+      const canalSlots   = slotsActivos.filter(slot => !propiedadIdDeSlot(slot))
+      const activosCount = propUnits.length
 
       // ── Sección A: Propiedades activas (código sin cambios) ──
-      const cards = propSlots.map(slot => {
+      const cards = propUnits.map(unidad => {
+        const slot       = unidad.slot
         const proy       = proyImgs[slot.proyecto_slug]
         const prop       = findPropData(slot)
         const fotoUrl    = proy?.foto_portada || prop?.imagenes?.[0] || ''
         const proyNombre = proy?.nombre || prop?.titulo || slot.nombre || slot.codigo
         const attrSrc    = prop || proy
-        const scans      = scansPorSlot[slot.codigo] || 0
-        const scansDigitales = visitas.filter(v => v.canal_ref === slot.codigo && esEntrada(v)).length
-        const slotCons   = contactos.filter(c => contactoPerteneceSlot(c, slot))
-        const slotConsWeb = slotCons.filter(esEntrada)
-        const conv       = scansDigitales > 0 ? ((slotConsWeb.length / scansDigitales) * 100).toFixed(1) + '%' : '—'
         const esActivo   = slot.activo !== false
         const imgStyle = fotoUrl ? `background-image:url('${fotoUrl.replace(/'/g,"\\'")}')` : ''
         const ptrOff = !esActivo ? 'pointer-events:none' : ''
@@ -4318,15 +4356,15 @@
             <div class="slot-full-body">
               <div class="slot-full-stats">
                 <div class="slot-stat">
-                  <span class="slot-stat-n" id="slot-n-int-${slot.id}" style="color:${colorHex};">${scans}</span>
+                  <span class="slot-stat-n" id="slot-n-int-${slot.id}" style="color:${colorHex};">—</span>
                   <span class="slot-stat-l">INTERACCIONES</span>
                 </div>
                 <div class="slot-stat">
-                  <span class="slot-stat-n" id="slot-n-cons-${slot.id}" style="color:#e8c96a;">${slotCons.length}</span>
+                  <span class="slot-stat-n" id="slot-n-cons-${slot.id}" style="color:#e8c96a;">—</span>
                   <span class="slot-stat-l">CONSULTAS</span>
                 </div>
                 <div class="slot-stat">
-                  <span class="slot-stat-n" id="slot-n-conv-${slot.id}">${conv}</span>
+                  <span class="slot-stat-n" id="slot-n-conv-${slot.id}">—</span>
                   <span class="slot-stat-l">CONVERSIÓN</span>
                 </div>
               </div>
@@ -4347,20 +4385,15 @@
             </div>
           </div>
           <div class="slot-full-right">
-            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Interacciones digitales · últimos 30 días</div>
+            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Calculando el período…</div>
             <div class="slot-chart-wrap"><canvas id="slot-chart-${slot.id}"></canvas></div>
-            <div class="slot-chart-total" id="slot-chart-tot-${slot.id}">${scans} total</div>
+            <div class="slot-chart-total" id="slot-chart-tot-${slot.id}">—</div>
           </div>
         </div>`
       }).join('')
 
       // ── Sección B: Canales generales (ETAPA 1C) ──
       const canalCards = canalSlots.map(slot => {
-        const scans      = scansPorSlot[slot.codigo] || 0
-        const scansDigitales = visitas.filter(v => v.canal_ref === slot.codigo && esEntrada(v)).length
-        const slotCons   = contactos.filter(c => contactoPerteneceSlot(c, slot))
-        const slotConsWeb = slotCons.filter(esEntrada)
-        const conv       = scansDigitales > 0 ? ((slotConsWeb.length / scansDigitales) * 100).toFixed(1) + '%' : '—'
         const esActivo   = slot.activo !== false
         const dest       = slot.destino || '/'
         const esExterno  = dest.startsWith('http://') || dest.startsWith('https://')
@@ -4393,15 +4426,15 @@
               <div style="font-size:.68rem;color:rgba(255,255,255,.38);letter-spacing:.03em;margin-bottom:.65rem;word-break:break-all;">${esc(destLabel)}</div>
               <div class="slot-full-stats">
                 <div class="slot-stat">
-                  <span class="slot-stat-n" id="slot-n-int-${slot.id}" style="color:${colorHex};">${scans}</span>
+                  <span class="slot-stat-n" id="slot-n-int-${slot.id}" style="color:${colorHex};">—</span>
                   <span class="slot-stat-l">INTERACCIONES</span>
                 </div>
                 <div class="slot-stat">
-                  <span class="slot-stat-n" id="slot-n-cons-${slot.id}" style="color:#e8c96a;">${slotCons.length}</span>
+                  <span class="slot-stat-n" id="slot-n-cons-${slot.id}" style="color:#e8c96a;">—</span>
                   <span class="slot-stat-l">CONSULTAS</span>
                 </div>
                 <div class="slot-stat">
-                  <span class="slot-stat-n" id="slot-n-conv-${slot.id}">${conv}</span>
+                  <span class="slot-stat-n" id="slot-n-conv-${slot.id}">—</span>
                   <span class="slot-stat-l">CONVERSIÓN</span>
                 </div>
               </div>
@@ -4422,14 +4455,14 @@
             </div>
           </div>
           <div class="slot-full-right">
-            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Interacciones digitales · últimos 30 días</div>
+            <div class="slot-chart-label" id="slot-chart-lbl-${slot.id}" style="color:${colorHex};opacity:.8;">Calculando el período…</div>
             <div class="slot-chart-wrap"><canvas id="slot-chart-${slot.id}"></canvas></div>
-            <div class="slot-chart-total" id="slot-chart-tot-${slot.id}">${scans} total</div>
+            <div class="slot-chart-total" id="slot-chart-tot-${slot.id}">—</div>
           </div>
         </div>`
       }).join('')
 
-      const secPropiedades = propSlots.length ? `
+      const secPropiedades = propUnits.length ? `
         <div class="pv-sec">
           <div class="pv-sec-head">
             <div>
@@ -4475,15 +4508,17 @@
         : diasArr.map(d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}))
       const lblPeriodo = labelPeriodo || 'últimos 30 días'
 
-      misSlots.forEach(slot => {
+      const unidadesActivas = unidadesTarjetaActiva()
+      unidadesActivas.forEach(unidad => {
+        const slot = unidad.slot
         const canvas = document.getElementById(`slot-chart-${slot.id}`)
         if (!canvas) return
         // Destroy instancia anterior antes de recrear
         if (_slotCharts[slot.id]) { try { _slotCharts[slot.id].destroy() } catch(e){} ; _slotCharts[slot.id] = null }
         const colorHex = colorDeSlot(slot.codigo)
         const rgba = (a) => colorHex.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)).join(',')+`,${a}`
-        const slotVis  = visitas.filter(v => esEntrada(v) && v.canal_ref === slot.codigo)
-        const slotCons = contactos.filter(c => contactoPerteneceSlot(c, slot) && esEntrada(c))
+        const slotVis  = visitas.filter(v => esEntrada(v) && unidad.codigos.has(v.canal_ref))
+        const slotCons = contactos.filter(c => contactoPerteneceUnidad(c, unidad, unidadesActivas) && esEntrada(c))
         // HOY → contar por hora; multiday → contar por día
         let data, dataCons
         if (isSingleDay) {
@@ -4602,21 +4637,18 @@
     }
 
     // ── Canal activo: sección de gráfico + funnel (sin tabla de contactos) ──
-    // Paneles inferiores: histórico explícito últimos 30 días (Opción A — no mezclar períodos).
-    function renderPanelesActivos(contactos) {
+    // Paneles inferiores: obedecen el mismo período que KPI, gráfico principal y tarjetas.
+    function renderPanelesActivos(contactos, desde, hasta, etiqueta) {
       if (typeof Chart === 'undefined') return
       if (_pvPanelAct) { _pvPanelAct.destroy(); _pvPanelAct = null }
       if (_pvPanelConv) { _pvPanelConv.destroy(); _pvPanelConv = null }
 
-      // ── Panel 1: Actividad general · últimos 30 días ──
-      const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
-      const mes0 = new Date(hoy0 - 29*86400000)
-      const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
-      const labels = dias.map(d => d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}))
-      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
-      const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{if(!esEntrada(c))return false;const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
+      const datos = datosPanelPeriodo(contactos, desde, hasta, etiqueta)
+      const labels = datos.labels
+      const dataScans = datos.dataScans
+      const dataCons = datos.dataCons
       const slotLines = unidadesGrafico().map(unidad => {
-        const arr = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>esEntrada(v)&&unidad.codigos.has(v.canal_ref)&&(()=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin})()).length })
+        const arr = datos.buckets.map(bucket => datos.visitasAtribuibles.filter(v => unidad.codigos.has(v.canal_ref) && (()=>{const d=new Date(v.created_at);return d>=bucket.inicio&&d<bucket.fin})()).length)
         return { key:unidad.key, codigo:unidad.codigo, nombre:unidad.nombre, color:unidad.color, data:arr }
       })
 
@@ -4630,7 +4662,7 @@
         slotLines.forEach((ln,i) => datasets.push({ label:ln.nombre, _seriesKey:ln.key, data:ln.data, order:10+i, borderColor:ln.color, borderWidth:1.4, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor:ln.color, pointHoverBorderColor:'#fff', pointHoverBorderWidth:1.5, hidden: window._pvPanelHidden?.[ln.key] === true }))
         _pvPanelAct = new Chart(ctxAct, {
           type:'line', data:{labels, datasets},
-          options:{ responsive:true, maintainAspectRatio:false, animation:{duration:700,easing:'easeOutQuart'}, interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)', titleFont:{size:11,weight:'600'}, bodyFont:{size:11}, displayColors:true, usePointStyle:true, padding:10, cornerRadius:8, callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } } } }, scales:{ x:{display:false}, y:{beginAtZero:true,display:false,grace:'10%'} } }
+          options:{ responsive:true, maintainAspectRatio:false, animation:{duration:700,easing:'easeOutQuart'}, interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)', titleFont:{size:11,weight:'600'}, bodyFont:{size:11}, displayColors:true, usePointStyle:true, padding:10, cornerRadius:8, callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } } } }, scales:{ x:{display:true,border:{display:false},grid:{display:false},ticks:{color:'rgba(255,255,255,.34)',maxTicksLimit:6,maxRotation:0,font:{size:9,family:'Inter'}}}, y:{beginAtZero:true,display:true,grace:'10%',border:{display:false},grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.34)',precision:0,maxTicksLimit:4,font:{size:9,family:'Inter'}}} } }
         })
         // Leyenda interactiva del panel (solo slots; total y consultas siempre visibles)
         const legendHost = document.getElementById('pvPanelActLegend')
@@ -4662,14 +4694,14 @@
         }
       }
 
-      // ── Panel 2: Conversión · últimos 30 días ──
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&esEntrada(x)}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
+      // ── Panel 2: Conversión atribuible del período ──
+      const convDiaria = datos.convDiaria
       const ctxConv = document.getElementById('pvPanelConv30')?.getContext('2d')
-      if (ctxConv && convDiaria.some(x=>x>0)) {
+      if (ctxConv && convDiaria.some(x=>x !== null)) {
         _pvPanelConv = new Chart(ctxConv, {
           type:'line',
           data:{ labels, datasets:[{ label:'Conversión diaria', data:convDiaria, borderColor:'#ffa050', borderWidth:2.5, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#ffa050', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2, backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(255,160,80,.2)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(255,160,80,.4)'); g.addColorStop(1,'rgba(255,160,80,0)'); return g } }] },
-          options:{ responsive:true, maintainAspectRatio:false, animation:{duration:700,easing:'easeOutQuart'}, interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#fff', bodyColor:'#ffa050', titleFont:{size:11,weight:'600'}, bodyFont:{size:11,weight:'600'}, padding:10, cornerRadius:8, callbacks:{ label(ctx){ return ` ${ctx.raw}% conversión` } } } }, scales:{ x:{display:false}, y:{beginAtZero:true,display:false,grace:'15%',ticks:{callback:v=>v+'%'}} } }
+          options:{ responsive:true, maintainAspectRatio:false, animation:{duration:700,easing:'easeOutQuart'}, interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#fff', bodyColor:'#ffa050', titleFont:{size:11,weight:'600'}, bodyFont:{size:11,weight:'600'}, padding:10, cornerRadius:8, callbacks:{ label(ctx){ return ctx.raw === null ? ' Sin base de cálculo' : ` ${ctx.raw}% conversión` } } } }, scales:{ x:{display:true,border:{display:false},grid:{display:false},ticks:{color:'rgba(255,255,255,.34)',maxTicksLimit:6,maxRotation:0,font:{size:9,family:'Inter'}}}, y:{beginAtZero:true,display:true,grace:'15%',border:{display:false},grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.34)',maxTicksLimit:4,font:{size:9,family:'Inter'},callback:v=>v+'%'}} } }
         })
       }
     }
@@ -4680,7 +4712,7 @@
           <div class="pv-sec-head">
             <div>
               <div class="pv-sec-titulo">Evolución de la actividad digital</div>
-              <div class="pv-sec-sub">Interacciones y consultas desde QR o enlace de todas tus propiedades.</div>
+              <div class="pv-sec-sub">Interacciones y consultas desde QR o enlace de todos tus destinos.</div>
             </div>
           </div>
           <div id="pvLiveBar4" class="pv-live-bar">
@@ -4699,7 +4731,7 @@
               </div>
               <div class="pv-live-stat com">
                 <div class="pv-live-stat-n com" id="pvLiveComisiones4">0</div>
-                <div class="pv-live-stat-l">Registros activos</div>
+                <div class="pv-live-stat-l">Actual · oportunidades abiertas</div>
               </div>
             </div>
           </div>
@@ -4715,12 +4747,12 @@
           <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad en seguimiento comercial</strong>. Los registros pueden avanzar durante los meses siguientes. Mientras más registres, más base de trabajo tiene el equipo.</div>
         </div>
 
-        ${renderCuatroPaneles(contactos)}
+        <div id="pvPanelesActivosHost"></div>
 
         <div class="pv-impact-grid">
-          ${renderFunnelCRM(contactos)}
+          <div>${renderFunnelCRM(contactos)}</div>
           <div class="pv-sec" style="margin-bottom:0">
-            <div class="pv-sec-head"><div><div class="pv-sec-titulo">Actividad reciente</div><div class="pv-sec-sub">Últimos movimientos registrados.</div></div></div>
+            <div class="pv-sec-head"><div><div class="pv-sec-titulo">Actividad reciente · histórico acumulado</div><div class="pv-sec-sub">Últimos movimientos registrados, independientemente del filtro superior.</div></div></div>
             ${renderActividadReciente(contactos)}
           </div>
         </div>
@@ -4728,94 +4760,144 @@
         ${renderRecorridoLeadsActivo(filasTraza)}`
     }
 
-    // ── 4 paneles inferiores nuevos: Actividad 30d / Conversión / Origen / Rendimiento ──
-    function renderCuatroPaneles(contactos) {
+    function periodoActivo(desde, hasta, etiqueta = 'período seleccionado') {
+      const inicio = new Date(desde || new Date())
+      const fin = new Date(hasta || new Date())
+      inicio.setHours(0,0,0,0)
+      fin.setHours(23,59,59,999)
+      return { inicio, fin, etiqueta }
+    }
+
+    const enPeriodoActivo = (fila, periodo) => {
+      const fecha = new Date(fila?.created_at)
+      return fecha >= periodo.inicio && fecha <= periodo.fin
+    }
+
+    function bucketsPeriodoActivo(periodo) {
+      const mismoDia = periodo.inicio.toDateString() === periodo.fin.toDateString()
+      if (mismoDia) {
+        return Array.from({length:24}, (_, hora) => {
+          const inicio = new Date(periodo.inicio); inicio.setHours(hora,0,0,0)
+          const fin = new Date(periodo.inicio); fin.setHours(hora + 1,0,0,0)
+          return { inicio, fin, label:`${String(hora).padStart(2,'0')}:00` }
+        })
+      }
+      const totalDias = Math.max(1, Math.floor((periodo.fin - periodo.inicio) / 86400000) + 1)
+      const bloqueDias = totalDias <= 30 ? 1 : totalDias <= 45 ? 3 : totalDias <= 120 ? 7 : 30
+      const buckets = []
+      for (let cursor = new Date(periodo.inicio); cursor <= periodo.fin;) {
+        const inicio = new Date(cursor)
+        const fin = new Date(cursor); fin.setDate(fin.getDate() + bloqueDias)
+        buckets.push({ inicio, fin, label:inicio.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) })
+        cursor = fin
+      }
+      return buckets
+    }
+
+    function datosPanelPeriodo(contactos, desde, hasta, etiqueta) {
+      const periodo = periodoActivo(desde, hasta, etiqueta)
+      const buckets = bucketsPeriodoActivo(periodo)
+      const visitasPeriodo = visitas.filter(v => enPeriodoActivo(v, periodo))
+      const contactosPeriodo = contactos.filter(c => enPeriodoActivo(c, periodo))
+      const visitasAtribuibles = visitasPeriodo.filter(esEntrada)
+      const consultasAtribuibles = contactosPeriodo.filter(esEntrada)
+      const dataScans = buckets.map(bucket => visitasAtribuibles.filter(v => { const d=new Date(v.created_at); return d>=bucket.inicio && d<bucket.fin }).length)
+      const dataCons = buckets.map(bucket => consultasAtribuibles.filter(c => { const d=new Date(c.created_at); return d>=bucket.inicio && d<bucket.fin }).length)
+      const convDiaria = dataScans.map((total, i) => total > 0 ? Number((dataCons[i] / total * 100).toFixed(1)) : null)
+      return { periodo, buckets, labels:buckets.map(b => b.label), visitasPeriodo, contactosPeriodo, visitasAtribuibles, consultasAtribuibles, dataScans, dataCons, convDiaria }
+    }
+
+    function actualizarPanelesResumenActivo(desde, hasta, etiqueta) {
+      const host = document.getElementById('pvPanelesActivosHost')
+      if (!host) return
+      host.innerHTML = renderCuatroPaneles(contactos, desde, hasta, etiqueta)
+      renderPanelesActivos(contactos, desde, hasta, etiqueta)
+    }
+
+    // ── 4 paneles inferiores: todos obedecen el selector superior ──
+    function renderCuatroPaneles(contactos, desde, hasta, etiqueta) {
+      const datos = datosPanelPeriodo(contactos, desde, hasta, etiqueta)
       return `
         <div class="pv-panels-grid">
-          ${panelActividad30d(contactos)}
-          ${panelConversion30d(contactos)}
-          ${panelOrigenInteracciones()}
-          ${panelRendimientoPropiedad(contactos)}
+          ${panelActividadPeriodo(datos)}
+          ${panelConversionPeriodo(contactos, datos)}
+          ${panelOrigenConsultas(datos)}
+          ${panelRendimientoPeriodo(datos)}
         </div>`
     }
 
-    // Panel 1 — Actividad general · últimos 30 días
-    function panelActividad30d(contactos) {
-      const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
-      const mes0 = new Date(hoy0 - 29*86400000)
-      const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
-      const dataScans = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
-      const dataCons  = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return contactos.filter(c=>{if(!esEntrada(c))return false;const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
-      const totalScans = dataScans.reduce((s,v)=>s+v,0)
-      const hayDatos = totalScans > 0 || dataCons.reduce((s,v)=>s+v,0) > 0
+    function panelActividadPeriodo(datos) {
+      const hayDatos = datos.dataScans.some(v => v > 0) || datos.dataCons.some(v => v > 0)
       return `
         <div class="pv-panel">
           <div class="pv-panel-head">
             <div>
-              <div class="pv-panel-titulo" id="pvPanelAct30Tit">Actividad digital · últimos 30 días</div>
+              <div class="pv-panel-titulo" id="pvPanelAct30Tit">Actividad digital · ${esc(datos.periodo.etiqueta)}</div>
               <div class="pv-panel-sub">Interacciones y consultas desde QR o enlace, totales y por propiedad.</div>
             </div>
           </div>
           ${hayDatos ? `<div class="pv-panel-chart"><canvas id="pvPanelAct30"></canvas></div>
             <div class="pv-panel-foot"><div id="pvPanelActLegend"></div></div>`
-            : `<div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Sin actividad en los últimos 30 días.</div></div>`}
+            : `<div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Sin actividad en ${esc(datos.periodo.etiqueta)}.</div></div>`}
         </div>`
     }
 
-    // Panel 2 — Conversión · últimos 30 días
-    function panelConversion30d(contactos) {
-      const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
-      const mes0 = new Date(hoy0 - 29*86400000)
-      const prev0 = new Date(hoy0 - 59*86400000)
-      const dias = Array.from({length:30}, (_,i)=>{ const d=new Date(mes0); d.setDate(d.getDate()+i); return d })
-      const convDiaria = dias.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); const v=visitas.filter(x=>{if(!esEntrada(x))return false;const d=new Date(x.created_at);return d>=dIni&&d<dFin}).length; const c=contactos.filter(x=>{const d=new Date(x.created_at);return d>=dIni&&d<dFin&&esEntrada(x)}).length; return v>0?Number((c/v*100).toFixed(1)):0 })
-      const v30 = visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=mes0).length
-      const c30 = contactos.filter(c=>new Date(c.created_at)>=mes0 && esEntrada(c)).length
-      const vAnt = visitas.filter(v=>{if(!esEntrada(v))return false;const d=new Date(v.created_at);return d>=prev0&&d<mes0}).length
-      const cAnt = contactos.filter(c=>{const d=new Date(c.created_at);return d>=prev0&&d<mes0&&esEntrada(c)}).length
-      const conv30 = v30 > 0 ? Number((c30/v30*100).toFixed(1)) : 0
-      const convAnt = vAnt > 0 ? Number((cAnt/vAnt*100).toFixed(1)) : null
-      const delta = convAnt !== null ? Number((conv30-convAnt).toFixed(1)) : null
-      const hayDatos = v30 > 0
+    function panelConversionPeriodo(contactos, datos) {
+      const totalInteracciones = datos.visitasAtribuibles.length
+      const totalConsultas = datos.consultasAtribuibles.length
+      const conversion = totalInteracciones > 0 ? Number((totalConsultas / totalInteracciones * 100).toFixed(1)) : null
+      const duracion = datos.periodo.fin.getTime() - datos.periodo.inicio.getTime() + 1
+      const finAnterior = new Date(datos.periodo.inicio.getTime() - 1)
+      const inicioAnterior = new Date(finAnterior.getTime() - duracion + 1)
+      const vAnterior = visitas.filter(v => esEntrada(v) && new Date(v.created_at) >= inicioAnterior && new Date(v.created_at) <= finAnterior).length
+      const cAnterior = contactos.filter(c => esEntrada(c) && new Date(c.created_at) >= inicioAnterior && new Date(c.created_at) <= finAnterior).length
+      const convAnterior = vAnterior > 0 ? Number((cAnterior / vAnterior * 100).toFixed(1)) : null
+      const delta = conversion === null || convAnterior === null ? null : Number((conversion - convAnterior).toFixed(1))
+      const deltaHtml = delta === 0
+        ? '<div style="font-size:.58rem;color:rgba(255,255,255,.45);margin-top:.2rem;">Sin variación vs período anterior</div>'
+        : delta !== null
+          ? `<div style="font-size:.58rem;color:${delta>0?'#6ee89a':'#d9825b'};margin-top:.2rem;">${delta>0?'↑':'↓'} ${Math.abs(delta)} pts vs período anterior</div>`
+          : (conversion !== null && conversion > 0 ? '<div style="font-size:.58rem;color:#6ee89a;margin-top:.2rem;">Actividad nueva</div>' : '')
       return `
         <div class="pv-panel">
           <div class="pv-panel-head">
             <div>
-              <div class="pv-panel-titulo" id="pvPanelConv30Tit">Conversión · últimos 30 días</div>
-              <div class="pv-panel-sub">Consultas ÷ interacciones × 100.</div>
+              <div class="pv-panel-titulo" id="pvPanelConv30Tit">Conversión atribuible · ${esc(datos.periodo.etiqueta)}</div>
+              <div class="pv-panel-sub">Consultas QR/link ÷ interacciones QR/link × 100.</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:1.6rem;font-weight:300;color:#e8c96a;line-height:1;">${conv30}%</div>
-              ${delta !== null ? `<div style="font-size:.58rem;color:${delta>=0?'#6ee89a':'#d9825b'};margin-top:.2rem;">${delta>=0?'↑':'↓'} ${Math.abs(delta)} pts vs período anterior</div>` : (conv30>0?`<div style="font-size:.58rem;color:#6ee89a;margin-top:.2rem;">Actividad nueva</div>`:'')}
+              <div style="font-size:1.6rem;font-weight:300;color:#e8c96a;line-height:1;">${conversion === null ? '—' : `${conversion}%`}</div>
+              ${deltaHtml}
             </div>
           </div>
-          ${hayDatos ? `<div class="pv-panel-chart"><canvas id="pvPanelConv30"></canvas></div>
+          ${totalInteracciones > 0 ? `<div class="pv-panel-chart"><canvas id="pvPanelConv30"></canvas></div>
             <div class="pv-panel-foot" style="display:flex;gap:1.2rem;font-size:.62rem;color:rgba(255,255,255,.4);">
-              <span><strong style="color:#7aaeff;">${v30}</strong> interacciones</span>
-              <span><strong style="color:#e8c96a;">${c30}</strong> consultas</span>
+              <span><strong style="color:#7aaeff;">${totalInteracciones}</strong> interacciones</span>
+              <span><strong style="color:#e8c96a;">${totalConsultas}</strong> consultas</span>
             </div>`
             : `<div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Sin interacciones en el período.</div></div>`}
         </div>`
     }
 
-    // Panel 3 — Origen de las interacciones
-    function panelOrigenInteracciones() {
-      const qr = visitas.filter(v => clasificarVia(v) === 'qr').length
-      const link = visitas.filter(v => clasificarVia(v) === 'link').length
-      const directo = visitas.filter(v => clasificarVia(v) === 'directo').length
-      const total = qr + link + directo
+    function panelOrigenConsultas(datos) {
+      const qr = datos.contactosPeriodo.filter(v => clasificarVia(v) === 'qr').length
+      const link = datos.contactosPeriodo.filter(v => clasificarVia(v) === 'link').length
+      const directo = datos.contactosPeriodo.filter(v => clasificarVia(v) === 'directo').length
+      const manual = datos.contactosPeriodo.filter(v => clasificarVia(v) === 'manual').length
+      const total = qr + link + directo + manual
       const items = [
         { key:'qr', label:'QR físico', color:'#50c878', n: qr },
         { key:'link', label:'Link compartido', color:'#6495ed', n: link },
         { key:'directo', label:'Directo', color:'rgba(245,243,240,.55)', n: directo },
+        { key:'manual', label:'Carga manual', color:'#c9a84c', n: manual },
       ].filter(i => i.n > 0)
       if (total === 0) return `
         <div class="pv-panel">
           <div class="pv-panel-head"><div>
-            <div class="pv-panel-titulo">Origen de las interacciones</div>
-            <div class="pv-panel-sub">De dónde provienen los escaneos.</div>
+            <div class="pv-panel-titulo">Origen de las consultas · ${esc(datos.periodo.etiqueta)}</div>
+            <div class="pv-panel-sub">QR, enlace, directa y carga manual sin mezclar.</div>
           </div></div>
-          <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Todavía no hay interacciones registradas.</div></div>
+          <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Todavía no hay consultas en el período.</div></div>
         </div>`
       const filas = items.map(i => {
         const pct = total > 0 ? (i.n / total * 100) : 0
@@ -4833,98 +4915,44 @@
       return `
         <div class="pv-panel">
           <div class="pv-panel-head"><div>
-            <div class="pv-panel-titulo">Origen de las interacciones</div>
-            <div class="pv-panel-sub">${total.toLocaleString('es-AR')} interacciones registradas.</div>
+            <div class="pv-panel-titulo">Origen de las consultas · ${esc(datos.periodo.etiqueta)}</div>
+            <div class="pv-panel-sub">${total.toLocaleString('es-AR')} consultas, separadas por origen.</div>
           </div></div>
           <div class="pv-origen-list">${filas}</div>
         </div>`
     }
 
-    // Panel 4 — Rendimiento por canal (ranking)
-    function panelRendimientoPropiedad(contactos) {
-      const unidades = unidadesGrafico().filter(u => u.propiedadId)
+    function panelRendimientoPeriodo(datos) {
+      const unidades = unidadesTarjetaActiva()
       if (!unidades.length) return `
         <div class="pv-panel">
           <div class="pv-panel-head"><div>
-            <div class="pv-panel-titulo">Rendimiento por canal</div>
-            <div class="pv-panel-sub">Ranking por interacciones.</div>
+            <div class="pv-panel-titulo">Rendimiento por destino · ${esc(datos.periodo.etiqueta)}</div>
+            <div class="pv-panel-sub">Propiedades y canales generales, identificados por tipo.</div>
           </div></div>
           <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Aún no tenés canales asignados.</div></div>
         </div>`
       const rows = unidades.map(unidad => {
-        const scans = visitas.filter(v => esInteraccion(v) && unidad.codigos.has(v.canal_ref)).length
-        const scansDigitales = visitas.filter(v => esEntrada(v) && unidad.codigos.has(v.canal_ref)).length
-        const slotConsTodos = contactos.filter(c => propiedadAtribuida(c) === unidad.propiedadId)
-        const slotConsWeb = slotConsTodos.filter(esEntrada).length
+        const scansDigitales = datos.visitasAtribuibles.filter(v => unidad.codigos.has(v.canal_ref)).length
+        const slotConsWeb = datos.consultasAtribuibles.filter(c => contactoPerteneceUnidad(c, unidad, unidades)).length
         const conv = scansDigitales > 0 ? Number((slotConsWeb/scansDigitales*100).toFixed(1)) : 0
-        return { codigo: unidad.codigo, nombre: unidad.nombre, color: unidad.color, scans, scansDigitales, consultas: slotConsTodos.length, conv }
-      }).sort((a,b) => b.scans - a.scans)
+        return { codigo: unidad.codigo, nombre: unidad.nombre, tipo:unidad.propiedadId?'Propiedad':'Canal general', color: unidad.color, scansDigitales, consultas: slotConsWeb, conv }
+      }).sort((a,b) => b.scansDigitales - a.scansDigitales || b.consultas - a.consultas)
       return `
         <div class="pv-panel">
           <div class="pv-panel-head"><div>
-            <div class="pv-panel-titulo">Rendimiento por canal</div>
-            <div class="pv-panel-sub">Ordenado por interacciones (mayor a menor).</div>
+            <div class="pv-panel-titulo">Rendimiento por destino · ${esc(datos.periodo.etiqueta)}</div>
+            <div class="pv-panel-sub">Ordenado por interacciones atribuibles.</div>
           </div></div>
-          <div class="pv-rank-head"><span>#</span><span>Propiedad</span><span class="r">Scan</span><span class="r">Cons.</span><span class="r">Conv.</span></div>
+          <div class="pv-rank-head"><span>#</span><span>Destino</span><span class="r">Int.</span><span class="r">Cons.</span><span class="r">Conv.</span></div>
           ${rows.map((r,i) => `
             <div class="pv-rank-row">
               <div class="pv-rank-pos">${i+1}</div>
-              <div class="pv-rank-nombre"><span class="pv-rank-dot" style="background:${r.color};color:${r.color};"></span><span>${esc(r.nombre)}</span></div>
-              <div class="pv-rank-num" style="color:${r.color};">${r.scans}</div>
+              <div class="pv-rank-nombre"><span class="pv-rank-dot" style="background:${r.color};color:${r.color};"></span><span>${esc(r.nombre)}<small style="display:block;color:rgba(255,255,255,.35);font-size:.55rem;margin-top:.1rem;">${esc(r.tipo)}</small></span></div>
+              <div class="pv-rank-num" style="color:${r.color};">${r.scansDigitales}</div>
               <div class="pv-rank-num" style="color:#e8c96a;">${r.consultas}</div>
               <div class="pv-rank-conv">${r.scansDigitales>0?r.conv+'%':'—'}</div>
             </div>`).join('')}
-        </div>`
-    }
-
-    // ── Canal activo: tabla de rendimiento por slot ──────────────────────────
-    function renderSlotBreakdown() {
-      if (!misSlots.length) return ''
-      const rows = misSlots.map(slot => {
-        const scans     = scansPorSlot[slot.codigo] || 0
-        const slotCons  = contactos.filter(c => contactoPerteneceSlot(c, slot))
-        const slotConsWeb = slotCons.filter(esEntrada)
-        const conv      = scans > 0 ? ((slotConsWeb.length / scans) * 100).toFixed(1) + '%' : '—'
-        const proy      = proyImgs[slot.proyecto_slug]
-        const nombre    = proy?.nombre || slot.nombre || slot.codigo
-        const esActivo  = slot.activo !== false
-        return `
-          <tr>
-            <td>
-              <div style="display:flex;align-items:center;gap:.55rem;">
-                <div style="width:8px;height:8px;border-radius:50%;background:${esActivo ? '#52d68c' : '#555'};${esActivo ? 'box-shadow:0 0 7px rgba(82,214,140,.4)' : ''}"></div>
-                <span style="font-family:monospace;font-size:.68rem;color:#c9a84c;">${esc(slot.codigo)}</span>
-              </div>
-            </td>
-            <td>
-              <span style="font-size:.78rem;font-weight:500;">${esc(nombre)}</span>
-              ${!esActivo ? '<span style="display:block;font-size:.6rem;color:#e05c5c;margin-top:.1rem;">Inactivo</span>' : ''}
-            </td>
-            <td style="text-align:right;font-size:.82rem;font-weight:600;color:#9fc0ff;">${scans}</td>
-            <td style="text-align:right;font-size:.82rem;font-weight:600;color:#e8c96a;">${slotCons.length}</td>
-            <td style="text-align:right;font-size:.78rem;color:rgba(255,255,255,.5);">${conv}</td>
-          </tr>`
-      }).join('')
-      return `
-        <div class="pv-sec">
-          <div class="pv-sec-head">
-            <div>
-              <div class="pv-sec-titulo">Rendimiento por slot QR</div>
-              <div class="pv-sec-sub">Actividad individual de cada propiedad en los últimos 30 días.</div>
-            </div>
-          </div>
-          <div style="overflow-x:auto">
-            <table class="pv-tabla">
-              <thead><tr>
-                <th>Código</th>
-                <th>Propiedad</th>
-                <th style="text-align:right">Scans 30d</th>
-                <th style="text-align:right">Consultas</th>
-                <th style="text-align:right">Conversión</th>
-              </tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
         </div>`
     }
 
@@ -5253,6 +5281,9 @@
         if (cursor) q = despuesAsc(q, 'created_at', cursor.created_at, 'id', cursor.id)
         return q
       }, fila => ({created_at:fila.created_at,id:fila.id})))
+      const relacionesPropiedadNuevas = esPasivo ? [] : await cargarRelacionesPropiedadActiva()
+      validarRelacionesPropiedad(relacionesPropiedadNuevas, referenciasNuevas)
+      const mapaRelacionesPropiedadNuevo = crearMapaRelacionesPropiedad(relacionesPropiedadNuevas)
 
       const codigoCanalNuevo = Object.fromEntries(canalesNuevos.map(c => [c.id, c.codigo]))
       referenciasNuevas.forEach(ref => {
@@ -5264,7 +5295,7 @@
       const slugs = [...new Set(referenciasNuevas.map(r => r.proyecto_slug).filter(Boolean))]
       const propiedadIds = [...new Set(referenciasNuevas
         .filter(r => r.activo !== false)
-        .map(r => propiedadIdDesdeDestino(r.destino))
+        .map(r => propiedadIdDeSlot(r, mapaRelacionesPropiedadNuevo))
         .filter(Boolean))]
 
       const cargarVisitas = () => cargarPorBloques('visitas', codigosFiltro, (refs, bloque) => cargarKeyset(`visitas [${bloque + 1}]`, (cursor, contar) => {
@@ -5276,7 +5307,7 @@
       }, fila => ({created_at:fila.created_at,id:fila.id})))
       const cargarContactos = () => esPasivo ? cargarContactosPasivos() : cargarPorBloques('contactos', codigosFiltro, (refs, bloque) => cargarKeyset(`contactos [${bloque + 1}]`, (cursor, contar) => {
         let q = supabase.from('contactos')
-          .select('id,created_at,fecha,nombre,mensaje,estado,origen,canal_ref,canal_via,propiedad_id,proyecto_slug,persona_id,propiedades(titulo)', { count: contar ? 'exact' : undefined })
+          .select('id,created_at,fecha,nombre,mensaje,estado,origen,canal_ref,canal_via,propiedad_id,proyecto_slug,persona_id,fecha_cierre,propiedades(titulo)', { count: contar ? 'exact' : undefined })
           .in('canal_ref', refs).order('created_at', {ascending:false}).order('id', {ascending:false}).limit(PAGE_SIZE)
         if (cursor) q = despuesDesc(q, 'created_at', cursor.created_at, 'id', cursor.id)
         return q
@@ -5333,6 +5364,7 @@
         mensajes: adjuntarRespuestas(mensajesNuevos, respuestasNuevas),
         propiedades: propiedadesNuevas,
         proyectos: proyectosNuevos,
+        relacionesPropiedad: relacionesPropiedadNuevas,
         traza: trazaNueva
       }
     }
@@ -5368,9 +5400,10 @@
       misMensajes = snapshot.mensajes
       propiedadesRows = snapshot.propiedades
       proyectosRows = snapshot.proyectos
+      relacionesPropiedadRows = snapshot.relacionesPropiedad
+      propiedadPorReferenciaId = crearMapaRelacionesPropiedad(relacionesPropiedadRows)
       filasTraza = snapshot.traza
       ahora = new Date()
-      hace30 = new Date(ahora - 30 * 86400000).toISOString()
 
       vaciarObjeto(canalCodigoMap)
       canales.forEach(c => { canalCodigoMap[c.id] = c.codigo })
@@ -5392,12 +5425,8 @@
           color:(window.SPCanalColors?.colorCanalDesdeIndex ? window.SPCanalColors.colorCanalDesdeIndex(c.color_index) : null) || colorDeSlot(principal ? principal.codigo : c.codigo)
         }
       })
-      slotCodigos = misSlots.map(s => s.codigo)
       derivedSlugs = [...new Set(misSlots.map(s => s.proyecto_slug).filter(Boolean))]
 
-      vaciarObjeto(scansPorSlot)
-      visitas.filter(v => slotCodigos.includes(v.canal_ref) && esInteraccion(v) && new Date(v.created_at) >= new Date(hace30))
-        .forEach(v => { scansPorSlot[v.canal_ref] = (scansPorSlot[v.canal_ref] || 0) + 1 })
       vaciarObjeto(proyImgs)
       proyectosRows.forEach(p => { proyImgs[p.slug] = p })
       vaciarObjeto(propDataMap)
@@ -5444,6 +5473,7 @@
       mensajes:misMensajes,
       propiedades:propiedadesRows,
       proyectos:proyectosRows,
+      relacionesPropiedad:relacionesPropiedadRows,
       traza:filasTraza
     })
 
