@@ -628,8 +628,8 @@ function renderGeoMap(rows) {
   if (typeof L === 'undefined') return
   if (!state.map) {
     state.map = L.map('trafficGeoMap', { zoomControl: true, scrollWheelZoom: false }).setView([-38.4, -63.6], 3)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 19,
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors', maxZoom: 19,
     }).addTo(state.map)
   }
   state.layers.forEach(layer => layer.remove())
