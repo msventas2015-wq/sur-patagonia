@@ -281,6 +281,11 @@
       <div class="seccion-header">
         <span class="seccion-titulo">Asignar canales a campaña</span>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <select class="filtro-sel" id="filtroEstado" onchange="filtrarCanales()">
+            <option value="activo" selected>Canales activos</option>
+            <option value="">Todos los canales</option>
+            <option value="inactivo">Canales archivados</option>
+          </select>
           <select class="filtro-sel" id="filtroTipo" onchange="filtrarCanales()">
             <option value="">Todos los tipos</option>
             <option value="punto_venta">Punto de venta</option>
@@ -521,13 +526,22 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
   }
 
   // ── Render tabla de canales ────────────────────
-  window.filtrarCanales = function() { renderTablaCanales() }
+  window.filtrarCanales = function() {
+    const visiblesIds = new Set(canalesVisibles().map(c => c.id))
+    seleccionados.forEach(id => { if (!visiblesIds.has(id)) seleccionados.delete(id) })
+    document.getElementById('checkAll').checked = false
+    renderTablaCanales()
+    actualizarAccionBar()
+  }
 
   function canalesVisibles() {
+    const estado = document.getElementById('filtroEstado').value
     const tipo   = document.getElementById('filtroTipo').value
     const prov   = document.getElementById('filtroProv').value
     const buscar = document.getElementById('filtroBuscar').value.toLowerCase().trim()
     return canales.filter(c => {
+      if (estado === 'activo' && c.activo !== true) return false
+      if (estado === 'inactivo' && c.activo === true) return false
       if (tipo   && c.tipo     !== tipo)  return false
       if (prov   && c.provincia !== prov) return false
       if (buscar && !c.nombre?.toLowerCase().includes(buscar) && !c.ciudad?.toLowerCase().includes(buscar)) return false
@@ -593,7 +607,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
   }
 
   window.seleccionarPorTipo = function(tipo) {
-    canales.filter(c => c.tipo === tipo).forEach(c => seleccionados.add(c.id))
+    canalesVisibles().filter(c => c.tipo === tipo).forEach(c => seleccionados.add(c.id))
     renderTablaCanales()
     actualizarAccionBar()
   }

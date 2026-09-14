@@ -327,8 +327,9 @@ function toast(msg, ms = 2400) {
 }
 
 // ── Cargar canales ──
-const { data: rawCanales } = await supabase.from('canales').select('id,nombre,ciudad,provincia,tipo,user_id').order('nombre')
-const canales = rawCanales || []
+const { data: rawCanales } = await supabase.from('canales').select('id,nombre,ciudad,provincia,tipo,user_id,activo').order('nombre')
+const canalesTodos = rawCanales || []
+const canales = canalesTodos.filter(c => c.activo === true)
 
 // Datos para filtros
 const provincias = [...new Set(canales.map(c => c.provincia).filter(Boolean))].sort()
@@ -600,12 +601,12 @@ async function cargarMensajes() {
 
   function destLabel(m) {
     if (m.usuario_id) {
-      const susCanales = canales.filter(c => c.user_id === m.usuario_id).map(c => c.nombre)
+      const susCanales = canalesTodos.filter(c => c.user_id === m.usuario_id).map(c => c.nombre)
       return '👤 ' + (susCanales.length ? susCanales.join(' · ') : 'Usuario individual')
     }
     if (m.canal_ids?.length) {
       const nombres = m.canal_ids.map(id => {
-        const c = canales.find(x => x.id === id)
+        const c = canalesTodos.find(x => x.id === id)
         return c ? c.nombre : '—'
       })
       return '📡 ' + nombres.join(' · ')

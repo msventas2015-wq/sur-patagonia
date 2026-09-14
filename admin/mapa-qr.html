@@ -921,8 +921,12 @@
         <input class="qr-control" value="Últimos 30 días" readonly />
       </div>
       <div class="qr-field">
-        <label>Canal testigo</label>
-        <input class="qr-control" value="prueba-qr-varios" readonly />
+        <label for="estadoCanalSelect">Estado</label>
+        <select class="qr-control" id="estadoCanalSelect">
+          <option value="activo" selected>Canales activos</option>
+          <option value="">Todos los canales</option>
+          <option value="inactivo">Canales archivados</option>
+        </select>
       </div>
       <button class="qr-btn primary" id="btnRecargar">Actualizar</button>
     </section>
@@ -1066,6 +1070,7 @@ const DEFAULT_BASE = { frente:8, fondo:14, bano:true, mostrador:true, oficinas:1
 
 const state = {
   canales: [],
+  estadoCanales: 'activo',
   canal: null,
   refs: [],
   configs: new Map(),
@@ -1251,11 +1256,22 @@ async function cargarCanales() {
   if (res.error) throw res.error
 
   state.canales = res.data || []
+  renderCanalOptions()
+}
+
+function canalesVisibles() {
+  if (state.estadoCanales === 'activo') return state.canales.filter(c => c.activo === true)
+  if (state.estadoCanales === 'inactivo') return state.canales.filter(c => c.activo !== true)
+  return state.canales
+}
+
+function renderCanalOptions() {
   const select = $('#canalSelect')
-  const testigo = state.canales.find(c => c.codigo === TESTIGO_CODIGO)
-  select.innerHTML = state.canales.map(c => `<option value="${esc(c.id)}">${esc(c.codigo === TESTIGO_CODIGO ? '★ ' : '')}${esc(c.nombre || c.codigo)} · ${esc(c.codigo)}</option>`).join('')
-  if (testigo) select.value = testigo.id
-  if (!state.canales.length) select.innerHTML = '<option value="">Sin canales pasivos</option>'
+  const seleccionAnterior = select.value
+  const visibles = canalesVisibles()
+  select.innerHTML = visibles.map(c => `<option value="${esc(c.id)}">${esc(c.codigo === TESTIGO_CODIGO ? '★ ' : '')}${esc(c.nombre || c.codigo)} · ${esc(c.codigo)}</option>`).join('')
+  if (visibles.some(c => String(c.id) === String(seleccionAnterior))) select.value = seleccionAnterior
+  if (!visibles.length) select.innerHTML = '<option value="">Sin canales para este estado</option>'
 }
 
 async function cargarCanalSeleccionado() {
@@ -1804,6 +1820,11 @@ async function boot() {
 }
 
 $('#canalSelect').addEventListener('change', cargarCanalSeleccionado)
+$('#estadoCanalSelect').addEventListener('change', async e => {
+  state.estadoCanales = e.target.value
+  renderCanalOptions()
+  await cargarCanalSeleccionado()
+})
 $('#btnRecargar').addEventListener('click', cargarCanalSeleccionado)
 $('#metricSelect').addEventListener('change', e => {
   state.metric = e.target.value
