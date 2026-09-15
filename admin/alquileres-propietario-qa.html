@@ -15,7 +15,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="robots" content="noindex,nofollow,noarchive"/>
-<title>Mi Propiedad · PRODUCCIÓN — Sur Patagonian Real Estate</title>
+<title>Mi Propiedad · QA — Sur Patagonian Real Estate</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -132,7 +132,7 @@ select.f option{background:#141414}
       <input id="inPass" type="password" placeholder="Contraseña" autocomplete="current-password"/>
       <button class="btn" id="btnLogin">Entrar</button>
       <div class="l-err" id="loginErr"></div>
-      <div class="l-qa">Entorno PRODUCCIÓN · v1</div>
+      <div class="l-qa">Entorno QA · v1</div>
     </div>
   </div>
 </div>
@@ -171,14 +171,14 @@ select.f option{background:#141414}
     </div>
   </div>
 
-  <div class="foot">PRODUCCIÓN · v1 · Sur Patagonian Real Estate · Administración de Alquileres</div>
+  <div class="foot">QA · v1 · Sur Patagonian Real Estate · Administración de Alquileres</div>
 </main>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
-const SB_URL='https://wajkfydxutptcvvfwrvq.supabase.co';
-const SB_KEY='sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s';
+const SB_URL='https://rsjwqmpseknvydistgfr.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzandxbXBzZWtudnlkaXN0Z2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NDE1OTEsImV4cCI6MjEwMjMxNzU5MX0.X31f3AGUg0Oi01daBktS9ltfcp3ID6uZFJd7tGIlUKg';
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
 const $=id=>document.getElementById(id);
 const fmt=n=>'$'+Number(n||0).toLocaleString('es-AR',{maximumFractionDigits:0});
@@ -249,7 +249,11 @@ async function cargar(){
 function render(){
   if(!D.prop.length){
     $('props').innerHTML='<div class="empty">Tu usuario no tiene propiedades vinculadas todavía. Hablá con la administración.</div>';
-    $('kpis').innerHTML='';$('liqs').innerHTML='<div class="empty">Sin acceso a propiedades.</div>';return;
+    $('kpis').innerHTML='';$('liqs').innerHTML='<div class="empty">Sin acceso a propiedades.</div>';
+    $('ncProp').innerHTML='<option value="">Sin propiedades habilitadas</option>';
+    $('ncProp').disabled=true;$('ncTexto').disabled=true;$('btnNueva').disabled=true;
+    $('msgNueva').textContent='Necesitás una propiedad habilitada para enviar una consulta.';
+    $('msgNueva').className='op-msg';return;
   }
   const cargosInquilino=D.cargo.filter(c=>{
     const con=D.con.find(x=>x.id===c.contrato_id);
@@ -289,6 +293,8 @@ function render(){
       </div></div>`;
   }).join('');
   $('ncProp').innerHTML=D.prop.map(p=>`<option value="${p.id}">${esc(p.direccion)}</option>`).join('');
+  $('ncProp').disabled=false;$('ncTexto').disabled=false;$('btnNueva').disabled=false;
+  $('msgNueva').textContent='';$('msgNueva').className='op-msg';
   const liquidaciones=[...D.liq].sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))||
     Number(b.version_documento)-Number(a.version_documento));
   $('liqs').innerHTML=liquidaciones.length?liquidaciones.map(x=>{
@@ -398,11 +404,13 @@ async function responder(cid){
 }
 $('btnNueva').onclick=async()=>{
   const m=$('msgNueva');m.className='op-msg';m.textContent='';
+  const propiedadId=$('ncProp').value;
+  if(!propiedadId){m.textContent='Necesitás una propiedad habilitada para enviar una consulta.';m.className='op-msg op-err';return}
   const t=$('ncTexto').value.trim();
   if(!t){m.textContent='Escribí tu consulta.';m.className='op-msg op-err';return}
   $('btnNueva').disabled=true;
-  const {error}=await sb.rpc('alq_prop_abrir_consulta',{p_propiedad:$('ncProp').value,p_texto:t,p_adjunto:null});
-  $('btnNueva').disabled=false;
+  const {error}=await sb.rpc('alq_prop_abrir_consulta',{p_propiedad:propiedadId,p_texto:t,p_adjunto:null});
+  $('btnNueva').disabled=!D.prop.length;
   if(error){m.textContent=error.message;m.className='op-msg op-err';return}
   $('ncTexto').value='';toast('Consulta enviada a la administración');await cargar();
 };

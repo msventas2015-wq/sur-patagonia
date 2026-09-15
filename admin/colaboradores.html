@@ -132,6 +132,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         Consultas
       </a>
+      <a href="captaciones.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M12 12v6"/><path d="M9 15h6"/></svg>
+        Captaciones
+      </a>
       <a href="crm.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
         CRM
@@ -327,9 +331,8 @@ function toast(msg, ms = 2400) {
 }
 
 // ── Cargar canales ──
-const { data: rawCanales } = await supabase.from('canales').select('id,nombre,ciudad,provincia,tipo,user_id,activo').order('nombre')
-const canalesTodos = rawCanales || []
-const canales = canalesTodos.filter(c => c.activo === true)
+const { data: rawCanales } = await supabase.from('canales').select('id,nombre,ciudad,provincia,tipo,user_id').order('nombre')
+const canales = rawCanales || []
 
 // Datos para filtros
 const provincias = [...new Set(canales.map(c => c.provincia).filter(Boolean))].sort()
@@ -601,12 +604,12 @@ async function cargarMensajes() {
 
   function destLabel(m) {
     if (m.usuario_id) {
-      const susCanales = canalesTodos.filter(c => c.user_id === m.usuario_id).map(c => c.nombre)
+      const susCanales = canales.filter(c => c.user_id === m.usuario_id).map(c => c.nombre)
       return '👤 ' + (susCanales.length ? susCanales.join(' · ') : 'Usuario individual')
     }
     if (m.canal_ids?.length) {
       const nombres = m.canal_ids.map(id => {
-        const c = canalesTodos.find(x => x.id === id)
+        const c = canales.find(x => x.id === id)
         return c ? c.nombre : '—'
       })
       return '📡 ' + nombres.join(' · ')

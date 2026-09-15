@@ -824,6 +824,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         Consultas
       </a>
+      <a href="captaciones.html" class="admin-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M12 12v6"/><path d="M9 15h6"/></svg>
+        Captaciones
+      </a>
       <a href="crm.html" class="admin-nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
         CRM
@@ -921,12 +925,8 @@
         <input class="qr-control" value="Últimos 30 días" readonly />
       </div>
       <div class="qr-field">
-        <label for="estadoCanalSelect">Estado</label>
-        <select class="qr-control" id="estadoCanalSelect">
-          <option value="activo" selected>Canales activos</option>
-          <option value="">Todos los canales</option>
-          <option value="inactivo">Canales archivados</option>
-        </select>
+        <label>Canal testigo</label>
+        <input class="qr-control" value="prueba-qr-varios" readonly />
       </div>
       <button class="qr-btn primary" id="btnRecargar">Actualizar</button>
     </section>
@@ -935,7 +935,7 @@
 
     <section class="kpi-grid" id="kpiGrid">
       <div class="kpi" style="--c:#c9a84c"><div class="kpi-label">Clics totales</div><div class="kpi-value">—</div><div class="kpi-sub">Últimos 30 días</div></div>
-      <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Consultas</div><div class="kpi-value">—</div><div class="kpi-sub">Leads por QR y link</div></div>
+      <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Consultas</div><div class="kpi-value">—</div><div class="kpi-sub">Leads por QR</div></div>
       <div class="kpi" style="--c:#e8c96a"><div class="kpi-label">Conversión</div><div class="kpi-value">—</div><div class="kpi-sub">Consultas sobre clics</div></div>
       <div class="kpi" style="--c:#8a8a82"><div class="kpi-label">Puntos QR</div><div class="kpi-value">—</div><div class="kpi-sub">Activos / total</div></div>
     </section>
@@ -1070,7 +1070,6 @@ const DEFAULT_BASE = { frente:8, fondo:14, bano:true, mostrador:true, oficinas:1
 
 const state = {
   canales: [],
-  estadoCanales: 'activo',
   canal: null,
   refs: [],
   configs: new Map(),
@@ -1256,22 +1255,11 @@ async function cargarCanales() {
   if (res.error) throw res.error
 
   state.canales = res.data || []
-  renderCanalOptions()
-}
-
-function canalesVisibles() {
-  if (state.estadoCanales === 'activo') return state.canales.filter(c => c.activo === true)
-  if (state.estadoCanales === 'inactivo') return state.canales.filter(c => c.activo !== true)
-  return state.canales
-}
-
-function renderCanalOptions() {
   const select = $('#canalSelect')
-  const seleccionAnterior = select.value
-  const visibles = canalesVisibles()
-  select.innerHTML = visibles.map(c => `<option value="${esc(c.id)}">${esc(c.codigo === TESTIGO_CODIGO ? '★ ' : '')}${esc(c.nombre || c.codigo)} · ${esc(c.codigo)}</option>`).join('')
-  if (visibles.some(c => String(c.id) === String(seleccionAnterior))) select.value = seleccionAnterior
-  if (!visibles.length) select.innerHTML = '<option value="">Sin canales para este estado</option>'
+  const testigo = state.canales.find(c => c.codigo === TESTIGO_CODIGO)
+  select.innerHTML = state.canales.map(c => `<option value="${esc(c.id)}">${esc(c.codigo === TESTIGO_CODIGO ? '★ ' : '')}${esc(c.nombre || c.codigo)} · ${esc(c.codigo)}</option>`).join('')
+  if (testigo) select.value = testigo.id
+  if (!state.canales.length) select.innerHTML = '<option value="">Sin canales pasivos</option>'
 }
 
 async function cargarCanalSeleccionado() {
@@ -1327,7 +1315,7 @@ async function cargarMetricas() {
   const desde = hace30()
   const [visitasRes, contactosRes] = await Promise.all([
     supabase.from('visitas').select('canal_ref,created_at,canal_via').in('canal_ref', codigos).gte('created_at', desde).limit(50000),
-    supabase.from('contactos').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).eq('origen', 'web').in('canal_via', ['qr', 'link']).limit(10000),
+    supabase.from('contactos').select('canal_ref,created_at').in('canal_ref', codigos).gte('created_at', desde).eq('origen', 'web').eq('canal_via', 'qr').limit(10000),
   ])
   if (visitasRes.error) throw visitasRes.error
   if (contactosRes.error) throw contactosRes.error
@@ -1353,7 +1341,7 @@ function renderKpis() {
   const activos = state.refs.filter(r => r.activo !== false).length
   $('#kpiGrid').innerHTML = `
     <div class="kpi" style="--c:#c9a84c"><div class="kpi-label">Clics totales</div><div class="kpi-value">${clics}</div><div class="kpi-sub">Últimos 30 días</div></div>
-    <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Consultas</div><div class="kpi-value">${consultas}</div><div class="kpi-sub">Leads por QR y link</div></div>
+    <div class="kpi" style="--c:#d76f3f"><div class="kpi-label">Consultas</div><div class="kpi-value">${consultas}</div><div class="kpi-sub">Leads por QR</div></div>
     <div class="kpi" style="--c:#e8c96a"><div class="kpi-label">Conversión</div><div class="kpi-value">${conversion.toFixed(1)}%</div><div class="kpi-sub">Consultas sobre clics</div></div>
     <div class="kpi" style="--c:#8a8a82"><div class="kpi-label">Puntos QR</div><div class="kpi-value">${activos}<span style="font-size:1rem;color:rgba(245,243,240,.42);-webkit-text-fill-color:rgba(245,243,240,.42)">/${state.refs.length}</span></div><div class="kpi-sub">Activos / total</div></div>
   `
@@ -1820,11 +1808,6 @@ async function boot() {
 }
 
 $('#canalSelect').addEventListener('change', cargarCanalSeleccionado)
-$('#estadoCanalSelect').addEventListener('change', async e => {
-  state.estadoCanales = e.target.value
-  renderCanalOptions()
-  await cargarCanalSeleccionado()
-})
 $('#btnRecargar').addEventListener('click', cargarCanalSeleccionado)
 $('#metricSelect').addEventListener('change', e => {
   state.metric = e.target.value

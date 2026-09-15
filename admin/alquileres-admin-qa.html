@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<!-- ============================================================================
+  SUR PATAGONIAN REAL ESTATE · ALQUILERES — Panel ADMIN · QA
+  Cloud 17-ago-2026 · Gobernanza visual: APLICA (canon gobernanza-visual.md)
+  · Tokens §2 · Inter §3 · Glass T1 §4 · KPI firmado §5 · sin serif en admin
+  · Lee QA vía vistas public.alq_v_* (security_invoker → RLS real del usuario)
+  · OPERA vía RPC canónico public.alq_admin_preparar/aplicar (firma + ledger):
+    generar mes normal · confirmar pago con comprobante · crédito por excedente ·
+    honorario mensual abierto · emitir cargo · nota crédito/débito · liquidación
+    mensual revisable, PDF sellado y registro manual del email. Nada toca QR.
+  Ubicación: admin/alquileres-admin-qa.html · QA autenticado · no indexar ni enlazar públicamente.
+============================================================================ -->
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex,nofollow,noarchive"/>
+<title>Alquileres · Admin · QA — Sur Patagonian Real Estate</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#090909; --card-bg:#141414; --card-border:rgba(255,255,255,.07);
+  --card-radius:14px; --sep:rgba(255,255,255,.07);
+  --accent:#d76f3f; --dorado:#c9a84c;
+  --blanco:#f5f3f0; --gris:#888; --txt-soft:rgba(245,243,240,.5);
+  --verde:#50c878; --rojo:#e05c5c; --azul:#7aaeff; --ambar:#e8c96a;
+  --activo:#52d68c;
+  --glass-t1:linear-gradient(160deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);
+  --glass-t2:linear-gradient(160deg,rgba(255,255,255,.042) 0%,rgba(255,255,255,.012) 100%);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--blanco);font-family:'Inter',sans-serif;min-height:100vh}
+.admin-main h1,.admin-main h2,.admin-main h3,.admin-main h4{font-family:'Inter',sans-serif}
+.sp-bg-brand{position:fixed;bottom:6vh;left:0;right:0;height:65vh;
+  background:url('../assets/ChatGPT Image 19 jun 2026, 23_34_52.png?v=9') center 52%/cover no-repeat;
+  filter:grayscale(1) brightness(.75);opacity:.11;pointer-events:none;z-index:9;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 82%,transparent 100%)}
+header{position:sticky;top:0;z-index:40;background:rgba(9,9,9,.96);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--card-border);padding:.85rem 2rem;display:flex;align-items:center;gap:1rem}
+.h-brand{font-weight:800;font-size:.8rem;letter-spacing:.18em;text-transform:uppercase}
+.h-brand em{font-style:normal;color:var(--accent)}
+.h-brand span{font-size:.54rem;color:var(--txt-soft);letter-spacing:.12em;margin-left:.35rem}
+.h-mod{font-size:.6rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(245,243,240,.42);
+  border:1px solid var(--card-border);border-radius:99px;padding:.28rem .7rem}
+.h-qa{font-size:.6rem;font-weight:700;letter-spacing:.14em;color:var(--ambar);border:1px solid rgba(232,201,106,.35);
+  border-radius:99px;padding:.28rem .7rem}
+.h-user{margin-left:auto;font-size:.66rem;color:var(--txt-soft)}
+.h-out{background:none;border:1px solid var(--card-border);color:var(--txt-soft);border-radius:8px;
+  padding:.35rem .8rem;font-size:.62rem;font-family:inherit;cursor:pointer;letter-spacing:.06em}
+.h-out:hover{border-color:rgba(255,255,255,.16);color:var(--blanco)}
+.quick-nav{position:sticky;top:58px;z-index:35;display:flex;gap:.45rem;align-items:center;
+  padding:.55rem 2rem;background:rgba(9,9,9,.94);border-bottom:1px solid var(--card-border);overflow-x:auto}
+.quick-nav a,.help-btn{white-space:nowrap;text-decoration:none;background:none;border:1px solid var(--card-border);
+  color:var(--txt-soft);border-radius:99px;padding:.32rem .7rem;font:600 .57rem 'Inter',sans-serif;
+  letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.quick-nav a:hover,.help-btn:hover{color:var(--blanco);border-color:rgba(255,255,255,.2)}
+.info{display:inline-flex;width:17px;height:17px;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.22);
+  border-radius:50%;font-size:.58rem;color:rgba(245,243,240,.62);cursor:help;vertical-align:middle;margin-left:.3rem}
+.account-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem;margin:.8rem 0}
+.account-box{border:1px solid var(--card-border);border-radius:10px;padding:.75rem .85rem;background:var(--glass-t2)}
+.account-box.obligations{border-left:2px solid var(--azul)}
+.account-box.fees{border-left:2px solid var(--ambar)}
+.account-box .amount{font-size:1.15rem;font-weight:650;margin-top:.25rem}
+.account-caption{font-size:.61rem;color:var(--txt-soft);line-height:1.45;margin-top:.25rem}
+.section-note{font-size:.67rem;line-height:1.5;color:var(--txt-soft);padding:.7rem .8rem;border-left:2px solid var(--accent);background:var(--glass-t2);border-radius:0 8px 8px 0}
+.admin-main{position:relative;z-index:10;max-width:1180px;margin:0 auto;padding:2.4rem 2rem 5rem}
+.p-title{font-weight:800;font-size:clamp(2rem,5vw,3rem);text-transform:uppercase;letter-spacing:-.03em;
+  background:linear-gradient(120deg,#fff,rgba(255,255,255,.55));-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent;line-height:1.05}
+.p-sub{margin-top:.4rem;font-size:.66rem;color:rgba(245,243,240,.42);letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+.sec-t{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--gris);margin:2.6rem 0 1rem}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:2rem}
+.kpi{background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,.02) 100%);
+  border:1px solid rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:1.4rem 1.6rem;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:2px;border-radius:99px;
+  background:var(--c,var(--accent));opacity:.75}
+.kpi-num{font-size:clamp(1.7rem,2.2vw,2.45rem);font-weight:300;line-height:1;
+  max-width:100%;white-space:nowrap;font-variant-numeric:tabular-nums;
+  background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 70%,transparent));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.kpi-lbl{margin-top:.35rem;font-size:.58rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:.12em;color:rgba(245,243,240,.42)}
+.kpi-sub{margin-top:.2rem;font-size:.6rem;color:rgba(245,243,240,.3)}
+.card{background:var(--glass-t1);border:1px solid rgba(255,255,255,.07);
+  border-top:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.4rem 1.6rem;
+  backdrop-filter:blur(4px);box-shadow:0 4px 14px rgba(0,0,0,.18);overflow-x:auto}
+.chips{display:flex;gap:.5rem;margin:0 0 1rem}
+.chip{background:none;border:1px solid var(--card-border);border-radius:99px;color:var(--txt-soft);
+  font-family:inherit;font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  padding:.35rem .85rem;cursor:pointer}
+.chip.on{border-color:var(--accent);color:var(--accent)}
+.props{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+.prop{cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s}
+.prop:hover{border-color:rgba(255,255,255,.16);transform:translateY(-1px);box-shadow:0 14px 34px rgba(0,0,0,.26)}
+.prop-top{display:flex;align-items:flex-start;gap:.7rem}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;margin-top:.4rem;background:var(--dc,var(--gris))}
+.prop-dir{font-weight:700;font-size:1.05rem}
+.prop-city{font-size:.62rem;color:rgba(245,243,240,.45);letter-spacing:.08em;text-transform:uppercase;margin-top:.15rem}
+.prop-grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem 1rem;margin-top:1rem}
+.pg-l{font-size:.55rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(245,243,240,.42)}
+.pg-v{font-size:.8rem;margin-top:.15rem;color:rgba(245,243,240,.85)}
+.deuda{color:var(--rojo)} .aldia{color:var(--verde)}
+table{width:100%;border-collapse:collapse;font-size:.72rem}
+th{font-size:.55rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(245,243,240,.42);text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--sep)}
+td{padding:.5rem .6rem;border-bottom:1px solid var(--sep);color:rgba(245,243,240,.67)}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.pos{color:var(--verde)} .neg{color:var(--rojo)}
+.tag{display:inline-block;font-size:.56rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  padding:.14rem .5rem;border-radius:99px;border:1px solid var(--tc,var(--gris));color:var(--tc,var(--gris))}
+.empty{font-size:.72rem;color:rgba(245,243,240,.28);padding:1rem 0}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);z-index:60;
+  display:none;align-items:flex-start;justify-content:center;padding:4vh 1.2rem;overflow-y:auto}
+.overlay.on{display:flex}
+.modal{background:linear-gradient(160deg,rgba(20,20,20,.98),rgba(12,12,12,.98));
+  border:1px solid var(--card-border);border-top:1px solid rgba(255,255,255,.12);
+  border-radius:14px;padding:2.2rem 2.4rem;box-shadow:0 28px 80px rgba(0,0,0,.48);
+  width:min(880px,100%);position:relative}
+.m-close{position:absolute;top:1rem;right:1.1rem;background:none;border:none;color:var(--txt-soft);
+  font-size:1.1rem;cursor:pointer;font-family:inherit}
+.m-title{font-weight:700;font-size:1.45rem}
+#mBody{overflow-x:auto}
+.m-sub{font-size:.62rem;color:rgba(245,243,240,.45);letter-spacing:.1em;text-transform:uppercase;margin-top:.2rem}
+.tabs{display:flex;gap:.4rem;margin:1.4rem 0 1.1rem;flex-wrap:wrap}
+.tab{background:none;border:1px solid var(--card-border);border-radius:8px;color:var(--txt-soft);
+  font-family:inherit;font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  padding:.4rem .8rem;cursor:pointer}
+.tab.on{border-color:var(--accent);color:var(--accent)}
+.hilo{display:flex;flex-direction:column;gap:.6rem}
+.msg{border-left:2px solid var(--mc,var(--gris));padding:.5rem .8rem;background:var(--glass-t2);border-radius:0 10px 10px 0}
+.msg-a{font-size:.55rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(245,243,240,.42)}
+.msg-t{font-size:.76rem;margin-top:.25rem;color:rgba(245,243,240,.8)}
+.f-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem 1rem}
+.f-full{grid-column:1/-1}
+.f-l{font-size:.55rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(245,243,240,.42);
+  display:block;margin-bottom:.3rem}
+input.f,select.f,textarea.f{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--card-border);
+  border-radius:10px;color:var(--blanco);font-family:inherit;font-size:.78rem;padding:.6rem .8rem;outline:none}
+input.f:focus,select.f:focus,textarea.f:focus{border-color:rgba(215,111,63,.55)}
+select.f option{background:#141414}
+.btn{background:linear-gradient(135deg,rgba(215,111,63,.9),rgba(215,111,63,.7));border:none;border-radius:10px;
+  color:#16100c;font-family:inherit;font-weight:700;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:.6rem 1.2rem;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:default}
+.btn-g{background:none;border:1px solid var(--card-border);color:var(--txt-soft);border-radius:10px;
+  font-family:inherit;font-size:.62rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  padding:.5rem .9rem;cursor:pointer}
+.btn-g:hover{border-color:rgba(255,255,255,.2);color:var(--blanco)}
+.op-msg{font-size:.68rem;margin-top:.7rem;min-height:1em}
+.op-ok{color:var(--verde)} .op-err{color:var(--rojo)}
+.ck-list{display:flex;flex-direction:column;gap:.4rem;max-height:180px;overflow-y:auto;padding:.2rem 0}
+.ck{display:flex;align-items:center;gap:.6rem;font-size:.72rem;color:rgba(245,243,240,.75)}
+.ck input{accent-color:var(--accent)}
+.toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%);z-index:99;
+  background:linear-gradient(160deg,rgba(20,20,20,.98),rgba(12,12,12,.98));
+  border:1px solid rgba(80,200,120,.4);border-radius:12px;padding:.7rem 1.3rem;
+  font-size:.7rem;color:var(--verde);display:none;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;position:relative;z-index:10}
+.login{width:min(380px,100%);text-align:center}
+.login .card{padding:2.2rem 2rem}
+.l-brand{font-weight:800;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;margin-bottom:.4rem}
+.l-brand em{font-style:normal;color:var(--accent)}
+.l-mod{font-size:.58rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(245,243,240,.42);margin-bottom:1.6rem}
+.login input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--card-border);border-radius:10px;
+  color:var(--blanco);font-family:inherit;font-size:.8rem;padding:.7rem .9rem;margin-bottom:.7rem;outline:none}
+.login input:focus{border-color:rgba(215,111,63,.55)}
+.login .btn{width:100%;padding:.75rem;margin-top:.3rem;font-size:.72rem;letter-spacing:.12em}
+.l-err{font-size:.66rem;color:var(--rojo);margin-top:.8rem;min-height:1em}
+.l-qa{margin-top:1.1rem;font-size:.56rem;color:rgba(245,243,240,.3);letter-spacing:.1em;text-transform:uppercase}
+.foot{margin-top:3.5rem;font-size:.56rem;color:rgba(245,243,240,.28);letter-spacing:.1em;text-transform:uppercase;text-align:center}
+.loading{padding:4rem 0;text-align:center;font-size:.7rem;color:rgba(245,243,240,.42);letter-spacing:.14em;text-transform:uppercase}
+.com-ops{display:flex;gap:.5rem;margin-top:.7rem;align-items:flex-start}
+.com-ops textarea{flex:1;min-height:38px;resize:vertical}
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px}
+.cal-dow{font-size:.55rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,243,240,.42);text-align:center;padding:.3rem 0}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal-cell{height:96px;border:1px solid var(--card-border);border-radius:9px;padding:.35rem .4rem;background:var(--glass-t2);display:flex;flex-direction:column;gap:.2rem;overflow:hidden;cursor:pointer}
+.cal-empty{background:none;border:1px solid rgba(255,255,255,.03)}
+.cal-hoy{border-color:var(--accent);box-shadow:0 0 0 1px rgba(215,111,63,.35)}
+.cal-num{font-size:.66rem;font-weight:700;color:rgba(245,243,240,.7);align-self:flex-end}
+.cal-chip{font-size:.54rem;line-height:1.2;padding:.16rem .32rem;border-radius:5px;border-left:2px solid var(--cc,var(--gris));
+  background:rgba(255,255,255,.04);color:rgba(245,243,240,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-more{font-size:.52rem;color:var(--azul);font-weight:700;margin-top:auto}
+@media(max-width:640px){.cal-cell{height:96px}.cal-chip{font-size:.5rem}}
+@media(max-width:640px){.admin-main{padding:1.6rem 1rem 4rem}header{padding:.8rem 1rem}.modal{padding:1.5rem 1.2rem}.f-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="sp-bg-brand"></div>
+
+<div id="vLogin" class="login-wrap">
+  <div class="login">
+    <div class="card">
+      <div class="l-brand">SUR <em>PATAGONIAN</em> REAL ESTATE</div>
+      <div class="l-mod">Alquileres · Administración</div>
+      <input id="inMail" type="email" placeholder="Email" autocomplete="username"/>
+      <input id="inPass" type="password" placeholder="Contraseña" autocomplete="current-password"/>
+      <button class="btn" id="btnLogin">Entrar</button>
+      <div class="l-err" id="loginErr"></div>
+      <div class="l-qa">Entorno QA · v2 operativa</div>
+    </div>
+  </div>
+</div>
+
+<div id="vApp" style="display:none">
+<header>
+  <div class="h-brand">SUR <em>PATAGONIAN</em><span>REAL ESTATE</span></div>
+  <div class="h-mod">Alquileres · Admin</div>
+  <div class="h-qa">QA</div>
+  <div class="h-user" id="hUser"></div>
+  <button class="h-out" id="btnOut">Salir</button>
+</header>
+<nav class="quick-nav" aria-label="Navegación del panel">
+  <button class="help-btn" id="btnAyuda">ⓘ Cómo usar</button>
+  <a href="#resumen">Resumen</a><a href="#agendaMes">Agenda</a><a href="#propiedades">Propiedades</a>
+  <a href="#facturas">Facturas</a><a href="#cajaReal">Caja real</a><a href="#pagosInformados">Pagos informados</a>
+  <a href="#rendiciones">Rendiciones</a><a href="#comunicados">Comunicados</a>
+</nav>
+<main class="admin-main">
+  <span id="resumen"></span>
+  <h1 class="p-title">Alquileres</h1>
+  <div class="p-sub">Sur Patagonian Real Estate · administración de alquileres</div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="sec-t" id="agendaMes">Agenda del mes — vencimientos y pagos separados <span class="info" title="El calendario resume como máximo dos líneas por día. Tocá una fecha para ver todos sus movimientos.">i</span></div>
+  <div class="card" id="agenda"><div class="empty">Cargando…</div></div>
+
+  <div class="sec-t" id="propiedades">Propiedades</div>
+  <div class="chips" id="chips">
+    <button class="chip on" data-f="piloto">Piloto activo</button>
+    <button class="chip" data-f="todas">Todas</button>
+    <button class="chip" data-f="obligaciones">Obligaciones pendientes</button>
+    <button class="chip" data-f="honorarios">Honorarios pendientes</button>
+    <button class="chip" data-f="otros">Otros pendientes</button>
+    <button class="chip" data-f="aldia">Sin pendientes</button>
+  </div>
+  <div class="section-note" style="margin-bottom:1rem">El filtro se aplica a todo el tablero: indicadores, agenda, propiedades, caja, pagos, rendiciones y comunicados.</div>
+  <div class="props" id="props"><div class="loading">Cargando…</div></div>
+
+  <div class="sec-t" id="facturas">Bandeja manual de facturas <span class="info" title="El robot de correo está apagado. Podés arrastrar un PDF y siempre revisás la propuesta antes de confirmar.">i</span></div>
+  <div class="card" id="bandeja">
+    <div id="dropzone" style="border:1.5px dashed rgba(255,255,255,.18);border-radius:12px;padding:1.6rem;
+      text-align:center;cursor:pointer;transition:border-color .15s">
+      <div style="font-size:.72rem;color:rgba(245,243,240,.5)">Arrastrá la factura (PDF) o hacé click para elegirla</div>
+      <div style="font-size:.58rem;color:rgba(245,243,240,.3);margin-top:.3rem;letter-spacing:.08em;text-transform:uppercase">
+        Lectura local del PDF · EDERSA · Camuzzi · Aguas Rionegrinas · Coopetel — vos siempre confirmás</div>
+      <input type="file" id="pdfInput" accept="application/pdf" multiple style="display:none"/>
+    </div>
+    <div class="section-note" style="margin-top:.8rem">El ingreso automático por correo está desactivado. Esta bandeja procesa únicamente los archivos que arrastres o elijas manualmente.</div>
+    <div id="propuestas"></div>
+  </div>
+
+  <div class="sec-t" id="cajaReal">Caja real de la administración <span class="info" title="Sólo dinero que efectivamente ingresó o salió de una cuenta custodiada por la administración.">i</span></div>
+  <div class="card" id="caja"><div class="empty">—</div></div>
+
+  <div class="sec-t" id="pagosInformados">Pagos informados entre las partes <span class="info" title="Pagos directos que la administración registra mediante comprobante, pero que nunca ingresaron en su caja.">i</span></div>
+  <div class="card" id="pagosDirectos"><div class="empty">—</div></div>
+
+  <div class="sec-t" id="rendiciones">Rendiciones</div>
+  <div class="card" id="rends"><div class="empty">—</div></div>
+
+  <div class="sec-t" id="comunicados">Comunicados</div>
+  <div class="card" id="coms"><div class="empty">—</div></div>
+
+  <div class="foot">Sur Patagonian Real Estate · QA · administración de alquileres</div>
+</main>
+</div>
+
+<div class="overlay" id="ov"><div class="modal">
+  <button class="m-close" id="mClose">✕</button>
+  <div class="m-title" id="mTitle"></div>
+  <div class="m-sub" id="mSub"></div>
+  <div class="tabs" id="mTabs"></div>
+  <div id="mBody"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="helpOv"><div class="modal">
+  <button class="m-close" id="helpClose">✕</button>
+  <div class="m-title">Cómo usar Alquileres</div>
+  <div class="m-sub">Guía rápida · ninguna consulta modifica datos</div>
+  <div class="account-grid" style="margin-top:1.3rem">
+    <div class="account-box"><div class="pg-l">1 · Obligaciones administradas</div><div class="account-caption">Alquiler, expensas y servicios que el inquilino debe pagar al propietario u otro beneficiario.</div></div>
+    <div class="account-box"><div class="pg-l">2 · Cuenta de administración</div><div class="account-caption">Honorarios que el propietario debe pagarle a Sur Patagonian Real Estate. Nunca se suman a la deuda del inquilino.</div></div>
+    <div class="account-box"><div class="pg-l">3 · Liquidación al propietario</div><div class="account-caption">Dinero que la administración debe rendir o transferir al propietario. Es un tercer circuito independiente.</div></div>
+  </div>
+  <div class="section-note">Para consultar, abrí una propiedad y usá Calendario, Cargos o Contratos. Los botones naranjas generan registros financieros: usalos sólo cuando la información esté completa y el programa los habilite.</div>
+  <a class="btn-g" style="display:inline-block;margin-top:1rem;text-decoration:none" target="_blank" href="../docs/manuales/MANUAL-USO-ALQUILERES-ADMIN-QA.md">Abrir manual completo</a>
+</div></div>
+
+<script>
+const SB_URL='https://rsjwqmpseknvydistgfr.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzandxbXBzZWtudnlkaXN0Z2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NDE1OTEsImV4cCI6MjEwMjMxNzU5MX0.X31f3AGUg0Oi01daBktS9ltfcp3ID6uZFJd7tGIlUKg';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+const $=id=>document.getElementById(id);
+const fmt=n=>'$'+Number(n||0).toLocaleString('es-AR',{maximumFractionDigits:0});
+const esc=s=>(s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/*
+ * CONTRATO DE FECHA CIVIL ALQ_F3_V1
+ * `vence_at` viaja como timestamptz por compatibilidad con el dominio V1, pero
+ * sus primeros 10 caracteres son la fecha civil argentina. No se interpreta
+ * como un instante: se muestra y agrupa por YYYY-MM-DD, y vence recién al
+ * comenzar el día civil siguiente. PDF, mora y exports deben usar esta regla.
+ */
+const ALQ_F3_TZ='America/Argentina/Buenos_Aires';
+function fechaCivil(valor){
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(valor||''));
+  if(!m)return null;
+  const y=Number(m[1]),mes=Number(m[2]),dia=Number(m[3]);
+  const d=new Date(Date.UTC(y,mes-1,dia));
+  if(d.getUTCFullYear()!==y||d.getUTCMonth()!==mes-1||d.getUTCDate()!==dia)return null;
+  return `${m[1]}-${m[2]}-${m[3]}`;
+}
+function partesFechaCivil(valor){
+  const k=fechaCivil(valor);if(!k)return null;
+  return{y:Number(k.slice(0,4)),m:Number(k.slice(5,7))-1,d:Number(k.slice(8,10))};
+}
+function hoyCivil(){
+  const p=Object.fromEntries(new Intl.DateTimeFormat('en',{timeZone:ALQ_F3_TZ,
+    year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date())
+    .filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function fechaCivilATimestamp(valor){
+  const k=fechaCivil(valor);if(!k)throw new Error('Fecha civil inválida.');
+  return k+'T00:00:00Z';
+}
+const fdate=valor=>{const k=fechaCivil(valor);return k?`${k.slice(8,10)}/${k.slice(5,7)}/${k.slice(2,4)}`:'—'};
+const fdateInstante=valor=>valor?new Intl.DateTimeFormat('es-AR',{timeZone:ALQ_F3_TZ,
+  day:'2-digit',month:'2-digit',year:'2-digit'}).format(new Date(valor)):'—';
+function partesInstanteCivil(valor){
+  if(!valor)return null;const ps=new Intl.DateTimeFormat('en-CA',{timeZone:ALQ_F3_TZ,year:'numeric',month:'2-digit',day:'2-digit'})
+    .formatToParts(new Date(valor)).filter(x=>x.type!=='literal');const o=Object.fromEntries(ps.map(x=>[x.type,Number(x.value)]));
+  return{y:o.year,m:o.month-1,d:o.day};
+}
+const hoy=()=>hoyCivil();
+const mesActual=()=>hoyCivil().slice(0,7);
+const fechaCivilEnMes=(valor,y,m)=>{const p=partesFechaCivil(valor);return !!p&&p.y===y&&p.m===m};
+const diaFechaCivil=valor=>{const p=partesFechaCivil(valor);return p?p.d:null};
+const fechaCivilVencida=valor=>{const k=fechaCivil(valor);return !!k&&k<hoyCivil()};
+const ordenarFechaCivil=(a,b)=>String(fechaCivil(a)||'').localeCompare(String(fechaCivil(b)||''));
+function desplazarMesFechaCivil(valor,delta){
+  const p=partesFechaCivil(valor);if(!p)throw new Error('Fecha civil inválida.');
+  const baseMes=p.m+delta,y=p.y+Math.floor(baseMes/12),m=((baseMes%12)+12)%12;
+  const ultimo=new Date(Date.UTC(y,m+1,0)).getUTCDate(),dia=Math.min(p.d,ultimo);
+  return `${String(y).padStart(4,'0')}-${String(m+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+}
+let D={},filtro='piloto',propAbierta=null,tabAbierta='Cargos';
+const liquidacionBorradorCache=new Map();
+const _hoy=partesFechaCivil(hoyCivil());let mesRef={y:_hoy.y,m:_hoy.m};let calYear=_hoy.y;
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function shiftMes(d){let m=mesRef.m+d,y=mesRef.y;if(m<0){m=11;y--}if(m>11){m=0;y++}mesRef={y,m};renderAgenda()}
+
+/* ── RPC canónico: v2 sólo para las ocho rutas F1-A; v1 para las otras 37 ── */
+const ALQ_F1A_V2_OPERACIONES=new Set(Object.freeze([
+  'nota_emitir','credito_consumir','transferencia_interna','deposito_evento_registrar',
+  'deposito_liquidar_y_devolver','reversa_con_reapertura','cargo_manual_emitir','pago_multimoneda'
+]));
+const ALQ_F1A_V2_REFERENCIA=Object.freeze({
+  nota_emitir:'nota_ref',credito_consumir:'consumo_ref',transferencia_interna:'transferencia_ref',
+  deposito_evento_registrar:'evento_ref',deposito_liquidar_y_devolver:'liquidacion_ref',
+  reversa_con_reapertura:'reversa_ref',cargo_manual_emitir:'cargo_fuente_ref',
+  pago_multimoneda:'pago_fuente_ref'
+});
+const ALQ_F1A_V2_STORAGE='alq:f1a:v2:';
+const ALQ_F1A_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const ALQ_F1A_V2_EN_VUELO=new Map();
+
+function alqF1aJsonCanonico(valor){
+  if(Array.isArray(valor))return '['+valor.map(v=>alqF1aJsonCanonico(v===undefined?null:v)).join(',')+']';
+  if(valor&&typeof valor==='object')return '{'+Object.keys(valor).filter(k=>valor[k]!==undefined).sort()
+    .map(k=>JSON.stringify(k)+':'+alqF1aJsonCanonico(valor[k])).join(',')+'}';
+  return JSON.stringify(valor);
+}
+async function alqF1aSha256(valor){
+  const bytes=new TextEncoder().encode(alqF1aJsonCanonico(valor));
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
+    .map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function alqF1aLeerEstado(clave){
+  try{return JSON.parse(localStorage.getItem(clave)||'null')}
+  catch(_){throw new Error('ALQ_F1A_ESTADO_DURABLE_ILEGIBLE')}
+}
+function alqF1aGuardarEstado(clave,estado){
+  const bytes=JSON.stringify(estado);
+  try{
+    localStorage.setItem(clave,bytes);
+    if(localStorage.getItem(clave)!==bytes)throw new Error('verify');
+  }catch(_){throw new Error('ALQ_F1A_ESTADO_DURABLE_NO_DISPONIBLE')}
+}
+function alqF1aEliminarEstado(clave){try{localStorage.removeItem(clave)}catch(_){/* replay sigue seguro */}}
+async function alqF1aActorId(){
+  const {data,error}=await sb.auth.getSession();
+  const id=data&&data.session&&data.session.user&&data.session.user.id;
+  if(error||!id)throw new Error('ALQ_F1A_SESION_REQUERIDA');
+  return id;
+}
+function alqF1aClaveEstado(actor,op,slot){
+  return ALQ_F1A_V2_STORAGE+actor+':'+op+':'+encodeURIComponent(slot);
+}
+function alqF1aUuidNuevo(){
+  const id=crypto.randomUUID().toLowerCase();
+  if(!ALQ_F1A_UUID.test(id))throw new Error('ALQ_F1A_UUID_CLIENTE_INVALIDO');
+  return id;
+}
+function alqF1aComando(ctx,etapa){
+  let comando=ctx.estado.comandos[etapa];
+  if(!comando||comando.terminal===true){
+    comando={comando_request_id:alqF1aUuidNuevo(),terminal:false};
+    ctx.estado.comandos[etapa]=comando;
+    alqF1aGuardarEstado(ctx.clave,ctx.estado);
+  }
+  return comando;
+}
+function alqF1aRegistrarEnvelope(ctx,etapa,envelope){
+  const comando=ctx.estado.comandos[etapa];
+  comando.terminal=true;comando.envelope=envelope;
+  ctx.estado.ultima_accion=etapa;ctx.estado.ultimo_envelope=envelope;
+  alqF1aGuardarEstado(ctx.clave,ctx.estado);
+}
+function alqF1aErrorNegocio(envelope,ctx){
+  const sinFila=envelope&&envelope.estado==='rechazada_sin_fila';
+  const mensaje=(envelope&&envelope.codigo)||'ALQ_F1A_OPERACION_RECHAZADA';
+  const error=new Error(sinFila&&envelope.requiere_nueva_preparacion===true
+    ? mensaje+'. Corregí el borrador y volvé a confirmar.' : mensaje);
+  error.name='AlqF1aBusinessError';
+  error.alqF1a={envelope,clave:ctx.clave,operacion:ctx.operacion,payload:ctx.payload,
+    slot:ctx.slot,opciones:ctx.opciones};
+  return error;
+}
+async function alqF1aRpcCrudo(nombre,parametros){
+  const {data,error}=await sb.rpc(nombre,parametros);
+  if(error)throw new Error(error.message);
+  if(!data||typeof data!=='object')throw new Error('ALQ_F1A_ENVELOPE_INVALIDO');
+  return data;
+}
+async function alqF1aContexto(op,payload,opciones){
+  const campo=ALQ_F1A_V2_REFERENCIA[op];
+  const slot=String(opciones&&opciones.slot||'').trim();
+  if(!campo||!slot)throw new Error('ALQ_F1A_SLOT_DURABLE_REQUERIDO');
+  const actor=await alqF1aActorId();
+  const clave=alqF1aClaveEstado(actor,op,slot);
+  let estado=alqF1aLeerEstado(clave);
+  const refAportada=payload&&payload[campo];
+  if(refAportada&&!ALQ_F1A_UUID.test(String(refAportada)))
+    throw new Error('ALQ_F1A_REFERENCIA_MANUAL_NO_CANONICA');
+  if(!estado){
+    estado={version:1,operacion:op,slot,referencia_campo:campo,
+      referencia:String(refAportada||alqF1aUuidNuevo()).toLowerCase(),comandos:{}};
+    // La referencia queda durable antes del primer await posterior: doble click usa la misma.
+    alqF1aGuardarEstado(clave,estado);
+  }else if(estado.operacion!==op||estado.referencia_campo!==campo||
+      (refAportada&&estado.referencia!==String(refAportada).toLowerCase())){
+    throw new Error('ALQ_F1A_BORRADOR_DURABLE_EN_CONFLICTO');
+  }
+  const normalizado=Object.assign({},payload,{[campo]:estado.referencia});
+  const payloadSha=await alqF1aSha256(normalizado);
+  const anterior=estado.ultimo_envelope;
+  if(estado.payload_sha256&&estado.payload_sha256!==payloadSha){
+    if(!(anterior&&anterior.estado==='rechazada_sin_fila'&&
+         anterior.requiere_nueva_preparacion===true))
+      throw new Error('ALQ_F1A_PAYLOAD_CAMBIO_CON_COMANDO_PENDIENTE');
+    estado.comandos={};estado.ultima_accion=null;estado.ultimo_envelope=null;
+  }else if(anterior&&anterior.estado==='rechazada_sin_fila'&&
+           anterior.requiere_nueva_preparacion===true){
+    // Un click posterior es una preparación nueva; la referencia de negocio no cambia.
+    estado.ultima_accion=null;estado.ultimo_envelope=null;
+  }
+  estado.payload_sha256=payloadSha;
+  alqF1aGuardarEstado(clave,estado);
+  return {clave,estado,operacion:op,payload:normalizado,slot,opciones:opciones||{}};
+}
+function alqF1aResultadoTerminal(ctx,envelope){
+  if(ctx.opciones.retener_hasta_continuacion!==true)alqF1aEliminarEstado(ctx.clave);
+  return envelope.resultado;
+}
+async function alqF1aAplicarV2(ctx,preparada){
+  const etapa='aplicar:'+preparada.operacion_request_id;
+  const comando=alqF1aComando(ctx,etapa);
+  const envelope=await alqF1aRpcCrudo('alq_admin_aplicar_v2',{
+    p_operacion_request_id:preparada.operacion_request_id,
+    p_comando_request_id:comando.comando_request_id,
+    p_operacion:ctx.operacion,p_firma:preparada.firma,p_payload:ctx.payload
+  });
+  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
+  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
+  throw alqF1aErrorNegocio(envelope,ctx);
+}
+async function alqF1aRpcV2Interno(op,payload,opciones){
+  const ctx=await alqF1aContexto(op,payload,opciones);
+  const previo=ctx.estado.ultimo_envelope;
+  if(previo){
+    if(previo.ok===true&&previo.estado==='aplicada')return alqF1aResultadoTerminal(ctx,previo);
+    if(previo.ok===true&&previo.estado==='preparada')return alqF1aAplicarV2(ctx,previo);
+    throw alqF1aErrorNegocio(previo,ctx);
+  }
+  const etapa='preparar';
+  const comando=alqF1aComando(ctx,etapa);
+  const envelope=await alqF1aRpcCrudo('alq_admin_preparar_v2',{
+    p_comando_request_id:comando.comando_request_id,p_operacion:op,p_payload:ctx.payload
+  });
+  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
+  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
+  if(envelope.ok===true&&envelope.estado==='preparada')return alqF1aAplicarV2(ctx,envelope);
+  throw alqF1aErrorNegocio(envelope,ctx);
+}
+async function alqF1aRpcV2(op,payload,opciones){
+  const vuelo=op+':'+String(opciones&&opciones.slot||'');
+  if(ALQ_F1A_V2_EN_VUELO.has(vuelo))return ALQ_F1A_V2_EN_VUELO.get(vuelo);
+  const trabajo=alqF1aRpcV2Interno(op,payload,opciones);
+  ALQ_F1A_V2_EN_VUELO.set(vuelo,trabajo);
+  try{return await trabajo}
+  finally{if(ALQ_F1A_V2_EN_VUELO.get(vuelo)===trabajo)ALQ_F1A_V2_EN_VUELO.delete(vuelo)}
+}
+async function alqF1aCancelarV2(info,motivo){
+  const envelopePrevio=info&&info.envelope;
+  if(!envelopePrevio||!envelopePrevio.operacion_request_id)
+    throw new Error('ALQ_F1A_CANCELACION_SIN_INTENTO');
+  const estado=alqF1aLeerEstado(info.clave);
+  if(!estado)throw new Error('ALQ_F1A_ESTADO_DURABLE_AUSENTE');
+  const ctx={clave:info.clave,estado,operacion:info.operacion,payload:info.payload,
+    slot:info.slot,opciones:info.opciones||{}};
+  const etapa='cancelar:'+envelopePrevio.operacion_request_id;
+  const comando=alqF1aComando(ctx,etapa);
+  const envelope=await alqF1aRpcCrudo('alq_admin_cancelar_v2',{
+    p_operacion_request_id:envelopePrevio.operacion_request_id,
+    p_comando_request_id:comando.comando_request_id,p_motivo:String(motivo||'Cancelación explícita UI')
+  });
+  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
+  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
+  throw alqF1aErrorNegocio(envelope,ctx);
+}
+async function alqF1aReintentarV2(info,motivo){
+  const previo=info&&info.envelope;
+  if(!previo||!previo.hecho_id||previo.reintentable!==true||previo.estado!=='rechazada')
+    throw new Error('ALQ_F1A_REINTENTO_NO_HABILITADO');
+  const estado=alqF1aLeerEstado(info.clave);
+  if(!estado)throw new Error('ALQ_F1A_ESTADO_DURABLE_AUSENTE');
+  const ctx={clave:info.clave,estado,operacion:info.operacion,payload:info.payload,
+    slot:info.slot,opciones:info.opciones||{}};
+  const etapa='reintentar:'+previo.hecho_id;
+  const comando=alqF1aComando(ctx,etapa);
+  const envelope=await alqF1aRpcCrudo('alq_admin_reintentar_v2',{
+    p_hecho_id:previo.hecho_id,p_comando_request_id:comando.comando_request_id,
+    p_motivo:String(motivo||'Reintento explícito UI')
+  });
+  alqF1aRegistrarEnvelope(ctx,etapa,envelope);
+  if(envelope.ok===true&&envelope.estado==='aplicada')return alqF1aResultadoTerminal(ctx,envelope);
+  if(envelope.ok===true&&envelope.estado==='preparada')return alqF1aAplicarV2(ctx,envelope);
+  throw alqF1aErrorNegocio(envelope,ctx);
+}
+async function alqF1aCerrarBorrador(op,slot){
+  const actor=await alqF1aActorId();
+  alqF1aEliminarEstado(alqF1aClaveEstado(actor,op,slot));
+}
+function alqF1aMostrarError(contenedor,error,alCompletar){
+  contenedor.className='op-msg op-err';contenedor.textContent=error.message;
+  const info=error&&error.alqF1a,envelope=info&&info.envelope;
+  if(!envelope||!envelope.hecho_id||envelope.reintentable!==true||envelope.estado!=='rechazada')return;
+  const boton=document.createElement('button');
+  boton.type='button';boton.className='btn-g';boton.textContent='Reintentar';
+  boton.style.marginLeft='.6rem';
+  boton.onclick=async()=>{
+    boton.disabled=true;
+    try{
+      const resultado=await alqF1aReintentarV2(info,'Reintento explícito desde alquileres-admin-qa');
+      if(alCompletar)await alCompletar(resultado);
+    }catch(siguiente){alqF1aMostrarError(contenedor,siguiente,alCompletar)}
+  };
+  contenedor.appendChild(boton);
+}
+async function alqRpcV1(op,payload){
+  const p=await sb.rpc('alq_admin_preparar',{p_operacion:op,p_payload:payload});
+  if(p.error)throw new Error(p.error.message);
+  const a=await sb.rpc('alq_admin_aplicar',{p_request_id:p.data.request_id,p_operacion:op,
+    p_firma:p.data.firma,p_payload:payload});
+  if(a.error)throw new Error(a.error.message);
+  return a.data;
+}
+async function rpc(op,payload,opciones){
+  if(ALQ_F1A_V2_OPERACIONES.has(op))return alqF1aRpcV2(op,payload,opciones);
+  return alqRpcV1(op,payload);
+}
+function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';
+  setTimeout(()=>el.style.display='none',3200)}
+const pausa=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+async function login(){
+  $('loginErr').textContent='';
+  const {error}=await sb.auth.signInWithPassword({email:$('inMail').value.trim(),password:$('inPass').value});
+  if(error){$('loginErr').textContent='No pudimos entrar: '+error.message;return}
+  start();
+}
+async function start(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)return;
+  $('vLogin').style.display='none';$('vApp').style.display='block';
+  $('hUser').textContent=session.user.email;
+  await cargar();
+}
+async function cargar(intento=0){
+  const v=n=>sb.from(n).select('*');
+  const [prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
+    doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion]=await Promise.all([
+    v('alq_v_propiedad'),v('alq_v_contrato'),v('alq_v_contrato_version'),v('alq_v_parte'),
+    v('alq_v_cargo'),v('alq_v_nota'),v('alq_v_transaccion_caja'),v('alq_v_aplicacion'),
+    v('alq_v_rendicion'),v('alq_v_rendicion_linea'),v('alq_v_comunicado'),v('alq_v_comunicado_mensaje'),
+    v('alq_v_mandato_version'),v('alq_v_mandato'),v('alq_v_cuenta_custodia'),v('alq_v_servicio_cuenta'),v('alq_v_servicio_factura'),
+    v('alq_v_titularidad'),v('alq_v_documento'),v('alq_v_mes_generado'),v('alq_v_pago_confirmado'),
+    v('alq_v_credito'),v('alq_v_periodo'),v('alq_v_liquidacion_propietario'),
+    v('alq_v_liquidacion_envio'),v('alq_v_mora_propuesta'),v('alq_v_ajuste'),
+    v('alq_v_deposito'),v('alq_v_deposito_evento'),v('alq_v_deposito_liquidacion')]);
+  const err=[prop,con,ver,parte,cargo,nota,tx,apl,rend,rlin,com,cmsg,mv,mand,cta,scta,sfac,tit,
+    doc,mesgen,pago,credito,periodo,liq,lenv,mora,ajuste,deposito,devento,dliquidacion].find(r=>r.error);
+  if(err){
+    const mensaje=String(err.error&&err.error.message||'No se pudo leer QA');
+    if(intento<2){
+      $('props').innerHTML='<div class="empty">La lectura de QA falló momentáneamente. Reintentando…</div>';
+      if(/JWT.*future|issued at future/i.test(mensaje)){
+        try{await sb.auth.refreshSession()}catch(_){}
+      }
+      await pausa(800*(intento+1));
+      return cargar(intento+1);
+    }
+    $('props').innerHTML='<div class="empty">No pudimos leer QA después de tres intentos: '+esc(mensaje)+
+      '<br><button class="btn-g" type="button" onclick="cargar()" style="margin-top:.8rem">Reintentar ahora</button></div>';
+    return;
+  }
+  D={prop:prop.data,con:con.data,ver:ver.data,parte:parte.data,cargo:cargo.data,nota:nota.data,
+     tx:tx.data,apl:apl.data,rend:rend.data,rlin:rlin.data,com:com.data,cmsg:cmsg.data,mv:mv.data,mand:mand.data,cta:cta.data,
+     scta:scta.data,sfac:sfac.data,tit:tit.data,doc:doc.data,mesgen:mesgen.data,
+     pago:pago.data,credito:credito.data,periodo:periodo.data,liq:liq.data,lenv:lenv.data,
+     mora:mora.data,ajuste:ajuste.data,deposito:deposito.data,devento:devento.data,
+     dliquidacion:dliquidacion.data};
+  D.pname=Object.fromEntries(D.parte.map(p=>[p.id,p.nombre]));
+  render();
+  if(propAbierta&&$('ov').classList.contains('on'))abrir(propAbierta,tabAbierta);
+}
+const titularParteId=pid=>{const t=D.tit.find(x=>x.propiedad_id===pid);return t&&t.parte_id};
+const conceptoAmigable=v=>({alquiler_periodo:'Alquiler',honorario_administracion:'Honorario de administración',
+  expensas:'Expensas',servicio:'Servicio',extra:'Cargo extraordinario',reparacion:'Reparación',
+  penalidad:'Penalidad',mora:'Mora resuelta por la administración',gasto_propietario:'Gasto a reintegrar por el propietario'}[v]||String(v||'Cargo').replaceAll('_',' '));
+function circuitoCargo(c){
+  if(c.concepto==='honorario_administracion')return'honorarios';
+  const titular=titularParteId(c.propiedad_id);
+  if(titular&&c.acreedor_parte_id===titular&&c.deudor_parte_id!==titular)return'obligaciones';
+  return'otros';
+}
+const circuitoNombre=k=>({obligaciones:'Obligación administrada',honorarios:'Honorario de la administración',
+  otros:'Otro movimiento'}[k]||'Otro movimiento');
+function ajusteCargo(c){
+  return D.nota.filter(n=>n.cargo_id===c.id).reduce((s,n)=>s+(n.tipo==='debito'?1:-1)*Number(n.monto||0),0);
+}
+const montoNetoCargo=c=>Math.max(0,Number(c.monto||0)+ajusteCargo(c));
+const cargosProp=(pid,k)=>D.cargo.filter(c=>c.propiedad_id===pid&&(!k||circuitoCargo(c)===k));
+const saldoProp=(pid,k)=>cargosProp(pid,k).reduce((s,c)=>s+Number(c.saldo_pendiente||0),0);
+const vencidaProp=(pid,k)=>cargosProp(pid,k).some(c=>Number(c.saldo_pendiente)>0&&fechaCivilVencida(c.vence_at));
+function estadoCuenta(pid,k){
+  const d=saldoProp(pid,k);
+  if(d<=0)return{k:'aldia',c:'var(--verde)',t:'Sin pendientes'};
+  return vencidaProp(pid,k)?{k,c:'var(--rojo)',t:'Vencida'}:{k,c:'var(--ambar)',t:'Pendiente'};
+}
+function estadoProp(pid){
+  const o=estadoCuenta(pid,'obligaciones'),h=estadoCuenta(pid,'honorarios'),z=estadoCuenta(pid,'otros');
+  if(o.k==='aldia'&&h.k==='aldia'&&z.k==='aldia')return{k:'aldia',c:'var(--verde)',t:'Sin pendientes'};
+  return{k:'pendiente',c:o.k!=='aldia'?o.c:h.k!=='aldia'?h.c:z.c,t:'Revisar cuentas'};
+}
+function esPropPiloto(pid){
+  return D.con.filter(c=>c.propiedad_id===pid).some(c=>/PILOTO QA/i.test(D.pname[c.inquilino_parte_id]||''));
+}
+function propCumpleFiltro(pid){
+  const o=saldoProp(pid,'obligaciones'),h=saldoProp(pid,'honorarios'),z=saldoProp(pid,'otros');
+  return (filtro==='piloto'&&esPropPiloto(pid))||filtro==='todas'||(filtro==='obligaciones'&&o>0)||
+    (filtro==='honorarios'&&h>0)||(filtro==='otros'&&z>0)||(filtro==='aldia'&&o<=0&&h<=0&&z<=0);
+}
+function propiedadTx(t){
+  const pago=D.pago.find(x=>x.transaccion_id===t.id);if(pago)return pago.propiedad_id;
+  const ap=D.apl.find(x=>x.transaccion_id===t.id);if(!ap)return t.propiedad_id||null;
+  const cargo=D.cargo.find(c=>c.id===ap.cargo_id);if(cargo)return cargo.propiedad_id;
+  const rend=D.rend.find(r=>r.id===ap.rendicion_id);return rend&&rend.propiedad_id||null;
+}
+function medioPagoVisible(t){
+  const p=D.pago.find(x=>x.transaccion_id===t.id),ids=p&&p.cargo_ids||[];
+  const cargos=ids.map(id=>D.cargo.find(c=>c.id===id)).filter(Boolean);
+  if(cargos.length&&cargos.every(c=>circuitoCargo(c)==='honorarios'))return'Transferencia a la administración';
+  if(cargos.length&&cargos.every(c=>circuitoCargo(c)==='obligaciones'))return'Transferencia al propietario';
+  return String(t.medio||'—').replaceAll('_',' ');
+}
+let ajusteKpiPendiente=0;
+function ajustarNumeroKpi(el){
+  el.style.removeProperty('font-size');
+  const anchoDisponible=Math.floor(el.clientWidth);
+  if(!anchoDisponible)return;
+  const tamanoBase=parseFloat(getComputedStyle(el).fontSize);
+  if(el.scrollWidth<=anchoDisponible){el.dataset.fit='true';return}
+  let minimo=10,maximo=tamanoBase;
+  for(let i=0;i<12;i++){
+    const candidato=(minimo+maximo)/2;
+    el.style.fontSize=candidato+'px';
+    if(el.scrollWidth<=anchoDisponible)minimo=candidato;else maximo=candidato;
+  }
+  el.style.fontSize=Math.floor(minimo*10)/10+'px';
+  while(el.scrollWidth>anchoDisponible&&minimo>8){
+    minimo-=.1;el.style.fontSize=minimo.toFixed(1)+'px';
+  }
+  el.dataset.fit=String(el.scrollWidth<=anchoDisponible);
+}
+function ajustarKpis(){
+  document.querySelectorAll('#kpis .kpi-num').forEach(ajustarNumeroKpi);
+}
+function programarAjusteKpis(){
+  if(ajusteKpiPendiente)return;
+  ajusteKpiPendiente=requestAnimationFrame(()=>{
+    ajusteKpiPendiente=0;
+    ajustarKpis();
+  });
+}
+const observadorTamanoKpis=new ResizeObserver(programarAjusteKpis);
+const observadorContenidoKpis=new MutationObserver(programarAjusteKpis);
+observadorTamanoKpis.observe($('kpis'));
+observadorContenidoKpis.observe($('kpis'),{childList:true,subtree:true,characterData:true});
+function render(){
+  const propsVisibles=D.prop.filter(p=>propCumpleFiltro(p.id)),idsVisibles=new Set(propsVisibles.map(p=>p.id));
+  const cargosVisibles=D.cargo.filter(c=>idsVisibles.has(c.propiedad_id));
+  const obligaciones=cargosVisibles.filter(c=>circuitoCargo(c)==='obligaciones').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+  const honorarios=cargosVisibles.filter(c=>circuitoCargo(c)==='honorarios').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+  const otros=cargosVisibles.filter(c=>circuitoCargo(c)==='otros').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+  const conf=D.tx.filter(t=>t.estado==='confirmada'&&t.ambito==='custodiada'&&idsVisibles.has(propiedadTx(t)));
+  const caja=conf.reduce((s,t)=>s+(t.direccion==='entrada'?1:-1)*Number(t.monto),0);
+  const girado=D.apl.filter(a=>{const r=D.rend.find(x=>x.id===a.rendicion_id);return r&&idsVisibles.has(r.propiedad_id)})
+    .reduce((s,a)=>s+Number(a.importe_destino),0);
+  $('kpis').innerHTML=[
+    ['var(--accent)',propsVisibles.length,'Propiedades','en la vista actual'],
+    ['var(--rojo)',fmt(obligaciones),'Obligaciones','inquilinos y servicios'],
+    ['var(--ambar)',fmt(honorarios),'Honorarios','a cobrar por la administración'],
+    ['var(--gris)',fmt(otros),'Otros movimientos','cuentas no clasificadas arriba'],
+    ['var(--verde)',fmt(caja),'En caja','dinero realmente custodiado'],
+    ['var(--azul)',fmt(girado),'Girado a propietarios','vía rendición'],
+  ].map(([c,n,l,s])=>{const texto=String(n);return `<div class="kpi" style="--c:${c}"><div class="kpi-num" title="${esc(texto)}">${texto}</div><div class="kpi-lbl">${l}</div><div class="kpi-sub">${s}</div></div>`}).join('');
+  programarAjusteKpis();
+  const cards=propsVisibles
+  .map(p=>{
+    const e=estadoProp(p.id);
+    const cvig=D.con.find(c=>c.propiedad_id===p.id&&['vigente','continuacion_legal'].includes(c.estado));
+    const cult=cvig||D.con.filter(c=>c.propiedad_id===p.id).sort((a,b)=>new Date(b.inicio)-new Date(a.inicio))[0];
+    const vv=cult?D.ver.filter(x=>x.contrato_id===cult.id).sort((a,b)=>b.vigencia.localeCompare(a.vigencia))[0]:null;
+    const o=saldoProp(p.id,'obligaciones'),h=saldoProp(p.id,'honorarios'),z=saldoProp(p.id,'otros');
+    return `<div class="card prop" data-p="${p.id}">
+      <div class="prop-top"><div class="dot" style="--dc:${e.c}"></div>
+        <div><div class="prop-dir">${esc(p.direccion)}</div>
+        <div class="prop-city">${esc(p.ciudad||'')} · ${e.t}</div></div></div>
+      <div class="prop-grid">
+        <div><div class="pg-l">Dueño</div><div class="pg-v">${esc((()=>{const t=D.tit.find(x=>x.propiedad_id===p.id);return t?D.pname[t.parte_id]||'—':'—'})())}</div></div>
+        <div><div class="pg-l">Inquilino</div><div class="pg-v">${esc(cult?D.pname[cult.inquilino_parte_id]||'—':'—')}</div></div>
+        <div><div class="pg-l">Contrato</div><div class="pg-v">${cult?esc(cult.estado.replace('_',' ')):'—'}</div></div>
+        <div><div class="pg-l">Alquiler</div><div class="pg-v">${vv?fmt(vv.monto)+' '+vv.moneda:'—'}</div></div>
+        <div><div class="pg-l">Obligaciones gestionadas</div><div class="pg-v ${o>0?'deuda':'aldia'}">${fmt(o)}</div></div>
+        <div><div class="pg-l">Honorarios administración</div><div class="pg-v ${h>0?'deuda':'aldia'}">${fmt(h)}</div></div>
+        ${z>0?`<div><div class="pg-l">Otros pendientes</div><div class="pg-v deuda">${fmt(z)}</div></div>`:''}
+      </div></div>`;
+  }).join('');
+  $('props').innerHTML=cards||'<div class="empty">Sin propiedades para este filtro.</div>';
+  document.querySelectorAll('.prop').forEach(el=>el.onclick=()=>abrir(el.dataset.p));
+  renderAgenda();
+  const txs=[...D.tx].filter(t=>t.ambito==='custodiada'&&idsVisibles.has(propiedadTx(t)))
+    .sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  $('caja').innerHTML=txs.length?`<table><tr><th>Fecha</th><th>Dirección</th><th>Contraparte</th><th>Medio</th><th class="num">Monto</th></tr>`+
+    txs.map(t=>`<tr><td>${fdateInstante(t.fecha)}</td>
+      <td><span class="tag" style="--tc:${t.direccion==='entrada'?'var(--verde)':'var(--rojo)'}">${t.direccion}${t.reversa_de?' · reversa':''}${t.ambito==='externa_informativa'?' · directo':''}</span></td>
+      <td>${esc(D.pname[t.contraparte_parte_id]||'—')}</td><td>${esc(t.medio||'—')}</td>
+      <td class="num ${t.direccion==='entrada'?'pos':'neg'}">${t.direccion==='entrada'?'+':'−'}${fmt(t.monto)}</td></tr>`).join('')+'</table>'
+    :'<div class="empty">Sin movimientos.</div>';
+  const directos=[...D.tx].filter(t=>t.ambito==='externa_informativa'&&idsVisibles.has(propiedadTx(t)))
+    .sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  $('pagosDirectos').innerHTML=directos.length?`<table><tr><th>Fecha</th><th>Pagador</th><th>Beneficiario</th><th>Medio</th><th class="num">Monto informado</th></tr>`+
+    directos.map(t=>{const p=D.pago.find(x=>x.transaccion_id===t.id)||{};return `<tr><td>${fdateInstante(t.fecha)}</td>
+      <td>${esc(D.pname[p.pagador_parte_id]||D.pname[t.contraparte_parte_id]||'—')}</td>
+      <td>${esc(D.pname[p.beneficiario_parte_id]||'—')}</td><td>${esc(medioPagoVisible(t))}</td>
+      <td class="num pos">${fmt(t.monto)}</td></tr>`}).join('')+'</table>'
+    :'<div class="empty">Sin pagos directos informados.</div>';
+  const liquidacionesVisibles=(D.liq||[]).filter(r=>idsVisibles.has(r.propiedad_id))
+    .sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))||b.version_documento-a.version_documento);
+  const liquidacionesHtml=liquidacionesVisibles.map(r=>{
+    const pr=D.prop.find(p=>p.id===r.propiedad_id),envios=(D.lenv||[]).filter(e=>e.liquidacion_id===r.id);
+    const saldo=Number(r.saldo_cierre_admin||0),sentido=saldo>0?'El propietario debe a la administración':
+      saldo<0?'La administración debe al propietario':'Cuenta propietario ↔ administración saldada';
+    return `<div class="account-box fees" style="margin-bottom:.8rem"><div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <b>${esc(pr?pr.direccion:'')}</b><span class="tag" style="--tc:var(--azul)">${esc(r.estado)} · v${r.version_documento}</span>
+      <span class="tag" style="--tc:${saldo===0?'var(--verde)':'var(--ambar)'}">${esc(String(r.periodo).slice(0,7))}</span></div>
+      <div class="account-grid"><div><div class="pg-l">Saldo anterior</div><div class="pg-v">${fmt(r.saldo_apertura_admin)}</div></div>
+      <div><div class="pg-l">Saldo final</div><div class="pg-v ${saldo===0?'aldia':'deuda'}">${fmt(Math.abs(saldo))}</div></div>
+      <div><div class="pg-l">Interpretación</div><div class="pg-v">${esc(sentido)}</div></div>
+      <div><div class="pg-l">Email</div><div class="pg-v">${envios.length?envios.length+' intento(s)':'Todavía no registrado'}</div></div></div>
+      ${r.documento_id?`<button class="btn-g" onclick="descargarLiquidacionGuardada('${r.id}')">Descargar PDF guardado</button>`:
+        `<button class="btn-g" onclick="vincularPdfLiquidacion('${r.id}')">Guardar PDF emitido</button>`}
+      <button class="btn-g" onclick="abrir('${r.propiedad_id}','Liquidación')" style="margin-left:.4rem">Abrir liquidación</button></div>`;
+  }).join('');
+  const rendicionesVisibles=D.rend.filter(r=>idsVisibles.has(r.propiedad_id));
+  const legadoHtml=rendicionesVisibles.length?`<details style="margin-top:1rem"><summary class="section-note" style="cursor:pointer">Rendiciones históricas anteriores al Bloque 2</summary><div style="margin-top:1rem">`+rendicionesVisibles.map(r=>{
+    const g=D.apl.filter(a=>a.rendicion_id===r.id).reduce((s,a)=>s+Number(a.importe_destino),0);
+    const cuadra=Number(r.saldo_final)===g;
+    const lin=D.rlin.filter(l=>l.rendicion_id===r.id);
+    const pr=D.prop.find(p=>p.id===r.propiedad_id);
+    return `<div style="margin-bottom:.4rem"><b style="font-size:.9rem">${esc(pr?pr.direccion:'')}</b>
+      <span class="tag" style="--tc:var(--azul);margin-left:.5rem">${esc(r.estado)}</span>
+      <span class="tag" style="--tc:${cuadra?'var(--verde)':'var(--rojo)'};margin-left:.3rem">${cuadra?'girado = saldo ✓':'no cuadra'}</span></div>
+      <button class="btn-g" style="margin-bottom:.6rem" onclick="imprimirRendicion('${r.id}')">Vista imprimible / guardar PDF</button>
+      <table><tr><th>Categoría</th><th>Detalle</th><th class="num">Monto</th></tr>`+
+      lin.map(l=>`<tr><td>${esc(l.categoria)}</td><td>${esc(l.snapshot?.detalle||'')}</td>
+        <td class="num ${l.signo>0?'pos':'neg'}">${l.signo>0?'+':'−'}${fmt(l.monto)}</td></tr>`).join('')+
+      `<tr><td colspan="2" style="font-weight:700;color:var(--blanco)">Saldo rendido al propietario</td>
+       <td class="num" style="font-weight:700;color:var(--blanco)">${fmt(r.saldo_final)}</td></tr>
+       <tr><td colspan="2">Girado (transferencias ligadas)</td><td class="num">${fmt(g)}</td></tr></table>`;
+  }).join('<div style="height:1.4rem"></div>')+'</div></details>':'';
+  $('rends').innerHTML=liquidacionesHtml+legadoHtml||'<div class="empty">Sin liquidaciones aún. Abrí una propiedad → Liquidación para preparar la primera.</div>';
+  const comunicadosVisibles=D.com.filter(c=>idsVisibles.has(c.propiedad_id));
+  $('coms').innerHTML=comunicadosVisibles.length?comunicadosVisibles.map(c=>{
+    const pr=D.prop.find(p=>p.id===c.propiedad_id);
+    const msgs=D.cmsg.filter(m=>m.comunicado_id===c.id).sort((a,b)=>new Date(a.creado_at)-new Date(b.creado_at));
+    const abierto=c.estado==='abierto';
+    return `<div style="margin-bottom:.6rem"><b style="font-size:.85rem">${esc(pr?pr.direccion:'')}</b>
+      <span class="tag" style="--tc:${abierto?'var(--ambar)':'var(--verde)'};margin-left:.5rem">${esc(c.estado)}</span>
+      <span style="font-size:.6rem;color:rgba(245,243,240,.42);margin-left:.5rem">abierto por ${esc(c.abierto_por_tipo)}</span></div>
+      <div class="hilo">`+msgs.map(m=>`<div class="msg" style="--mc:${m.autor_tipo==='admin'?'var(--accent)':'var(--gris)'}">
+        <div class="msg-a">${esc(m.autor_tipo)}</div><div class="msg-t">${esc(m.texto)}</div></div>`).join('')+`</div>`+
+      (abierto?`<div class="com-ops">
+        <textarea class="f" id="resp-${c.id}" placeholder="Responder…"></textarea>
+        <button class="btn" onclick="responder('${c.id}')">Responder</button>
+        <button class="btn-g" onclick="resolver('${c.id}')">Resolver</button>
+      </div><div class="op-msg" id="commsg-${c.id}"></div>`:'');
+  }).join('<div style="height:1.6rem"></div>'):'<div class="empty">Sin comunicados.</div>';
+}
+
+function imprimirRendicion(id){
+  const r=D.rend.find(x=>x.id===id);if(!r)return;
+  const p=D.prop.find(x=>x.id===r.propiedad_id),tit=D.tit.find(x=>x.propiedad_id===r.propiedad_id);
+  const lineas=D.rlin.filter(x=>x.rendicion_id===id);
+  const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Liquidación · ${esc(p&&p.direccion||'')}</title>
+  <style>body{font:14px Arial,sans-serif;color:#181818;margin:40px}h1{font-size:24px;margin:0}h2{font-size:16px;margin:8px 0 28px;color:#555}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left}.n{text-align:right}.total{font-weight:bold;font-size:16px}.note{margin-top:28px;color:#666;font-size:12px}@media print{button{display:none}}</style></head><body>
+  <h1>SUR PATAGONIAN REAL ESTATE</h1><h2>Liquidación de propietario · ${esc(p&&p.direccion||'')}</h2>
+  <div><b>Propietario:</b> ${esc(D.pname[tit&&tit.parte_id]||'—')}</div><div><b>Estado:</b> ${esc(r.estado||'—')}</div>
+  <table><tr><th>Categoría</th><th>Detalle</th><th class="n">Importe</th></tr>${lineas.map(l=>`<tr><td>${esc(l.categoria)}</td><td>${esc(l.snapshot&&l.snapshot.detalle||'')}</td><td class="n">${l.signo>0?'+':'−'}${fmt(l.monto)}</td></tr>`).join('')}
+  <tr class="total"><td colspan="2">Saldo liquidado al propietario</td><td class="n">${fmt(r.saldo_final)}</td></tr></table>
+  <div class="note">Documento generado desde QA para revisión. Usá Imprimir → Guardar como PDF.</div><button onclick="window.print()">Imprimir / guardar PDF</button></body></html>`;
+  const w=window.open('','_blank');if(!w){toast('Habilitá las ventanas emergentes para abrir la liquidación.');return}w.document.write(html);w.document.close();
+}
+
+function signoImporte(linea){return Number(linea.signo||0)<0?'−':'+'}
+function saldoLiquidacionTexto(valor){
+  const n=Number(valor||0);
+  if(n>0)return`El propietario debe ${fmt(n)} a la administración`;
+  if(n<0)return`La administración debe ${fmt(Math.abs(n))} al propietario`;
+  return'La cuenta propietario ↔ administración está saldada';
+}
+function htmlBorradorLiquidacion(wrapper){
+  const c=wrapper.contenido||wrapper,o=c.obligaciones_inquilino||[],p=c.pagos_informados_entre_partes||[],
+    a=c.cuenta_propietario_administracion||[];
+  const filas=(xs,campos)=>xs.length?xs.map(campos).join(''):'<tr><td colspan="5" class="empty">Sin movimientos en esta sección.</td></tr>';
+  return `<div class="account-box" style="margin-top:1rem;border-left:2px solid var(--azul)">
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><b>Borrador · ${esc(String(c.periodo).slice(0,7))} · versión ${c.version_documento}</b><span class="tag" style="--tc:var(--ambar)">revisar antes de emitir</span></div>
+    <div class="account-caption">Propietario: ${esc(c.propietario&&c.propietario.nombre||'—')} · Propiedad: ${esc(c.propiedad&&c.propiedad.direccion||'—')} · huella ${esc(String(wrapper.contenido_sha256).slice(0,12))}…</div>
+    <div class="sec-t" style="margin-top:1rem">1 · Obligaciones del inquilino administradas</div>
+    <table><tr><th>Concepto</th><th>Deudor → acreedor</th><th class="num">Monto</th><th class="num">Pagado</th><th class="num">Saldo</th></tr>${filas(o,x=>`<tr><td>${esc(x.detalle)}</td><td>${esc(x.deudor)} → ${esc(x.acreedor)}</td><td class="num">${fmt(x.monto)}</td><td class="num pos">${fmt(x.pagado)}</td><td class="num">${fmt(x.saldo)}</td></tr>`)}</table>
+    <div class="sec-t" style="margin-top:1rem">2 · Pagos informados entre las partes</div>
+    <table><tr><th>Fecha</th><th>Pagador → beneficiario</th><th>Medio</th><th class="num">Monto</th></tr>${p.length?p.map(x=>`<tr><td>${fdateInstante(x.fecha)}</td><td>${esc(x.pagador)} → ${esc(x.beneficiario)}</td><td>${esc(String(x.medio||'').replaceAll('_',' '))}</td><td class="num pos">${fmt(x.monto)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Sin pagos informados para estas obligaciones.</td></tr>'}</table>
+    <div class="sec-t" style="margin-top:1rem">3 · Cuenta propietario ↔ administración</div>
+    <div class="account-caption">Saldo anterior: ${fmt(c.saldo_apertura_admin)}. Esta cuenta no se suma a la deuda del inquilino.</div>
+    <table><tr><th>Concepto</th><th>Mes de origen</th><th class="num">Movimiento</th></tr>${a.length?a.map(x=>`<tr><td>${esc(x.detalle)}</td><td>${esc(x.mes_origen?String(x.mes_origen).slice(0,7):'períodos anteriores')}</td><td class="num ${Number(x.signo)<0?'pos':'neg'}">${signoImporte(x)}${fmt(x.monto)}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">Sin movimientos.</td></tr>'}
+      <tr><td colspan="2"><b>Saldo final propietario ↔ administración</b></td><td class="num"><b>${fmt(Math.abs(Number(c.saldo_cierre_admin)))}</b></td></tr></table>
+    <div class="section-note" style="margin-top:.8rem">${esc(saldoLiquidacionTexto(c.saldo_cierre_admin))}. ${esc(c.leyenda_no_fiscal)}</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem"><button class="btn-g" id="btnLiqPdfBorrador">Descargar PDF del borrador</button><button class="btn" id="btnLiqEmitir">Emitir y sellar esta versión</button></div>
+    <div class="op-msg" id="msgLiqEmitir"></div></div>`;
+}
+async function previsualizarLiquidacion(pid){
+  const m=$('msgLiq');m.className='op-msg';m.textContent='Calculando desde los hechos registrados…';
+  const mes=$('liqMes').value,corregir=$('liqCorreccion').value||null;
+  if(!/^\d{4}-\d{2}$/.test(mes)){m.textContent='Elegí un mes válido.';m.className='op-msg op-err';return}
+  try{
+    $('btnLiqBorrador').disabled=true;
+    const {data,error}=await sb.rpc('alq_admin_liquidacion_borrador',{
+      p_propiedad_id:pid,p_periodo:mes+'-01',p_corregir_id:corregir});
+    if(error)throw new Error(error.message);
+    const clave=pid+':'+mes+':'+(corregir||'raiz');liquidacionBorradorCache.set(clave,data);
+    $('liqPreview').innerHTML=htmlBorradorLiquidacion(data);m.textContent='Borrador listo. Revisá las tres secciones antes de emitir.';
+    $('btnLiqPdfBorrador').onclick=()=>descargarLiquidacionContenido(data.contenido,data.contenido_sha256,'BORRADOR');
+    $('btnLiqEmitir').onclick=()=>emitirLiquidacion(pid,mes,corregir,data);
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err';$('liqPreview').innerHTML=''}
+  finally{const b=$('btnLiqBorrador');if(b)b.disabled=false}
+}
+async function emitirLiquidacion(pid,mes,corregir,borrador){
+  const m=$('msgLiqEmitir');m.className='op-msg';m.textContent='Generando y guardando el PDF definitivo…';
+  try{
+    $('btnLiqEmitir').disabled=true;
+    const guardado=await guardarPdfLiquidacionDocumento(pid,borrador.contenido,
+      borrador.contenido_sha256,corregir?'CORREGIDA':'EMITIDA');
+    m.textContent='PDF verificado. Sellando la liquidación…';
+    const payload={propiedad_id:pid,periodo:mes+'-01',contenido_sha256:borrador.contenido_sha256,
+      documento_id:guardado.documento.id,pdf_sha256:guardado.pdf_sha256};
+    if(corregir)payload.corregir_id=corregir;
+    const r=await rpc('liquidacion_propietario_emitir',payload);
+    toast('Liquidación '+(corregir?'corregida':'emitida')+' · PDF guardado · versión '+r.version_documento);
+    await cargar();abrir(pid,'Liquidación');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnLiqEmitir');if(b)b.disabled=false}
+}
+function textoPdfSeguro(texto){
+  return String(texto??'').replaceAll('−','-').replaceAll('↔','y').replaceAll('→','a')
+    .replaceAll('—','-').replaceAll('–','-').replaceAll('✓','OK');
+}
+function pdfLinea(doc,texto,x,y,ancho,estilo){
+  if(estilo)doc.setFont('helvetica',estilo);const lineas=doc.splitTextToSize(String(texto||''),ancho);
+  doc.text(lineas.map(textoPdfSeguro),x,y);return y+lineas.length*5;
+}
+function nombreLiquidacionPdf(c){
+  return `liquidacion-${String(c.propiedad.direccion).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${String(c.periodo).slice(0,7)}-v${c.version_documento}.pdf`;
+}
+function crearLiquidacionPdf(c,sha,estado){
+  if(!window.jspdf||!window.jspdf.jsPDF){toast('No se pudo cargar el generador de PDF. Reintentá.');return}
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'});let y=18;const maxY=276;
+  if(typeof doc.setFileId==='function')doc.setFileId(String(sha).slice(0,32).toUpperCase());
+  if(typeof doc.setCreationDate==='function')doc.setCreationDate(new Date(String(c.periodo).slice(0,10)+'T00:00:00Z'));
+  const nueva=()=>{doc.addPage();y=18};
+  const asegurar=alto=>{if(y+alto>maxY)nueva()};
+  const titulo=(t)=>{asegurar(12);doc.setFontSize(11);doc.setTextColor(35,35,35);doc.setFont('helvetica','bold');doc.text(t,16,y);y+=7;doc.setFont('helvetica','normal')};
+  const fila=(detalle,monto)=>{asegurar(12);doc.setFontSize(9);doc.setTextColor(55,55,55);const antes=y;y=pdfLinea(doc,detalle,18,y,135,'normal');doc.text(textoPdfSeguro(monto),194,antes,{align:'right'});y+=2;doc.setDrawColor(225);doc.line(18,y,194,y);y+=4};
+  doc.setTextColor(20,20,20);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.text('SUR PATAGONIAN REAL ESTATE',16,y);y+=8;
+  doc.setFontSize(12);doc.text('Liquidación mensual del propietario',16,y);y+=7;doc.setFont('helvetica','normal');doc.setFontSize(9);
+  y=pdfLinea(doc,`${estado||'EMITIDA'} · ${String(c.periodo).slice(0,7)} · versión ${c.version_documento}`,16,y,178,'normal');
+  y=pdfLinea(doc,`${c.propiedad.direccion} · ${c.propiedad.ciudad} · Propietario: ${c.propietario.nombre}`,16,y,178,'normal');y+=3;
+  titulo('1 · Obligaciones del inquilino administradas');
+  (c.obligaciones_inquilino||[]).forEach(x=>fila(`${x.detalle} · ${x.deudor} a ${x.acreedor} · pagado ${fmt(x.pagado)} · saldo ${fmt(x.saldo)}`,fmt(x.monto)));
+  if(!(c.obligaciones_inquilino||[]).length)fila('Sin obligaciones registradas','—');
+  titulo('2 · Pagos informados entre las partes');
+  (c.pagos_informados_entre_partes||[]).forEach(x=>fila(`${fdateInstante(x.fecha)} · ${x.pagador} a ${x.beneficiario} · ${String(x.medio||'').replaceAll('_',' ')}`,fmt(x.monto)));
+  if(!(c.pagos_informados_entre_partes||[]).length)fila('Sin pagos informados','—');
+  titulo('3 · Cuenta propietario / administración');
+  fila('Saldo de apertura',fmt(c.saldo_apertura_admin));
+  (c.cuenta_propietario_administracion||[]).forEach(x=>fila(`${x.detalle}${x.mes_origen?' · '+String(x.mes_origen).slice(0,7):''}`,`${signoImporte(x)}${fmt(x.monto)}`));
+  asegurar(18);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text(textoPdfSeguro(saldoLiquidacionTexto(c.saldo_cierre_admin)),18,y);y+=8;
+  doc.setFont('helvetica','normal');doc.setFontSize(8);y=pdfLinea(doc,c.leyenda_no_fiscal,18,y,176,'normal');
+  y=pdfLinea(doc,`Huella de contenido: ${sha}`,18,y+2,176,'normal');
+  const paginas=doc.getNumberOfPages();for(let i=1;i<=paginas;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(110);doc.text(`Sur Patagonian Real Estate · página ${i} de ${paginas}`,105,291,{align:'center'})}
+  return {blob:new Blob([doc.output('arraybuffer')],{type:'application/pdf'}),nombre:nombreLiquidacionPdf(c)};
+}
+function descargarBlob(blob,nombre){
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function descargarLiquidacionContenido(c,sha,estado){
+  const pdf=crearLiquidacionPdf(c,sha,estado);if(!pdf)return;
+  descargarBlob(pdf.blob,pdf.nombre);
+}
+async function guardarPdfLiquidacionDocumento(pid,c,contenidoSha,estado){
+  const pdf=crearLiquidacionPdf(c,contenidoSha,estado);if(!pdf)throw new Error('No se pudo generar el PDF.');
+  const pdfSha=await shaArchivo(pdf.blob);
+  const archivo=new File([pdf.blob],pdf.nombre,{type:'application/pdf',lastModified:0});
+  const periodo=String(c.periodo).slice(0,7),version=Number(c.version_documento);
+  const path=`liquidaciones/${pid}/${periodo}/v${version}-${pdfSha}.pdf`;
+  const doc=await documentoArchivo(pid,archivo,'liquidacion_propietario_pdf','liquidaciones',
+    'No se pudo preparar el PDF de la liquidación.',{audiencia:'propietario',
+      version,path,retencion:{contenido_sha256:contenidoSha,
+        version_documento:String(version),periodo}});
+  if(doc.sha256!==pdfSha)throw new Error('La huella del PDF guardado no coincide.');
+  const verificacion=await sb.storage.from('alq-docs').download(doc.path);
+  if(verificacion.error)throw new Error('Verificando el PDF guardado: '+verificacion.error.message);
+  if(await shaArchivo(verificacion.data)!==pdfSha)throw new Error('El PDF recuperado no coincide byte a byte.');
+  return {documento:doc,pdf_sha256:pdfSha,pdf_bytes:pdf.blob.size,nombre:pdf.nombre};
+}
+async function obtenerPdfLiquidacionGuardada(x){
+  if(!x.documento_id||!x.pdf_path||!x.pdf_sha256){
+    throw new Error('Primero guardá el PDF emitido de esta versión.');
+  }
+  const descarga=await sb.storage.from('alq-docs').download(x.pdf_path);
+  if(descarga.error)throw new Error('No se pudo descargar el PDF guardado: '+descarga.error.message);
+  const sha=await shaArchivo(descarga.data);
+  if(sha!==x.pdf_sha256)throw new Error('El PDF guardado no coincide con su huella.');
+  return descarga.data;
+}
+async function descargarLiquidacionGuardada(id){
+  const x=(D.liq||[]).find(r=>r.id===id);if(!x)return;
+  try{descargarBlob(await obtenerPdfLiquidacionGuardada(x),nombreLiquidacionPdf(x.contenido))}
+  catch(e){toast(e.message)}
+}
+async function vincularPdfLiquidacion(id){
+  const x=(D.liq||[]).find(r=>r.id===id);if(!x||x.documento_id)return;
+  const m=$('liqPdfMsg-'+id);if(m){m.className='op-msg';m.textContent='Guardando y verificando el PDF exacto…'}
+  try{
+    const guardado=await guardarPdfLiquidacionDocumento(x.propiedad_id,x.contenido,
+      x.contenido_sha256,x.estado.toUpperCase());
+    await rpc('liquidacion_pdf_vincular',{liquidacion_id:x.id,
+      documento_id:guardado.documento.id,pdf_sha256:guardado.pdf_sha256});
+    toast('PDF emitido guardado y vinculado');await cargar();abrir(x.propiedad_id,'Liquidación');
+  }catch(e){if(m){m.textContent=e.message;m.className='op-msg op-err'}else toast(e.message)}
+}
+async function prepararEmailLiquidacion(id){
+  const x=(D.liq||[]).find(r=>r.id===id);if(!x)return;const c=x.contenido||{};
+  if(!x.documento_id){toast('Primero guardá el PDF emitido.');return}
+  const input=$('liqEmail-'+id),email=input&&input.value.trim()||c.propietario&&c.propietario.email||'';
+  if(!email){toast('Completá el email del propietario.');return}
+  try{descargarBlob(await obtenerPdfLiquidacionGuardada(x),nombreLiquidacionPdf(c))}
+  catch(e){toast(e.message);return}
+  const asunto=`Liquidación ${String(x.periodo).slice(0,7)} · ${c.propiedad&&c.propiedad.direccion||''}`;
+  const cuerpo=`Hola ${c.propietario&&c.propietario.nombre||''},\n\nAdjunto la liquidación de ${String(x.periodo).slice(0,7)} de ${c.propiedad&&c.propiedad.direccion||''}.\n\n${saldoLiquidacionTexto(x.saldo_cierre_admin)}.\n\nRecordatorio: adjuntá el PDF descargado desde el programa.\n\nSur Patagonian Real Estate`;
+  window.location.href=`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+}
+async function registrarEnvioLiquidacion(id){
+  const m=$('liqEnvMsg-'+id);m.className='op-msg';m.textContent='';
+  const liquidacion=(D.liq||[]).find(x=>x.id===id);
+  if(!liquidacion||!liquidacion.documento_id){
+    m.textContent='Primero guardá el PDF emitido.';m.className='op-msg op-err';return;
+  }
+  const email=$('liqEmail-'+id).value.trim(),estado=$('liqEstado-'+id).value;
+  if(!email){m.textContent='Completá el email.';m.className='op-msg op-err';return}
+  try{
+    await obtenerPdfLiquidacionGuardada(liquidacion);
+    const r=await rpc('liquidacion_envio_registrar',{liquidacion_id:id,
+      destinatario_email:email,estado,
+      detalle:'Resultado declarado manualmente; el sistema no verifica el archivo adjunto del correo.'});
+    toast('Resultado del envío registrado · intento '+r.intento_n);await cargar();
+    const liq=(D.liq||[]).find(x=>x.id===id);if(liq)abrir(liq.propiedad_id,'Liquidación');
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+}
+
+/* ── OPERACIONES ── */
+async function responder(cid){
+  const t=$('resp-'+cid).value.trim();const m=$('commsg-'+cid);
+  if(!t){m.textContent='Escribí la respuesta.';m.className='op-msg op-err';return}
+  try{await rpc('comunicado_responder',{comunicado_id:cid,texto:t});toast('Respuesta enviada');await cargar()}
+  catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+}
+async function resolver(cid){
+  const m=$('commsg-'+cid);
+  try{await rpc('comunicado_resolver',{comunicado_id:cid});toast('Comunicado resuelto');await cargar()}
+  catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+}
+function estadoCargo(c){
+  const saldo=Number(c.saldo_pendiente),monto=Number(c.monto),vence=fechaCivilVencida(c.vence_at);
+  if(montoNetoCargo(c)<=0&&monto>0)return{t:'Anulado',c:'var(--gris)'};
+  if(saldo<=0)return{t:'Pagado',c:'var(--verde)'};
+  if(saldo<monto)return{t:vence?'Parcial · vencido':'Parcial',c:vence?'var(--rojo)':'var(--azul)'};
+  if(vence)return{t:'Vencido',c:'var(--rojo)'};
+  return{t:'Impago',c:'var(--ambar)'};
+}
+function shortUnit(pr){if(!pr)return'?';const p=pr.direccion.split('·');return (p.length>1?p[p.length-1]:pr.direccion).trim().slice(0,7)}
+function renderAgenda(){
+  if(!D.cargo){return}
+  const y=mesRef.y,m=mesRef.m;
+  const cargos=D.cargo.filter(c=>fechaCivilEnMes(c.vence_at,y,m)&&montoNetoCargo(c)>0&&propCumpleFiltro(c.propiedad_id));
+  const pagos=(D.tx||[]).filter(t=>t.direccion==='entrada'&&propCumpleFiltro(propiedadTx(t))&&(()=>{const v=partesInstanteCivil(t.fecha);return v&&v.y===y&&v.m===m})());
+  const saldoOb=cargos.filter(c=>circuitoCargo(c)==='obligaciones').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+  const saldoHon=cargos.filter(c=>circuitoCargo(c)==='honorarios').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+  const saldoOtro=cargos.filter(c=>circuitoCargo(c)==='otros').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+  // eventos por día
+  const evDia={};
+  for(const c of cargos){const d=diaFechaCivil(c.vence_at);(evDia[d]=evDia[d]||[]).push({tipo:'cargo',c})}
+  for(const t of pagos){const p=partesInstanteCivil(t.fecha),d=p&&p.d;if(d)(evDia[d]=evDia[d]||[]).push({tipo:'pago',t})}
+  const diasMes=new Date(y,m+1,0).getDate();
+  const offset=(new Date(y,m,1).getDay()+6)%7; // lunes primero
+  const hoyP=partesFechaCivil(hoyCivil());const esHoy=d=>hoyP.y===y&&hoyP.m===m&&hoyP.d===d;
+  const dias=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  let celdas='';
+  for(let i=0;i<offset;i++)celdas+=`<div class="cal-cell cal-empty"></div>`;
+  for(let d=1;d<=diasMes;d++){
+    const evs=evDia[d]||[];
+    const chips=evs.slice(0,2).map(ev=>{
+      if(ev.tipo==='pago'){
+        const p=D.pago.find(x=>x.transaccion_id===ev.t.id)||{},pagador=D.pname[p.pagador_parte_id]||D.pname[ev.t.contraparte_parte_id]||'Pago';
+        return `<div class="cal-chip" style="--cc:var(--azul)" title="${esc(pagador)} · ${esc(medioPagoVisible(ev.t))}">▸ ${esc(pagador).slice(0,9)} ${fmt(ev.t.monto)}</div>`;
+      }
+      const pr=D.prop.find(p=>p.id===ev.c.propiedad_id);const e=estadoCargo(ev.c);
+      const cuenta=circuitoCargo(ev.c)==='honorarios'?'Honor.':conceptoAmigable(ev.c.concepto);
+      return `<div class="cal-chip" style="--cc:${e.c}" title="${esc((pr?pr.direccion:'')+' · '+cuenta+' · '+e.t)}">${esc(shortUnit(pr))} · ${esc(cuenta).slice(0,10)} ${e.t==='Pagado'?'✓':''}</div>`;
+    }).join('');
+    const mas=evs.length>2?`<div class="cal-more">+${evs.length-2} más</div>`:'';
+    celdas+=`<div class="cal-cell${esHoy(d)?' cal-hoy':''}" onclick="renderAgendaDia(${y},${m},${d})">
+      <div class="cal-num">${d}</div>${chips}${mas}</div>`;
+  }
+  const nav=`<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+    <button class="btn-g" id="mesPrev">‹</button>
+    <div style="font-weight:800;font-size:1.2rem;text-transform:capitalize;min-width:190px;text-align:center">${MESES[m]} ${y}</div>
+    <button class="btn-g" id="mesNext">›</button>
+    </div></div>
+    <div class="account-grid" style="margin-bottom:1rem">
+      <div class="account-box obligations"><div class="pg-l">Obligaciones pendientes</div><div class="amount">${fmt(saldoOb)}</div><div class="account-caption">inquilinos y servicios administrados</div></div>
+      <div class="account-box fees"><div class="pg-l">Honorarios pendientes</div><div class="amount">${fmt(saldoHon)}</div><div class="account-caption">deuda con la administración</div></div>
+      ${saldoOtro>0?`<div class="account-box"><div class="pg-l">Otros pendientes</div><div class="amount">${fmt(saldoOtro)}</div></div>`:''}
+    </div>`;
+  const cab=dias.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  const leyenda=`<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.8rem;font-size:.58rem;color:rgba(245,243,240,.5)">
+    <span style="color:var(--verde)">● pagado</span><span style="color:var(--rojo)">● debe / vencido</span>
+    <span style="color:var(--ambar)">● pendiente</span><span style="color:var(--azul)">▸ pago informado</span>
+    · cada día muestra como máximo dos renglones; tocá el casillero para ver todo</div>`;
+  $('agenda').innerHTML=nav+`<div class="cal-head">${cab}</div><div class="cal-grid">${celdas}</div>`+leyenda+'<div id="agendaDia"></div>';
+  if($('mesPrev'))$('mesPrev').onclick=()=>shiftMes(-1);
+  if($('mesNext'))$('mesNext').onclick=()=>shiftMes(1);
+}
+function renderAgendaDia(y,m,d){
+  const el=$('agendaDia');if(!el)return;
+  const cargos=D.cargo.filter(c=>fechaCivilEnMes(c.vence_at,y,m)&&diaFechaCivil(c.vence_at)===d&&montoNetoCargo(c)>0&&propCumpleFiltro(c.propiedad_id));
+  const pagos=D.tx.filter(t=>t.direccion==='entrada'&&propCumpleFiltro(propiedadTx(t))&&(()=>{const v=partesInstanteCivil(t.fecha);return v&&v.y===y&&v.m===m&&v.d===d})());
+  if(!cargos.length&&!pagos.length){el.innerHTML='<div class="empty">Ese día no tiene movimientos.</div>';return}
+  const filas=cargos.map(c=>{const p=D.prop.find(x=>x.id===c.propiedad_id),e=estadoCargo(c);return `<tr>
+    <td>${esc(p&&p.direccion||'—')}</td><td>${esc(circuitoNombre(circuitoCargo(c)))}</td><td>${esc(conceptoAmigable(c.concepto))}</td>
+    <td>${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}</td>
+    <td class="num">${fmt(montoNetoCargo(c))}</td><td><span class="tag" style="--tc:${e.c}">${e.t}</span></td></tr>`}).join('');
+  const filasPagos=pagos.map(t=>{const p=D.pago.find(x=>x.transaccion_id===t.id)||{};return `<tr><td>—</td><td>Pago informado</td><td>${esc(medioPagoVisible(t))}</td>
+    <td>${esc(D.pname[p.pagador_parte_id]||D.pname[t.contraparte_parte_id]||'—')} → ${esc(D.pname[p.beneficiario_parte_id]||'—')}</td><td class="num">${fmt(t.monto)}</td><td><span class="tag" style="--tc:var(--azul)">informado</span></td></tr>`}).join('');
+  el.innerHTML=`<div class="sec-t">${d} de ${MESES[m]} de ${y} — todos los movimientos</div><div class="card"><table>
+    <tr><th>Propiedad</th><th>Cuenta</th><th>Concepto</th><th>Partes</th><th class="num">Monto</th><th>Estado</th></tr>${filas}${filasPagos}</table></div>`;
+}
+function abrir(pid,tabIni){
+  const p=D.prop.find(x=>x.id===pid);if(!p)return;
+  propAbierta=pid;
+  $('mTitle').textContent=p.direccion;
+  $('mSub').textContent=(p.ciudad||'')+' · '+estadoProp(pid).t;
+  const tabs=['Calendario','Cargos','Contratos','Notas','Servicios','Liquidación','Operar','Excepciones'];
+  const ini=tabIni&&tabs.includes(tabIni)?tabIni:'Calendario';
+  $('mTabs').innerHTML=tabs.map(t=>`<button class="tab${t===ini?' on':''}" data-t="${t}">${t}</button>`).join('');
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');tab(pid,b.dataset.t)});
+  tab(pid,ini);$('ov').classList.add('on');
+}
+function renderCalMes(pid,m){
+  const cs=D.cargo.filter(c=>c.propiedad_id===pid&&fechaCivilEnMes(c.vence_at,calYear,m))
+    .sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
+  const det=$('calDet');if(!det)return;
+  if(!cs.length){det.innerHTML=`<div class="empty">${MESES[m]} ${calYear}: sin cargos.</div>`;return}
+  det.innerHTML=`<div class="pg-l" style="margin-bottom:.5rem">${MESES[m]} ${calYear} — al detalle</div>
+    <table><tr><th>Cuenta</th><th>Vence</th><th>Concepto</th><th>Deudor → acreedor</th><th class="num">Monto neto</th><th class="num">Saldo</th><th>Estado</th></tr>`+
+    cs.map(c=>{const e=estadoCargo(c);return `<tr><td>${esc(circuitoNombre(circuitoCargo(c)))}</td><td>${fdate(c.vence_at)}</td><td>${esc(conceptoAmigable(c.concepto))}</td>
+      <td>${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}</td><td class="num">${fmt(montoNetoCargo(c))}</td>
+      <td class="num ${Number(c.saldo_pendiente)>0?'neg':'pos'}">${fmt(c.saldo_pendiente)}</td>
+      <td><span class="tag" style="--tc:${e.c}">${e.t}</span></td></tr>`}).join('')+'</table>';
+}
+function tab(pid,t){
+  tabAbierta=t;let h='';
+  if(t==='Calendario'){
+    const cy=calYear;const cells=[];
+    for(let m=0;m<12;m++){
+      const cs=D.cargo.filter(c=>c.propiedad_id===pid&&fechaCivilEnMes(c.vence_at,cy,m));
+      const ob=cs.filter(c=>circuitoCargo(c)==='obligaciones').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+      const ho=cs.filter(c=>circuitoCargo(c)==='honorarios').reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+      const saldo=ob+ho;let st,col;
+      if(!cs.length){st='—';col='rgba(255,255,255,.12)'}
+      else if(saldo<=0){st='Sin pendientes ✓';col='var(--verde)'}
+      else{const venc=cs.some(c=>Number(c.saldo_pendiente)>0&&fechaCivilVencida(c.vence_at));st=venc?'Hay vencidos':'Hay pendientes';col=venc?'var(--rojo)':'var(--ambar)'}
+      cells.push(`<div onclick="renderCalMes('${pid}',${m})" style="cursor:pointer;border:1px solid var(--card-border);border-top:2px solid ${col};border-radius:10px;padding:.7rem .8rem;background:var(--glass-t2)">
+        <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,243,240,.5)">${MESES[m]}</div>
+        <div style="font-size:.82rem;font-weight:700;color:${col};margin-top:.25rem">${st}</div>
+        <div style="font-size:.58rem;color:rgba(245,243,240,.55);margin-top:.2rem">Obligaciones: ${fmt(ob)}</div>
+        <div style="font-size:.58rem;color:rgba(245,243,240,.55);margin-top:.1rem">Honorarios: ${fmt(ho)}</div></div>`);
+    }
+    h=`<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+        <button class="btn-g" id="calPrev">‹ ${cy-1}</button>
+        <div style="font-weight:800;font-size:1.3rem;min-width:70px;text-align:center">${cy}</div>
+        <button class="btn-g" id="calNext">${cy+1} ›</button>
+        <div style="margin-left:auto;font-size:.6rem;color:rgba(245,243,240,.42)">verde=pagado · rojo=debe · amarillo=pendiente · tocá un mes</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem">${cells.join('')}</div>
+      <div id="calDet" style="margin-top:1.3rem"></div>`;
+  }else if(t==='Cargos'){
+    const cs=D.cargo.filter(c=>c.propiedad_id===pid).sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
+    h=cs.length?`<table><tr><th>Cuenta</th><th>Concepto / respaldo</th><th>Deudor → acreedor</th><th>Vence</th><th class="num">Monto neto</th><th class="num">Saldo</th><th>Estado</th></tr>`+
+      cs.map(c=>{const e=estadoCargo(c),fac=D.sfac.find(f=>f.cargo_id===c.id),doc=fac&&D.doc.find(d=>d.id===fac.comprobante_documento_id);
+        const detalle=c.snapshot_regla&&c.snapshot_regla.detalle;return `<tr><td>${esc(circuitoNombre(circuitoCargo(c)))}</td><td><b>${esc(conceptoAmigable(c.concepto))}</b>${detalle?`<div class="account-caption">${esc(detalle)}</div>`:''}${fac?`<div class="account-caption">Factura vinculada${doc?' · documento '+esc(String(doc.sha256||'').slice(0,8))+'…':''}</div>`:''}</td><td>${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}</td><td>${fdate(c.vence_at)}</td>
+      <td class="num">${fmt(montoNetoCargo(c))}</td><td class="num ${Number(c.saldo_pendiente)>0?'neg':'pos'}">${fmt(c.saldo_pendiente)}</td>
+      <td><span class="tag" style="--tc:${e.c}">${e.t}</span></td></tr>`}).join('')+'</table>'
+      :'<div class="empty">Sin cargos.</div>';
+  }else if(t==='Contratos'){
+    const cs=D.con.filter(c=>c.propiedad_id===pid).sort((a,b)=>new Date(a.inicio)-new Date(b.inicio));
+    const man=D.mand.find(x=>x.propiedad_id===pid&&x.estado==='vigente')||D.mand.find(x=>x.propiedad_id===pid);
+    const mv=man&&D.mv.filter(x=>x.mandato_id===man.id).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+    const owner=D.pname[titularParteId(pid)]||'—';
+    h=cs.length?`<div class="section-note" style="margin-bottom:.8rem"><b>Propietario:</b> ${esc(owner)} · <b>Honorario de administración:</b> ${mv?(Number(mv.honorario_pct||0)*100).toLocaleString('es-AR')+' %':'—'}</div>
+      <table><tr><th>Inquilino</th><th>Estado</th><th>Inicio / fin</th><th>Condiciones económicas</th><th>Ajuste y mora</th><th>Documento</th></tr>`+
+      cs.map(c=>{const v=D.ver.filter(x=>x.contrato_id===c.id).sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+        const ajuste=v?(v.pct_fijo!=null?'Fijo '+(Number(v.pct_fijo)*100).toLocaleString('es-AR')+' %':v.indice_serie_id?'Por índice':'Sin ajuste definido'):'—';return `<tr><td>${esc(D.pname[c.inquilino_parte_id]||'—')}</td>
+      <td><span class="tag" style="--tc:${{vigente:'var(--activo)',cerrado:'var(--gris)',rescindido:'var(--rojo)',continuacion_legal:'var(--ambar)'}[c.estado]||'var(--gris)'}">${esc(c.estado.replace('_',' '))}</span></td>
+      <td>${fdate(c.inicio)} → ${fdate(c.fin_pactado)}${c.fin_efectivo?`<div class="account-caption">fin efectivo ${fdate(c.fin_efectivo)}</div>`:''}</td>
+      <td>${v?fmt(v.monto)+' '+esc(v.moneda||''):'—'}${v?`<div class="account-caption">pago días ${esc(v.dia_pago_desde)} a ${esc(v.dia_pago_hasta)}</div>`:''}</td>
+      <td>${esc(ajuste)}${v?`<div class="account-caption">frecuencia ${esc(v.frecuencia_ajuste||'—')} · mora desde día ${esc(v.punitorio_desde_dia)} (${(Number(v.punitorio_pct_dia||0)*100).toLocaleString('es-AR')} % diario)</div>`:''}</td>
+      <td>${c.pdf_documento_id?'Contrato registrado':'Sin PDF vinculado'}</td></tr>`}).join('')+'</table>'
+      :'<div class="empty">Sin contratos.</div>';
+  }else if(t==='Notas'){
+    const ns=D.nota.filter(n=>D.cargo.some(c=>c.id===n.cargo_id&&c.propiedad_id===pid));
+    h=ns.length?`<table><tr><th>Cargo</th><th>Tipo</th><th>Motivo</th><th>Fecha / autor</th><th class="num">Monto</th></tr>`+
+      ns.map(n=>{const c=D.cargo.find(x=>x.id===n.cargo_id);const tecnica=/fixture|bug|reconcili|duplicad/i.test(n.motivo||'');return `<tr><td>${esc(conceptoAmigable(c&&c.concepto))}${tecnica?' · corrección técnica':''}</td><td><span class="tag" style="--tc:${n.tipo==='credito'?'var(--verde)':'var(--rojo)'}">${esc(n.tipo)}</span></td>
+      <td>${esc(n.motivo)}</td><td>${fdateInstante(n.fecha)}<div class="account-caption">${esc(D.pname[n.aprobador_parte_usuario_id]||'Administración')}</div></td><td class="num">${fmt(n.monto)}</td></tr>`}).join('')+'</table>'
+      :'<div class="empty">Sin notas.</div>';
+  }else if(t==='Servicios'){
+    const ctas=D.scta.filter(s=>s.propiedad_id===pid);
+    const facs=D.sfac.filter(f=>f.propiedad_id===pid);
+    const cargosServicio=D.cargo.filter(c=>c.propiedad_id===pid&&c.concepto==='servicio');
+    const cargosSinFactura=cargosServicio.filter(c=>!facs.some(f=>f.cargo_id===c.id));
+    const perio=p=>{const m=(p||'').match(/(\d{4}-\d{2}-\d{2}),(\d{4}-\d{2}-\d{2})/);
+      return m?fdate(m[1])+' → '+fdate(m[2]):'—'};
+    const tipoCta=id=>{const c=D.scta.find(x=>x.id===id);return c?c.tipo+' · '+(c.nro_cliente||''):'—'};
+    const partesOpts2=D.parte.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+    h=`
+    <div class="sec-t" style="margin-top:.2rem">Servicios de la propiedad</div>`+
+    (ctas.length?`<table><tr><th>Tipo</th><th>N° cliente</th><th>Responsable</th><th>Estado</th></tr>`+
+      ctas.map(s=>`<tr><td>${esc(s.tipo)}</td><td>${esc(s.nro_cliente||'—')}</td>
+      <td>${esc(D.pname[s.responsable_parte_id]||'—')}</td>
+      <td><span class="tag" style="--tc:${s.activa?'var(--activo)':'var(--gris)'}">${s.activa?'activa':'baja'}</span></td></tr>`).join('')+'</table>'
+      :'<div class="empty">Sin servicios configurados. Agregá el primero abajo.</div>')+`
+    <div class="f-grid" style="margin-top:1rem">
+      <div><span class="f-l">Tipo de servicio</span><select class="f" id="scTipo">
+        <option>electricidad</option><option>gas</option><option>agua</option><option>municipal</option>
+        <option>expensas</option><option>internet</option><option>otro</option></select></div>
+      <div><span class="f-l">N° de cliente / cuenta</span><input class="f" id="scNro" placeholder="ej. EDERSA-123456"/></div>
+      <div><span class="f-l">Responsable de pago</span><select class="f" id="scResp">${partesOpts2}</select></div>
+      <div style="align-self:end"><button class="btn" id="btnScta">Agregar servicio</button></div>
+      <div class="f-full"><div class="op-msg" id="msgScta"></div></div>
+    </div>
+    <div class="sec-t">Facturas cargadas</div>`+
+    (facs.length?`<table><tr><th>Servicio</th><th>Período</th><th>Vence</th><th>Documento</th><th>Estado</th><th class="num">Monto</th></tr>`+
+      facs.map(f=>{const doc=D.doc.find(d=>d.id===f.comprobante_documento_id);return `<tr><td>${esc(tipoCta(f.cuenta_id))}</td><td>${perio(f.periodo)}</td><td>${fdate(f.vence_at)}</td>
+      <td>${doc?'Registrado · '+esc(String(doc.sha256||'').slice(0,8))+'…':'Sin respaldo'}</td>
+      <td><span class="tag" style="--tc:${f.saldada?'var(--verde)':(f.cargo_id?'var(--ambar)':'var(--gris)')}">${f.saldada?'saldada':(f.cargo_id?'con cargo':'informativa')}</span></td>
+      <td class="num">${fmt(f.monto)}</td></tr>`}).join('')+'</table>'
+      :'<div class="empty">Sin facturas vinculadas.</div>')+
+    (cargosSinFactura.length?`<div class="section-note" style="margin-top:.8rem"><b>${cargosSinFactura.length} cargo(s) histórico(s) de servicio sin factura vinculada.</b> Se muestran para no ocultar el antecedente, pero no cuentan como factura cargada.</div>`:'')+`
+    <div class="sec-t">Cargar factura manualmente</div>
+    <div class="f-grid">
+      <div class="f-full"><span class="f-l">Servicio</span><select class="f" id="faCta">
+        ${ctas.filter(s=>s.activa).map(s=>`<option value="${s.id}">${esc(s.tipo)} · ${esc(s.nro_cliente||'')}</option>`).join('')}
+      </select></div>
+      <div><span class="f-l">Período desde</span><input class="f" id="faDesde" type="date"/></div>
+      <div><span class="f-l">Período hasta</span><input class="f" id="faHasta" type="date"/></div>
+      <div><span class="f-l">Monto</span><input class="f" id="faMonto" type="number" min="1" step="1"/></div>
+      <div><span class="f-l">Vence</span><input class="f" id="faVence" type="date" value="${hoy()}"/></div>
+      <div class="f-full"><span class="f-l">Factura o comprobante (obligatorio)</span><input class="f" id="faDocumento" type="file" accept="application/pdf,image/*"/></div>
+      <div class="f-full"><label class="ck"><input type="checkbox" id="faCargo" checked/>
+        Generarle el cargo al inquilino (la administración recupera esta plata)</label></div>
+      <div class="f-full"><button class="btn" id="btnFac">Cargar factura</button>
+        <div class="op-msg" id="msgFac"></div></div>
+    </div>`;
+  }else if(t==='Liquidación'){
+    const meses=(D.mesgen||[]).filter(x=>x.propiedad_id===pid)
+      .sort((a,b)=>String(b.mes).localeCompare(String(a.mes)));
+    const liquidaciones=(D.liq||[]).filter(x=>x.propiedad_id===pid)
+      .sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))||b.version_documento-a.version_documento);
+    const mesElegido=meses[0]?String(meses[0].mes).slice(0,7):mesActual();
+    const ownerId=titularParteId(pid),owner=D.parte.find(x=>x.id===ownerId);
+    h=`<div class="section-note"><b>Esta liquidación no mezcla cuentas.</b> Informa lo que pagó el inquilino, muestra aparte los honorarios y termina con el saldo exclusivo entre el propietario y la administración. El borrador sale de hechos registrados; no se escriben renglones a mano.</div>
+      <div class="sec-t">Preparar liquidación mensual</div>
+      <div class="f-grid"><div><span class="f-l">Mes</span><input class="f" id="liqMes" type="month" value="${mesElegido}"/></div>
+      <div><span class="f-l">Tipo de emisión</span><select class="f" id="liqCorreccion"><option value="">Primera emisión</option>${liquidaciones.map(x=>`<option value="${x.id}">Corrección de ${esc(String(x.periodo).slice(0,7))} · v${x.version_documento}</option>`).join('')}</select></div>
+      <div class="f-full"><button class="btn" id="btnLiqBorrador" ${meses.length?'':'disabled'}>Calcular borrador para revisar</button><div class="op-msg" id="msgLiq"></div></div></div>
+      ${meses.length?'':'<div class="empty">Primero generá el mes normal en la pestaña Operar.</div>'}
+      <div id="liqPreview"></div>
+      <div class="sec-t">Liquidaciones emitidas</div>
+      ${liquidaciones.length?liquidaciones.map(x=>{const envios=(D.lenv||[]).filter(e=>e.liquidacion_id===x.id).sort((a,b)=>b.intento_n-a.intento_n);return `<div class="account-box fees" style="margin-bottom:.8rem">
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap"><b>${esc(String(x.periodo).slice(0,7))} · versión ${x.version_documento}</b><span class="tag" style="--tc:var(--azul)">${esc(x.estado)}</span></div>
+        <div class="account-caption">Emitida ${fdateInstante(x.emitida_at)} · contenido ${esc(String(x.contenido_sha256).slice(0,12))}… · ${x.documento_id?'PDF guardado '+esc(String(x.pdf_sha256).slice(0,12))+'… · '+(x.pdf_origen==='reconstruido_antes_primer_envio'?'reconstruido antes del primer envío':'archivado al emitir'):'PDF emitido pendiente de guardar'}</div>
+        <div class="account-grid"><div><div class="pg-l">Saldo anterior</div><div class="pg-v">${fmt(x.saldo_apertura_admin)}</div></div>
+        <div><div class="pg-l">Saldo propietario ↔ administración</div><div class="pg-v">${fmt(Math.abs(Number(x.saldo_cierre_admin)))}</div></div></div>
+        ${x.documento_id?`<button class="btn-g" onclick="descargarLiquidacionGuardada('${x.id}')">Descargar PDF guardado</button>`:
+          `<button class="btn" onclick="vincularPdfLiquidacion('${x.id}')">Guardar PDF emitido</button>`}
+        <button class="btn-g" onclick="prepararEmailLiquidacion('${x.id}')" style="margin-left:.35rem" ${x.documento_id?'':'disabled'}>Preparar email</button>
+        <div class="op-msg" id="liqPdfMsg-${x.id}"></div>
+        <div class="f-grid" style="margin-top:.8rem"><div><span class="f-l">Email del propietario</span><input class="f" id="liqEmail-${x.id}" type="email" value="${esc(owner&&owner.email||'')}"/></div>
+        <div><span class="f-l">Resultado real del envío</span><select class="f" id="liqEstado-${x.id}"><option value="enviado">Enviado</option><option value="fallido">Falló</option><option value="rebotado">Rebotó</option></select></div>
+        <div class="f-full"><button class="btn" onclick="registrarEnvioLiquidacion('${x.id}')" ${x.documento_id?'':'disabled'}>Registrar resultado</button><div class="op-msg" id="liqEnvMsg-${x.id}"></div></div></div>
+        <div class="account-caption">${envios.length?'Último intento: '+esc(envios[0].estado)+' · '+esc(envios[0].destinatario_email)+' · '+fdateInstante(envios[0].registrado_at):'Todavía no hay un envío registrado.'}</div></div>`}).join(''):'<div class="empty">Todavía no se emitió ninguna liquidación.</div>'}`;
+  }else if(t==='Excepciones'){
+    const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+    const version=cvig&&D.ver.filter(v=>v.contrato_id===cvig.id)
+      .sort((a,b)=>String(b.vigencia).localeCompare(String(a.vigencia)))[0];
+    const titular=titularParteId(pid),admin=D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
+    const cargosMora=D.cargo.filter(c=>c.propiedad_id===pid&&circuitoCargo(c)==='obligaciones'&&Number(c.saldo_pendiente)>0);
+    const propuestas=(D.mora||[]).filter(x=>x.propiedad_id===pid).sort((a,b)=>String(b.propuesta_at).localeCompare(String(a.propuesta_at)));
+    const deposito=(D.deposito||[]).find(x=>x.contrato_id===(cvig&&cvig.id))||(D.deposito||[]).find(x=>x.propiedad_id===pid);
+    const ajustes=(D.ajuste||[]).filter(x=>x.contrato_id===(cvig&&cvig.id)).sort((a,b)=>String(b.aplicado_at).localeCompare(String(a.aplicado_at)));
+    h=`<div class="section-note"><b>Bloque 3 · meses excepcionales.</b> Acá se resuelven sólo las excepciones. La mora nunca se carga sola; el pago parcial y el excedente siguen en Operar.</div>
+      <div class="sec-t">Mora: proponer primero, decidir después</div>
+      <div class="f-grid">
+        <div class="f-full"><span class="f-l">Cargo impago del inquilino</span><select class="f" id="b3MoraCargo">${cargosMora.map(c=>`<option value="${c.id}">${esc(conceptoAmigable(c.concepto))} · vence ${fdate(c.vence_at)} · saldo ${fmt(c.saldo_pendiente)}</option>`).join('')}</select></div>
+        <div><span class="f-l">Calcular hasta</span><input class="f" id="b3MoraHasta" type="date" value="${hoy()}"/></div>
+        <div><span class="f-l">Porcentaje diario (%)</span><input class="f" id="b3MoraPct" type="number" min="0.000001" max="100" step="0.01" placeholder="lo decide la administración"/></div>
+        <div><span class="f-l">Días de gracia</span><input class="f" id="b3MoraGracia" type="number" min="0" step="1" value="0"/></div>
+        <div style="align-self:end"><button class="btn" id="btnB3MoraProponer" ${cargosMora.length?'':'disabled'}>Calcular propuesta</button></div>
+        <div class="f-full"><div class="op-msg" id="msgB3Mora"></div></div>
+      </div>
+      ${propuestas.length?propuestas.map(p=>`<div class="account-box obligations" style="margin-top:.7rem"><b>Propuesta ${esc(p.estado)}</b> · capital ${fmt(p.capital)} · ${p.dias_mora} días · ${esc(p.porcentaje_diario)} % diario · <b>${fmt(p.monto_propuesto)}</b>
+        ${p.estado==='propuesta'?`<div class="f-grid" style="margin-top:.6rem"><div><span class="f-l">Monto final</span><input class="f" id="b3MoraMonto-${p.id}" type="number" min="0" value="${Number(p.monto_propuesto)}"/></div><div><span class="f-l">Vence</span><input class="f" id="b3MoraVence-${p.id}" type="date" value="${fechaCivil(p.calculada_hasta)}"/></div><div class="f-full"><span class="f-l">Motivo obligatorio</span><input class="f" id="b3MoraMotivo-${p.id}" placeholder="decisión de la administración"/></div><div class="f-full"><button class="btn" onclick="opB3MoraResolver('${pid}','${p.id}','aplicar')">Aplicar mora</button> <button class="btn-g" onclick="opB3MoraResolver('${pid}','${p.id}','condonar')">Condonar</button><div class="op-msg" id="msgB3Mora-${p.id}"></div></div></div>`:`<div class="account-caption">Resuelta: ${fmt(p.monto_resuelto)} · ${esc(p.motivo_resolucion||'')}</div>`}</div>`).join(''):'<div class="empty">Todavía no hay propuestas de mora.</div>'}
+      <div class="sec-t">Ajuste contractual</div>
+      <div class="section-note">El programa no inventa el índice ni el porcentaje. Ingresá el nuevo alquiler confirmado y el motivo; la versión anterior queda en la historia.</div>
+      <div class="f-grid"><div><span class="f-l">Vigente desde</span><input class="f" id="b3AjusteDesde" type="month" value="${mesActual()}"/></div><div><span class="f-l">Alquiler actual</span><input class="f" value="${version?Number(version.monto):''}" disabled/></div><div><span class="f-l">Alquiler nuevo</span><input class="f" id="b3AjusteMonto" type="number" min="1" step="1"/></div><div><span class="f-l">Motivo / índice confirmado</span><input class="f" id="b3AjusteMotivo" placeholder="ej. ajuste trimestral acordado"/></div><div class="f-full"><button class="btn" id="btnB3Ajuste" ${cvig?'':'disabled'}>Aplicar nueva versión</button><div class="op-msg" id="msgB3Ajuste"></div></div></div>
+      ${ajustes.length?`<div class="account-caption">Último ajuste: ${fmt(ajustes[0].resultado_final)} desde ${fdate(ajustes[0].vigente_desde)} · ${esc(ajustes[0].motivo||'')}</div>`:''}
+      <div class="sec-t">Gasto pagado por la administración para recuperar del propietario</div>
+      <div class="f-grid"><div><span class="f-l">Monto</span><input class="f" id="b3GastoMonto" type="number" min="1" step="1"/></div><div><span class="f-l">Vence</span><input class="f" id="b3GastoVence" type="date" value="${hoy()}"/></div><div class="f-full"><span class="f-l">Detalle</span><input class="f" id="b3GastoDetalle" placeholder="ej. termotanque pagado por la administración"/></div><div class="f-full"><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="b3GastoDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Gasto" ${cvig&&titular&&admin?'':'disabled'}>Registrar reintegro</button><div class="op-msg" id="msgB3Gasto"></div></div></div>
+      <div class="sec-t">Depósito en poder del propietario</div>
+      ${deposito?`<div class="section-note">Depósito registrado: ${fmt(deposito.monto_constituido)} · saldo disponible ${fmt(deposito.saldo_disponible)} · custodia del propietario.</div>`:`<div class="f-grid"><div><span class="f-l">Monto entregado</span><input class="f" id="b3DepMonto" type="number" min="1" step="1" value="${version?Number(version.monto):''}"/></div><div><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="b3DepDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Deposito" ${cvig?'':'disabled'}>Registrar depósito</button><div class="op-msg" id="msgB3Deposito"></div></div></div>`}
+      ${deposito&&cvig?`<div class="sec-t">Cerrar contrato y registrar devolución total del depósito</div><div class="f-grid"><div><span class="f-l">Fecha efectiva</span><input class="f" id="b3CierreFecha" type="date" value="${fechaCivil(cvig.fin_pactado)||hoy()}"/></div><div><span class="f-l">Monto devuelto</span><input class="f" id="b3CierreMonto" type="number" min="1" value="${Number(deposito.saldo_disponible)}"/></div><div class="f-full"><span class="f-l">Comprobante de devolución</span><input class="f" id="b3CierreDoc" type="file" accept="application/pdf,image/*"/></div><div class="f-full"><button class="btn" id="btnB3Cerrar">Cerrar contrato</button><div class="op-msg" id="msgB3Cerrar"></div></div></div>`:''}
+      <div class="sec-t">Pago parcial y pago de más</div><div class="section-note">Se hacen en <b>Operar → Pago de obligaciones administradas</b>. Abril: cargá el pago parcial; mayo: cargá el total recibido. El saldo anterior se cancela primero y el excedente queda como crédito del inquilino.</div>`;
+  }else{ /* OPERAR */
+    const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+    const titular=D.tit.find(x=>x.propiedad_id===pid);
+    const cs=D.cargo.filter(c=>c.propiedad_id===pid&&Number(c.saldo_pendiente)>0)
+      .sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
+    const csObligaciones=cs.filter(c=>circuitoCargo(c)==='obligaciones');
+    const csHonorarios=cs.filter(c=>circuitoCargo(c)==='honorarios');
+    const csOtros=cs.filter(c=>circuitoCargo(c)==='otros');
+    const partesOpts=D.parte.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+    const creditos=cvig?D.credito.filter(c=>c.contrato_id===cvig.id&&Number(c.saldo_pendiente)>0):[];
+    const creditoTotal=creditos.reduce((s,c)=>s+Number(c.saldo_pendiente),0);
+    const meses=cvig?D.mesgen.filter(x=>x.contrato_id===cvig.id)
+      .sort((a,b)=>String(b.mes).localeCompare(String(a.mes))):[];
+    const mesBase=cvig&&String(cvig.inicio||'').slice(0,7)>mesActual()
+      ?String(cvig.inicio).slice(0,7):mesActual();
+    const pagoCuenta=(grupo,titulo,descripcion,cargos,medios)=>`<div class="account-box ${grupo==='honorarios'?'fees':'obligations'}" style="margin-top:1rem">
+      <div class="sec-t" style="margin-top:0">${titulo}</div><div class="account-caption">${descripcion}</div>
+      <div class="ck-list" style="margin-top:.7rem">${cargos.length?cargos.map(c=>`<label class="ck"><input type="checkbox" checked data-ck-group="${grupo}" data-ck="${c.id}"/>
+        ${esc(conceptoAmigable(c.concepto))} · ${esc(D.pname[c.deudor_parte_id]||'—')} → ${esc(D.pname[c.acreedor_parte_id]||'—')}
+        · vence ${fdate(c.vence_at)} · saldo ${fmt(c.saldo_pendiente)}</label>`).join(''):
+        '<div class="empty">No hay cargos pendientes en esta cuenta.</div>'}</div>
+      <div class="f-grid" style="margin-top:.7rem">
+        <div><span class="f-l">Monto pagado</span><input class="f" id="opMonto-${grupo}" type="number" min="1" step="1" ${cargos.length?'':'disabled'}/></div>
+        <div><span class="f-l">Fecha</span><input class="f" id="opFecha-${grupo}" type="date" value="${hoy()}" ${cargos.length?'':'disabled'}/></div>
+        <div><span class="f-l">Medio</span><select class="f" id="opMedio-${grupo}" ${cargos.length?'':'disabled'}>${medios}</select></div>
+        <div><span class="f-l">Comprobante (obligatorio)</span><input class="f" id="opComprobante-${grupo}" type="file" accept="application/pdf,image/*" ${cargos.length?'':'disabled'}/></div>
+        <div class="f-full"><button class="btn" id="btnCobro-${grupo}" ${cargos.length?'':'disabled'}>Confirmar este pago</button>
+          <div class="op-msg" id="msgCobro-${grupo}"></div></div>
+      </div></div>`;
+    h=`
+    <div class="sec-t" style="margin-top:.2rem">Generar mes normal</div>
+    <div class="f-grid">
+      <div><span class="f-l">Mes</span><input class="f" id="opMes" type="month" value="${mesBase}"/></div>
+      <div><span class="f-l">Expensas del mes</span><input class="f" id="opExpensas" type="number" min="0" step="1" value="0"/></div>
+      <div class="f-full section-note">
+        Este paso crea <b>dos cuentas separadas</b>: obligaciones del inquilino (alquiler y expensas) y honorarios que el propietario debe a la administración. Nunca se suman como una única deuda.
+        ${creditoTotal>0?` Hay ${fmt(creditoTotal)} de crédito del inquilino: se aplicará automáticamente.`:''}
+      </div>
+      <div class="f-full"><button class="btn" id="btnMes">Generar el mes</button>
+        <div class="op-msg" id="msgMes"></div></div>
+    </div>
+    ${meses.length?`<table style="margin-top:1rem"><tr><th>Mes</th><th class="num">Alquiler</th><th class="num">Expensas</th><th class="num">Honorario</th><th class="num">Crédito usado</th></tr>${meses.slice(0,6).map(x=>`<tr><td>${esc(String(x.mes).slice(0,7))}</td><td class="num">${fmt(x.alquiler_monto)}</td><td class="num">${fmt(x.expensas_monto)}</td><td class="num">${fmt(x.honorario_monto)}</td><td class="num">${fmt(x.credito_aplicado)}</td></tr>`).join('')}</table>`:''}
+    <div class="sec-t">Confirmar pagos con comprobante</div>
+    <div class="section-note">Elegí la cuenta correcta. El pago del inquilino al propietario y el pago del propietario a la administración son operaciones distintas.</div>
+    ${pagoCuenta('obligaciones','Pago de obligaciones administradas','Lo paga el inquilino al propietario. No cancela honorarios.',csObligaciones,
+      '<option value="transferencia_directa_al_propietario">Transferencia directa al propietario</option><option value="efectivo_directo_al_propietario">Efectivo al propietario</option><option value="otro">Otro</option>')}
+    ${pagoCuenta('honorarios','Pago de honorarios de administración','Lo paga el propietario a Sur Patagonian Real Estate.',csHonorarios,
+      '<option value="transferencia_a_administracion">Transferencia a la administración</option><option value="efectivo_a_administracion">Efectivo a la administración</option><option value="otro">Otro</option>')}
+    ${csOtros.length?pagoCuenta('otros','Pago de otra cuenta','Verificá especialmente deudor y acreedor antes de confirmar.',csOtros,
+      '<option value="transferencia_directa">Transferencia directa</option><option value="efectivo_directo">Efectivo directo</option><option value="otro">Otro</option>'):''}
+    <div class="sec-t">Emitir cargo</div>
+    <div class="f-grid">
+      <div><span class="f-l">Concepto</span><input class="f" id="cgConcepto" value="extra" placeholder="extra · reparacion · penalidad…"/></div>
+      <div><span class="f-l">Monto</span><input class="f" id="cgMonto" type="number" min="1" step="1"/></div>
+      <div><span class="f-l">Deudor</span><select class="f" id="cgDeudor">${partesOpts}</select></div>
+      <div><span class="f-l">Acreedor</span><select class="f" id="cgAcreedor">${partesOpts}</select></div>
+      <div><span class="f-l">Vence</span><input class="f" id="cgVence" type="date" value="${hoy()}"/></div>
+      <div><span class="f-l">Detalle</span><input class="f" id="cgDetalle" placeholder="qué es este cargo"/></div>
+      <div class="f-full"><button class="btn" id="btnCargo">Emitir cargo</button>
+        <div class="op-msg" id="msgCargo"></div></div>
+    </div>
+    <div class="sec-t">Nota de crédito / débito (con motivo — la historia no se edita)</div>
+    <div class="f-grid">
+      <div class="f-full"><span class="f-l">Sobre el cargo</span><select class="f" id="ntCargo">
+        ${D.cargo.filter(c=>c.propiedad_id===pid).map(c=>`<option value="${c.id}">${esc(c.concepto)} · ${fmt(c.monto)} · saldo ${fmt(c.saldo_pendiente)}</option>`).join('')}
+      </select></div>
+      <div><span class="f-l">Tipo</span><select class="f" id="ntTipo"><option value="credito">crédito (a favor del deudor)</option><option value="debito">débito (suma deuda)</option></select></div>
+      <div><span class="f-l">Monto</span><input class="f" id="ntMonto" type="number" min="1" step="1"/></div>
+      <div class="f-full"><span class="f-l">Motivo (obligatorio)</span><input class="f" id="ntMotivo" placeholder="por qué se ajusta"/></div>
+      <div class="f-full"><button class="btn" id="btnNota">Emitir nota</button>
+        <div class="op-msg" id="msgNota"></div></div>
+    </div>`;
+  }
+  $('mBody').innerHTML=h;
+  if(t==='Calendario'){
+    if($('calPrev'))$('calPrev').onclick=()=>{calYear--;tab(pid,'Calendario')};
+    if($('calNext'))$('calNext').onclick=()=>{calYear++;tab(pid,'Calendario')};
+    const mAhora=(mesRef.y===calYear)?mesRef.m:_hoy.m;
+    renderCalMes(pid,mAhora);
+  }
+  if(t==='Servicios'){
+    $('btnScta').onclick=()=>opScta(pid);
+    $('btnFac').onclick=()=>opFactura(pid);
+    const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+    if(cvig)$('scResp').value=cvig.inquilino_parte_id;
+    const d1=hoyCivil().slice(0,7)+'-01';
+    $('faDesde').value=d1;
+    $('faHasta').value=desplazarMesFechaCivil(d1,1);
+  }
+  if(t==='Liquidación'){
+    if($('btnLiqBorrador'))$('btnLiqBorrador').onclick=()=>previsualizarLiquidacion(pid);
+    if($('liqCorreccion'))$('liqCorreccion').onchange=()=>{
+      const id=$('liqCorreccion').value,liq=(D.liq||[]).find(x=>x.id===id);
+      if(liq&&$('liqMes'))$('liqMes').value=String(liq.periodo).slice(0,7);
+    };
+  }
+  if(t==='Excepciones'){
+    if($('btnB3MoraProponer'))$('btnB3MoraProponer').onclick=()=>opB3MoraProponer(pid);
+    if($('btnB3Ajuste'))$('btnB3Ajuste').onclick=()=>opB3Ajuste(pid);
+    if($('btnB3Gasto'))$('btnB3Gasto').onclick=()=>opB3Gasto(pid);
+    if($('btnB3Deposito'))$('btnB3Deposito').onclick=()=>opB3Deposito(pid);
+    if($('btnB3Cerrar'))$('btnB3Cerrar').onclick=()=>opB3Cerrar(pid);
+  }
+  if(t==='Operar'){
+    $('btnMes').onclick=()=>opMesNormal(pid);
+    if($('btnCobro-obligaciones'))$('btnCobro-obligaciones').onclick=()=>opCobro(pid,'obligaciones');
+    if($('btnCobro-honorarios'))$('btnCobro-honorarios').onclick=()=>opCobro(pid,'honorarios');
+    if($('btnCobro-otros'))$('btnCobro-otros').onclick=()=>opCobro(pid,'otros');
+    $('btnCargo').onclick=()=>opCargo(pid);
+    $('btnNota').onclick=()=>opNota(pid);
+    const recalcular=grupo=>{
+      const total=[...document.querySelectorAll(`[data-ck-group="${grupo}"]`)].filter(x=>x.checked)
+        .reduce((s,x)=>{const c=D.cargo.find(y=>y.id===x.dataset.ck);return s+Number(c&&c.saldo_pendiente||0)},0);
+      const el=$('opMonto-'+grupo);if(el&&total>0)el.value=String(total);
+    };
+    ['obligaciones','honorarios','otros'].forEach(grupo=>{
+      document.querySelectorAll(`[data-ck-group="${grupo}"]`).forEach(x=>x.onchange=()=>recalcular(grupo));recalcular(grupo);
+    });
+    const actualizarMes=()=>{
+      const generado=meses.find(x=>String(x.mes).slice(0,7)===$('opMes').value);
+      $('opExpensas').disabled=!!generado;$('btnMes').disabled=!!generado;
+      if(generado){$('opExpensas').value=String(Number(generado.expensas_monto||0));$('msgMes').className='op-msg';
+        $('msgMes').textContent='Este mes ya fue generado. No se vuelve a crear.'}
+      else{$('msgMes').textContent=''}
+    };
+    $('opMes').onchange=actualizarMes;actualizarMes();
+    if(cvig&&$('cgDeudor'))$('cgDeudor').value=cvig.inquilino_parte_id;
+    if(titular&&$('cgAcreedor'))$('cgAcreedor').value=titular.parte_id;
+  }
+}
+async function opMesNormal(pid){
+  const m=$('msgMes');m.className='op-msg';m.textContent='';
+  const mes=$('opMes').value,expensas=Number($('opExpensas').value||0);
+  const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+  if(!cvig){m.textContent='No hay un contrato vigente para generar el mes.';m.className='op-msg op-err';return}
+  if(!/^\d{4}-\d{2}$/.test(mes)||expensas<0){m.textContent='Revisá el mes y las expensas.';m.className='op-msg op-err';return}
+  try{
+    $('btnMes').disabled=true;m.textContent='Generando el mes…';
+    const r=await rpc('mes_normal_generar',{propiedad_id:pid,contrato_id:cvig.id,
+      mes:mes+'-01',expensas_monto:String(expensas)});
+    toast((r&&r.replay?'Mes ya generado':'Mes generado')+' · alquiler '+fmt(r.alquiler_monto)+
+      ' · honorario '+fmt(r.honorario_monto)+(Number(r.credito_aplicado)>0?' · crédito usado '+fmt(r.credito_aplicado):''));
+    await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnMes');if(b)b.disabled=false}
+}
+function contratoVigentePropiedad(pid){return D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado))}
+function adminPartePropiedad(pid){
+  const mes=(D.mesgen||[]).filter(x=>x.propiedad_id===pid).sort((a,b)=>String(b.mes).localeCompare(String(a.mes)))[0];
+  return (mes&&mes.administracion_parte_id)||(D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase())||{}).id;
+}
+function b3Error(id,e){const m=$(id);if(m){m.textContent=e.message;m.className='op-msg op-err'}}
+async function opB3MoraProponer(pid){
+  const m=$('msgB3Mora');m.className='op-msg';m.textContent='';
+  const pct=Number($('b3MoraPct').value),cargo=$('b3MoraCargo').value;
+  if(!cargo||!pct||pct<=0){m.textContent='Elegí el cargo y escribí el porcentaje diario decidido.';m.className='op-msg op-err';return}
+  try{
+    $('btnB3MoraProponer').disabled=true;
+    const r=await rpc('mora_proponer',{cargo_id:cargo,calculada_hasta:$('b3MoraHasta').value,
+      porcentaje_diario:String(pct),gracia_dias:String(Number($('b3MoraGracia').value||0))});
+    toast('Propuesta calculada · '+r.dias_mora+' días · '+fmt(r.monto_propuesto)+' · todavía no es un cargo');await cargar();
+  }catch(e){b3Error('msgB3Mora',e)}finally{const b=$('btnB3MoraProponer');if(b)b.disabled=false}
+}
+async function opB3MoraResolver(pid,id,decision){
+  const mid='msgB3Mora-'+id,m=$(mid);m.className='op-msg';m.textContent='';
+  const motivo=$('b3MoraMotivo-'+id).value.trim();if(!motivo){m.textContent='El motivo de la decisión es obligatorio.';m.className='op-msg op-err';return}
+  try{
+    const payload={propuesta_id:id,decision,motivo};
+    if(decision==='aplicar'){payload.monto_final=$('b3MoraMonto-'+id).value;payload.vence=$('b3MoraVence-'+id).value}
+    const r=await rpc('mora_resolver',payload);toast(decision==='aplicar'?'Mora aplicada · '+fmt(r.monto_resuelto):'Mora condonada');await cargar();
+  }catch(e){b3Error(mid,e)}
+}
+async function opB3Ajuste(pid){
+  const m=$('msgB3Ajuste');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
+  const monto=Number($('b3AjusteMonto').value),motivo=$('b3AjusteMotivo').value.trim();
+  if(!cvig||!monto||monto<=0||!motivo){m.textContent='Completá alquiler nuevo y motivo.';m.className='op-msg op-err';return}
+  try{$('btnB3Ajuste').disabled=true;const r=await rpc('ajuste_contractual_aplicar',{contrato_id:cvig.id,
+    vigente_desde:$('b3AjusteDesde').value+'-01',monto_nuevo:String(monto),motivo});
+    toast('Ajuste aplicado · '+fmt(r.monto_anterior)+' → '+fmt(r.monto_nuevo));await cargar();
+  }catch(e){b3Error('msgB3Ajuste',e)}finally{const b=$('btnB3Ajuste');if(b)b.disabled=false}
+}
+async function opB3Gasto(pid){
+  const m=$('msgB3Gasto');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
+  const monto=Number($('b3GastoMonto').value),detalle=$('b3GastoDetalle').value.trim(),file=$('b3GastoDoc').files&&$('b3GastoDoc').files[0];
+  const owner=titularParteId(pid),admin=adminPartePropiedad(pid);
+  if(!cvig||!owner||!admin||!monto||monto<=0||!detalle||!file){m.textContent='Completá monto, detalle y comprobante.';m.className='op-msg op-err';return}
+  try{$('btnB3Gasto').disabled=true;m.textContent='Guardando comprobante y reintegro…';
+    const doc=await documentoArchivo(pid,file,'gasto_propietario_comprobante','gastos-propietario','Adjuntá el comprobante del gasto.');
+    await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,cargo_fuente_ref:doc.id,
+      deudor_parte_id:owner,acreedor_parte_id:admin,ambito:'externa',concepto:'gasto_propietario',
+      moneda:'ARS',monto:String(monto),vence_at:fechaCivilATimestamp($('b3GastoVence').value),
+      snapshot_regla:{detalle,evidencia_documento_id:doc.id}},{slot:'gasto-propietario:'+doc.id});
+    toast('Reintegro registrado en la cuenta propietario → administración');await cargar();
+  }catch(e){b3Error('msgB3Gasto',e)}finally{const b=$('btnB3Gasto');if(b)b.disabled=false}
+}
+async function opB3Deposito(pid){
+  const m=$('msgB3Deposito');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
+  const monto=Number($('b3DepMonto').value),file=$('b3DepDoc').files&&$('b3DepDoc').files[0];
+  if(!cvig||!monto||monto<=0||!file){m.textContent='Completá monto y comprobante.';m.className='op-msg op-err';return}
+  try{$('btnB3Deposito').disabled=true;const doc=await documentoArchivo(pid,file,'deposito_comprobante','depositos','Adjuntá el comprobante del depósito.');
+    await rpc('deposito_registrar',{contrato_id:cvig.id,monto:String(monto),evidencia_documento_id:doc.id});
+    toast('Depósito registrado en custodia del propietario');await cargar();
+  }catch(e){b3Error('msgB3Deposito',e)}finally{const b=$('btnB3Deposito');if(b)b.disabled=false}
+}
+async function opB3Cerrar(pid){
+  const m=$('msgB3Cerrar');m.className='op-msg';m.textContent='';const cvig=contratoVigentePropiedad(pid);
+  const monto=Number($('b3CierreMonto').value),file=$('b3CierreDoc').files&&$('b3CierreDoc').files[0];
+  if(!cvig||!monto||monto<=0||!file){m.textContent='Completá devolución y comprobante.';m.className='op-msg op-err';return}
+  try{$('btnB3Cerrar').disabled=true;const doc=await documentoArchivo(pid,file,'deposito_devolucion_comprobante','depositos-devolucion','Adjuntá el comprobante de devolución.');
+    await rpc('contrato_cerrar_deposito',{contrato_id:cvig.id,fecha:$('b3CierreFecha').value,
+      monto_devuelto:String(monto),evidencia_documento_id:doc.id});
+    toast('Contrato cerrado y depósito devuelto');await cargar();
+  }catch(e){b3Error('msgB3Cerrar',e)}finally{const b=$('btnB3Cerrar');if(b)b.disabled=false}
+}
+async function shaArchivo(file){
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))]
+    .map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function documentoArchivo(pid,file,tipo,carpeta,mensaje,opciones={}){
+  if(!file||file.size<=0)throw new Error(mensaje||'Adjuntá el archivo.');
+  const sha=await shaArchivo(file);
+  const nombre=String(file.name||'comprobante').toLowerCase();
+  const encontrada=(nombre.match(/\.([a-z0-9]{1,8})$/)||[])[1];
+  const ext=(encontrada||((file.type||'').includes('pdf')?'pdf':'bin'));
+  const path=opciones.path||carpeta+'/'+pid+'/'+sha+'.'+ext;
+  let doc=(D.doc||[]).find(d=>d.propiedad_id===pid&&d.path===path&&d.tipo===tipo);
+  if(doc){if(doc.sha256!==sha)throw new Error('La ruta ya pertenece a otro archivo.');return doc}
+  const porPath=await sb.from('alq_v_documento').select('*').eq('path',path).limit(1);
+  if(porPath.error)throw new Error('Buscando el documento: '+porPath.error.message);
+  if(porPath.data&&porPath.data[0]){
+    if(porPath.data[0].sha256!==sha||porPath.data[0].tipo!==tipo)
+      throw new Error('La ruta ya pertenece a otro archivo.');
+    return porPath.data[0];
+  }
+  const subida=await sb.storage.from('alq-docs').upload(path,file,{upsert:false,
+    contentType:file.type||'application/octet-stream'});
+  if(subida.error){
+    const previa=await sb.storage.from('alq-docs').download(path);
+    if(previa.error)throw new Error('Guardando comprobante: '+subida.error.message);
+    const shaPrevia=await shaArchivo(previa.data);
+    if(shaPrevia!==sha)throw new Error('El archivo existente no coincide con el comprobante.');
+  }
+  try{
+    const r=await rpc('documento_registrar',{tipo,path,sha256:sha,
+      mime:file.type||'application/octet-stream',bytes:String(file.size),propiedad_id:pid,
+      audiencia:opciones.audiencia||'admin',version:String(opciones.version||1),
+      retencion:opciones.retencion||{}});
+    if(r&&r.id)return {id:r.id,path,sha256:sha,propiedad_id:pid,tipo};
+  }catch(e){
+    const carrera=await sb.from('alq_v_documento').select('*').eq('path',path).limit(1);
+    if(carrera.data&&carrera.data[0]&&carrera.data[0].sha256===sha)return carrera.data[0];
+    throw e;
+  }
+  const q=await sb.from('alq_v_documento').select('*').eq('path',path).limit(1);
+  if(q.error||!q.data||!q.data[0])throw new Error('El comprobante se guardó pero no pude verificar su registro.');
+  return q.data[0];
+}
+const documentoComprobante=(pid,file)=>documentoArchivo(pid,file,'comprobante_pago','comprobantes-pago','Adjuntá el comprobante del pago.');
+async function opCobro(pid,grupo){
+  const m=$('msgCobro-'+grupo);m.className='op-msg';m.textContent='';
+  const monto=Number($('opMonto-'+grupo).value);
+  const sel=[...document.querySelectorAll(`[data-ck-group="${grupo}"]`)].filter(x=>x.checked).map(x=>x.dataset.ck);
+  const file=$('opComprobante-'+grupo).files&&$('opComprobante-'+grupo).files[0];
+  if(!monto||monto<=0){m.textContent='Poné el monto.';m.className='op-msg op-err';return}
+  if(!sel.length){m.textContent='Elegí al menos un cargo.';m.className='op-msg op-err';return}
+  if(!file){m.textContent='Adjuntá el comprobante del pago.';m.className='op-msg op-err';return}
+  const cargos=sel.map(id=>D.cargo.find(c=>c.id===id)).filter(Boolean)
+    .sort((a,b)=>ordenarFechaCivil(a.vence_at,b.vence_at));
+  const totalSeleccionado=cargos.reduce((s,c)=>s+Number(c.saldo_pendiente||0),0);
+  if(grupo!=='obligaciones'&&monto>totalSeleccionado){
+    m.textContent='Este pago no puede superar el saldo seleccionado. Registrá sólo lo efectivamente adeudado.';
+    m.className='op-msg op-err';return;
+  }
+  const primero=cargos[0];
+  if(cargos.some(c=>c.deudor_parte_id!==primero.deudor_parte_id||
+      c.acreedor_parte_id!==primero.acreedor_parte_id||c.moneda!==primero.moneda||
+      c.contrato_id!==primero.contrato_id)){
+    m.textContent='Los cargos elegidos deben corresponder al mismo contrato, pagador, beneficiario y moneda.';
+    m.className='op-msg op-err';return;
+  }
+  const cvig=D.con.find(c=>c.id===primero.contrato_id&&c.propiedad_id===pid&&
+    ['vigente','continuacion_legal'].includes(c.estado));
+  if(!cvig){m.textContent='No encontré el contrato vigente de esos cargos.';m.className='op-msg op-err';return}
+  try{
+    $('btnCobro-'+grupo).disabled=true;m.textContent='Guardando comprobante y confirmando…';
+    const doc=await documentoComprobante(pid,file);
+    const r=await rpc('pago_comprobante_confirmar',{propiedad_id:pid,contrato_id:cvig.id,
+      documento_id:doc.id,cargo_ids:cargos.map(c=>c.id),monto:String(monto),
+      fecha:$('opFecha-'+grupo).value+'T12:00:00Z',medio:$('opMedio-'+grupo).value});
+    toast((r&&r.replay?'Pago ya confirmado':'Pago confirmado')+' · aplicado '+fmt(r.monto_aplicado)+
+      (Number(r.monto_credito)>0?' · crédito '+fmt(r.monto_credito):''));
+    await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnCobro-'+grupo);if(b)b.disabled=false}
+}
+async function opCargo(pid){
+  const m=$('msgCargo');m.className='op-msg';m.textContent='';
+  const monto=Number($('cgMonto').value);
+  if(!monto||monto<=0){m.textContent='Poné el monto.';m.className='op-msg op-err';return}
+  if($('cgDeudor').value===$('cgAcreedor').value){m.textContent='Deudor y acreedor no pueden ser la misma persona.';m.className='op-msg op-err';return}
+  const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+  const slot='cargo-manual:'+pid;
+  try{
+    $('btnCargo').disabled=true;
+    const payload={propiedad_id:pid,deudor_parte_id:$('cgDeudor').value,acreedor_parte_id:$('cgAcreedor').value,
+      ambito:'custodiada',concepto:$('cgConcepto').value.trim()||'extra',moneda:'ARS',monto:String(monto),
+      vence_at:fechaCivilATimestamp($('cgVence').value),
+      snapshot_regla:{detalle:$('cgDetalle').value.trim()||null}};
+    if(cvig)payload.contrato_id=cvig.id;
+    await rpc('cargo_manual_emitir',payload,{slot});
+    toast('Cargo emitido');await cargar();
+  }catch(e){alqF1aMostrarError(m,e,async()=>{toast('Cargo emitido');await cargar()})}
+  finally{const b=$('btnCargo');if(b)b.disabled=false}
+}
+async function opNota(pid){
+  const m=$('msgNota');m.className='op-msg';m.textContent='';
+  const monto=Number($('ntMonto').value),motivo=$('ntMotivo').value.trim();
+  if(!monto||monto<=0){m.textContent='Poné el monto.';m.className='op-msg op-err';return}
+  if(!motivo){m.textContent='El motivo es obligatorio.';m.className='op-msg op-err';return}
+  const slot='nota-manual:'+pid;
+  try{
+    $('btnNota').disabled=true;
+    await rpc('nota_emitir',{tipo:$('ntTipo').value,cargo_id:$('ntCargo').value,
+      monto:String(monto),moneda:'ARS',motivo:motivo},{slot});
+    toast('Nota emitida');await cargar();
+  }catch(e){alqF1aMostrarError(m,e,async()=>{toast('Nota emitida');await cargar()})}
+  finally{const b=$('btnNota');if(b)b.disabled=false}
+}
+async function opScta(pid){
+  const m=$('msgScta');m.className='op-msg';m.textContent='';
+  try{
+    $('btnScta').disabled=true;
+    await rpc('servicio_cuenta_alta',{propiedad_id:pid,tipo:$('scTipo').value,
+      responsable_parte_id:$('scResp').value,nro_cliente:$('scNro').value.trim()||null});
+    toast('Servicio agregado');await cargar();
+  }catch(e){m.textContent=e.message;m.className='op-msg op-err'}
+  finally{const b=$('btnScta');if(b)b.disabled=false}
+}
+async function opFactura(pid){
+  const m=$('msgFac');m.className='op-msg';m.textContent='';
+  const monto=Number($('faMonto').value);
+  const file=$('faDocumento').files&&$('faDocumento').files[0];
+  if(!$('faCta').value){m.textContent='Primero agregá el servicio.';m.className='op-msg op-err';return}
+  if(!monto||monto<=0){m.textContent='Poné el monto.';m.className='op-msg op-err';return}
+  if(!file){m.textContent='Adjuntá la factura o comprobante.';m.className='op-msg op-err';return}
+  const conCargo=$('faCargo').checked;
+  const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+  let cargoSlot=null;
+  let documento=null;
+  const completar=async cargoId=>{
+    const pf={cuenta_id:$('faCta').value,desde:$('faDesde').value,hasta:$('faHasta').value,
+      moneda:'ARS',monto:String(monto),vence_at:fechaCivilATimestamp($('faVence').value),
+      comprobante_documento_id:documento&&documento.id};
+    if(cargoId)pf.cargo_id=cargoId;
+    await rpc('servicio_factura_registrar',pf);
+    if(cargoSlot)await alqF1aCerrarBorrador('cargo_manual_emitir',cargoSlot);
+    toast(conCargo?'Factura cargada y cargo emitido al inquilino':'Factura cargada (informativa)');
+    await cargar();
+  };
+  try{
+    $('btnFac').disabled=true;
+    documento=await documentoArchivo(pid,file,'factura_servicio','facturas-servicio','Adjuntá la factura o comprobante.');
+    if(D.sfac.some(f=>f.comprobante_documento_id===documento.id))throw new Error('Esta factura ya fue cargada.');
+    let cargoId=null;
+    if(conCargo){
+      if(!cvig)throw new Error('No hay contrato vigente: no puedo generarle el cargo al inquilino.');
+      const titular=D.tit.find(x=>x.propiedad_id===pid);
+      const adminParte=D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
+      const acreedor=(titular&&titular.parte_id)||(adminParte&&adminParte.id);
+      if(!acreedor)throw new Error('No encuentro al titular de la propiedad para ser acreedor.');
+      const cta=D.scta.find(s=>s.id===$('faCta').value);
+      cargoSlot='factura-servicio:'+pid+':'+$('faCta').value+':'+$('faDesde').value+':'+$('faHasta').value;
+      const res=await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,
+        cargo_fuente_ref:documento.id,
+        deudor_parte_id:cvig.inquilino_parte_id,acreedor_parte_id:acreedor,
+        ambito:'custodiada',concepto:'servicio',moneda:'ARS',monto:String(monto),
+        vence_at:fechaCivilATimestamp($('faVence').value),
+        snapshot_regla:{detalle:'Factura '+(cta?cta.tipo:'servicio')+' '+$('faDesde').value+' → '+$('faHasta').value}},
+        {slot:cargoSlot,retener_hasta_continuacion:true});
+      cargoId=res&&res.id;
+      if(!cargoId)throw new Error('El cargo entró pero no obtuve su id; refrescá y atá la factura a mano.');
+    }
+    await completar(cargoId);
+  }catch(e){alqF1aMostrarError(m,e,async resultado=>completar(resultado&&resultado.id))}
+  finally{const b=$('btnFac');if(b)b.disabled=false}
+}
+/* ══════════ BANDEJA DE FACTURAS · el robot lee, vos confirmás ══════════ */
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let BANDEJA=[];
+async function pdfATexto(file){
+  const buf=await file.arrayBuffer();
+  const doc=await pdfjsLib.getDocument({data:buf}).promise;
+  let out='';
+  for(let p=1;p<=doc.numPages;p++){
+    const tc=await (await doc.getPage(p)).getTextContent();
+    let y=null;
+    for(const it of tc.items){
+      if(y!==null&&Math.abs(it.transform[5]-y)>4)out+='\n';
+      out+=it.str+' ';y=it.transform[5];
+    }
+    out+='\n';
+  }
+  return out;
+}
+function num(s){if(!s)return null;s=s.replace(/\./g,'').replace(',','.');const n=Number(s);return isNaN(n)?null:n}
+function numUS(s){if(!s)return null;s=s.replace(/,/g,'');const n=Number(s);return isNaN(n)?null:n}
+function g(t,pat){const m=t.match(pat);return m?m[1].trim():null}
+function fISO(d){if(!d)return null;const m=d.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);if(!m)return null;
+  const a=m[3].length===2?'20'+m[3]:m[3];return a+'-'+m[2]+'-'+m[1]}
+/* Plantillas — afinadas hoy con facturas reales de las 4 empresas */
+function parseFactura(t){
+  const T=t.replace(/\s+/g,' ');
+  if(/NIS\s*:/.test(t)&&/EDERSA|LA ENERG/i.test(t+' EDERSA')&&g(t,/NIS\s*:\s*(\d{8,})/)){
+    return {emisor:'EDERSA',tipo:'electricidad',nro:g(t,/NIS\s*:\s*(\d{8,})/),
+      total:numUS(g(T,/TOTAL A PAGAR\s*:?\s*\$?\s*(?:DEBITO\s+)?([\d,]+\.\d{2})/)),
+      vence:fISO(g(T,/VENCIMIENTO\s*:?\s*([\d/]+)/)),periodo:g(T,/(Bimestre\s*\d{2}\/\d{4})/),
+      alertas:[/INTERESES P\/PAGO/.test(t)?'Vino con intereses por pago tardío':null].filter(Boolean)};
+  }
+  if(/FACTURA DE GAS/i.test(t)||/\d{5}-\d{8}\/\d/.test(t)&&/gas/i.test(t)){
+    const deuda=g(T,/registra la siguiente deuda:\s*\$?\s*([\d.]+,\d{2})/);
+    return {emisor:'Camuzzi',tipo:'gas',nro:g(t,/(\d{5}-\d{8}\/\d)/),
+      total:num(g(T,/TOTAL A PAGAR\s*\$?\s*([\d.]+,\d{2})/)),
+      vence:fISO(g(T,/(\d{2}\/\d{2}\/\d{4})/)),periodo:g(T,/(\d{2}\/\d{2}\/\d{4}\s*(?:al|→)?\s*\d{2}\/\d{2}\/\d{4})/),
+      alertas:[deuda?('⚠ La cuenta arrastra deuda previa: $'+deuda):null].filter(Boolean)};
+  }
+  if(/-CF-/.test(t)&&/CUENTA\s*:/.test(t)){
+    const vtos=[...t.matchAll(/Vencimiento\s+(\d{2}\/\d{2}\/\d{4})/g)].map(m=>m[1]);
+    const cuotas=[...t.matchAll(/Cuota \d de \d\s+([\d.]+)/g)].map(m=>numUS(m[1]));
+    return {emisor:'Aguas Rionegrinas',tipo:'agua',nro:g(t,/CUENTA\s*:\s*(\d{8,})/),
+      total:cuotas.length?cuotas.reduce((a,b)=>a+b,0):null,
+      vence:fISO(vtos[0]),periodo:g(T,/Per[íi]odo:\s*(\d+\/\d{4})/),
+      alertas:[/NO SE REGISTRA DEUDA/.test(t)?'Cuenta al día ✓':'Revisar deuda previa',
+        cuotas.length>1?('Se paga en '+cuotas.length+' cuotas ('+vtos.join(' y ')+')'):null].filter(Boolean)};
+  }
+  if(/Coopetel|coopetel/i.test(t)||/FB \d{4} \d+/.test(t)){
+    return {emisor:'COOPETEL',tipo:'internet',nro:g(t,/Cuenta\s*:\s*(\d{5,})/),
+      total:num(g(T,/TOTAL\s*:?\s*\$?\s*([\d.]+,\d{2})/)),
+      vence:fISO(g(T,/VENCIMIENTO\s*:?\s*([\d/]+)/)),periodo:g(T,/Per[íi]odo:\s*(\d{2}\/\d{4})/),
+      alertas:[/Intereses/.test(t)?'Vino con intereses de la factura anterior':null,
+        /No registra deuda/.test(t)?'Cuenta al día ✓':null].filter(Boolean)};
+  }
+  return {emisor:'DESCONOCIDO',tipo:'otro',nro:null,total:null,vence:null,periodo:null,
+    alertas:['Formato no reconocido — completá a mano y confirmá']};
+}
+function matchServicio(f){
+  if(!f.nro)return null;
+  const dig=f.nro.replace(/\D/g,'');
+  return D.scta.find(s=>{const d2=(s.nro_cliente||'').replace(/\D/g,'');
+    return d2&&(d2===dig||d2.includes(dig)||dig.includes(d2))})||null;
+}
+async function procesarPDF(blob,nombre,meta){
+  const idx=BANDEJA.length;
+  BANDEJA.push({blob,nombre,meta,estado:'leyendo'});
+  renderBandeja();
+  try{
+    const texto=await pdfATexto(blob);
+    const f=parseFactura(texto);
+    f.match=matchServicio(f);
+    BANDEJA[idx]={blob,nombre,meta,f,estado:'propuesta'};
+  }catch(e){BANDEJA[idx]={blob,nombre,meta,estado:'error',err:e.message}}
+  renderBandeja();
+}
+async function descartarFactura(i){
+  const b=BANDEJA[i];b.estado='descartada';
+  if(b.meta&&b.meta.id){await sb.from('alq_mail_entrante').update({estado:'descartada'}).eq('id',b.meta.id)}
+  renderBandeja();
+}
+let STAGING_VISTOS=new Set();
+async function cargarStaging(){
+  const q=await sb.from('alq_mail_entrante').select('*').eq('estado','pendiente').order('creado_at');
+  if(q.error||!q.data)return;
+  for(const row of q.data){
+    if(STAGING_VISTOS.has(row.id))continue;
+    STAGING_VISTOS.add(row.id);
+    const d=await sb.storage.from('alq-docs').download(row.storage_path);
+    if(d.error)continue;
+    procesarPDF(d.data,row.adjunto_nombre,{id:row.id,path:row.storage_path,remitente:row.remitente,asunto:row.asunto});
+  }
+}
+async function revisarCasilla(){
+  const info=$('mailInfo');if(info)info.textContent='Revisando la casilla…';
+  try{
+    const r=await sb.functions.invoke('robot-facturas',{body:{}});
+    const d=r.data||{};
+    if(r.error)info.textContent='Cartero: '+r.error.message;
+    else if(!d.ok)info.textContent='Cartero: '+(d.motivo||'sin respuesta');
+    else info.textContent='Casilla revisada · '+(d.en_casilla||0)+' mails en total · '+(d.revisados||0)+' nuevos procesados';
+  }catch(e){if(info)info.textContent='Cartero: '+e.message}
+  await cargarStaging();
+}
+function renderBandeja(){
+  $('propuestas').innerHTML=BANDEJA.map((b,i)=>{
+    if(b.estado==='leyendo')return `<div class="msg" style="--mc:var(--gris);margin-top:.8rem">Leyendo ${esc(b.nombre)}…</div>`;
+    if(b.estado==='error')return `<div class="msg" style="--mc:var(--rojo);margin-top:.8rem">No pude leer ${esc(b.nombre)}: ${esc(b.err)}</div>`;
+    if(b.estado==='cargada')return `<div class="msg" style="--mc:var(--verde);margin-top:.8rem">✓ ${esc(b.f.emisor)} $${Number(b.f.total).toLocaleString('es-AR')} — cargada${b.conCargo?' con cargo al inquilino':''}</div>`;
+    if(b.estado==='descartada')return '';
+    const f=b.f;
+    const props=D.prop.map(p=>`<option value="${p.id}" ${f.match&&f.match.propiedad_id===p.id?'selected':''}>${esc(p.direccion)}</option>`).join('');
+    const ctas=pid=>D.scta.filter(s=>!pid||s.propiedad_id===pid).map(s=>`<option value="${s.id}" ${f.match&&f.match.id===s.id?'selected':''}>${esc(s.tipo)} · ${esc(s.nro_cliente||'')}</option>`).join('');
+    return `<div class="card" style="margin-top:1rem;background:var(--glass-t2)">
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <b style="font-size:.9rem">${esc(f.emisor)}</b>
+        <span class="tag" style="--tc:${f.match?'var(--activo)':'var(--ambar)'}">${f.match?'reconocida ✓':'sin identificar — elegí abajo'}</span>
+        ${f.nro?`<span style="font-size:.62rem;color:rgba(245,243,240,.45)">N° ${esc(f.nro)}</span>`:''}
+        ${f.periodo?`<span style="font-size:.62rem;color:rgba(245,243,240,.45)">${esc(f.periodo)}</span>`:''}
+      </div>
+      ${b.meta?`<div style="font-size:.6rem;color:rgba(245,243,240,.4);margin-top:.3rem">📧 Vino del mail · ${esc(b.meta.remitente||'')} · "${esc(b.meta.asunto||'')}"</div>`:''}
+      ${f.alertas.map(a=>`<div style="font-size:.66rem;color:${a.includes('✓')?'var(--verde)':'var(--ambar)'};margin-top:.4rem">${esc(a)}</div>`).join('')}
+      <div class="f-grid" style="margin-top:.9rem">
+        <div><span class="f-l">Propiedad</span><select class="f" id="bp-${i}">${props}</select></div>
+        <div><span class="f-l">Servicio</span><select class="f" id="bs-${i}">${ctas(f.match?f.match.propiedad_id:null)}</select></div>
+        <div><span class="f-l">Monto</span><input class="f" id="bm-${i}" type="number" step="0.01" value="${f.total??''}"/></div>
+        <div><span class="f-l">Vence</span><input class="f" id="bv-${i}" type="date" value="${f.vence??''}"/></div>
+        <div class="f-full"><label class="ck"><input type="checkbox" id="bc-${i}" checked/>
+          Generarle el cargo al inquilino (a favor del titular)</label></div>
+        <div class="f-full" style="display:flex;gap:.6rem;align-items:center">
+          <button class="btn" onclick="confirmarFactura(${i})">Confirmar y cargar</button>
+          <button class="btn-g" onclick="descartarFactura(${i})">Descartar</button>
+          <div class="op-msg" id="bmsg-${i}" style="margin-top:0"></div>
+        </div>
+      </div></div>`;
+  }).join('');
+}
+async function confirmarFactura(i){
+  const b=BANDEJA[i],f=b.f,m=$('bmsg-'+i);
+  const pid=$('bp-'+i).value,ctaId=$('bs-'+i).value,monto=Number($('bm-'+i).value),vence=$('bv-'+i).value;
+  if(!pid||!ctaId){m.textContent='Elegí propiedad y servicio.';m.className='op-msg op-err';return}
+  if(!monto||monto<=0||!vence){m.textContent='Revisá monto y vencimiento.';m.className='op-msg op-err';return}
+  let completar=null;
+  try{
+    m.textContent='Cargando…';m.className='op-msg';
+    // 1 · PDF al archivo del sistema (si vino del mail, YA está guardado: se reusa esa copia)
+    const buf=await b.blob.arrayBuffer();
+    const sha=[...new Uint8Array(await crypto.subtle.digest('SHA-256',buf))].map(x=>x.toString(16).padStart(2,'0')).join('');
+    let doc=(D.doc||[]).find(d=>d.propiedad_id===pid&&d.sha256===sha&&d.tipo==='factura_servicio');
+    if(!doc&&b.meta&&b.meta.path){
+      const path=b.meta.path;
+      try{doc=await rpc('documento_registrar',{tipo:'factura_servicio',path,sha256:sha,
+        mime:'application/pdf',bytes:String(buf.byteLength),propiedad_id:pid,audiencia:'admin'})}
+      catch(e){const q=await sb.from('alq_v_documento').select('*').eq('propiedad_id',pid).eq('sha256',sha).eq('tipo','factura_servicio').limit(1);
+        if(q.data&&q.data[0])doc=q.data[0];else throw e}
+    }
+    if(!doc)doc=await documentoArchivo(pid,b.blob,'factura_servicio','facturas-servicio','Adjuntá la factura.');
+    if(!doc||!doc.id)throw new Error('No pude verificar el documento de la factura.');
+    if(D.sfac.some(x=>x.comprobante_documento_id===doc.id))throw new Error('Esta factura ya fue cargada.');
+    // La identidad v2 usa el ID inmutable real: staging si vino por mail,
+    // documento interno si fue una carga directa. Nunca un UUID manual paralelo.
+    const fuenteId=String((b.meta&&b.meta.id)||doc.id||'').toLowerCase();
+    if(!ALQ_F1A_UUID.test(fuenteId))throw new Error('ALQ_F1A_FUENTE_SERVER_OWNED_INVALIDA');
+    // 2 · cargo al inquilino (opcional, acreedor = titular) — igual que la pestaña Servicios
+    let cargoId=null;
+    let cargoSlot=null;
+    completar=async idCargo=>{
+      // 3 · la factura del servicio, con su PDF y su cargo ligados
+      const desde=desplazarMesFechaCivil(vence,-1);
+      const pf={cuenta_id:ctaId,desde:desde,hasta:vence,moneda:'ARS',
+        monto:String(monto),vence_at:fechaCivilATimestamp(vence),comprobante_documento_id:doc&&doc.id};
+      if(idCargo)pf.cargo_id=idCargo;
+      await rpc('servicio_factura_registrar',pf);
+      if(b.meta&&b.meta.id){
+        const marca=await sb.from('alq_mail_entrante').update({estado:'confirmada'}).eq('id',b.meta.id);
+        if(marca.error)throw new Error('Confirmando mail: '+marca.error.message);
+      }
+      if(cargoSlot)await alqF1aCerrarBorrador('cargo_manual_emitir',cargoSlot);
+      b.estado='cargada';b.conCargo=!!idCargo;
+      toast('Factura de '+f.emisor+' cargada'+(idCargo?' + cargo al inquilino':''));
+      await cargar();renderBandeja();
+    };
+    if($('bc-'+i).checked){
+      const cvig=D.con.find(c=>c.propiedad_id===pid&&['vigente','continuacion_legal'].includes(c.estado));
+      if(!cvig)throw new Error('No hay contrato vigente en esa propiedad: destildá el cargo o revisá.');
+      const titular=D.tit.find(x=>x.propiedad_id===pid);
+      const adminParte=D.parte.find(p=>p.email&&p.email.toLowerCase()===($('hUser').textContent||'').toLowerCase());
+      const acreedor=(titular&&titular.parte_id)||(adminParte&&adminParte.id);
+      cargoSlot='bandeja-factura:'+String((b.meta&&b.meta.id)||sha);
+      const res=await rpc('cargo_manual_emitir',{propiedad_id:pid,contrato_id:cvig.id,
+        cargo_fuente_ref:fuenteId,
+        deudor_parte_id:cvig.inquilino_parte_id,acreedor_parte_id:acreedor,
+        ambito:'custodiada',concepto:'servicio',moneda:'ARS',monto:String(monto),
+        vence_at:fechaCivilATimestamp(vence),
+        snapshot_regla:{detalle:'Factura '+f.emisor+(f.periodo?' '+f.periodo:''),origen:'bandeja_robot',
+          comprobante_documento_id:doc&&doc.id,
+          mail_entrante_id:b.meta&&b.meta.id||null}},
+        {slot:cargoSlot,retener_hasta_continuacion:true});
+      cargoId=res&&res.id;
+    }
+    await completar(cargoId);
+  }catch(e){
+    alqF1aMostrarError(m,e,async resultado=>{
+      if(!completar)throw new Error('ALQ_F1A_CONTINUACION_NO_DISPONIBLE');
+      await completar(resultado&&resultado.id);
+    });
+  }
+}
+const dz=$('dropzone');
+if(dz){
+  dz.onclick=()=>$('pdfInput').click();
+  $('pdfInput').onchange=e=>{[...e.target.files].forEach(f=>procesarPDF(f,f.name,null));e.target.value=''};
+  dz.ondragover=e=>{e.preventDefault();dz.style.borderColor='rgba(215,111,63,.6)'};
+  dz.ondragleave=()=>dz.style.borderColor='rgba(255,255,255,.18)';
+  dz.ondrop=e=>{e.preventDefault();dz.style.borderColor='rgba(255,255,255,.18)';
+    [...e.dataTransfer.files].filter(f=>f.type==='application/pdf'||f.name.endsWith('.pdf')).forEach(f=>procesarPDF(f,f.name,null))};
+  if($('btnMail'))$('btnMail').onclick=revisarCasilla;
+}
+$('btnLogin').onclick=login;
+$('inPass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+$('btnOut').onclick=async()=>{await sb.auth.signOut();location.reload()};
+$('mClose').onclick=()=>{$('ov').classList.remove('on');propAbierta=null};
+$('ov').onclick=e=>{if(e.target===$('ov')){$('ov').classList.remove('on');propAbierta=null}};
+$('btnAyuda').onclick=()=>$('helpOv').classList.add('on');
+$('helpClose').onclick=()=>$('helpOv').classList.remove('on');
+$('helpOv').onclick=e=>{if(e.target===$('helpOv'))$('helpOv').classList.remove('on')};
+$('chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  $('chips').querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');filtro=c.dataset.f;render();
+});
+window.addEventListener('resize',programarAjusteKpis);
+if(document.fonts)document.fonts.ready.then(programarAjusteKpis);
+start();
+</script>
+</body>
+</html>
