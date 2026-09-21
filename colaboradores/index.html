@@ -389,7 +389,7 @@
     .pv-tabla tr:last-child td { border-bottom:none; }
     .pv-tabla tr:hover td { background:rgba(255,255,255,.02); }
     .pv-dot-nueva { width:7px; height:7px; border-radius:50%; background:#b39ddb; box-shadow:0 0 7px rgba(179,157,219,.4); }
-    .pv-via { display:inline-flex; align-items:center; gap:.35rem; color:#6495ed; font-size:.61rem; }
+    .pv-via { display:inline-flex; align-items:center; gap:.35rem; color:#8a8a82; font-size:.61rem; }
     .pv-via-mark { width:8px; height:8px; border:1px solid currentColor; }
     .pv-via.qr { color:#50c878; font-weight:600; }
     .pv-via.link { color:#6495ed; }
@@ -1434,7 +1434,10 @@
   const esc  = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
   const clasificarVia = fila => {
     if (fila?.origen === 'manual') return 'manual'
-    return fila?.canal_via === 'qr' ? 'qr' : fila?.canal_via === 'link' ? 'link' : 'directo'
+    if (fila?.canal_via === 'qr') return 'qr'
+    if (fila?.canal_via === 'link') return 'link'
+    if (fila?.canal_via === 'directo' || fila?.canal_via === 'directa') return 'directo'
+    return fila?.canal_ref ? 'sin_via' : 'directo'
   }
   const esEntrada = v => ['qr','link'].includes(clasificarVia(v))
   const esInteraccion = v => clasificarVia(v) !== 'manual'
@@ -1463,18 +1466,23 @@
     cerrado: 'Cerrado'
   };
 
-  const REC_COHORT_PALETTE = [
-    '#3a4eb8',
-    '#c0603e',
-    '#2a9d7a',
-    '#c040a0',
-    '#c08a2e',
-    '#1e5fa0',
-    '#7a1f2e',
-    '#3eb489',
-    '#7b3fb0',
-    '#b87333'
-  ];
+  // Paleta de cohortes aprobada 21-sep-2026: 24 meses consecutivos sin repetir color.
+  // El color depende del año-mes real, no de cuántos meses devolvió un filtro.
+  const COHORT_PALETTE_24 = Object.freeze([
+    '#fe4b81', '#b7ed26', '#af5afa', '#fe9d20', '#16c8f1', '#ed45ba',
+    '#62eb42', '#ff7146', '#6195ff', '#db48e5', '#f1d43d', '#25d9b3',
+    '#45b8ff', '#e650a4', '#84ee37', '#a85dec', '#ffda44', '#31d6c4',
+    '#ff5378', '#7b69f5', '#e98323', '#4be283', '#e65363', '#ae71f2'
+  ]);
+  const COHORT_COLOR_NEUTRAL = '#8a8a82';
+
+  function colorCohorteMes(mesKey) {
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(mesKey || ''));
+    if (!match) return COHORT_COLOR_NEUTRAL;
+    const numeroMes = (Number(match[1]) - 2026) * 12 + Number(match[2]) - 1;
+    const indice = ((numeroMes % COHORT_PALETTE_24.length) + COHORT_PALETTE_24.length) % COHORT_PALETTE_24.length;
+    return COHORT_PALETTE_24[indice];
+  }
 
   function normalizarEstadoRecorrido(estado) {
     const key = String(estado || 'nueva').toLowerCase();
@@ -1544,10 +1552,7 @@
       return ta - tb;
     }).filter(p => p.estado !== 'descartado');
 
-    const meses = [...new Set(personas.map(p => p.mesKey))].sort();
-    const colorMes = {};
-    meses.forEach((mes, index) => { colorMes[mes] = REC_COHORT_PALETTE[index % REC_COHORT_PALETTE.length]; });
-    personas.forEach(p => { p.color = colorMes[p.mesKey] || REC_COHORT_PALETTE[0]; });
+    personas.forEach(p => { p.color = colorCohorteMes(p.mesKey); });
 
     const local = personas.filter(p => p.estado === 'nueva' || p.estado === 'contactado');
     const visita = personas.filter(p => p.estado === 'visita' || p.estado === 'visita_realizada');
@@ -1589,9 +1594,9 @@
       </g>`;
     }).join('');
 
-    const visitaColor = visita[0]?.color || REC_COHORT_PALETTE[0];
-    const ofertaColor = oferta[0]?.color || REC_COHORT_PALETTE[1];
-    const cerradoColor = cerrado[0]?.color || REC_COHORT_PALETTE[2];
+    const visitaColor = visita[0]?.color || COHORT_COLOR_NEUTRAL;
+    const ofertaColor = oferta[0]?.color || COHORT_COLOR_NEUTRAL;
+    const cerradoColor = cerrado[0]?.color || COHORT_COLOR_NEUTRAL;
     const stationCount = (x, y, n, color) => `<text x="${x}" y="${y}" text-anchor="middle" fill="${color}" font-size="13" font-weight="800" font-family="Inter">${Number(n || 0).toLocaleString('es-AR')}</text>`;
     const tipoWalkInline = () => `<g stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round">
       <circle cx="0" cy="-12" r="2.9" fill="currentColor" stroke="none"/>
@@ -2219,190 +2224,6 @@
     let _pvPanelAct = null, _pvPanelConv = null  // charts de los paneles nuevos (Actividad 30d, Conversión 30d)
     let _pvMiniMap = null
     let _pvLiveRAF = null   // loop de animación del "pulso en vivo"
-    let _pvDocMoveH = null, _pvDocUpH = null    // document-level pan listeners (cleanup seguro)
-
-    // ── Zoom horario (modo Hoy) ──────────────────────────────────────────────
-    window.pvZoomHoyAplicar = function() {
-      // Usa pvApplyViewport para estar sincronizado con el zoom de scroll
-      const fromH = parseInt(document.getElementById('pvZoomDesde')?.value || '0')
-      const toH   = parseInt(document.getElementById('pvZoomHasta')?.value || '24')
-      const hoyB0 = window._pvZoomDefaultFrom
-      if (!hoyB0) return
-      const fromMs = hoyB0 + fromH * 3600000
-      const toMs   = Math.min(hoyB0 + toH * 3600000, Date.now())
-      pvApplyViewport(fromMs, toMs)
-    }
-    window.pvZoomHoyReset = function() {
-      const f = window._pvZoomDefaultFrom, t2 = window._pvZoomDefaultTo
-      if (f && t2) pvApplyViewport(f, t2)
-      else if (_pvChart4) {
-        delete _pvChart4.options.scales.x.min
-        delete _pvChart4.options.scales.x.max
-        _pvChart4.update('none')
-      }
-      window._pvZoomFrom = f; window._pvZoomTo = t2
-      const d = document.getElementById('pvZoomDesde'); if (d) d.value = '0'
-      const h = document.getElementById('pvZoomHasta'); if (h) h.value = String(Math.min(24, new Date().getHours() + 1))
-    }
-
-    // ── Motor de zoom temporal interactivo ──────────────────────────────────
-
-    // Resamplea visitas/contactos/slots para [fromMs, toMs] con granularidad adaptativa
-    function pvResampleChart(fromMs, toMs) {
-      const rangeMins = (toMs - fromMs) / 60000
-      let bucketMs, labelFn
-      if (rangeMins <= 120) {
-        bucketMs = 60000
-        labelFn = t => { const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
-      } else if (rangeMins <= 360) {
-        bucketMs = 5*60000
-        labelFn = t => { const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
-      } else if (rangeMins <= 1440) {
-        bucketMs = 15*60000
-        labelFn = t => { const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` }
-      } else if (rangeMins <= 10080) {
-        bucketMs = 3600000
-        labelFn = t => { const d=new Date(t); return `${d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})} ${String(d.getHours()).padStart(2,'0')}h` }
-      } else {
-        bucketMs = 86400000
-        labelFn = t => new Date(t).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})
-      }
-      window._pvZoomBucketMs = bucketMs
-      const snapFrom = bucketMs === 86400000
-        ? (() => { const d = new Date(fromMs); d.setHours(0,0,0,0); return d.getTime() })()
-        : Math.floor(fromMs / bucketMs) * bucketMs
-      const numBuckets = Math.max(1, Math.ceil((toMs - snapFrom) / bucketMs))
-      const bucketStarts = Array.from({length:numBuckets}, (_,i) => snapFrom + i*bucketMs)
-      const newLbls = bucketStarts.map(t => labelFn(t))
-      const ds = new Array(numBuckets).fill(0)
-      const dc = new Array(numBuckets).fill(0)
-      visitas.forEach(v => {
-        if (!esEntrada(v)) return
-        const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
-        const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) ds[idx]++
-      })
-      contactos.forEach(c => {
-        if (!esEntrada(c)) return
-        const t = new Date(c.created_at).getTime(); if (t < fromMs || t >= toMs) return
-        const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) dc[idx]++
-      })
-      const slotData = unidadesGrafico().map(unidad => {
-        const arr = new Array(numBuckets).fill(0)
-        visitas.forEach(v => {
-          if (!esEntrada(v) || !unidad.codigos.has(v.canal_ref)) return
-          const t = new Date(v.created_at).getTime(); if (t < fromMs || t >= toMs) return
-          const idx = Math.floor((t - snapFrom) / bucketMs); if (idx >= 0 && idx < numBuckets) arr[idx]++
-        })
-        return { key: unidad.key, data: arr }
-      })
-      return { labels: newLbls, dataScans: ds, dataCons: dc, slotData }
-    }
-
-    // Aplica un viewport al gráfico principal: recalcula datos y labels sin destruir el chart
-    function pvApplyViewport(fromMs, toMs) {
-      if (!_pvChart4?.data) return
-      window._pvZoomFrom = fromMs; window._pvZoomTo = toMs
-      const { labels, dataScans, dataCons, slotData } = pvResampleChart(fromMs, toMs)
-      _pvChart4.data.labels = labels
-      if (_pvChart4.data.datasets[0]) _pvChart4.data.datasets[0].data = dataScans
-      if (_pvChart4.data.datasets[1]) {
-        _pvChart4.data.datasets[1].data = dataCons
-        _pvChart4.data.datasets[1].pointRadius = dataCons.map(v => v > 0 ? 6 : 0)
-      }
-      slotData.forEach(sd => {
-        const dst = _pvChart4.data.datasets.find(dataset => dataset._seriesKey === sd.key)
-        if (dst) dst.data = sd.data
-      })
-      delete _pvChart4.options.scales.x.min; delete _pvChart4.options.scales.x.max
-      const _cap = labels // captura para closures de callback
-      if (_pvChart4.options.scales?.x?.ticks) {
-        _pvChart4.options.scales.x.ticks.callback = (_,i) => _cap[i] || ''
-        _pvChart4.options.scales.x.ticks.autoSkip = true
-        // Densidad adaptativa: máx 12 etiquetas siempre, menos si hay pocos buckets
-        _pvChart4.options.scales.x.ticks.maxTicksLimit = Math.min(labels.length, 12)
-      }
-      if (_pvChart4.options.plugins?.tooltip?.callbacks)
-        _pvChart4.options.plugins.tooltip.callbacks.title = items => _cap[items[0]?.dataIndex ?? 0] || ''
-      _pvChart4.update('none')
-    }
-
-    // Enlaza zoom por Shift+scroll y pan por arrastre al canvas del chart principal
-    function pvBindZoomPan(chart) {
-      if (!chart?.canvas) return
-      // Limpiar handlers previos
-      if (chart._pvWheelH) chart.canvas.removeEventListener('wheel', chart._pvWheelH)
-      if (chart._pvMDownH) chart.canvas.removeEventListener('mousedown', chart._pvMDownH)
-      if (chart._pvDblH)   chart.canvas.removeEventListener('dblclick', chart._pvDblH)
-      if (_pvDocMoveH) { document.removeEventListener('mousemove', _pvDocMoveH); _pvDocMoveH = null }
-      if (_pvDocUpH)   { document.removeEventListener('mouseup',   _pvDocUpH);   _pvDocUpH   = null }
-
-      // Shift + scroll del mouse/trackpad → zoom centrado en la posición del cursor
-      chart._pvWheelH = function(e) {
-        if (!e.shiftKey) return
-        e.preventDefault()
-        const from = window._pvZoomFrom || window._pvZoomDefaultFrom
-        const to   = window._pvZoomTo   || window._pvZoomDefaultTo
-        if (!from || !to) return
-        const rangeMs = to - from
-        const ca = chart.chartArea, rect = chart.canvas.getBoundingClientRect()
-        const pct = ca ? Math.max(0, Math.min(1, (e.clientX - rect.left - ca.left) / (ca.right - ca.left))) : 0.5
-        // scroll arriba = acercar (0.80×), scroll abajo = alejar (1.25×) — suave
-        const factor = e.deltaY < 0 ? 0.80 : 1.25
-        const newRange = Math.max(60000, Math.min(30*86400000, rangeMs * factor))
-        const anchorMs = from + rangeMs * pct
-        let newFrom = anchorMs - newRange * pct
-        let newTo   = anchorMs + newRange * (1-pct)
-        const hardMax = Date.now(), hardMin = hardMax - 30*86400000
-        if (newFrom < hardMin) { newFrom = hardMin; newTo = Math.min(hardMax, newFrom + newRange) }
-        if (newTo > hardMax)   { newTo = hardMax;   newFrom = Math.max(hardMin, newTo - newRange) }
-        pvApplyViewport(newFrom, newTo)
-      }
-      chart.canvas.addEventListener('wheel', chart._pvWheelH, { passive: false })
-
-      // Arrastre → pan horizontal
-      let dragging = false, dragX0 = 0, dragFrom0 = 0, dragTo0 = 0
-      chart._pvMDownH = function(e) {
-        if (e.button !== 0 || e.shiftKey) return
-        dragging = true; dragX0 = e.clientX
-        dragFrom0 = window._pvZoomFrom || window._pvZoomDefaultFrom
-        dragTo0   = window._pvZoomTo   || window._pvZoomDefaultTo
-        if (dragFrom0 && dragTo0) chart.canvas.style.cursor = 'grabbing'
-        if (chart.options.plugins?.tooltip) chart.options.plugins.tooltip.enabled = false
-      }
-      chart.canvas.addEventListener('mousedown', chart._pvMDownH)
-
-      const pvMoveH = function(e) {
-        if (!dragging || !dragFrom0) return
-        const ca = chart.chartArea; if (!ca) return
-        const dx = e.clientX - dragX0
-        const rangeMs = dragTo0 - dragFrom0
-        const msPerPx = rangeMs / Math.max(1, ca.right - ca.left)
-        const shift = -dx * msPerPx
-        const hardMax = Date.now(), hardMin = hardMax - 30*86400000
-        let newFrom = Math.max(hardMin, dragFrom0 + shift)
-        let newTo = newFrom + rangeMs
-        if (newTo > hardMax) { newTo = hardMax; newFrom = Math.max(hardMin, newTo - rangeMs) }
-        pvApplyViewport(newFrom, newTo)
-      }
-      const pvUpH = function() {
-        if (!dragging) return
-        dragging = false
-        chart.canvas.style.cursor = ''
-        if (chart.options.plugins?.tooltip) chart.options.plugins.tooltip.enabled = true
-      }
-      _pvDocMoveH = pvMoveH; _pvDocUpH = pvUpH
-      document.addEventListener('mousemove', _pvDocMoveH)
-      document.addEventListener('mouseup',   _pvDocUpH)
-
-      // Doble clic → volver a la vista completa
-      chart._pvDblH = function() {
-        const f = window._pvZoomDefaultFrom, t2 = window._pvZoomDefaultTo
-        if (f && t2) pvApplyViewport(f, t2)
-        else { delete chart.options.scales.x.min; delete chart.options.scales.x.max; chart.update('none') }
-      }
-      chart.canvas.addEventListener('dblclick', chart._pvDblH)
-    }
-
     // La segmentación y el aislamiento de respuestas viven en RLS.
     const mensajesVacioHtml = texto => `<div class="pv-empty"><div class="pv-empty-mark"></div><div class="pv-msg-empty-title">Todo al día</div><div>${texto}</div></div>`
     const mensajesAbiertos = new Set()
@@ -2692,7 +2513,7 @@
     }
 
     // ── Render completo desde el snapshot publicado ────────────────────────
-    function renderizarPanelCompleto() {
+    function renderizarPanelCompleto(estadoVisual = null) {
     const main = document.getElementById('mainContent')
     if (esPasivo && canales.length > 1) {
       main.classList.add('pv-main')
@@ -2737,10 +2558,14 @@
           <button class="pv-logout-card" onclick="salir()">Salir</button>
         </div>`
 
-      requestAnimationFrame(() => {
-        renderGraficoPasivo(contactos, 7, null, null, { multiSlot:true })
-        generarQrUnidadesPasivas()
-      })
+      return new Promise((resolve, reject) => requestAnimationFrame(() => {
+        try {
+          if (estadoVisual?.periodo) restaurarEstadoVisual(estadoVisual)
+          else window.pvSetPeriodo(document.querySelector('.pv-flt-btn.activo'))
+          generarQrUnidadesPasivas()
+          resolve()
+        } catch (error) { reject(error) }
+      }))
     } else if (esPasivo) {
       main.classList.add('pv-main')
       const canal = canales[0]
@@ -2859,10 +2684,14 @@
           <button class="pv-logout-card" onclick="salir()">Salir</button>
         </div>`
 
-      requestAnimationFrame(() => {
-        renderGraficoPasivo(contactos, 7)
-        renderMiniMapaPasivo(canal)
-      })
+      return new Promise((resolve, reject) => requestAnimationFrame(() => {
+        try {
+          if (estadoVisual?.periodo) restaurarEstadoVisual(estadoVisual)
+          else window.pvSetPeriodo(document.querySelector('.pv-flt-btn.activo'))
+          renderMiniMapaPasivo(canal)
+          resolve()
+        } catch (error) { reject(error) }
+      }))
     } else {
       const primerC    = canales[0]
       const geoAct     = [primerC.ciudad, primerC.provincia].filter(Boolean).join(', ')
@@ -2942,31 +2771,25 @@
           <button class="pv-logout-card" onclick="salir()">Salir</button>
         </div>`
 
-      // Render de gráficos y QR canvases tras DOM
-      // ETAPA 3A.2: fechas iniciales definidas antes del RAF para pasarlas a renderPanelesActivos y renderSlotMiniCharts
-      const _h = new Date(); const _d = new Date(_h); _d.setHours(0,0,0,0)
-      requestAnimationFrame(() => {
-        renderGraficoPasivo(contactos, 0, null, null, { multiSlot: _modoMultiSlot() })
-        actualizarPanelesResumenActivo(_d, _h, 'hoy')
-        if (misSlots.length) {
-          generarQRCanvases()
-        }
-        // ETAPA 2: KPI iniciales en HOY (medianoche → ahora)
-        actualizarKpisActivo(_d, _h)
-        // ETAPA 3A.1: métricas de cards — período inicial = Hoy
-        actualizarSlotCards(_d, _h)
-        // ETAPA 3A.2: mini-gráficos de cards — período inicial = Hoy
-        if (misSlots.length) renderSlotMiniCharts(_d, _h, 'hoy')
-      })
+      // Un único render temporal: el período elegido es la fuente de verdad.
+      return new Promise((resolve, reject) => requestAnimationFrame(() => {
+        try {
+          if (estadoVisual?.periodo) restaurarEstadoVisual(estadoVisual)
+          else window.pvSetPeriodo(document.querySelector('.pv-flt-btn.activo'))
+          if (misSlots.length) generarQRCanvases()
+          resolve()
+        } catch (error) { reject(error) }
+      }))
     }
     }
-    try {
-      renderizarPanelCompleto()
-    } catch (error) {
+    const errorPrimerRender = error => {
       console.error('[panel] No se pudo publicar la primera carga completa:', error)
       document.getElementById('mainContent').innerHTML = '<div class="empty-msg">Los datos se cargaron, pero el panel no pudo dibujarse completo. No se publicaron métricas parciales. Probá actualizar.</div>'
-      return
     }
+    // No esperar el RAF aquí: las funciones de período se registran más abajo
+    // en este mismo módulo antes de que el navegador pinte el primer frame.
+    try { renderizarPanelCompleto().catch(errorPrimerRender) }
+    catch (error) { errorPrimerRender(error); return }
 
     function compararPeriodo(actual, anterior) {
       if (anterior === 0) return { valor:null, nueva:actual > 0 }
@@ -3022,7 +2845,7 @@
       const eventos = [
         ...visitas.filter(esInteraccion).map(v => {
           const via = clasificarVia(v)
-          return { fecha:v.created_at, tipo:via === 'qr' ? 'qr' : via === 'link' ? 'link' : '', texto:via === 'qr' ? 'Clic desde QR físico' : via === 'link' ? 'Clic desde enlace digital' : 'Interacción directa' }
+          return { fecha:v.created_at, tipo:via === 'qr' ? 'qr' : via === 'link' ? 'link' : '', texto:via === 'qr' ? 'Clic desde QR físico' : via === 'link' ? 'Clic desde enlace digital' : via === 'sin_via' ? 'Interacción sin vía registrada' : 'Interacción directa' }
         }),
         ...contactos.map(c => ({ fecha:c.created_at, tipo:'lead', texto:'Nueva consulta generada' })),
       ].filter(e => e.fecha).sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, limite)
@@ -3151,9 +2974,6 @@
 
       const nombresMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
-      // Paleta de cohortes — identifica meses/cohortes, NO estados CRM
-      const COHORT_PALETTE = ['#3a4eb8','#c0603e','#2a9d7a','#c040a0','#c08a2e','#1e5fa0','#7a1f2e','#3eb489','#7b3fb0','#b87333']
-
       // Agrupar por mes de ingreso (c.fecha || c.created_at — sin leer crm_eventos)
       const porMes = {}
       const porMesEstado = {}
@@ -3177,13 +2997,10 @@
       const MAX_BAR_H = 82
       const maxMes = mesesOrdenados.length ? Math.max(...mesesOrdenados.map(k => porMes[k])) : 1
       const mesesGridCount = 12
-      const colorPorMesActivo = {}
-      mesesOrdenados.forEach((k, idx) => { colorPorMesActivo[k] = COHORT_PALETTE[idx % COHORT_PALETTE.length] })
-
       // Barras: Registros por mes — color de cohorte por mes (no color semántico de estado)
       const barrasMes = mesesAnio.map(k => {
         const activo = (porMes[k] || 0) > 0
-        const color = activo ? colorPorMesActivo[k] : 'rgba(255,255,255,.16)'
+        const color = activo ? colorCohorteMes(k) : 'rgba(255,255,255,.16)'
         const h = activo ? Math.max(2, Math.round(porMes[k] / maxMes * MAX_BAR_H)) : 14
         const [y, m] = k.split('-')
         const label = nombresMes[parseInt(m) - 1] + ' ' + y.slice(2)
@@ -3212,7 +3029,6 @@
     function renderTrazabilidad(filasTraza, { anonimo = true } = {}) {
       if (!filasTraza || filasTraza.length === 0) return ''
 
-      const COHORT_PALETTE_T = ['#3a4eb8','#c0603e','#2a9d7a','#c040a0','#c08a2e','#1e5fa0','#7a1f2e','#3eb489','#7b3fb0','#b87333']
       const NOMBRES_MES_T    = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
       const fmtMesDesdeFecha = dateStr => {
@@ -3230,7 +3046,7 @@
       // Paleta de cohortes: color = mes de ingreso (nunca = estado CRM)
       const todosLosKeys = [...new Set(filasTraza.map(f => f.mes_ingreso_key).filter(Boolean))].sort()
       const cohortColorMap = {}
-      todosLosKeys.forEach((k, idx) => { cohortColorMap[k] = COHORT_PALETTE_T[idx % COHORT_PALETTE_T.length] })
+      todosLosKeys.forEach(k => { cohortColorMap[k] = colorCohorteMes(k) })
 
       const labelDeMesKey = k => {
         if (!k) return '—'
@@ -3331,7 +3147,7 @@
       let timelineHTML = ''
       if (cards.length > 0) {
         const cardEls = cards.map(card => {
-          const color = cohortColorMap[card.mes_ingreso_key] || '#888'
+          const color = cohortColorMap[card.mes_ingreso_key] || COHORT_COLOR_NEUTRAL
           const numLabel = countPorMes[card.mes_ingreso_key] > 1 ? ` (${card.registro_anon_n})` : ''
           const leadTitulo = anonimo
             ? `Lead de ${labelDeMesKey(card.mes_ingreso_key)}${numLabel}`
@@ -3380,7 +3196,7 @@
       let legacyHTML = ''
       if (legacySinFec.length > 0) {
         const legacyEls = legacySinFec.map(lf => {
-          const color    = cohortColorMap[lf.mes_ingreso_key] || '#888'
+          const color    = cohortColorMap[lf.mes_ingreso_key] || COHORT_COLOR_NEUTRAL
           const estColor = EST_CLR[lf.estado_publico] || '#888'
           return `<div class="pv-traza-legacy-row">
             <span class="pv-traza-cohorte-dot" style="background:${color}"></span>
@@ -3412,7 +3228,6 @@
     function renderRecorridoLeadsActivo(filasTraza = []) {
       if (!filasTraza || filasTraza.length === 0) return ''
 
-      const COHORT_PALETTE_A = ['#3a4eb8','#c0603e','#2a9d7a','#c040a0','#c08a2e','#1e5fa0','#7a1f2e','#3eb489','#7b3fb0','#b87333']
       const NOMBRES_MES_A    = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
       const NOMBRES_MES_CORTO = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
       const EST_COLOR_A = {
@@ -3447,9 +3262,7 @@
       const anioVisible = keysConDatos.length
         ? Number(keysConDatos[keysConDatos.length - 1].split('-')[0])
         : yearActual
-      const cohortColorMap = {}
-      keysConDatos.forEach((k, idx) => { cohortColorMap[k] = COHORT_PALETTE_A[idx % COHORT_PALETTE_A.length] })
-      const colorMes = k => cohortColorMap[k] || COHORT_PALETTE_A[Math.max(0, keysConDatos.length) % COHORT_PALETTE_A.length]
+      const colorMes = colorCohorteMes
 
       const fmtMesKey = k => {
         if (!k) return '—'
@@ -3741,6 +3554,7 @@
       const manualTotal = contactos.filter(c => clasificarVia(c) === 'manual').length
       const linkTotal = contactos.filter(c => clasificarVia(c) === 'link').length
       const directoTotal = contactos.filter(c => clasificarVia(c) === 'directo').length
+      const sinViaTotal = contactos.filter(c => clasificarVia(c) === 'sin_via').length
 
       return `
         <div class="pv-sec">
@@ -3777,18 +3591,12 @@
               </div>
             </div>
           </div>
-          <div id="pvHoyZoomBar" style="display:none;flex-wrap:wrap;align-items:center;gap:.55rem;padding:.4rem .75rem;margin-bottom:.35rem;background:rgba(255,255,255,.03);border-radius:7px;border:1px solid rgba(255,255,255,.06);">
-            <span style="font-size:.6rem;color:rgba(255,255,255,.3);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;">Rango horario</span>
-            <select id="pvZoomDesde" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
-            <span style="color:rgba(255,255,255,.22);font-size:.7rem">→</span>
-            <select id="pvZoomHasta" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
-            <button onclick="pvZoomHoyReset()" style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.09);border-radius:5px;padding:.18rem .65rem;font-size:.62rem;font-family:Inter,sans-serif;cursor:pointer;letter-spacing:.05em;white-space:nowrap;">Ver todo el día</button>
-          </div>
           <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
           <div class="pv-chart-origin-chips">
             <span class="pv-origin-chip" style="--oc:#50c878"><span class="dot"></span>QR físico · ${qrTotal.toLocaleString('es-AR')}</span>
             <span class="pv-origin-chip" style="--oc:#6495ed"><span class="dot"></span>Enlace digital · ${linkTotal.toLocaleString('es-AR')}</span>
             ${directoTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Directo · ${directoTotal.toLocaleString('es-AR')}</span>` : ''}
+            ${sinViaTotal > 0 ? `<span class="pv-origin-chip" style="--oc:#8a8a82"><span class="dot"></span>Sin vía · ${sinViaTotal.toLocaleString('es-AR')}</span>` : ''}
             ${manualTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Manual · ${manualTotal.toLocaleString('es-AR')}</span>` : ''}
           </div>
         </div>
@@ -3912,12 +3720,11 @@
       const unidades = unidadesGrafico()
       const multiSlot = opciones.multiSlot === true && unidades.length >= 2
       const modoHoy = dias === 0 && !desdeCustom
+      const fechaHasta = opciones.hasta ? new Date(opciones.hasta) : new Date()
 
       // ── Cleanup ──
       if (_pvChart4) { _pvChart4.destroy(); _pvChart4 = null }
       if (_pvLiveRAF) { cancelAnimationFrame(_pvLiveRAF); _pvLiveRAF = null }
-      if (_pvDocMoveH) { document.removeEventListener('mousemove', _pvDocMoveH); _pvDocMoveH = null }
-      if (_pvDocUpH)   { document.removeEventListener('mouseup',   _pvDocUpH);   _pvDocUpH   = null }
 
       const ctx4 = document.getElementById('pvChartEvol4')?.getContext('2d')
       if (!ctx4) return
@@ -3993,8 +3800,8 @@
         if (consultasLEl) consultasLEl.textContent = 'Hoy · consultas'
 
         const VENTANA = 15 // minutos por bucket
-        const hoyB0 = new Date(); hoyB0.setHours(0,0,0,0)
-        const ahoraMin = new Date()
+        const hoyB0 = new Date(fechaHasta); hoyB0.setHours(0,0,0,0)
+        const ahoraMin = fechaHasta
         const minutosDelDia = ahoraMin.getHours()*60 + ahoraMin.getMinutes() + 1
         const numBuckets = Math.ceil(minutosDelDia / VENTANA)
 
@@ -4089,9 +3896,8 @@
 
         // Contadores en vivo
         const refrescarContadores = () => {
-          const hoy=new Date(); hoy.setHours(0,0,0,0)
-          setText('pvLiveScans4', visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoy).length)
-          setText('pvLiveConsultas4', contactos.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoy).length)
+          setText('pvLiveScans4', visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoyB0&&new Date(v.created_at)<=fechaHasta).length)
+          setText('pvLiveConsultas4', contactos.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoyB0&&new Date(v.created_at)<=fechaHasta).length)
         }
         refrescarContadores()
 
@@ -4099,34 +3905,11 @@
         const loopLive = () => { if(_pvChart4&&_pvChart4.canvas){_pvChart4.draw();_pvLiveRAF=requestAnimationFrame(loopLive)}else{_pvLiveRAF=null} }
         setTimeout(() => { if(_pvChart4&&!_pvLiveRAF) loopLive() }, 950)
 
-        // Zoom/pan interactivo: viewport = hoy desde medianoche hasta ahora (sin futuro)
-        window._pvZoomDefaultFrom = hoyB0.getTime()
-        window._pvZoomDefaultTo   = Date.now()
-        if (!window._pvZoomFrom || window._pvZoomFrom < hoyB0.getTime()) window._pvZoomFrom = window._pvZoomDefaultFrom
-        if (!window._pvZoomTo)   window._pvZoomTo   = window._pvZoomDefaultTo
-        pvBindZoomPan(_pvChart4)
-
-        // Activar barra de zoom horario para modo Hoy
-        const pvZB = document.getElementById('pvHoyZoomBar')
-        if (pvZB) {
-          window._pvHoyLbls = lbls
-          window._pvHoyVENTANA = VENTANA
-          const hOpts = (from, to, sel) => Array.from({length:to-from+1},(_,i)=>{
-            const v=from+i; const hh=String(v).padStart(2,'0')
-            return `<option value="${v}"${v===sel?' selected':''}>${hh}:00</option>`
-          }).join('')
-          const horaMax = Math.min(24, new Date().getHours() + 1)
-          const elD = document.getElementById('pvZoomDesde'); if (elD) elD.innerHTML = hOpts(0,23,0)
-          const elH = document.getElementById('pvZoomHasta'); if (elH) elH.innerHTML = hOpts(1,horaMax,horaMax)
-          pvZB.style.display = 'flex'
-        }
-
       } else {
         // ── MODO PERÍODO: diario acumulado ───────────────────────────────
-        // Ocultar barra de zoom (solo activa en modo Hoy)
-        const pvZBP = document.getElementById('pvHoyZoomBar'); if (pvZBP) pvZBP.style.display = 'none'
-        const hasta = hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : new Date()
-        const desde = desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime()-(dias-1)*86400000)
+        const hasta = opciones.hasta ? new Date(opciones.hasta) : hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : fechaHasta
+        const desde = opciones.desde ? new Date(opciones.desde) : desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime()-(dias-1)*86400000)
+        if (!opciones.desde && !desdeCustom) desde.setHours(0,0,0,0)
         const { labelsEvol, dataScans, dataConsultas } = (esPasivo ? datosEvolucionPasivo : datosEvolucionActivo)(contactos, desde, hasta)
 
         // Líneas individuales con los mismos buckets que el total.
@@ -4183,12 +3966,6 @@
             scales:scalesBase
           }
         })
-        // Zoom/pan interactivo: viewport del período actual
-        window._pvZoomDefaultFrom = desde.getTime()
-        window._pvZoomDefaultTo   = hasta.getTime()
-        window._pvZoomFrom = window._pvZoomDefaultFrom
-        window._pvZoomTo   = window._pvZoomDefaultTo
-        pvBindZoomPan(_pvChart4)
       }
 
       // ── Leyenda interactiva (solo modo multi-slot) ──
@@ -4210,6 +3987,7 @@
       const cWebP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && esEntrada(c) }).length
       const cManualP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && clasificarVia(c)==='manual' }).length
       const cDirectaP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && clasificarVia(c)==='directo' }).length
+      const cSinViaP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && clasificarVia(c)==='sin_via' }).length
       const conv = vDigitalP > 0 ? Number((cWebP / vDigitalP * 100).toFixed(1)) : null
       const oportunidadesAbiertas = contactos.filter(esOportunidadAbierta).length
 
@@ -4223,7 +4001,7 @@
       setEl('pvKpi2Sub', 'Escaneos desde QR físico en el período.')
       setEl('pvKpi3N',   cWebP.toLocaleString('es-AR'))
       clearEl('pvKpi3Delta')
-      setEl('pvKpi3Sub', `${cManualP} manual${cManualP===1?'':'es'} · ${cDirectaP} directa${cDirectaP===1?'':'s'} separadas.`)
+      setEl('pvKpi3Sub', `${cManualP} manual${cManualP===1?'':'es'} · ${cDirectaP} directa${cDirectaP===1?'':'s'} · ${cSinViaP} sin vía separadas.`)
       setEl('pvKpi4N',   conv === null ? '—' : `${conv}%`)
       clearEl('pvKpi4Delta')
       setEl('pvKpi4Sub', 'Consultas atribuibles ÷ interacciones atribuibles.')
@@ -4231,30 +4009,32 @@
     }
 
     window.pvSetPeriodo = function(btn) {
+      const valor = btn.dataset.dias
+      if (valor === 'custom') {
+        document.getElementById('pvFltCustom').style.display = ''
+        return // abrir el selector no aplica fechas ni cambia el período vigente
+      }
       document.querySelectorAll('.pv-flt-btn').forEach(b => b.classList.remove('activo'))
       btn.classList.add('activo')
-      const valor = btn.dataset.dias
       window._pvPeriodoSeleccionado = valor
-      const custom = valor === 'custom'
-      document.getElementById('pvFltCustom').style.display = custom ? '' : 'none'
-      if (!custom) {
-        const dias = valor === 'hoy' ? 0 : parseInt(valor, 10)
-        const hasta = new Date()
-        const desde = new Date(hasta)
-        if (dias === 0) {
-          desde.setHours(0,0,0,0)
-        } else {
-          desde.setTime(hasta.getTime() - (dias - 1) * 86400000)
-          desde.setHours(0,0,0,0)
-        }
-        const _lbl = valor === 'hoy' ? 'hoy' : `últimos ${dias} días`
-        renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot() })
-        if (esPasivo) return
-        actualizarPanelesResumenActivo(desde, hasta, _lbl)
-        actualizarKpisActivo(desde, hasta)
-        actualizarSlotCards(desde, hasta)
-        if (misSlots.length) renderSlotMiniCharts(desde, hasta, _lbl)
+      window._pvPeriodoAplicado = valor
+      document.getElementById('pvFltCustom').style.display = 'none'
+      const dias = valor === 'hoy' ? 0 : parseInt(valor, 10)
+      const hasta = new Date()
+      const desde = new Date(hasta)
+      if (dias === 0) {
+        desde.setHours(0,0,0,0)
+      } else {
+        desde.setTime(hasta.getTime() - (dias - 1) * 86400000)
+        desde.setHours(0,0,0,0)
       }
+      const _lbl = valor === 'hoy' ? 'hoy' : `últimos ${dias} días`
+      renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot(), desde, hasta })
+      if (esPasivo) return
+      actualizarPanelesResumenActivo(desde, hasta, _lbl)
+      actualizarKpisActivo(desde, hasta)
+      actualizarSlotCards(desde, hasta)
+      if (misSlots.length) renderSlotMiniCharts(desde, hasta, _lbl)
     }
 
     window.pvAplicarFechas = function() {
@@ -4263,6 +4043,10 @@
       if (!desde || !hasta) { alert('Seleccioná una fecha desde y una hasta.'); return }
       if (desde > hasta) { alert('La fecha desde no puede ser posterior a la fecha hasta.'); return }
       window._pvPeriodoSeleccionado = 'custom'
+      window._pvPeriodoAplicado = 'custom'
+      window._pvCustomAplicadoDesde = desde
+      window._pvCustomAplicadoHasta = hasta
+      document.querySelectorAll('.pv-flt-btn').forEach(b => b.classList.toggle('activo', b.dataset.dias === 'custom'))
       const fechaLocal = val => { const [y,m,d] = val.split('-').map(Number); return new Date(y, m-1, d) }
       renderGraficoPasivo(contactos, 30, desde, hasta, { multiSlot: _modoMultiSlot() })
       if (esPasivo) return
@@ -4735,13 +4519,6 @@
               </div>
             </div>
           </div>
-          <div id="pvHoyZoomBar" style="display:none;flex-wrap:wrap;align-items:center;gap:.55rem;padding:.4rem .75rem;margin-bottom:.35rem;background:rgba(255,255,255,.03);border-radius:7px;border:1px solid rgba(255,255,255,.06);">
-            <span style="font-size:.6rem;color:rgba(255,255,255,.3);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;">Rango horario</span>
-            <select id="pvZoomDesde" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
-            <span style="color:rgba(255,255,255,.22);font-size:.7rem">→</span>
-            <select id="pvZoomHasta" onchange="pvZoomHoyAplicar()" style="background:#1c1b18;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:.18rem .38rem;font-size:.7rem;font-family:Inter,sans-serif;cursor:pointer;outline:none;"></select>
-            <button onclick="pvZoomHoyReset()" style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.09);border-radius:5px;padding:.18rem .65rem;font-size:.62rem;font-family:Inter,sans-serif;cursor:pointer;letter-spacing:.05em;white-space:nowrap;">Ver todo el día</button>
-          </div>
           <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
           <div id="pvLegendHost"></div>
           <div class="pv-live-hint">Cada persona registrada es una <strong>oportunidad en seguimiento comercial</strong>. Los registros pueden avanzar durante los meses siguientes. Mientras más registres, más base de trabajo tiene el equipo.</div>
@@ -4884,18 +4661,20 @@
       const link = datos.contactosPeriodo.filter(v => clasificarVia(v) === 'link').length
       const directo = datos.contactosPeriodo.filter(v => clasificarVia(v) === 'directo').length
       const manual = datos.contactosPeriodo.filter(v => clasificarVia(v) === 'manual').length
-      const total = qr + link + directo + manual
+      const sinVia = datos.contactosPeriodo.filter(v => clasificarVia(v) === 'sin_via').length
+      const total = qr + link + directo + manual + sinVia
       const items = [
         { key:'qr', label:'QR físico', color:'#50c878', n: qr },
         { key:'link', label:'Link compartido', color:'#6495ed', n: link },
         { key:'directo', label:'Directo', color:'rgba(245,243,240,.55)', n: directo },
+        { key:'sin_via', label:'Sin vía', color:'#8a8a82', n: sinVia },
         { key:'manual', label:'Carga manual', color:'#c9a84c', n: manual },
       ].filter(i => i.n > 0)
       if (total === 0) return `
         <div class="pv-panel">
           <div class="pv-panel-head"><div>
             <div class="pv-panel-titulo">Origen de las consultas · ${esc(datos.periodo.etiqueta)}</div>
-            <div class="pv-panel-sub">QR, enlace, directa y carga manual sin mezclar.</div>
+            <div class="pv-panel-sub">QR, enlace, directa, sin vía y carga manual sin mezclar.</div>
           </div></div>
           <div class="pv-panel-empty"><div><div class="pv-panel-empty-mark"></div>Todavía no hay consultas en el período.</div></div>
         </div>`
@@ -5114,7 +4893,7 @@
             </td>
             <td style="font-size:.7rem;color:rgba(255,255,255,.55);">${esc(c.propiedades?.titulo || c.proyecto_slug || '—')}</td>
             <td><span style="font-family:monospace;font-size:.65rem;color:#c9a84c;">${esc(nombreSlot[c.canal_ref] || c.canal_ref || '—')}</span></td>
-            <td><span class="pv-via ${c.origen==='manual' ? '' : (c.canal_via==='qr'?'qr':c.canal_via==='link'?'link':'')}"${(c.origen==='manual'||(c.canal_via!=='qr'&&c.canal_via!=='link')) ? ' style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${(c.origen==='manual'||(c.canal_via!=='qr'&&c.canal_via!=='link')) ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen==='manual'?'Manual':(c.canal_via==='qr'?'QR':c.canal_via==='link'?'Link':'Directo')}</span></td>
+            <td><span class="pv-via ${c.origen==='manual' ? '' : (c.canal_via==='qr'?'qr':c.canal_via==='link'?'link':'')}"${(c.origen==='manual'||(c.canal_via!=='qr'&&c.canal_via!=='link')) ? ' style="color:rgba(245,243,240,.6)"' : ''}><span class="pv-via-mark"${(c.origen==='manual'||(c.canal_via!=='qr'&&c.canal_via!=='link')) ? ' style="background:rgba(245,243,240,.45)"' : ''}></span>${c.origen==='manual'?'Manual':(c.canal_via==='qr'?'QR':c.canal_via==='link'?'Link':c.canal_via==='directo'||c.canal_via==='directa'||!c.canal_ref?'Directo':'Sin vía')}</span></td>
             <td><span class="estado-badge estado-${esc(c.estado||'nueva')}">${esc(ESTADO_LABEL[c.estado]||'Nueva')}</span></td>
           </tr>`).join('')
         : '<tr><td colspan="7"><div class="pv-empty"><div class="pv-empty-mark"></div>Aún no hay consultas generadas desde tus slots.</div></td></tr>'
@@ -5232,11 +5011,12 @@
       const borradores = {}
       document.querySelectorAll('.reply-input[id]').forEach(el => { if (el.value) borradores[el.id] = el.value })
       return {
-        periodo: window._pvPeriodoSeleccionado || document.querySelector('.pv-flt-btn.activo')?.dataset?.dias || null,
-        desde: document.getElementById('pvEvolDesde')?.value || '',
-        hasta: document.getElementById('pvEvolHasta')?.value || '',
-        zoomFrom: window._pvZoomFrom || null,
-        zoomTo: window._pvZoomTo || null,
+        periodo: window._pvPeriodoAplicado || document.querySelector('.pv-flt-btn.activo')?.dataset?.dias || null,
+        desde: window._pvCustomAplicadoDesde || '',
+        hasta: window._pvCustomAplicadoHasta || '',
+        borradorDesde: document.getElementById('pvEvolDesde')?.value || '',
+        borradorHasta: document.getElementById('pvEvolHasta')?.value || '',
+        customAbierto: document.getElementById('pvFltCustom')?.style.display !== 'none',
         seriesOcultas: window._pvSlotHidden || {},
         seriesPanelOcultas: window._pvPanelHidden || {},
         mensajesAbiertos: [...mensajesAbiertos],
@@ -5248,7 +5028,8 @@
     }
 
     function hayEdicionEnCurso() {
-      if (!document.getElementById('derModal')?.hidden) return true
+      const modal = document.getElementById('derModal')
+      if (modal && !modal.hidden) return true
       return [...document.querySelectorAll('.reply-input')].some(el => el.value.trim())
     }
 
@@ -5377,8 +5158,6 @@
       if (_pvPanelConv) { try { _pvPanelConv.destroy() } catch (_) {} ; _pvPanelConv = null }
       if (_pvMiniMap) { try { _pvMiniMap.remove() } catch (_) {} ; _pvMiniMap = null }
       if (_pvLiveRAF) { cancelAnimationFrame(_pvLiveRAF); _pvLiveRAF = null }
-      if (_pvDocMoveH) { document.removeEventListener('mousemove', _pvDocMoveH); _pvDocMoveH = null }
-      if (_pvDocUpH) { document.removeEventListener('mouseup', _pvDocUpH); _pvDocUpH = null }
       Object.keys(_slotCharts).forEach(id => {
         if (_slotCharts[id]) { try { _slotCharts[id].destroy() } catch (_) {} }
         delete _slotCharts[id]
@@ -5461,7 +5240,7 @@
       ;(estado.mensajesAbiertos || []).forEach(id => { if (idsVigentes.has(id)) mensajesAbiertos.add(id) })
       window._pvSlotHidden = estado.seriesOcultas || {}
       window._pvPanelHidden = estado.seriesPanelOcultas || {}
-      renderizarPanelCompleto()
+      return renderizarPanelCompleto(estado)
     }
 
     const capturarSnapshotPublicado = () => ({
@@ -5506,17 +5285,15 @@
         const estado = capturarEstadoVisual()
         const snapshotAnterior = capturarSnapshotPublicado()
         try {
-          publicarSnapshot(snapshot, estado)
+          await publicarSnapshot(snapshot, estado)
         } catch (errorPublicacion) {
           try {
-            publicarSnapshot(snapshotAnterior, estado)
-            setTimeout(() => restaurarEstadoVisual(estado), 0)
+            await publicarSnapshot(snapshotAnterior, estado)
           } catch (errorRestauracion) {
             throw new Error(`Falló la publicación y también la restauración del panel: ${errorRestauracion?.message || errorRestauracion}`)
           }
           throw errorPublicacion
         }
-        setTimeout(() => restaurarEstadoVisual(estado), 0)
         return true
       } catch (error) {
         console.error('[actualización] Se conserva el último snapshot sano:', error)
@@ -5537,16 +5314,19 @@
       window._pvPanelHidden = estado.seriesPanelOcultas || {}
       const boton = estado.periodo ? document.querySelector(`.pv-flt-btn[data-dias="${estado.periodo}"]`) : null
       if (boton && estado.periodo === 'custom') {
-        boton.click()
         const desde = document.getElementById('pvEvolDesde'), hasta = document.getElementById('pvEvolHasta')
         if (desde) desde.value = estado.desde || ''
         if (hasta) hasta.value = estado.hasta || ''
         if (desde?.value && hasta?.value) window.pvAplicarFechas()
       } else if (boton) boton.click()
+      const customForm = document.getElementById('pvFltCustom')
+      if (customForm) customForm.style.display = estado.customAbierto ? '' : 'none'
+      const borradorDesde = document.getElementById('pvEvolDesde'), borradorHasta = document.getElementById('pvEvolHasta')
+      if (borradorDesde) borradorDesde.value = estado.borradorDesde || ''
+      if (borradorHasta) borradorHasta.value = estado.borradorHasta || ''
       Object.entries(estado.borradores || {}).forEach(([id, valor]) => { const el=document.getElementById(id); if(el) el.value=valor })
       const detalle = document.querySelector('.pv-detalle')
       if (detalle) detalle.open = estado.detalleAbierto === true
-      if (estado.zoomFrom && estado.zoomTo && _pvChart4) pvApplyViewport(estado.zoomFrom, estado.zoomTo)
       requestAnimationFrame(() => {
         window.scrollTo(0, Number(estado.scrollY) || 0)
         if (estado.foco) document.getElementById(estado.foco)?.focus()
