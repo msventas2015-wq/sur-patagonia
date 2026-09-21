@@ -421,9 +421,9 @@
       .canal-tbl tbody td:first-child { display:block; padding-bottom:.55rem; text-align:left; border-bottom:1px solid rgba(255,255,255,.06); }
       .canal-tbl tbody td:nth-child(2) { display:none; }
       .canal-tbl tbody td:nth-child(3)::before { content:'Tipo'; }
-      .canal-tbl tbody td:nth-child(4)::before { content:'Interacciones'; }
-      .canal-tbl tbody td:nth-child(5)::before { content:'Consultas'; }
-      .canal-tbl tbody td:nth-child(6)::before { content:'Conversión'; }
+      .canal-tbl tbody td:nth-child(4)::before { content:'Clics QR/link'; }
+      .canal-tbl tbody td:nth-child(5)::before { content:'Consultas QR/link'; }
+      .canal-tbl tbody td:nth-child(6)::before { content:'Conversión QR/link'; }
       .canal-tbl tbody td:nth-child(n+3)::before { color:rgba(255,255,255,.34); font-size:.55rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
       .conv-bar-wrap { flex:1; justify-content:flex-end; }
 
@@ -549,7 +549,7 @@
     </div>
     <div class="card">
       <div class="sec">
-        <div class="sec-t">Interacciones y consultas digitales por canal</div>
+        <div class="sec-t">Clics y consultas por canal · QR y link</div>
       </div>
       <div class="chart-wrap chart-wrap--hbar"><canvas id="chartCanales"></canvas></div>
     </div>
@@ -1397,7 +1397,7 @@ function calcularTermometro() {
       <div class="termometro-dot ${clase}"></div>
       <div>
         <div style="font-size:1rem;font-weight:600;color:${color}">${estado}${crecHtml}</div>
-        <div style="font-size:.72rem;color:var(--gris);margin-top:.2rem">${descripcion} · ${v30} interacciones (digital ${digitalesActualesV.length}, directo ${directasV}) · ${c30} consultas (digital ${digitalesActualesC.length}, directo ${directasC}) · ${canalesActivos.size} canales activos · Manual ${manualesC} incluido en el total y fuera del score</div>
+        <div style="font-size:.72rem;color:var(--gris);margin-top:.2rem">${descripcion} · ${v30} visualizaciones (QR y link ${digitalesActualesV.length}, directo ${directasV}) · ${c30} consultas de la web (QR y link ${digitalesActualesC.length}, directo ${directasC}) · ${canalesActivos.size} canales activos · ${manualesC} cargas manuales fuera de este indicador</div>
       </div>
     </div>`
 
@@ -1537,8 +1537,8 @@ function renderEvolucion() {
         ? fmtFechaAR(cursor, { month:'short', year:'2-digit' })
         : fmtFechaAR(cursor, { day:'2-digit', month:'2-digit' })
     labels.push(label)
-    dataV.push(_visitas.filter(v => { const d = new Date(v.created_at); return d >= cursor && d < siguiente && esDigital(v) }).length)
-    dataC.push(_contactos.filter(c => { const d = new Date(c.created_at); return d >= cursor && d < siguiente && esDigital(c, { contacto:true }) }).length)
+    dataV.push(_visitas.filter(v => { const d = new Date(v.created_at); return d >= cursor && d < siguiente }).length)
+    dataC.push(_contactos.filter(c => { const d = new Date(c.created_at); return d >= cursor && d < siguiente }).length)
   }
 
   const deltaEl = document.getElementById('evolucionDelta')
@@ -1549,7 +1549,7 @@ function renderEvolucion() {
     const hastaVisible = new Date(fin.getTime() - 1)
     const rangoTexto = `${fmtFechaAR(inicio)} — ${fmtFechaAR(hastaVisible)}`
     deltaEl.textContent = delta !== null
-      ? `${rangoTexto} · Último tramo: ${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)}% en interacciones digitales`
+      ? `${rangoTexto} · Último tramo: ${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)}% en visualizaciones`
       : rangoTexto
   }
 
@@ -1563,7 +1563,7 @@ function renderEvolucion() {
       labels,
       datasets:[
         {
-          label:'Interacciones digitales',
+          label:'Visualizaciones',
           data:dataV,
           borderColor:'#7aaeff',
           borderWidth:2,
@@ -1578,18 +1578,18 @@ function renderEvolucion() {
           pointHoverBorderWidth:1.5
         },
         {
-          label:'Consultas digitales',
+          label:'Consultas',
           data:dataC,
-          borderColor:'#b39ddb',
+          borderColor:'#e8c96a',
           borderWidth:1.5,
           backgroundColor:'transparent',
           tension:.4,
           fill:false,
           cubicInterpolationMode:'monotone',
           pointRadius:dataC.map(v => v > 0 ? 5 : 0),
-          pointBackgroundColor:'#b39ddb',
+          pointBackgroundColor:'#e8c96a',
           pointHoverRadius:6,
-          pointHoverBackgroundColor:'#b39ddb',
+          pointHoverBackgroundColor:'#e8c96a',
           pointHoverBorderColor:'#fff',
           pointHoverBorderWidth:1.5
         }
@@ -1711,8 +1711,8 @@ function renderMapaArgentina() {
         <div style="font-family:Inter,sans-serif;min-width:160px">
           <div style="font-size:.75rem;font-weight:600;color:#f0f0f0;margin-bottom:.3rem">${esc(c.nombre)}</div>
           <div style="font-size:.65rem;color:#888;margin-bottom:.4rem">${esc(geo)}</div>
-          <div style="font-size:.7rem;color:#7aaeff">${c.clicks} interacciones digitales</div>
-          <div style="font-size:.7rem;color:#b39ddb">${c.leads} consultas digitales</div>
+          <div style="font-size:.7rem;color:#7aaeff">${c.clicks} clics por QR y link</div>
+          <div style="font-size:.7rem;color:#e8c96a">${c.leads} consultas por QR y link</div>
         </div>`)
       .addTo(_mapaLeaflet)
   })
@@ -1882,8 +1882,8 @@ function renderChartCanales() {
       data: {
         labels: top8.map(c => c.nombre.length > 16 ? c.nombre.slice(0,16)+'…' : c.nombre),
         datasets: [
-          { label:'Interacciones digitales', data:top8.map(c=>c.clicks), backgroundColor:coloresCanal.map(c=>hexToRgba(c,.76)), borderColor:coloresCanal, borderWidth:1, borderRadius:4, borderSkipped:false },
-          { label:'Consultas digitales', data:top8.map(c=>c.leads), backgroundColor:coloresCanal.map(c=>hexToRgba(c,.32)), borderColor:coloresCanal, borderWidth:1, borderRadius:4, borderSkipped:false }
+          { label:'Clics QR y link', data:top8.map(c=>c.clicks), backgroundColor:coloresCanal.map(c=>hexToRgba(c,.76)), borderColor:coloresCanal, borderWidth:1, borderRadius:4, borderSkipped:false },
+          { label:'Consultas QR y link', data:top8.map(c=>c.leads), backgroundColor:coloresCanal.map(c=>hexToRgba(c,.32)), borderColor:coloresCanal, borderWidth:1, borderRadius:4, borderSkipped:false }
         ]
       },
       options: {
@@ -1917,7 +1917,7 @@ function renderChartCanales() {
       }
     })
   } else {
-    mostrarEstadoCanvas('chartCanales', 'Sin actividad digital en este rango.')
+    mostrarEstadoCanvas('chartCanales', 'Sin actividad por QR o link en este rango.')
   }
 }
 
@@ -1942,7 +1942,7 @@ function renderDynamic() {
   const cQr = filtC.filter(c => clasificarActividad(c, { contacto:true }) === 'qr').length
   const cLink = filtC.filter(c => clasificarActividad(c, { contacto:true }) === 'link').length
 
-  // El mapa y la tabla por canal muestran solo el circuito digital comparable.
+  // El mapa y la tabla por canal muestran solo QR y link para conservar una comparación homogénea.
   Object.values(_canalMap).forEach(c => { c.clicks=0; c.leads=0 })
   filtVDigital.forEach(v => { const id=_refToCanal[v.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].clicks++ })
   filtCDigital.forEach(c => { const id=_refToCanal[c.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].leads++ })
@@ -1981,19 +1981,19 @@ function renderDynamic() {
       <div class="kpi-m">${nActivos} con actividad en el período</div>
     </div>
     <div class="kpi" style="--c:var(--azul)">
-      <div class="kpi-lbl">Interacciones totales</div>
+      <div class="kpi-lbl">Visualizaciones</div>
       <div class="kpi-n">${totalClicks}</div>
       <div class="kpi-m">QR ${vQr} · Link ${vLink} · Directo ${filtVDirecto.length} (incluido en el total)</div>
     </div>
-    <div class="kpi" style="--c:#b39ddb">
-      <div class="kpi-lbl">Leads generados</div>
+    <div class="kpi" style="--c:#e8c96a">
+      <div class="kpi-lbl">Consultas</div>
       <div class="kpi-n">${totalLeads}</div>
       <div class="kpi-m">QR ${cQr} · Link ${cLink} · Directo ${filtCDirecto.length} · Manual ${filtCManual.length} (incluidos en el total)${deltaHtml ? ` · ${deltaHtml}` : ''}</div>
     </div>
     <div class="kpi" style="--c:#3bbf88">
-      <div class="kpi-lbl">Conversión digital</div>
+      <div class="kpi-lbl">Conversión QR y link</div>
       <div class="kpi-n">${conv}%</div>
-      <div class="kpi-m">consultas digitales ÷ interacciones digitales</div>
+      <div class="kpi-m">consultas por QR y link ÷ clics por QR y link</div>
     </div>`
 
   // ── Tabla canales ──
@@ -2033,12 +2033,12 @@ function renderDynamic() {
           <th>Canal</th>
           <th>Ubicación</th>
           <th>Tipo</th>
-          <th class="r">Interacciones digitales</th>
-          <th class="r">Consultas digitales</th>
-          <th style="min-width:100px">Conversión digital</th>
+          <th class="r">Clics QR y link</th>
+          <th class="r">Consultas QR y link</th>
+          <th style="min-width:100px">Conversión QR y link</th>
         </tr></thead>
         <tbody>${sorted.map(fmtFila).join('')}</tbody>
-      </table></div>${sinAtribuirV || sinAtribuirC ? `<div style="font-size:.67rem;color:var(--gris);margin-top:.7rem">Sin atribuir a un canal visible: ${sinAtribuirV} interacciones digitales · ${sinAtribuirC} consultas digitales.</div>` : ''}`
+      </table></div>${sinAtribuirV || sinAtribuirC ? `<div style="font-size:.67rem;color:var(--gris);margin-top:.7rem">Sin atribuir a un canal visible: ${sinAtribuirV} clics QR y link · ${sinAtribuirC} consultas QR y link.</div>` : ''}`
     : `<div class="empty-msg">No hay canales registrados para este proyecto.<br><span style="font-size:.7rem">Asegurá que las referencias tengan proyecto_slug = "${esc(proyectoSlug)}".</span></div>`
 
   // ── Chart canales — delegado a renderChartCanales() ──
@@ -2087,8 +2087,8 @@ function renderDynamic() {
   const lTot  = _lotes.length
   const conRef = filtC.filter(c=>c.canal_ref).length
   const funnelData = [
-    { lbl:'Interacciones digitales', val:totalClicksDigital, color:'var(--azul)', base:totalClicksDigital },
-    { lbl:'Consultas digitales', val:totalLeadsDigital, color:'#b39ddb', base:totalClicksDigital },
+    { lbl:'Clics QR y link', val:totalClicksDigital, color:'var(--azul)', base:totalClicksDigital },
+    { lbl:'Consultas QR y link', val:totalLeadsDigital, color:'#8a8a82', numeroColor:'#e8c96a', base:totalClicksDigital },
     { lbl:'Con atribución',     val:conRef,       color:'#c7ad6b',     base:filtC.length }, // DEV-E4.2: atribución ≠ reservado
     { lbl:'Lotes disponibles',  val:lDisp,        color:'#4dc992',     base:lTot        }, // DEV-E4.2: lote disponible ≠ QR
     { lbl:'Lotes reservados',   val:lRsv,         color:'#b8955a',     base:lTot        }, // DEV-E4.2: lote reservado ≠ dorado UI
@@ -2101,7 +2101,7 @@ function renderDynamic() {
       return `<div style="display:grid;grid-template-columns:150px 1fr 44px 40px;align-items:center;gap:.8rem">
         <div style="font-size:.72rem;color:var(--gris)">${r.lbl}</div>
         <div style="height:6px;background:rgba(255,255,255,.05);border-radius:99px;overflow:hidden"><div style="height:100%;width:${ancho}%;background:${r.color};border-radius:99px"></div></div>
-        <div style="font-size:.8rem;font-weight:600;text-align:right">${r.val}</div>
+        <div style="font-size:.8rem;font-weight:600;text-align:right;${r.numeroColor ? `color:${r.numeroColor}` : ''}">${r.val}</div>
         <div style="font-size:.65rem;color:var(--gris);text-align:right">${pct}%</div>
       </div>`
     }).join('')}</div>`
