@@ -439,6 +439,7 @@
 <script type="module">
 import { supabase } from '../js/config.js'
 import { cargarEstadoHistorial } from '../js/historial-alertas.js'
+import { contactosAtendidos, diaArgentina, leerPaginado } from '../js/metricas-paneles.js'
 
 // ── Auth check ──────────────────────────────────────────────
 const { data: { session } } = await supabase.auth.getSession()
@@ -523,25 +524,34 @@ async function cargar() {
   const hace30 = fechaDesde(30)
   const hace60 = fechaDesde(60)
   const mesActual = inicioMes()
+  const desdeLectura = new Date(Math.min(Date.parse(desde), Date.parse(hace30))).toISOString()
 
   try {
     // ── Queries paralelas ─────────────────────────────────────
     const [rCanales, rRefs, rVisitas, rContactos, rContactosTodos, historialEstado] = await Promise.all([
       supabase.from('canales').select('id, nombre, codigo, activo, tipo, ciudad, provincia, user_id, created_at').order('created_at', { ascending: false }),
       supabase.from('referencias').select('id, canal_id, codigo, activo'),
-      supabase.from('visitas').select('canal_ref, canal_via, created_at').gte('created_at', desde).limit(25000),
-      supabase.from('contactos').select('id, canal_ref, canal_via, origen, estado, created_at').gte('created_at', desde).limit(10000),
-      supabase.from('contactos').select('id, canal_ref, origen, estado, created_at').limit(10000),
+      leerPaginado(() => supabase.from('visitas')
+        .select('canal_ref, canal_via, created_at', { count: 'exact' })
+        .gte('created_at', desdeLectura).order('created_at', { ascending: false }).order('id', { ascending: false })),
+      leerPaginado(() => supabase.from('contactos').select('id, canal_ref, canal_via, origen, estado, created_at', { count: 'exact' })
+        .gte('created_at', desde).order('created_at', { ascending: true }).order('id', { ascending: true })),
+      leerPaginado(() => supabase.from('contactos').select('id, canal_ref, origen, estado, created_at', { count: 'exact' })
+        .order('created_at', { ascending: true }).order('id', { ascending: true })),
       cargarEstadoHistorial(supabase),
     ])
 
     const canales   = rCanales.data   || []
     const refs      = rRefs.data      || []
-    const visitas   = rVisitas.data   || []
-    const leadsTodos    = rContactos.data || []
+    const visitasLeidas = rVisitas
+    const visitas = visitasLeidas.filter(v => new Date(v.created_at) >= new Date(desde))
+    const leadsTodos    = rContactos
     const leadsWeb      = leadsTodos.filter(l => l.origen !== 'manual')
-    const leadsAllTodos = rContactosTodos.data || []
+    const leadsAllTodos = rContactosTodos
     const leadsAllWeb   = leadsAllTodos.filter(l => l.origen !== 'manual')
+    const enEstadoNueva = l => (l.estado || 'nueva') === 'nueva'
+    // Atendida = algún evento CRM la llevó a contactado o más allá (aunque hoy figure «nueva»).
+    const atendidos = await contactosAtendidos(supabase, leadsAllTodos.filter(enEstadoNueva).map(l => l.id))
 
     // ── Mapas de lookup ──────────────────────────────────────
     // codigo → canal
@@ -577,8 +587,8 @@ async function cargar() {
 
     // Canales con actividad en 30/60 días
     const codigos30 = new Set(
-      (rVisitas.data || [])
-        .filter(v => v.created_at >= hace30 && v.canal_ref)
+      visitasLeidas
+        .filter(v => v.created_at >= hace30 && v.canal_ref && ['qr','link'].includes(v.canal_via))
         .map(v => v.canal_ref)
     )
 
@@ -597,8 +607,8 @@ async function cargar() {
         if (codigosLeads60.has(r.codigo)) canalIdConLead60.add(c.id)
       })
     })
-    const canalesSinActividad30 = canalesActivos - canalIdConVisita30.size
-    const canalesSinLead60      = canalesActivos - canalIdConLead60.size
+    const canalesSinActividad30 = canalesActivos - canales.filter(c => c.activo && canalIdConVisita30.has(c.id)).length
+    const canalesSinLead60      = canalesActivos - canales.filter(c => c.activo && canalIdConLead60.has(c.id)).length
 
     // ── Actividad ────────────────────────────────────────────
     const totalVisitas  = visitas.length
@@ -615,7 +625,7 @@ async function cargar() {
     // ── Ranking de canales (período activo) ─────────────────
     const visitasPorCodigo = {}
     visitas.forEach(v => {
-      if (v.canal_ref) {
+      if (v.canal_ref && ['qr','link'].includes(v.canal_via)) {
         visitasPorCodigo[v.canal_ref] = (visitasPorCodigo[v.canal_ref] || 0) + 1
       }
     })
@@ -658,7 +668,7 @@ async function cargar() {
     }
 
     const ranking = Object.values(canalStats)
-      .filter(s => s.visitas > 0 || s.leads > 0)
+      .filter(s => s.canal.activo && (s.visitas > 0 || s.leads > 0))
       .sort((a, b) => (b.visitas + b.leads * 3) - (a.visitas + a.leads * 3))
       .slice(0, 15)
 
@@ -672,22 +682,19 @@ async function cargar() {
     for (let i = dias - 1; i >= 0; i--) {
       const d = new Date()
       d.setDate(d.getDate() - i)
-      const iso = d.toISOString().slice(0, 10)
+      const iso = diaArgentina(d)
       diasLabels.push(i === 0 ? 'Hoy' : iso.slice(5))
-      visitasDia.push(visitas.filter(v => v.created_at.slice(0, 10) === iso).length)
-      leadsDia.push(leadsWeb.filter(l => l.created_at.slice(0, 10) === iso).length)
+      visitasDia.push(visitas.filter(v => diaArgentina(v.created_at) === iso).length)
+      leadsDia.push(leadsWeb.filter(l => diaArgentina(l.created_at) === iso).length)
     }
 
     // ── Estado CRM ────────────────────────────────────────────
-    const estadosCRM = {}
-    leadsAllTodos.forEach(l => {
-      estadosCRM[l.estado || 'nueva'] = (estadosCRM[l.estado || 'nueva'] || 0) + 1
-    })
-    const leadsProcesadosWeb = leadsAllWeb.filter(l => l.estado && l.estado !== 'nueva').length
+    const leadsProcesadosWeb = leadsAllWeb.filter(l => !enEstadoNueva(l) || atendidos.has(l.id)).length
 
     // ── SCORE ─────────────────────────────────────────────────
     // A (30): % canales activos con visita en período
-    const pA = canalesActivos > 0 ? Math.round(pct(canalIdConVisita30.size, canalesActivos) * 30 / 100) : 0
+    const canalesActivosConVisita = canales.filter(c => c.activo && canalIdConVisita30.has(c.id)).length
+    const pA = canalesActivos > 0 ? Math.round(pct(canalesActivosConVisita, canalesActivos) * 30 / 100) : 0
 
     // B (25): calidad de tracking físico — solo consultas Web.
     const pB = leadsAllWeb.length > 0 ? Math.round(pct(leadsAllWebConCanal, leadsAllWeb.length) * 25 / 100) : 0
@@ -715,12 +722,15 @@ async function cargar() {
     const listaSinActividad = canales.filter(c => c.activo && !canalIdConVisita30.has(c.id))
     const listaInactivos    = canales.filter(c => !c.activo)
     renderEstadoGeneral(totalCanales, canalesActivos, canalesInactivos, canalesNuevosMes, listaSinActividad, listaInactivos, conUserID, totalCanales)
-    renderActividad(totalVisitas, totalLeads, leadsConCanal, totalLeadsWeb, leadsWebSinCanal, leadsAllTodos.length, leadsAllSinCanal)
+    renderActividad(totalVisitas, totalLeads, leadsConCanal, totalLeadsWeb, leadsWebSinCanal, leadsAllTodos.length, leadsAllSinCanal,
+      visitas.filter(v => v.canal_ref && ['qr','link'].includes(v.canal_via)).length,
+      leadsWeb.filter(l => l.canal_ref).length)
     renderChart(diasLabels, visitasDia, leadsDia)
     renderRanking(ranking, maxVisitas)
     renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal, historialEstado)
     renderCalidad(totalCanales, canalesSinRef, refsActivas, refs.length, leadsAllTodos.length, leadsAllConCanal, leadsAllSinCanal)
-    renderAtribucion(leadsAllTodos.length, leadsAllConCanal, leadsAllSinCanal, estadosCRM)
+    renderAtribucion(leadsAllTodos.length, leadsAllConCanal, leadsAllSinCanal,
+      leadsAllTodos.filter(l => enEstadoNueva(l) && !atendidos.has(l.id)).length)
 
     document.getElementById('loadingSpinner').style.display = 'none'
     document.getElementById('contenido').style.display = 'block'
@@ -796,15 +806,15 @@ function renderEstadoGeneral(total, activos, inactivos, nuevos, listaSinAct, lis
     </div>`).join('')
 }
 
-function renderActividad(visitas, consultasTodos, consultasConCanal, leadsWeb, leadsWebSinCanal, leadsAll, leadsAllSinCanal) {
-  const convPct = pct(leadsWeb, visitas)
+function renderActividad(visitas, consultasTodos, consultasConCanal, leadsWeb, leadsWebSinCanal, leadsAll, leadsAllSinCanal, entradas, consultasAtribuidas) {
+  const convPct = pct(consultasAtribuidas, entradas)
   const grid = document.getElementById('kpiActividad')
   grid.innerHTML = [
     { l: 'Visitas en período',       v: fmt(visitas), s: 'registradas en el período' },
     { l: 'Consultas generadas',      v: fmt(consultasTodos), s: 'web + manuales', cls: consultasTodos > 0 ? 'up' : '' },
     { l: 'Consultas con canal',      v: fmt(consultasConCanal), s: `${pct(consultasConCanal,consultasTodos||1)}% atribuidas`, cls: pct(consultasConCanal,consultasTodos||1) >= 70 ? 'up' : 'warn' },
     { l: 'Leads web sin atribución', v: fmt(leadsWebSinCanal), s: 'sin canal físico asignado', cls: leadsWebSinCanal > 0 ? 'warn' : 'up' },
-    { l: 'Tasa de conversión',       v: convPct + '%', s: 'visitas → leads', cls: convPct >= 3 ? 'up' : convPct > 0 ? 'warn' : '' },
+    { l: 'Tasa de conversión',       v: convPct + '%', s: 'consultas con canal ÷ entradas QR y link', cls: convPct >= 3 ? 'up' : convPct > 0 ? 'warn' : '' },
     { l: 'Total histórico leads',    v: fmt(leadsAll), s: `${fmt(leadsAllSinCanal)} sin canal`, cls: leadsAllSinCanal === 0 ? 'up' : 'warn' },
   ].map(k => `
     <div class="kpi-card">
@@ -972,10 +982,10 @@ function renderCalidad(totalCanales, sinRef, refsActivas, totalRefs, totalLeads,
     </div>`).join('')
 }
 
-function renderAtribucion(totalLeads, leadsConCanal, leadsSinCanal, estadosCRM) {
+function renderAtribucion(totalLeads, leadsConCanal, leadsSinCanal, sinRevisar) {
   const atribPct = pct(leadsConCanal, totalLeads || 1)
   const noAtrib  = pct(leadsSinCanal, totalLeads || 1)
-  const procesados = totalLeads - (estadosCRM['nueva'] || 0)
+  const procesados = totalLeads - sinRevisar
   const procPct = pct(procesados, totalLeads || 1)
 
   const grid = document.getElementById('kpiAtribucion')
@@ -983,7 +993,7 @@ function renderAtribucion(totalLeads, leadsConCanal, leadsSinCanal, estadosCRM) 
     { l: 'Leads totales (histórico)',  v: fmt(totalLeads),     s: 'todos los tiempos' },
     { l: 'Con canal atribuido',        v: fmt(leadsConCanal),  s: `${atribPct}% de los leads`, cls: atribPct >= 70 ? 'up' : 'warn' },
     { l: 'Sin canal (no atribuibles)', v: fmt(leadsSinCanal),  s: `${noAtrib}% sin origen`, cls: leadsSinCanal > 0 ? 'warn' : 'up' },
-    { l: 'Estado "Nueva" (sin revisar)',v: fmt(estadosCRM['nueva']||0), s: 'pendientes de gestión', cls: (estadosCRM['nueva']||0) > 5 ? 'warn' : 'up' },
+    { l: 'Estado "Nueva" (sin revisar)',v: fmt(sinRevisar), s: 'pendientes de gestión', cls: sinRevisar > 5 ? 'warn' : 'up' },
     { l: 'Procesados en CRM',          v: fmt(procesados),     s: `${procPct}% gestionados`, cls: procPct >= 60 ? 'up' : 'warn' },
   ].map(k => `
     <div class="kpi-card">

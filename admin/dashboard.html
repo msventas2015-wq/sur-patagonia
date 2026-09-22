@@ -381,11 +381,12 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
+import { contactosAtendidos, diaArgentina, leerPaginado } from '../js/metricas-paneles.js'
 
 const $ = id => document.getElementById(id)
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 const esEntrada = v => v.canal_via === 'qr' || v.canal_via === 'link'
-const dia = d => new Date(d).toISOString().slice(0, 10)
+const dia = diaArgentina
 const CANAL_COLORS = window.SPCanalColors || {}
 const colorCanalDesdeIndex = CANAL_COLORS.colorCanalDesdeIndex || (() => '#8a8a82')
 const hexToRgba = CANAL_COLORS.hexToRgba || ((hex, alpha) => {
@@ -413,21 +414,36 @@ $('saludo').textContent = (hora < 13 ? 'Buen día' : hora < 20 ? 'Buenas tardes'
 async function cargar() {
   const hace60 = new Date(); hace60.setDate(hace60.getDate() - 60)
 
+  // Lecturas completas: si fallan, las cifras que dependen de ellas muestran «—», nunca cero.
+  const visitasCompletas = leerPaginado(() => supabase.from('visitas')
+    .select('canal_ref, canal_via, created_at', { count: 'exact' })
+    .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }).order('id', { ascending: false }))
+    .then(data => ({ data, error: null }), error => ({ data: null, error }))
+  const sinAtenderCompletas = leerPaginado(() => supabase.from('contactos')
+    .select('id', { count: 'exact' }).eq('estado', 'nueva')
+    .order('created_at', { ascending: true }).order('id', { ascending: true }))
+    .then(async nuevas => {
+      const atendidas = await contactosAtendidos(supabase, nuevas.map(c => c.id))
+      return { n: nuevas.filter(c => !atendidas.has(c.id)).length, error: null }
+    })
+    .catch(error => ({ n: null, error }))
+
   const [rLeads60, rVisitas60, rCanales, rRefs, rProps, rNumProps, rNumProy, rNuevas] = await Promise.all([
     supabase.from('contactos').select('nombre, mensaje, canal_ref, canal_via, origen, proyecto_slug, estado, leido, created_at, propiedades(titulo, codigo_interno)')
       .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }),
-    supabase.from('visitas').select('canal_ref, canal_via, created_at')
-      .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }).limit(50000),
+    visitasCompletas,
     supabase.from('canales').select('id, nombre, codigo, activo, color_index'),
     supabase.from('referencias').select('codigo, canal_id'),
     supabase.from('propiedades').select('id, titulo, codigo_interno, precio, moneda, operacion, imagenes, activa').order('created_at', { ascending: false }).limit(8),
     supabase.from('propiedades').select('*', { count: 'exact', head: true }).eq('activa', true),
     supabase.from('proyectos').select('*', { count: 'exact', head: true }),
-    supabase.from('contactos').select('*', { count: 'exact', head: true }).eq('estado', 'nueva'),
+    sinAtenderCompletas,
   ])
 
   const leads60 = rLeads60.data || []
-  const visitas60 = rVisitas60.data || []
+  const visitasOk = !rVisitas60.error
+  if (!visitasOk) console.error('[dashboard] Lectura incompleta de visitas', rVisitas60.error)
+  const visitas60 = visitasOk ? rVisitas60.data : []
   const canales = rCanales.data || []
   const refs    = rRefs.data || []
 
@@ -454,12 +470,13 @@ async function cargar() {
     dEl.className = 'delta ' + (pct >= 0 ? 'up' : 'down')
   }
   $('k30Sub').textContent = `vs ${lPrev.length} en los 30 días previos`
-  $('kNuevas').textContent = rNuevas.count ?? 0
+  if (rNuevas.error) console.error('[dashboard] No se pudo verificar la atención de consultas', rNuevas.error)
+  $('kNuevas').textContent = rNuevas.n ?? '—'
   const vCan30 = v30.filter(v => v.canal_ref && esEntrada(v))
-  $('kVia').textContent = vCan30.length
+  $('kVia').textContent = visitasOk ? vCan30.length : '—'
   const qrClicks30 = vCan30.filter(v => v.canal_via === 'qr').length
   const linkClicks30 = vCan30.length - qrClicks30
-  $('kViaSub').textContent = `${qrClicks30} por QR · ${linkClicks30} por link · ${v30.length} visitas totales`
+  $('kViaSub').textContent = visitasOk ? `${qrClicks30} por QR · ${linkClicks30} por link · ${v30.length} visitas totales` : 'No se pudieron leer las visitas completas'
   $('kProps').textContent = rNumProps.count ?? 0
   $('kProy').textContent  = rNumProy.count ?? 0
   $('kCan').textContent   = canales.length
@@ -552,9 +569,9 @@ async function cargar() {
   const porDiaClicks = {}
   l30.forEach(l => { const d = dia(l.created_at); porDiaConsultas[d] = (porDiaConsultas[d] || 0) + 1 })
   vCan30.forEach(v => { const d = dia(v.created_at); porDiaClicks[d] = (porDiaClicks[d] || 0) + 1 })
-  const clicksData = dias.map(d => porDiaClicks[d] || 0)
+  const clicksData = dias.map(d => visitasOk ? (porDiaClicks[d] || 0) : null)
   const consultasData = dias.map(d => porDiaConsultas[d] || 0)
-  const actividadTotal = dias.map((_, i) => clicksData[i] + consultasData[i])
+  const actividadTotal = dias.map((_, i) => (clicksData[i] ?? 0) + consultasData[i])
   const maxEvolucion = Math.max(...actividadTotal, 0)
   const peakIdx = maxEvolucion > 0 ? actividadTotal.indexOf(maxEvolucion) : -1
 
@@ -626,14 +643,19 @@ async function cargar() {
 
   const qr = vCan30.filter(v => v.canal_via === 'qr').length
   const li = vCan30.length - qr
-  const di = Math.max(v30.length - qr - li, 0)
-  const totalOrigen = qr + li + di
+  // Directas = sin canal. Con canal y sin vía comprobada no es «Directas»: va como «No identificado».
+  const di = v30.filter(v => !v.canal_ref).length
+  const noIdentificado = v30.filter(v => v.canal_ref && !esEntrada(v)).length
+  const totalOrigen = qr + li + di + noIdentificado
   const origenItems = [
     { label: 'QR físico', value: qr, color: '#50c878' },
     { label: 'Link directo', value: li, color: '#6495ed' },
     { label: 'Directas', value: di, color: '#8a8a82' },
+    ...(noIdentificado ? [{ label: 'No identificado', value: noIdentificado, color: '#8a8a82' }] : []),
   ]
-  $('chOrigenModulo').innerHTML = totalOrigen === 0
+  $('chOrigenModulo').innerHTML = !visitasOk
+    ? '<div class="empty-state adm-origen-empty">No se pudieron leer las visitas completas.</div>'
+    : totalOrigen === 0
     ? '<div class="empty-state adm-origen-empty">Sin datos de tráfico en el período.</div>'
     : `<div class="adm-origen-wrap">
         ${origenItems.map(item => {
@@ -673,7 +695,7 @@ async function cargar() {
   })
 
   const filas = canalesActivos
-    .map(c => ({ nombre: c.nombre, color_index: c.color_index, clics: clicksPorCanal[c.nombre] || 0, leads: leadsPorCanal[c.nombre] || 0 }))
+    .map(c => ({ nombre: c.nombre, color_index: c.color_index, clics: visitasOk ? (clicksPorCanal[c.nombre] || 0) : null, leads: leadsPorCanal[c.nombre] || 0 }))
     .sort((a, b) => b.clics - a.clics)
 
   const maxClics = Math.max(...filas.map(f => f.clics), 1)
@@ -683,7 +705,7 @@ async function cargar() {
         const color = colorCanal(f.color_index)
         return `<tr>
           <td><span class="canal-nombre"><span class="canal-dot canal-on" style="background:${color};box-shadow:0 0 7px ${color}55,0 0 16px ${color}22;"></span>${esc(f.nombre)}</span></td>
-          <td>${f.clics}</td>
+          <td>${f.clics ?? '—'}</td>
           <td>${f.leads}</td>
           <td>${conv}</td>
         </tr>`
@@ -706,7 +728,7 @@ async function cargar() {
               ? '<span class="badge-via badge-qr"><span class="badge-via-icon"></span>QR</span>'
               : l.canal_via === 'link'
                 ? '<span class="badge-via badge-link">Link</span>'
-                : '<span class="badge-via badge-directo">Directo</span>')
+                : '<span class="badge-via badge-directo">No identificado</span>')
           : '<span class="badge-via badge-directo">Directo</span>'
         const proyecto = l.propiedades?.titulo
           ? `${l.propiedades.codigo_interno ? `${l.propiedades.codigo_interno} · ` : ''}${l.propiedades.titulo}`
