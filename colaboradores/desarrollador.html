@@ -704,10 +704,15 @@ function clasificarActividad(registro, { contacto = false } = {}) {
   const via = String(registro?.canal_via || '').toLowerCase()
   if (via === 'qr') return 'qr'
   if (via === 'link') return 'link'
-  return 'directo'
+  if (via === 'directo' || via === 'directa') return 'directo'
+  // Con canal y sin vía comprobada no es «Directo». Los tramos de aperturas ya traen su clase.
+  if (registro?.clase) return registro.clase
+  return registro?.canal_ref ? 'no_identificado' : 'directo'
 }
 
 const esDigital = (registro, opciones) => ['qr','link'].includes(clasificarActividad(registro, opciones))
+// Las aperturas llegan agrupadas por tramo: cada grupo trae su cantidad en `n`.
+const contarAperturas = filas => filas.reduce((total, fila) => total + (Number.isInteger(fila?.n) ? fila.n : 1), 0)
 
 function rangoDiasAR(dias, ahora = new Date()) {
   const fin = new Date(ahora)
@@ -717,7 +722,7 @@ function rangoDiasAR(dias, ahora = new Date()) {
 }
 
 function etiquetaClasificacion(tipo) {
-  return ({ qr:'QR', link:'Link', directo:'Directo', manual:'Manual' })[tipo] || 'Directo'
+  return ({ qr:'QR', link:'Link', directo:'Directo', manual:'Manual', no_identificado:'No identificado' })[tipo] || 'No identificado'
 }
 
 // DEV-E4.2: PIPE_COLORS eliminado — era código muerto (nunca consumido). Pipeline usa clases CSS directamente.
@@ -736,6 +741,7 @@ let _proyectoData  = null
 let _diasPeriodo = 30
 let _visitas     = []
 let _contactos   = []
+let _sinSeguimiento = 0
 let _lotes       = []
 let _canalMap    = {}   // canal_id → {nombre, tipo, ciudad, provincia, activo, refCodes[]}
 let _refToCanal  = {}   // ref.codigo → canal_id
@@ -1094,6 +1100,52 @@ async function cargarContactosAnonimos() {
   return filas
 }
 
+const CLASES_APERTURA = new Set(['qr','link','directo','no_identificado'])
+const CAMPOS_GRUPO_APERTURA = 'aperturas,canal_ref,clase,desde'
+
+// Aperturas de la página del proyecto, solo como agregados por tramo (M8): sin filas
+// ni códigos de canales ajenos. Cada grupo queda como una fila con su cantidad en `n`.
+async function cargarAperturasProyecto() {
+  const { data } = await ejecutarConsulta(supabase.rpc('rpc_desarrollador_aperturas_proyecto_v1', {}), 'aperturas del proyecto')
+  const resultado = typeof data === 'string' ? JSON.parse(data) : data
+  const total = Number(resultado?.total_aperturas)
+  // Desde este instante los tramos son horarios; antes, diarios.
+  const inicioHorario = new Date(resultado?.inicio_horario)
+  if (!resultado || !Array.isArray(resultado.grupos) || !resultado.corte_created_at || !Number.isInteger(total) || total < 0 ||
+      !Number.isFinite(inicioHorario.getTime())) {
+    throw new ErrorCarga('aperturas del proyecto', 'la RPC devolvió un contrato inválido')
+  }
+  const grupos = resultado.grupos.map(grupo => {
+    const n = Number(grupo?.aperturas)
+    if (!grupo || Object.keys(grupo).sort().join(',') !== CAMPOS_GRUPO_APERTURA || !CLASES_APERTURA.has(grupo.clase) ||
+        !Number.isInteger(n) || n < 1 || !Number.isFinite(new Date(grupo.desde).getTime()) ||
+        (grupo.canal_ref !== null && typeof grupo.canal_ref !== 'string')) {
+      throw new ErrorCarga('aperturas del proyecto', 'la RPC devolvió un grupo inválido')
+    }
+    return {
+      created_at: grupo.desde,
+      canal_ref: grupo.canal_ref,
+      canal_via: grupo.clase === 'qr' || grupo.clase === 'link' ? grupo.clase : null,
+      clase: grupo.clase,
+      tramo: new Date(grupo.desde) >= inicioHorario ? 'hora' : 'dia',
+      n
+    }
+  })
+  if (contarAperturas(grupos) !== total) throw new ErrorCarga('aperturas del proyecto', 'los grupos no suman el total')
+  return grupos
+}
+
+// Consultas abiertas sin movimiento CRM en más de 5 días: solo la cantidad.
+async function cargarSeguimientoPendiente() {
+  const { data } = await ejecutarConsulta(supabase.rpc('rpc_desarrollador_seguimiento_pendiente_v1', {}), 'seguimiento de consultas')
+  const resultado = typeof data === 'string' ? JSON.parse(data) : data
+  const n = Number(resultado?.consultas_sin_seguimiento)
+  if (!resultado?.corte_created_at || !Number.isInteger(n) || n < 0) {
+    throw new ErrorCarga('seguimiento de consultas', 'la RPC devolvió un contrato inválido')
+  }
+  return n
+}
+
 function construirMapas(refs, canales) {
   const canalMap = {}
   const refToCanal = {}
@@ -1198,14 +1250,10 @@ async function obtenerSnapshot() {
     .from('canales')
     .select('id, nombre, codigo, tipo, ciudad, provincia, activo, latitud, longitud, color_index', opciones)
     .in('id', ids)))
-  const refCodes = [...new Set([...refs.map(r => r.codigo), ...canales.map(c => c.codigo)].filter(Boolean))]
-
-  const [visitas, contactos, lotesR] = await Promise.all([
-    cargarChunks('visitas', refCodes, (codigos, modulo) => cargarPorFechaId(modulo, (opciones, extra = {}) => {
-      let q = supabase.from('visitas').select('id, created_at, canal_ref, canal_via', opciones).in('canal_ref', codigos)
-      return extra.incluirNulos ? q.is('created_at', null) : q.not('created_at', 'is', null)
-    })),
+  const [visitas, contactos, sinSeguimiento, lotesR] = await Promise.all([
+    cargarAperturasProyecto(),
     cargarContactosAnonimos(),
+    cargarSeguimientoPendiente(),
     cargarPorId('lotes', opciones => supabase
       .from('lotes')
       .select('id, numero, tipo_lote, estado, mapa_x, mapa_y', opciones)
@@ -1213,7 +1261,7 @@ async function obtenerSnapshot() {
   ])
 
   const mapas = construirMapas(refs, canales)
-  return { proyecto, visitas, contactos, lotes:lotesR.filas, ...mapas }
+  return { proyecto, visitas, contactos, sinSeguimiento, lotes:lotesR.filas, ...mapas }
 }
 
 function publicarSnapshotDesarrollador(snapshot) {
@@ -1221,6 +1269,7 @@ function publicarSnapshotDesarrollador(snapshot) {
   proyectoNombre = snapshot.proyecto.nombre || proyectoSlug
   _visitas = snapshot.visitas
   _contactos = snapshot.contactos
+  _sinSeguimiento = snapshot.sinSeguimiento
   _lotes = snapshot.lotes
   _canalMap = snapshot.canalMap
   _refToCanal = snapshot.refToCanal
@@ -1248,6 +1297,7 @@ async function cargarTodo({ manual = false } = {}) {
     proyecto:_proyectoData,
     visitas:_visitas,
     contactos:_contactos,
+    sinSeguimiento:_sinSeguimiento,
     lotes:_lotes,
     canalMap:_canalMap,
     refToCanal:_refToCanal
@@ -1368,12 +1418,14 @@ function calcularTermometro() {
   const canalesDe = filas => new Set(filas.map(f => _refToCanal[f.canal_ref]).filter(Boolean))
   const canalesActivos = canalesDe([...actividadActualV, ...actividadActualC])
   const canalesActivosAnterior = canalesDe([...actividadAnteriorV, ...actividadAnteriorC])
-  const v30 = actividadActualV.length
+  const v30 = contarAperturas(actividadActualV)
   const c30 = actividadActualC.length
-  const vAnterior = actividadAnteriorV.length
+  const vAnterior = contarAperturas(actividadAnteriorV)
   const cAnterior = actividadAnteriorC.length
-  const directasV = actividadActualV.filter(v => clasificarActividad(v) === 'directo').length
+  const directasV = contarAperturas(actividadActualV.filter(v => clasificarActividad(v) === 'directo'))
+  const noIdentificadasV = contarAperturas(actividadActualV.filter(v => clasificarActividad(v) === 'no_identificado'))
   const directasC = actividadActualC.filter(c => clasificarActividad(c, { contacto:true }) === 'directo').length
+  const noIdentificadasC = actividadActualC.filter(c => clasificarActividad(c, { contacto:true }) === 'no_identificado').length
   const manualesC = _contactos.filter(c => enRango(c, inicio, fin) && clasificarActividad(c, { contacto:true }) === 'manual').length
 
   const score = (v30 * 1) + (c30 * 5) + (canalesActivos.size * 3)
@@ -1397,7 +1449,7 @@ function calcularTermometro() {
       <div class="termometro-dot ${clase}"></div>
       <div>
         <div style="font-size:1rem;font-weight:600;color:${color}">${estado}${crecHtml}</div>
-        <div style="font-size:.72rem;color:var(--gris);margin-top:.2rem">${descripcion} · ${v30} visualizaciones (QR y link ${digitalesActualesV.length}, directo ${directasV}) · ${c30} consultas de la web (QR y link ${digitalesActualesC.length}, directo ${directasC}) · ${canalesActivos.size} canales activos · ${manualesC} cargas manuales fuera de este indicador</div>
+        <div style="font-size:.72rem;color:var(--gris);margin-top:.2rem">${descripcion} · ${v30} visualizaciones (QR y link ${contarAperturas(digitalesActualesV)}, directo ${directasV}${noIdentificadasV ? `, no identificado ${noIdentificadasV}` : ''}) · ${c30} consultas de la web (QR y link ${digitalesActualesC.length}, directo ${directasC}${noIdentificadasC ? `, no identificado ${noIdentificadasC}` : ''}) · ${canalesActivos.size} canales activos · ${manualesC} cargas manuales fuera de este indicador</div>
       </div>
     </div>`
 
@@ -1418,12 +1470,15 @@ function renderFeed() {
   if (!el) return
 
   const eventos = []
+  // Las aperturas llegan agrupadas por tramo: una fila por grupo, sin hora individual.
   _visitas.forEach(v => {
     const canalId = _refToCanal[v.canal_ref]
     const canal = canalId ? _canalMap[canalId] : null
     const clasificacion = clasificarActividad(v)
     eventos.push({
-      tipo:'interaccion',
+      tipo:'aperturas',
+      n:contarAperturas([v]),
+      tramo:v.tramo,
       clasificacion,
       ts:new Date(v.created_at),
       canal:canal?.nombre || '—',
@@ -1465,7 +1520,14 @@ function renderFeed() {
         const geo = [e.ciudad, e.prov].filter(Boolean).join(', ')
         const esConsulta = e.tipo === 'consulta'
         const via = etiquetaClasificacion(e.clasificacion)
-        const accion = esConsulta ? `Nueva consulta · ${via}` : `Interacción · ${via}`
+        const porHora = e.tramo === 'hora'
+        const aperturas = `${e.n} apertura${e.n === 1 ? '' : 's'} ${porHora ? 'durante esa hora' : 'ese día'}`
+        const accion = esConsulta ? `Nueva consulta · ${via}` : `${aperturas} · ${via}`
+        const cuando = esConsulta
+          ? tiempoRelativo(e.ts)
+          : porHora
+            ? `${fmtFechaAR(e.ts)} ${fmtHoraAR(e.ts)}–${fmtHoraAR(new Date(e.ts.getTime() + 3600000))}`
+            : fmtFechaAR(e.ts, { day:'2-digit', month:'2-digit', year:'numeric' })
         const kind = esConsulta ? 'lead' : e.clasificacion === 'qr' ? 'scan' : e.clasificacion === 'link' ? 'link' : ''
         return `<div class="feed-row ${kind === 'lead' ? 'lead' : ''}">
           <span class="feed-kind ${kind}">${esConsulta ? 'Lead' : via}</span>
@@ -1473,7 +1535,7 @@ function renderFeed() {
             <div class="feed-title">${accion} — ${esc(e.canal)}</div>
             ${geo ? `<div class="feed-meta">${esc(geo)}</div>` : ''}
           </div>
-          <div class="feed-time">${tiempoRelativo(e.ts)}</div>
+          <div class="feed-time">${cuando}</div>
         </div>`
       }).join('')}</div>`
     : `<div class="empty-msg">Sin actividad reciente.</div>`
@@ -1537,7 +1599,7 @@ function renderEvolucion() {
         ? fmtFechaAR(cursor, { month:'short', year:'2-digit' })
         : fmtFechaAR(cursor, { day:'2-digit', month:'2-digit' })
     labels.push(label)
-    dataV.push(_visitas.filter(v => { const d = new Date(v.created_at); return d >= cursor && d < siguiente }).length)
+    dataV.push(contarAperturas(_visitas.filter(v => { const d = new Date(v.created_at); return d >= cursor && d < siguiente })))
     dataC.push(_contactos.filter(c => { const d = new Date(c.created_at); return d >= cursor && d < siguiente }).length)
   }
 
@@ -1623,7 +1685,7 @@ function renderEvolucion() {
 }
 
 function renderMapaArgentina() {
-  const canales = Object.values(_canalMap)
+  const canales = Object.values(_canalMap).filter(c => c.activo)
   const conCoords = canales.filter(c =>
     c.latitud !== null && c.latitud !== '' &&
     c.longitud !== null && c.longitud !== '' &&
@@ -1850,7 +1912,7 @@ function renderChartCanales() {
 
   // Calcular clicks y leads por canal para este rango
   const cClicks = {}, cLeads = {}
-  filtV.forEach(v => { const id = _refToCanal[v.canal_ref] || '__sin_atribuir__'; cClicks[id] = (cClicks[id]||0)+1 })
+  filtV.forEach(v => { const id = _refToCanal[v.canal_ref] || '__sin_atribuir__'; cClicks[id] = (cClicks[id]||0)+contarAperturas([v]) })
   filtC.forEach(c => { const id = _refToCanal[c.canal_ref] || '__sin_atribuir__'; cLeads[id]  = (cLeads[id] ||0)+1 })
 
   const filasActividad = [...Object.keys(_canalMap), ...(cClicks.__sin_atribuir__ || cLeads.__sin_atribuir__ ? ['__sin_atribuir__'] : [])]
@@ -1937,25 +1999,27 @@ function renderDynamic() {
   const filtVDirecto = filtV.filter(v => clasificarActividad(v) === 'directo')
   const filtCDirecto = filtC.filter(c => clasificarActividad(c, { contacto:true }) === 'directo')
   const filtCManual = filtC.filter(c => clasificarActividad(c, { contacto:true }) === 'manual')
-  const vQr = filtV.filter(v => clasificarActividad(v) === 'qr').length
-  const vLink = filtV.filter(v => clasificarActividad(v) === 'link').length
+  const filtVNoIdentificado = filtV.filter(v => clasificarActividad(v) === 'no_identificado')
+  const filtCNoIdentificado = filtC.filter(c => clasificarActividad(c, { contacto:true }) === 'no_identificado')
+  const vQr = contarAperturas(filtV.filter(v => clasificarActividad(v) === 'qr'))
+  const vLink = contarAperturas(filtV.filter(v => clasificarActividad(v) === 'link'))
   const cQr = filtC.filter(c => clasificarActividad(c, { contacto:true }) === 'qr').length
   const cLink = filtC.filter(c => clasificarActividad(c, { contacto:true }) === 'link').length
 
   // El mapa y la tabla por canal muestran solo QR y link para conservar una comparación homogénea.
   Object.values(_canalMap).forEach(c => { c.clicks=0; c.leads=0 })
-  filtVDigital.forEach(v => { const id=_refToCanal[v.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].clicks++ })
+  filtVDigital.forEach(v => { const id=_refToCanal[v.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].clicks += contarAperturas([v]) })
   filtCDigital.forEach(c => { const id=_refToCanal[c.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].leads++ })
 
   const canales     = Object.values(_canalMap)
   const nCanales    = canales.length
   const canalesActivos = new Set([...filtV, ...filtC].map(f => _refToCanal[f.canal_ref]).filter(Boolean))
   const nActivos    = canalesActivos.size
-  const totalClicks = filtV.length
+  const totalClicks = contarAperturas(filtV)
   const totalLeads  = filtC.length
-  const totalClicksDigital = filtVDigital.length
+  const totalClicksDigital = contarAperturas(filtVDigital)
   const totalLeadsDigital = filtCDigital.length
-  const sinAtribuirV = filtVDigital.filter(v => !_refToCanal[v.canal_ref]).length
+  const sinAtribuirV = contarAperturas(filtVDigital.filter(v => !_refToCanal[v.canal_ref]))
   const sinAtribuirC = filtCDigital.filter(c => !_refToCanal[c.canal_ref]).length
   const conv        = totalClicksDigital>0 ? Math.round(totalLeadsDigital/totalClicksDigital*100) : 0
 
@@ -1968,8 +2032,8 @@ function renderDynamic() {
   }
 
   // Alert
-  const hace5 = new Date(ahora.getTime()-5*86400000)
-  const sinSeg = _contactos.filter(c=>new Date(c.created_at)<hace5&&(!c.estado||c.estado==='nueva')).length
+  // Consultas abiertas cuyo último movimiento CRM (o el alta) tiene más de 5 días; lo calcula el servidor.
+  const sinSeg = _sinSeguimiento
   document.getElementById('alertBanner').classList.toggle('hidden', sinSeg===0)
   document.getElementById('alertN').textContent = sinSeg
 
@@ -1983,12 +2047,12 @@ function renderDynamic() {
     <div class="kpi" style="--c:var(--azul)">
       <div class="kpi-lbl">Visualizaciones</div>
       <div class="kpi-n">${totalClicks}</div>
-      <div class="kpi-m">QR ${vQr} · Link ${vLink} · Directo ${filtVDirecto.length} (incluido en el total)</div>
+      <div class="kpi-m">QR ${vQr} · Link ${vLink} · Directo ${contarAperturas(filtVDirecto)}${filtVNoIdentificado.length ? ` · No identificado ${contarAperturas(filtVNoIdentificado)}` : ''} (incluido en el total)</div>
     </div>
     <div class="kpi" style="--c:#e8c96a">
       <div class="kpi-lbl">Consultas</div>
       <div class="kpi-n">${totalLeads}</div>
-      <div class="kpi-m">QR ${cQr} · Link ${cLink} · Directo ${filtCDirecto.length} · Manual ${filtCManual.length} (incluidos en el total)${deltaHtml ? ` · ${deltaHtml}` : ''}</div>
+      <div class="kpi-m">QR ${cQr} · Link ${cLink} · Directo ${filtCDirecto.length}${filtCNoIdentificado.length ? ` · No identificado ${filtCNoIdentificado.length}` : ''} · Manual ${filtCManual.length} (incluidos en el total)${deltaHtml ? ` · ${deltaHtml}` : ''}</div>
     </div>
     <div class="kpi" style="--c:#3bbf88">
       <div class="kpi-lbl">Conversión QR y link</div>

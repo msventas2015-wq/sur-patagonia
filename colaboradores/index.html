@@ -1440,7 +1440,19 @@
     return fila?.canal_ref ? 'sin_via' : 'directo'
   }
   const esEntrada = v => ['qr','link'].includes(clasificarVia(v))
-  const esInteraccion = v => clasificarVia(v) !== 'manual'
+  const esConsultaAtribuida = c => c?.origen === 'web' && Boolean(c?.canal_ref)
+  // Días y horas del negocio en Argentina (UTC−3 fijo), como el desarrollador y Tráfico,
+  // aunque el navegador esté en otro huso.
+  const AR_OFFSET_MS = 3 * 3600000
+  const TZ_AR = 'America/Argentina/Buenos_Aires'
+  const fijarHoraAR = (fecha, h = 0, m = 0, s = 0, ms = 0) => {
+    const pared = new Date(fecha.getTime() - AR_OFFSET_MS)
+    pared.setUTCHours(h, m, s, ms)
+    return fecha.setTime(pared.getTime() + AR_OFFSET_MS)
+  }
+  const minutoDelDiaAR = fecha => { const pared = new Date(new Date(fecha).getTime() - AR_OFFSET_MS); return pared.getUTCHours() * 60 + pared.getUTCMinutes() }
+  const claveDiaAR = fecha => new Date(new Date(fecha).getTime() - AR_OFFSET_MS).toISOString().slice(0, 10)
+  const fechaInputAR = (valor, hora = '00:00:00') => new Date(`${valor}T${hora}-03:00`)
   const esOportunidadAbierta = contacto => !['descartado','cerrado'].includes(contacto?.estado || 'nueva') && !contacto?.fecha_cierre
   const fmt  = iso => iso ? new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
   const ESTADO_LABEL = { nueva:'Sin avance', contactado:'Contactado', visita:'Visita', visita_realizada:'Visita realizada', oferta:'Oferta', cerrado:'Cerrado', descartado:'Descartado' }
@@ -2252,7 +2264,7 @@
         </div>`
       }).join('')
     }
-    let totalScans = visitas.filter(esInteraccion).length
+    let totalScans = visitas.filter(esEntrada).length
 
     // Campaña activa por canal
     const campanaActiva = {}
@@ -2410,7 +2422,7 @@
     const renderCards = () => canales.map(c => {
       // Todos los codigos (referencia o canal directo) que pertenecen a este canal
       const misCodigos = new Set([c.codigo, ...(misRefs || []).filter(r => r.canal_id === c.id).map(r => r.codigo)])
-      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref) && esInteraccion(v)).length
+      const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref) && esEntrada(v)).length
       const cContacts = contactos.filter(x => misCodigos.has(x.canal_ref)).length
       const estado    = !c.activo ? 'inactivo' : campanaActiva[c.id] ? 'campana' : 'activo'
       const estadoLabel = estado === 'inactivo' ? 'QR inactivo'
@@ -2437,7 +2449,7 @@
     const datosComercioPasivo = canal => {
       const referenciasCanal = (misSlots || []).filter(r => r.canal_id === canal.id)
       const codigosCanal = new Set([canal.codigo, ...referenciasCanal.map(r => r.codigo)])
-      const visitasCanal = visitas.filter(v => codigosCanal.has(v.canal_ref) && esInteraccion(v))
+      const visitasCanal = visitas.filter(v => codigosCanal.has(v.canal_ref) && esEntrada(v))
       const contactosCanal = contactos.filter(c => codigosCanal.has(c.canal_ref))
       const principal = referenciasCanal.find(r => r.codigo === canal.codigo && r.punto_tipo === 'principal')
         || referenciasCanal.find(r => r.activo !== false)
@@ -2797,21 +2809,21 @@
     }
 
     function metricasPasivo(contactos) {
-      const hoy0 = new Date(); hoy0.setHours(0,0,0,0)
+      const hoy0 = new Date(); fijarHoraAR(hoy0)
       const corte30 = new Date(hoy0.getTime() - 29 * 86400000)
       const corte60 = new Date(hoy0.getTime() - 59 * 86400000)
       const finActual = new Date(hoy0.getTime() + 86400000)
       const enActual = fila => { const d = new Date(fila.created_at); return d >= corte30 && d < finActual }
       const enAnterior = fila => { const d = new Date(fila.created_at); return d >= corte60 && d < corte30 }
-      const v30 = visitas.filter(v => esInteraccion(v) && enActual(v)).length
+      const v30 = visitas.filter(v => esEntrada(v) && enActual(v)).length
       const v30Digital = visitas.filter(v => esEntrada(v) && enActual(v)).length
       const qr30 = visitas.filter(v => clasificarVia(v) === 'qr' && enActual(v)).length
       const c30 = contactos.filter(enActual).length
-      const vAnt = visitas.filter(v => esInteraccion(v) && enAnterior(v)).length
+      const vAnt = visitas.filter(v => esEntrada(v) && enAnterior(v)).length
       const vAntDigital = visitas.filter(v => esEntrada(v) && enAnterior(v)).length
       const cAnt = contactos.filter(enAnterior).length
-      const c30Web = contactos.filter(c => esEntrada(c) && enActual(c)).length
-      const cAntWeb = contactos.filter(c => esEntrada(c) && enAnterior(c)).length
+      const c30Web = contactos.filter(c => esConsultaAtribuida(c) && enActual(c)).length
+      const cAntWeb = contactos.filter(c => esConsultaAtribuida(c) && enAnterior(c)).length
       const conv30 = v30Digital > 0 ? Number((c30Web / v30Digital * 100).toFixed(1)) : 0
       const convAnt = vAntDigital > 0 ? Number((cAntWeb / vAntDigital * 100).toFixed(1)) : 0
       return {
@@ -2843,7 +2855,7 @@
 
     function renderActividadReciente(contactos, limite = 8) {
       const eventos = [
-        ...visitas.filter(esInteraccion).map(v => {
+        ...visitas.filter(esEntrada).map(v => {
           const via = clasificarVia(v)
           return { fecha:v.created_at, tipo:via === 'qr' ? 'qr' : via === 'link' ? 'link' : '', texto:via === 'qr' ? 'Clic desde QR físico' : via === 'link' ? 'Clic desde enlace digital' : via === 'sin_via' ? 'Interacción sin vía registrada' : 'Interacción directa' }
         }),
@@ -2899,9 +2911,9 @@
 
     function renderFunnelCRM(contactos) {
       const totalInteracciones = visitas.filter(esEntrada).length
-      const contactosFunnel = contactos.filter(c => esEntrada(c) && c.estado !== 'descartado')
+      const contactosFunnel = contactos.filter(c => esConsultaAtribuida(c) && c.estado !== 'descartado')
       const totalConsultas = contactosFunnel.length
-      const totalDescartadas = contactos.filter(c => esEntrada(c) && c.estado === 'descartado').length
+      const totalDescartadas = contactos.filter(c => esConsultaAtribuida(c) && c.estado === 'descartado').length
       const ordenEstado = {
         nueva: 0,
         contactado: 1,
@@ -3283,8 +3295,8 @@
       const diasDesde = v => {
         const d = fechaObj(v)
         if (!d) return 'sin fecha'
-        const base = new Date(hoy); base.setHours(0,0,0,0)
-        const target = new Date(d); target.setHours(0,0,0,0)
+        const base = new Date(hoy); fijarHoraAR(base)
+        const target = new Date(d); fijarHoraAR(target)
         const diff = Math.max(0, Math.round((base - target) / 86400000))
         if (diff === 0) return 'hoy'
         if (diff === 1) return 'ayer'
@@ -3549,12 +3561,30 @@
         </details>`
     }
 
+    // Chips de origen de las consultas: mismo período que el gráfico que tienen encima.
+    function chipsOrigenPasivoHtml(contactos, desde, hasta) {
+      const ini = new Date(desde); fijarHoraAR(ini)
+      const fin = new Date(hasta); fijarHoraAR(fin, 23,59,59,999)
+      const delPeriodo = contactos.filter(c => { const d = new Date(c.created_at); return d >= ini && d <= fin })
+      const total = via => delPeriodo.filter(c => clasificarVia(c) === via).length
+      const qrTotal = total('qr'), linkTotal = total('link'), directoTotal = total('directo'), sinViaTotal = total('sin_via'), manualTotal = total('manual')
+      return `
+            <span class="pv-origin-chip" style="--oc:#50c878"><span class="dot"></span>QR físico · ${qrTotal.toLocaleString('es-AR')}</span>
+            <span class="pv-origin-chip" style="--oc:#6495ed"><span class="dot"></span>Enlace digital · ${linkTotal.toLocaleString('es-AR')}</span>
+            ${directoTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Directo · ${directoTotal.toLocaleString('es-AR')}</span>` : ''}
+            ${sinViaTotal > 0 ? `<span class="pv-origin-chip" style="--oc:#8a8a82"><span class="dot"></span>Sin vía · ${sinViaTotal.toLocaleString('es-AR')}</span>` : ''}
+            ${manualTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Manual · ${manualTotal.toLocaleString('es-AR')}</span>` : ''}
+          `
+    }
+    function actualizarChipsOrigenPasivo(contactos, desde, hasta) {
+      const host = document.getElementById('pvOrigenChips')
+      if (host) host.innerHTML = chipsOrigenPasivoHtml(contactos, desde, hasta)
+    }
+
     function renderPasivo(contactos, filasTraza = [], canal = null) {
-      const qrTotal = contactos.filter(c => clasificarVia(c) === 'qr').length
-      const manualTotal = contactos.filter(c => clasificarVia(c) === 'manual').length
-      const linkTotal = contactos.filter(c => clasificarVia(c) === 'link').length
-      const directoTotal = contactos.filter(c => clasificarVia(c) === 'directo').length
-      const sinViaTotal = contactos.filter(c => clasificarVia(c) === 'sin_via').length
+      // Período inicial = botón activo «7 días»; pvSetPeriodo lo actualiza al cambiar.
+      const hastaChips = new Date()
+      const desdeChips = new Date(hastaChips.getTime() - 6 * 86400000)
 
       return `
         <div class="pv-sec">
@@ -3592,13 +3622,7 @@
             </div>
           </div>
           <div class="pv-live-wrap"><canvas id="pvChartEvol4"></canvas></div>
-          <div class="pv-chart-origin-chips">
-            <span class="pv-origin-chip" style="--oc:#50c878"><span class="dot"></span>QR físico · ${qrTotal.toLocaleString('es-AR')}</span>
-            <span class="pv-origin-chip" style="--oc:#6495ed"><span class="dot"></span>Enlace digital · ${linkTotal.toLocaleString('es-AR')}</span>
-            ${directoTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Directo · ${directoTotal.toLocaleString('es-AR')}</span>` : ''}
-            ${sinViaTotal > 0 ? `<span class="pv-origin-chip" style="--oc:#8a8a82"><span class="dot"></span>Sin vía · ${sinViaTotal.toLocaleString('es-AR')}</span>` : ''}
-            ${manualTotal > 0 ? `<span class="pv-origin-chip" style="--oc:rgba(245,243,240,.55)"><span class="dot"></span>Manual · ${manualTotal.toLocaleString('es-AR')}</span>` : ''}
-          </div>
+          <div class="pv-chart-origin-chips" id="pvOrigenChips">${chipsOrigenPasivoHtml(contactos, desdeChips, hastaChips)}</div>
         </div>
 
         <div class="pv-sec">
@@ -3622,9 +3646,9 @@
 
     function datosEvolucionPasivo(contactos, desde, hasta) {
       const inicio = new Date(desde)
-      inicio.setHours(0,0,0,0)
+      fijarHoraAR(inicio)
       const fin = new Date(hasta)
-      fin.setHours(23,59,59,999)
+      fijarHoraAR(fin, 23,59,59,999)
       const dias = Math.max(1, Math.ceil((fin - inicio) / 86400000))
       const bloqueDias = dias <= 30 ? 1 : dias <= 45 ? 3 : dias <= 120 ? 7 : 30
       const labelsEvol = [], dataScans = [], dataConsultas = []
@@ -3632,9 +3656,9 @@
       for (let cursor = new Date(inicio); cursor <= fin; cursor = new Date(cursor.getTime() + bloqueDias * 86400000)) {
         const bloqueIni = new Date(cursor)
         const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
-        labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
+        labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', timeZone:TZ_AR }))
         dataScans.push(visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
-        dataConsultas.push(contactos.filter(c => { if (!esEntrada(c)) return false; const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataConsultas.push(contactos.filter(c => { if (!esConsultaAtribuida(c)) return false; const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
       }
       return { labelsEvol, dataScans, dataConsultas }
     }
@@ -3644,18 +3668,18 @@
     // NO modificar datosEvolucionPasivo para no afectar panel pasivo.
     function datosEvolucionActivo(contactos, desde, hasta) {
       const inicio = new Date(desde)
-      inicio.setHours(0,0,0,0)
+      fijarHoraAR(inicio)
       const fin = new Date(hasta)
-      fin.setHours(23,59,59,999)
+      fijarHoraAR(fin, 23,59,59,999)
       const dias = Math.max(1, Math.ceil((fin - inicio) / 86400000))
       const bloqueDias = dias <= 30 ? 1 : dias <= 45 ? 3 : dias <= 120 ? 7 : 30
       const labelsEvol = [], dataScans = [], dataConsultas = []
       for (let cursor = new Date(inicio); cursor <= fin; cursor = new Date(cursor.getTime() + bloqueDias * 86400000)) {
         const bloqueIni = new Date(cursor)
         const bloqueFin = new Date(Math.min(fin.getTime() + 1, bloqueIni.getTime() + bloqueDias * 86400000))
-        labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }))
+        labelsEvol.push(bloqueIni.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', timeZone:TZ_AR }))
         dataScans.push(visitas.filter(v => { if (!esEntrada(v)) return false; const d = new Date(v.created_at); return d >= bloqueIni && d < bloqueFin }).length)
-        dataConsultas.push(contactos.filter(c => { if (!esEntrada(c)) return false; const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
+        dataConsultas.push(contactos.filter(c => { if (!esConsultaAtribuida(c)) return false; const d = new Date(c.created_at); return d >= bloqueIni && d < bloqueFin }).length)
       }
       return { labelsEvol, dataScans, dataConsultas }
     }
@@ -3800,9 +3824,10 @@
         if (consultasLEl) consultasLEl.textContent = 'Hoy · consultas'
 
         const VENTANA = 15 // minutos por bucket
-        const hoyB0 = new Date(fechaHasta); hoyB0.setHours(0,0,0,0)
+        const hoyB0 = new Date(fechaHasta); fijarHoraAR(hoyB0)
         const ahoraMin = fechaHasta
-        const minutosDelDia = ahoraMin.getHours()*60 + ahoraMin.getMinutes() + 1
+        const minutosDelDia = minutoDelDiaAR(ahoraMin) + 1
+        actualizarChipsOrigenPasivo(contactos, hoyB0, ahoraMin)
         const numBuckets = Math.ceil(minutosDelDia / VENTANA)
 
         const bucketScans = new Array(numBuckets).fill(0)
@@ -3811,13 +3836,13 @@
         visitas.forEach(v => {
           if (!esEntrada(v)) return
           if (!inHoy(v.created_at)) return
-          const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes()
+          const m=minutoDelDiaAR(v.created_at)
           const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketScans[b]++
         })
         contactos.forEach(c => {
-          if (!esEntrada(c)) return
+          if (!esConsultaAtribuida(c)) return
           if (!inHoy(c.created_at)) return
-          const d=new Date(c.created_at); const m=d.getHours()*60+d.getMinutes()
+          const m=minutoDelDiaAR(c.created_at)
           const b=Math.floor(m/VENTANA); if(b<numBuckets) bucketCons[b]++
         })
 
@@ -3834,7 +3859,7 @@
           unidades.forEach(unidad => {
             const visCom = visitas.filter(v => esEntrada(v) && unidad.codigos.has(v.canal_ref) && inHoy(v.created_at))
             const arr = new Array(numBuckets).fill(0)
-            visCom.forEach(v => { const d=new Date(v.created_at); const m=d.getHours()*60+d.getMinutes(); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
+            visCom.forEach(v => { const m=minutoDelDiaAR(v.created_at); const b=Math.floor(m/VENTANA); if(b<numBuckets) arr[b]++ })
             slotLinesHoy.push({ key: unidad.key, codigo: unidad.codigo, nombre: unidad.nombre, color: unidad.color, data: arr })
           })
         }
@@ -3897,7 +3922,7 @@
         // Contadores en vivo
         const refrescarContadores = () => {
           setText('pvLiveScans4', visitas.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoyB0&&new Date(v.created_at)<=fechaHasta).length)
-          setText('pvLiveConsultas4', contactos.filter(v=>esEntrada(v)&&new Date(v.created_at)>=hoyB0&&new Date(v.created_at)<=fechaHasta).length)
+          setText('pvLiveConsultas4', contactos.filter(c=>esConsultaAtribuida(c)&&new Date(c.created_at)>=hoyB0&&new Date(c.created_at)<=fechaHasta).length)
         }
         refrescarContadores()
 
@@ -3907,16 +3932,17 @@
 
       } else {
         // ── MODO PERÍODO: diario acumulado ───────────────────────────────
-        const hasta = opciones.hasta ? new Date(opciones.hasta) : hastaCustom ? new Date(`${hastaCustom}T23:59:59`) : fechaHasta
-        const desde = opciones.desde ? new Date(opciones.desde) : desdeCustom ? new Date(`${desdeCustom}T00:00:00`) : new Date(hasta.getTime()-(dias-1)*86400000)
-        if (!opciones.desde && !desdeCustom) desde.setHours(0,0,0,0)
+        const hasta = opciones.hasta ? new Date(opciones.hasta) : hastaCustom ? fechaInputAR(hastaCustom, '23:59:59') : fechaHasta
+        const desde = opciones.desde ? new Date(opciones.desde) : desdeCustom ? fechaInputAR(desdeCustom) : new Date(hasta.getTime()-(dias-1)*86400000)
+        if (!opciones.desde && !desdeCustom) fijarHoraAR(desde)
+        actualizarChipsOrigenPasivo(contactos, desde, hasta)
         const { labelsEvol, dataScans, dataConsultas } = (esPasivo ? datosEvolucionPasivo : datosEvolucionActivo)(contactos, desde, hasta)
 
         // Líneas individuales con los mismos buckets que el total.
         const slotLinesPeriodo = []
         if (multiSlot) {
-          const _ini = new Date(desde); _ini.setHours(0,0,0,0)
-          const _fin = new Date(hasta);  _fin.setHours(23,59,59,999)
+          const _ini = new Date(desde); fijarHoraAR(_ini)
+          const _fin = new Date(hasta);  fijarHoraAR(_fin, 23,59,59,999)
           const _dias = Math.max(1, Math.ceil((_fin - _ini) / 86400000))
           const bloqueDias = _dias <= 30 ? 1 : _dias <= 45 ? 3 : _dias <= 120 ? 7 : 30
           const _buckets = []
@@ -3979,12 +4005,12 @@
 
     // ── ETAPA 2: Actualizar KPI superiores según el período seleccionado ──
     function actualizarKpisActivo(desde, hasta) {
-      const d0 = new Date(desde); d0.setHours(0,0,0,0)
-      const d1 = new Date(hasta); d1.setHours(23,59,59,999)
+      const d0 = new Date(desde); fijarHoraAR(d0)
+      const d1 = new Date(hasta); fijarHoraAR(d1, 23,59,59,999)
 
       const vDigitalP = visitas.filter(v => { if (!esEntrada(v)) return false; const d=new Date(v.created_at); return d>=d0 && d<=d1 }).length
       const qrP = visitas.filter(v  => { const d=new Date(v.created_at);  return d>=d0 && d<=d1 && clasificarVia(v)==='qr' }).length
-      const cWebP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && esEntrada(c) }).length
+      const cWebP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && esConsultaAtribuida(c) }).length
       const cManualP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && clasificarVia(c)==='manual' }).length
       const cDirectaP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && clasificarVia(c)==='directo' }).length
       const cSinViaP = contactos.filter(c => { const d=new Date(c.created_at); return d>=d0 && d<=d1 && clasificarVia(c)==='sin_via' }).length
@@ -4001,7 +4027,7 @@
       setEl('pvKpi2Sub', 'Escaneos desde QR físico en el período.')
       setEl('pvKpi3N',   cWebP.toLocaleString('es-AR'))
       clearEl('pvKpi3Delta')
-      setEl('pvKpi3Sub', `${cManualP} manual${cManualP===1?'':'es'} · ${cDirectaP} directa${cDirectaP===1?'':'s'} · ${cSinViaP} sin vía separadas.`)
+      setEl('pvKpi3Sub', `${cManualP} manual${cManualP===1?'':'es'} · ${cDirectaP} directa${cDirectaP===1?'':'s'} separadas${cSinViaP ? ` · incluye ${cSinViaP} sin vía` : ''}.`)
       setEl('pvKpi4N',   conv === null ? '—' : `${conv}%`)
       clearEl('pvKpi4Delta')
       setEl('pvKpi4Sub', 'Consultas atribuibles ÷ interacciones atribuibles.')
@@ -4023,10 +4049,10 @@
       const hasta = new Date()
       const desde = new Date(hasta)
       if (dias === 0) {
-        desde.setHours(0,0,0,0)
+        fijarHoraAR(desde)
       } else {
         desde.setTime(hasta.getTime() - (dias - 1) * 86400000)
-        desde.setHours(0,0,0,0)
+        fijarHoraAR(desde)
       }
       const _lbl = valor === 'hoy' ? 'hoy' : `últimos ${dias} días`
       renderGraficoPasivo(contactos, dias, null, null, { multiSlot: _modoMultiSlot(), desde, hasta })
@@ -4047,7 +4073,7 @@
       window._pvCustomAplicadoDesde = desde
       window._pvCustomAplicadoHasta = hasta
       document.querySelectorAll('.pv-flt-btn').forEach(b => b.classList.toggle('activo', b.dataset.dias === 'custom'))
-      const fechaLocal = val => { const [y,m,d] = val.split('-').map(Number); return new Date(y, m-1, d) }
+      const fechaLocal = val => fechaInputAR(val)
       renderGraficoPasivo(contactos, 30, desde, hasta, { multiSlot: _modoMultiSlot() })
       if (esPasivo) return
       const desdeLocal = fechaLocal(desde)
@@ -4060,8 +4086,8 @@
 
     // ── ETAPA 3A.1: actualizar métricas de cards por período (sin regenerar HTML) ──
     function actualizarSlotCards(desde, hasta) {
-      const d0 = new Date(desde); d0.setHours(0,0,0,0)
-      const d1 = new Date(hasta); d1.setHours(23,59,59,999)
+      const d0 = new Date(desde); fijarHoraAR(d0)
+      const d1 = new Date(hasta); fijarHoraAR(d1, 23,59,59,999)
       const en  = t => { const d = new Date(t); return d >= d0 && d <= d1 }
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
       const unidadesActivas = unidadesTarjetaActiva()
@@ -4071,7 +4097,7 @@
         const int   = vSlotDigital.length
         const qrN   = vSlotDigital.filter(v => clasificarVia(v) === 'qr').length
         const lnkN  = vSlotDigital.filter(v => clasificarVia(v) === 'link').length
-        const consultasAtribuibles = contactos.filter(c => contactoPerteneceUnidad(c, unidad, unidadesActivas) && esEntrada(c) && en(c.created_at))
+        const consultasAtribuibles = contactos.filter(c => contactoPerteneceUnidad(c, unidad, unidadesActivas) && esConsultaAtribuida(c) && en(c.created_at))
         const cons  = consultasAtribuibles.length
         const conv  = vSlotDigital.length > 0 ? (cons / vSlotDigital.length * 100).toFixed(1) + '%' : '—'
         set(`slot-n-int-${slot.id}`,  int)
@@ -4280,16 +4306,16 @@
       if (typeof Chart === 'undefined') return
       const d0 = desde ? new Date(desde) : new Date(Date.now() - 30 * 86400000)
       const d1 = hasta ? new Date(hasta) : new Date()
-      d0.setHours(0,0,0,0); d1.setHours(23,59,59,999)
+      fijarHoraAR(d0); fijarHoraAR(d1, 23,59,59,999)
       const totalDias = Math.max(1, Math.ceil((d1 - d0) / 86400000))
       // HOY o período de 1 día → buckets horarios (24h); más días → buckets diarios
       const isSingleDay = totalDias === 1
       const diasArr = isSingleDay ? [] : Array.from({length: totalDias}, (_, i) => {
-        const d = new Date(d0.getTime() + i * 86400000); d.setHours(0,0,0,0); return d
+        const d = new Date(d0.getTime() + i * 86400000); fijarHoraAR(d); return d
       })
       const labels = isSingleDay
         ? Array.from({length: 24}, (_, h) => `${String(h).padStart(2,'0')}:00`)
-        : diasArr.map(d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}))
+        : diasArr.map(d => d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', timeZone:TZ_AR}))
       const lblPeriodo = labelPeriodo || 'últimos 30 días'
 
       const unidadesActivas = unidadesTarjetaActiva()
@@ -4302,12 +4328,12 @@
         const colorHex = colorDeSlot(slot.codigo)
         const rgba = (a) => colorHex.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)).join(',')+`,${a}`
         const slotVis  = visitas.filter(v => esEntrada(v) && unidad.codigos.has(v.canal_ref))
-        const slotCons = contactos.filter(c => contactoPerteneceUnidad(c, unidad, unidadesActivas) && esEntrada(c))
+        const slotCons = contactos.filter(c => contactoPerteneceUnidad(c, unidad, unidadesActivas) && esConsultaAtribuida(c))
         // HOY → contar por hora; multiday → contar por día
         let data, dataCons
         if (isSingleDay) {
-          data     = Array.from({length:24}, (_, h) => { const hI=new Date(d0); hI.setHours(h,0,0,0); const hF=new Date(d0); hF.setHours(h,59,59,999); return slotVis.filter(v=>{const d=new Date(v.created_at);return d>=hI&&d<=hF}).length })
-          dataCons = Array.from({length:24}, (_, h) => { const hI=new Date(d0); hI.setHours(h,0,0,0); const hF=new Date(d0); hF.setHours(h,59,59,999); return slotCons.filter(c=>{const d=new Date(c.created_at);return d>=hI&&d<=hF}).length })
+          data     = Array.from({length:24}, (_, h) => { const hI=new Date(d0); fijarHoraAR(hI,h,0,0,0); const hF=new Date(d0); fijarHoraAR(hF,h,59,59,999); return slotVis.filter(v=>{const d=new Date(v.created_at);return d>=hI&&d<=hF}).length })
+          dataCons = Array.from({length:24}, (_, h) => { const hI=new Date(d0); fijarHoraAR(hI,h,0,0,0); const hF=new Date(d0); fijarHoraAR(hF,h,59,59,999); return slotCons.filter(c=>{const d=new Date(c.created_at);return d>=hI&&d<=hF}).length })
         } else {
           data     = diasArr.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return slotVis.filter(v=>{const d=new Date(v.created_at);return d>=dIni&&d<dFin}).length })
           dataCons = diasArr.map(dIni => { const dFin=new Date(dIni.getTime()+86400000); return slotCons.filter(c=>{const d=new Date(c.created_at);return d>=dIni&&d<dFin}).length })
@@ -4540,8 +4566,8 @@
     function periodoActivo(desde, hasta, etiqueta = 'período seleccionado') {
       const inicio = new Date(desde || new Date())
       const fin = new Date(hasta || new Date())
-      inicio.setHours(0,0,0,0)
-      fin.setHours(23,59,59,999)
+      fijarHoraAR(inicio)
+      fijarHoraAR(fin, 23,59,59,999)
       return { inicio, fin, etiqueta }
     }
 
@@ -4551,11 +4577,11 @@
     }
 
     function bucketsPeriodoActivo(periodo) {
-      const mismoDia = periodo.inicio.toDateString() === periodo.fin.toDateString()
+      const mismoDia = claveDiaAR(periodo.inicio) === claveDiaAR(periodo.fin)
       if (mismoDia) {
         return Array.from({length:24}, (_, hora) => {
-          const inicio = new Date(periodo.inicio); inicio.setHours(hora,0,0,0)
-          const fin = new Date(periodo.inicio); fin.setHours(hora + 1,0,0,0)
+          const inicio = new Date(periodo.inicio); fijarHoraAR(inicio, hora,0,0,0)
+          const fin = new Date(periodo.inicio); fijarHoraAR(fin, hora + 1,0,0,0)
           return { inicio, fin, label:`${String(hora).padStart(2,'0')}:00` }
         })
       }
@@ -4564,8 +4590,8 @@
       const buckets = []
       for (let cursor = new Date(periodo.inicio); cursor <= periodo.fin;) {
         const inicio = new Date(cursor)
-        const fin = new Date(cursor); fin.setDate(fin.getDate() + bloqueDias)
-        buckets.push({ inicio, fin, label:inicio.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) })
+        const fin = new Date(cursor.getTime() + bloqueDias * 86400000)
+        buckets.push({ inicio, fin, label:inicio.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',timeZone:TZ_AR}) })
         cursor = fin
       }
       return buckets
@@ -4577,7 +4603,7 @@
       const visitasPeriodo = visitas.filter(v => enPeriodoActivo(v, periodo))
       const contactosPeriodo = contactos.filter(c => enPeriodoActivo(c, periodo))
       const visitasAtribuibles = visitasPeriodo.filter(esEntrada)
-      const consultasAtribuibles = contactosPeriodo.filter(esEntrada)
+      const consultasAtribuibles = contactosPeriodo.filter(esConsultaAtribuida)
       const dataScans = buckets.map(bucket => visitasAtribuibles.filter(v => { const d=new Date(v.created_at); return d>=bucket.inicio && d<bucket.fin }).length)
       const dataCons = buckets.map(bucket => consultasAtribuibles.filter(c => { const d=new Date(c.created_at); return d>=bucket.inicio && d<bucket.fin }).length)
       const convDiaria = dataScans.map((total, i) => total > 0 ? Number((dataCons[i] / total * 100).toFixed(1)) : null)
@@ -4627,7 +4653,7 @@
       const finAnterior = new Date(datos.periodo.inicio.getTime() - 1)
       const inicioAnterior = new Date(finAnterior.getTime() - duracion + 1)
       const vAnterior = visitas.filter(v => esEntrada(v) && new Date(v.created_at) >= inicioAnterior && new Date(v.created_at) <= finAnterior).length
-      const cAnterior = contactos.filter(c => esEntrada(c) && new Date(c.created_at) >= inicioAnterior && new Date(c.created_at) <= finAnterior).length
+      const cAnterior = contactos.filter(c => esConsultaAtribuida(c) && new Date(c.created_at) >= inicioAnterior && new Date(c.created_at) <= finAnterior).length
       const convAnterior = vAnterior > 0 ? Number((cAnterior / vAnterior * 100).toFixed(1)) : null
       const delta = conversion === null || convAnterior === null ? null : Number((conversion - convAnterior).toFixed(1))
       const deltaHtml = delta === 0
@@ -5215,7 +5241,7 @@
         propDataById[String(p.id).toLowerCase()] = p
       })
 
-      totalScans = visitas.filter(esInteraccion).length
+      totalScans = visitas.filter(esEntrada).length
       vaciarObjeto(campanaActiva)
       vaciarObjeto(campanaDestino)
       campanasRows.forEach(row => {
