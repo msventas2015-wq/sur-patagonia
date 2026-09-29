@@ -563,6 +563,7 @@
       <div id="modalRows" class="crm-modal-datos"></div>
       <div id="modalPersonaFicha"></div>
       <div id="modalPersonaOportunidades"></div>
+      <div id="modalPersonaRecorridoQR"></div>
       <div id="modalPersonaHistorial"></div>
       <div class="crm-modal-msg" id="modalMensaje" style="display:none;"></div>
       <select class="crm-etapa-select" id="modalEtapa"></select>
@@ -1378,6 +1379,131 @@ function renderHistorialErrorConNotasHistoricas(lead) {
   return renderHistorialError() + (historicas.length ? renderHistorialPersona(historicas, lead.id) : '')
 }
 
+function renderRecorridoQrSinPersona() {
+  return `
+    <div class="crm-persona-card muted">
+      <div class="crm-persona-kicker">Atribución</div>
+      <div class="crm-persona-title">Recorrido QR todavía no vinculado</div>
+      <p class="crm-persona-copy">El contacto aún no tiene una ficha de persona que permita reunir su recorrido demostrado.</p>
+    </div>`
+}
+
+function renderRecorridoQrError() {
+  return `
+    <div class="crm-persona-card muted">
+      <div class="crm-persona-kicker">Atribución</div>
+      <div class="crm-persona-title">No se pudo verificar el recorrido QR</div>
+      <p class="crm-persona-copy">No se muestran datos parciales ni estimados. Volvé a abrir esta oportunidad para reintentar.</p>
+    </div>`
+}
+
+function etiquetaRecorridoQr(tipo) {
+  if (tipo === 'ingreso') return 'Ingreso demostrado'
+  if (tipo === 'navegacion') return 'Página recorrida'
+  if (tipo === 'consulta') return 'Consulta registrada'
+  if (tipo === 'cambio_destino_qr') return 'Cambio posterior de destino'
+  return 'Hecho atribuido'
+}
+
+function valoresRecorridoQr(item) {
+  const d = item?.detalle && typeof item.detalle === 'object' ? item.detalle : {}
+  const valores = []
+  if (item?.tipo === 'ingreso') {
+    if (d.codigo) valores.push(`Código ${d.codigo}`)
+    if (d.via) valores.push(String(d.via).toUpperCase())
+    if (d.destino) valores.push(`Destino ${d.destino}`)
+    if (d.pagina) valores.push(`Página ${d.pagina}`)
+  } else if (item?.tipo === 'navegacion') {
+    if (d.pagina) valores.push(`Página ${d.pagina}`)
+    if (d.resultado === 'landing_absorbed') valores.push('Aterrizaje del ingreso')
+    else if (d.resultado) valores.push(String(d.resultado).replace(/_/g, ' '))
+  } else if (item?.tipo === 'consulta') {
+    if (d.canal_ref) valores.push(`Canal ${d.canal_ref}`)
+    if (d.canal_via) valores.push(String(d.canal_via).toUpperCase())
+    valores.push(d.resultado_qr === 'contacto_atribuido' ? 'Ingreso verificado' : 'Directa o sin prueba de canal')
+  } else if (item?.tipo === 'cambio_destino_qr') {
+    valores.push(`${d.destino_anterior || '—'} → ${d.destino_nuevo || '—'}`)
+    if (d.motivo) valores.push(`Motivo: ${d.motivo}`)
+  }
+  return valores
+}
+
+function renderRecorridoQr(items) {
+  const tiposQr = new Set(['ingreso', 'navegacion', 'consulta', 'cambio_destino_qr'])
+  const lista = (Array.isArray(items) ? items : []).filter(item => tiposQr.has(item?.tipo))
+  if (!lista.length) {
+    return `
+      <div class="crm-persona-card muted">
+        <div class="crm-persona-kicker">Atribución</div>
+        <div class="crm-persona-title">Recorrido QR demostrado</div>
+        <p class="crm-persona-copy">Esta persona todavía no tiene ingresos o navegaciones demostrados por el sistema QR.</p>
+      </div>`
+  }
+  return `
+    <div class="crm-persona-card">
+      <div class="crm-persona-kicker">Atribución</div>
+      <div class="crm-persona-title">Recorrido QR demostrado</div>
+      <div class="crm-eventos-list">
+        ${lista.map(item => `
+          <div class="crm-evento-item">
+            <div class="crm-evento-head">
+              <div class="crm-evento-tipo">${esc(etiquetaRecorridoQr(item.tipo))}</div>
+              <span class="crm-evento-badge">${esc(fmtEventoFecha(item.ocurrido_at))}</span>
+            </div>
+            <div class="crm-evento-meta">
+              ${valoresRecorridoQr(item).map(valor => `<span>${esc(valor)}</span>`).join('<span>·</span>')}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`
+}
+
+async function cargarPersonaRecorridoQr(lead) {
+  const cont = document.getElementById('modalPersonaRecorridoQR')
+  if (!cont) return
+  if (!lead.persona_id) {
+    cont.innerHTML = renderRecorridoQrSinPersona()
+    return
+  }
+
+  const leadId = lead.id
+  cont.innerHTML = `
+    <div class="crm-persona-card muted">
+      <div class="crm-persona-loading">Cargando recorrido QR demostrado…</div>
+    </div>`
+
+  try {
+    const items = []
+    let beforeAt = null
+    let beforeKey = null
+    let paginas = 0
+    let hayMas = true
+    while (hayMas && paginas < 50) {
+      const { data, error } = await supabase.rpc('rpc_admin_recorrido_persona_v1', {
+        p_persona_id: lead.persona_id,
+        p_before_at: beforeAt,
+        p_before_key: beforeKey,
+        p_limit: 200
+      })
+      if (error) throw error
+      const lote = Array.isArray(data?.items) ? data.items : []
+      items.push(...lote)
+      hayMas = data?.has_more === true
+      beforeAt = data?.next_cursor?.before_at || null
+      beforeKey = data?.next_cursor?.before_key || null
+      paginas += 1
+      if (hayMas && (!beforeAt || !beforeKey)) throw new Error('QR_RECORRIDO_CURSOR_INVALIDO')
+    }
+    if (hayMas) throw new Error('QR_RECORRIDO_LIMITE_LOCAL')
+    if (_modalId !== leadId) return
+    cont.innerHTML = renderRecorridoQr(items)
+  } catch (error) {
+    if (_modalId !== leadId) return
+    console.warn('[crm qr] error cargando recorrido', error)
+    cont.innerHTML = renderRecorridoQrError()
+  }
+}
+
 function eventosLegacyPersona(lead) {
   const relacionados = lead.persona_id
     ? _leads.filter(l => String(l.persona_id || '') === String(lead.persona_id))
@@ -1611,6 +1737,7 @@ function abrirModal(id) {
   ).join('')
   cargarPersonaFicha(l)
   cargarPersonaOportunidades(l)
+  cargarPersonaRecorridoQr(l)
   cargarPersonaHistorial(l)
 
   const msg = document.getElementById('modalMensaje')

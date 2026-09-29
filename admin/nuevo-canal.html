@@ -801,6 +801,56 @@ async function ejecutarOperacionE2(operacion, payloadSinRequest, confirmarPrevie
   return data
 }
 
+const QR_DESTINO_ACTIVO_PENDING_KEY = 'sp.qr.destino-activo.pendiente.v1'
+
+async function cambiarDestinoActivoExcepcional(referencia, destinoNuevo) {
+  if (destinoNuevo === referencia.destino) return { sinCambio: true }
+  const motivo = prompt(
+    'Este QR activo ya puede estar impreso o compartido. Escribí el motivo del cambio (mínimo 10 caracteres). El canal recibirá una notificación.'
+  )
+  if (motivo === null) return { cancelada: true }
+  if (motivo.trim().length < 10) throw new Error('El motivo debe tener al menos 10 caracteres.')
+
+  let pendiente
+  try { pendiente = JSON.parse(sessionStorage.getItem(QR_DESTINO_ACTIVO_PENDING_KEY) || 'null') }
+  catch { pendiente = null }
+  const coincide = pendiente?.referencia_id === referencia.id &&
+    pendiente?.destino_nuevo === destinoNuevo && pendiente?.motivo === motivo.trim()
+  if (!coincide) {
+    pendiente = { request_id: crypto.randomUUID(), referencia_id: referencia.id,
+      destino_nuevo: destinoNuevo, motivo: motivo.trim() }
+    sessionStorage.setItem(QR_DESTINO_ACTIVO_PENDING_KEY, JSON.stringify(pendiente))
+    if (sessionStorage.getItem(QR_DESTINO_ACTIVO_PENDING_KEY) !== JSON.stringify(pendiente)) {
+      throw new Error('No se pudo conservar el identificador seguro del cambio.')
+    }
+  }
+  const { data: preview, error: previewError } = await supabase.rpc('qr_destino_activo_preparar_v1', {
+    p_request_id: pendiente.request_id,
+    p_referencia_id: pendiente.referencia_id,
+    p_destino_nuevo: pendiente.destino_nuevo,
+    p_motivo: pendiente.motivo,
+  })
+  if (previewError) throw previewError
+  const aceptado = confirm(
+    `${preview.advertencia}\n\nDestino anterior:\n${preview.destino_anterior}\n\nDestino nuevo:\n${preview.destino_nuevo}\n\nMotivo:\n${preview.motivo}\n\n¿Confirmás el cambio excepcional y la notificación al canal?`
+  )
+  if (!aceptado) {
+    sessionStorage.removeItem(QR_DESTINO_ACTIVO_PENDING_KEY)
+    return { cancelada: true }
+  }
+  const { data, error } = await supabase.rpc('qr_destino_activo_aplicar_v1', {
+    p_request_id: pendiente.request_id,
+    p_expected_sha256: preview.before_sha256,
+    p_acepto_cambio_destino_activo: true,
+  })
+  if (error) throw error
+  if (data?.ok !== true || data?.request_id !== pendiente.request_id) {
+    throw new Error('La respuesta del cambio es incierta. Reintentá la misma edición; no generes otro pedido.')
+  }
+  sessionStorage.removeItem(QR_DESTINO_ACTIVO_PENDING_KEY)
+  return data
+}
+
 function confirmarCambioActividad(preview) {
   const canal = preview?.canal
   if (!canal?.requiere_confirmar_todos) return {}
@@ -1490,7 +1540,22 @@ window.guardarDestinoRef = async (id) => {
     const destinoData = JSON.parse(sel.value)
     payload.destino = destinoData.destino
   }
+  let destinoAplicado = false
   try {
+    if (canalActivo && payload.destino !== original.destino) {
+      const cambio = await cambiarDestinoActivoExcepcional(original, payload.destino)
+      if (cambio?.cancelada) return
+      destinoAplicado = true
+      // El destino ya se confirmó en su transacción excepcional. No escribir
+      // otra vez cuando no cambió ningún otro campo.
+      if (nombre === original.nombre) {
+        await cargarReferencias()
+        return
+      }
+      // E2 exige nombre+destino también al renombrar una referencia activa.
+      // Conservar el destino ya validado; nunca omitirlo ni enviar null.
+      payload = { nombre, destino: payload.destino }
+    }
     const resultado = await ejecutarOperacionE2('referencia_guardar', {
       referencia_id: id,
       referencia: payload,
@@ -1502,7 +1567,10 @@ window.guardarDestinoRef = async (id) => {
       return
     }
   } catch (error) {
-    alert('No se pudo guardar el punto. No se realizó ningún cambio parcial.\n\n' + e2MensajeError(error))
+    alert((destinoAplicado
+      ? 'El destino ya fue cambiado y notificado. No se pudo completar o verificar el resto; se recargará el punto.'
+      : 'No se pudo confirmar el guardado del punto. Verificá su estado antes de repetir la operación.') + '\n\n' + e2MensajeError(error))
+    if (destinoAplicado) await cargarReferencias()
     return
   }
   await cargarReferencias()

@@ -2,12 +2,11 @@
 // BURBUJA DE CONTACTO — Sur Patagonian
 // Acceso rápido al formulario propio desde cualquier punto de la página.
 // Un solo archivo para todas las páginas públicas: inyecta CSS + botón + panel.
-// El envío usa EXACTAMENTE el mismo insert en `contactos` que el formulario del
-// pie (nombre, email, telefono, mensaje, canal_ref, canal_via, fecha), así el
-// mensaje entra con el canal del QR/link vigente. No registra visitas.
+// El envío pasa por la puerta comercial segura. El navegador no decide la
+// atribución: el servidor la vincula, cuando corresponde, con el ingreso QR.
 // Uso: <script type="module" src="js/burbuja-contacto.js"></script> antes de </body>.
 // ═══════════════════════════════════════════════════════════════════════════
-import { supabase, getRef, getRefVia } from './config.js'
+import { enviarContactoSeguro } from './config.js'
 
 if (!window.__SP_BURBUJA__) {
   window.__SP_BURBUJA__ = true
@@ -153,18 +152,14 @@ if (!window.__SP_BURBUJA__) {
     submit.textContent = 'Enviando...'
     submit.disabled = true
     try {
-      const fila = {
+      await enviarContactoSeguro({
         nombre: document.getElementById('bcNombre').value.trim(),
         email: document.getElementById('bcEmail').value.trim(),
         telefono: document.getElementById('bcTelefono').value.trim(),
         mensaje: document.getElementById('bcMensaje').value.trim(),
-        canal_ref: getRef(),
-        canal_via: getRefVia(),
-        fecha: new Date().toISOString()
-      }
-      if (propiedadId) fila.propiedad_id = propiedadId
-      const { error } = await supabase.from('contactos').insert([fila])
-      if (error) throw error
+        propiedad_id: propiedadId,
+        fuente: propiedadId ? 'propiedad_form' : 'burbuja_global'
+      })
       alerta.innerHTML = '<div class="bc-alerta bc-alerta-ok">¡Mensaje enviado! Te respondemos a la brevedad.</div>'
       this.reset()
     } catch (err) {

@@ -3,6 +3,7 @@
 // ============================================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+import { pageviewIntent, releaseLandingAfterAck } from './qr-pageview-intent.mjs'
 
 const SUPABASE_URL = 'https://wajkfydxutptcvvfwrvq.supabase.co'
 const SUPABASE_KEY = 'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
@@ -25,171 +26,54 @@ export function buildPublicUrl(path = '/', params = null) {
   return url.toString()
 }
 
-// ── Sistema de referidos (canales de venta) ──────────────────
-// Captura ?canal= o ?ref= del URL y lo persiste 30 días en localStorage.
-// Así la atribución sobrevive aunque el visitante navegue por el sitio.
-const REF_KEY       = 'sp_ref'
-const REF_DIAS      = 30
-const REF_RE        = /^[a-z0-9-]{2,80}$/
-const VISITA_KEY    = 'sp_ultima_visita'
-const VISITA_DEDUPE = 1500
+// ── Blindaje QR v1 ───────────────────────────────────────────
+// La identidad comercial ya no viaja por URL/localStorage ni la decide el
+// navegador. Queda en cookies HttpOnly y se valida contra el ledger servidor.
+const LEGACY_REF_KEY='sp_ref'
+try { localStorage.removeItem(LEGACY_REF_KEY) } catch (e) {}
+try { sessionStorage.removeItem(LEGACY_REF_KEY) } catch (e) {}
+try { document.cookie=`${LEGACY_REF_KEY}=; Max-Age=0; Path=/; SameSite=Lax` } catch (e) {}
 
-// Defensa central: cualquier archivo viejo que todavía haga
-// supabase.from('visitas').insert(...) pasa por este filtro.
-const supabaseFrom = supabase.from.bind(supabase)
-supabase.from = function(table) {
-  const query = supabaseFrom(table)
-  if (table !== 'visitas' || !query?.insert) return query
+// Compatibilidad temporal de imports: nunca entrega identidad manipulable.
+export function getRef() { return null }
+export function getRefVia() { return null }
 
-  const insertOriginal = query.insert.bind(query)
-  query.insert = function(values, options) {
-    const fila = Array.isArray(values) ? values[0] : values
-    if (fila && esVisitaDuplicada(claveVisita(fila))) {
-      return Promise.resolve({ data: null, error: null, count: null, status: 200, statusText: 'OK', skipped: true })
-    }
-    return insertOriginal(values, options)
-  }
-  return query
+function contextoPagina(opciones={}) {
+  const url=new URL(location.href)
+  const path=url.pathname.replace(/\/$/,'')||'/'
+  if(path==='/'||path==='/index.html') return {path:'/',propiedad_id:null,proyecto_slug:null}
+  if(path==='/propiedades'||path==='/propiedades.html') return {path:'/propiedades',propiedad_id:null,proyecto_slug:null}
+  if(path==='/proyectos'||path==='/proyectos.html') return {path:'/proyectos',propiedad_id:null,proyecto_slug:null}
+  if(path==='/servicios'||path==='/servicios.html') return {path:'/servicios',propiedad_id:null,proyecto_slug:null}
+  if(path==='/propiedad'||path==='/propiedad.html') return {path:'/propiedad',propiedad_id:opciones.propiedadId??url.searchParams.get('id'),proyecto_slug:null}
+  const slug=opciones.proyectoSlug||opciones.pagina||url.searchParams.get('slug')||path.slice(1)
+  return {path:'/proyecto-mini',propiedad_id:null,proyecto_slug:slug}
 }
 
-function normalizarRef(ref) {
-  const clean = String(ref || '').trim().toLowerCase()
-  return REF_RE.test(clean) ? clean : null
-}
-
-function leerStorage(key) {
-  try { return localStorage.getItem(key) } catch (e) {}
-  try { return sessionStorage.getItem(key) } catch (e) {}
+export async function registrarVisita(opciones={}) {
   try {
-    const safeKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const match = document.cookie.match(new RegExp('(?:^|; )' + safeKey + '=([^;]*)'))
-    return match ? decodeURIComponent(match[1]) : null
-  } catch (e) { return null }
+    const intent=pageviewIntent(window,contextoPagina(opciones),sessionStorage)
+    const response=await fetch('/api/qr/pageview',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(intent)})
+    if(!response.ok) throw new Error(`pageview_${response.status}`)
+    const result=await response.json()
+    if(result?.ok!==true) throw new Error('pageview_invalida')
+    releaseLandingAfterAck(window)
+    return {ok:true}
+  } catch(error) { return {ok:false,error} }
 }
 
-function guardarStorage(key, value) {
-  let ok = false
-  try { localStorage.setItem(key, value); ok = true } catch (e) {}
-  try { sessionStorage.setItem(key, value); ok = true } catch (e) {}
-  try {
-    const secure = location.protocol === 'https:' ? '; Secure' : ''
-    document.cookie = `${key}=${encodeURIComponent(value)}; Max-Age=${REF_DIAS * 86400}; Path=/; SameSite=Lax${secure}`
-    ok = true
-  } catch (e) {}
-  return ok
-}
-
-function borrarStorage(key) {
-  try { localStorage.removeItem(key) } catch (e) {}
-  try { sessionStorage.removeItem(key) } catch (e) {}
-  try { document.cookie = `${key}=; Max-Age=0; Path=/; SameSite=Lax` } catch (e) {}
-}
-
-function leerRefUrl() {
-  try {
-    const p = new URLSearchParams(location.search)
-    const ref = normalizarRef(p.get('canal') || p.get('ref'))
-    if (!ref) return null
-    return { ref, via: p.get('via') === 'qr' ? 'qr' : 'link' }
-  } catch (e) { return null }
-}
-
-function leerRefGuardado() {
-  try {
-    const raw = leerStorage(REF_KEY)
-    if (!raw) return null
-    const { ref, via, ts } = JSON.parse(raw)
-    const clean = normalizarRef(ref)
-    if (!clean || Date.now() - ts > REF_DIAS * 86400000) {
-      borrarStorage(REF_KEY)
-      return null
-    }
-    return { ref: clean, via: via === 'qr' ? 'qr' : 'link', ts }
-  } catch (e) { return null }
-}
-
-;(function capturarRef() {
-  try {
-    const actual = leerRefUrl()
-    if (actual) guardarStorage(REF_KEY, JSON.stringify({ ...actual, ts: Date.now() }))
-  } catch (e) { /* storage bloqueado: seguimos con la referencia de la URL */ }
-})()
-
-// Devuelve el código de referido vigente (URL primero, después localStorage), o null.
-export function getRef() {
-  return leerRefUrl()?.ref || leerRefGuardado()?.ref || null
-}
-
-// Devuelve cómo llegó el referido: 'qr', 'link', o null si no hay ref vigente.
-export function getRefVia() {
-  return leerRefUrl()?.via || null
-}
-
-function paginaActual() {
-  const limpia = window.location.pathname.replace(/\/$/, '')
-  return limpia.split('/').pop() || 'home'
-}
-
-function dispositivoActual() {
-  const ua = navigator.userAgent
-  if (/Mobi|Android/i.test(ua)) return 'mobile'
-  if (/Tablet|iPad/i.test(ua)) return 'tablet'
-  return 'desktop'
-}
-
-function referrerActual() {
-  try {
-    return document.referrer ? new URL(document.referrer).hostname : 'directo'
-  } catch (e) { return 'directo' }
-}
-
-function valorClave(v) {
-  return v == null ? '' : String(v)
-}
-
-function claveVisita(v) {
-  return JSON.stringify({
-    pagina: valorClave(v.pagina),
-    propiedad_id: valorClave(v.propiedad_id),
-    canal_ref: valorClave(v.canal_ref),
-    canal_via: valorClave(v.canal_via),
-  })
-}
-
-function esVisitaDuplicada(key) {
-  const now = Date.now()
-  if (window.__spVisitKey === key) return true
-  window.__spVisitKey = key
-  try {
-    const prev = JSON.parse(sessionStorage.getItem(VISITA_KEY) || 'null')
-    if (prev?.key === key && now - prev.ts < VISITA_DEDUPE) return true
-    sessionStorage.setItem(VISITA_KEY, JSON.stringify({ key, ts: now }))
-  } catch (e) {}
-  return false
-}
-
-export async function registrarVisita(opciones = {}) {
-  try {
-    const params = new URLSearchParams(window.location.search)
-    const pagina = opciones.pagina || paginaActual()
-    const propiedadId = opciones.propiedadId ?? params.get('id') ?? null
-    const canalRef = getRef()
-    const canalVia = getRefVia()
-    const visita = {
-      pagina,
-      propiedad_id: propiedadId,
-      referrer: referrerActual(),
-      dispositivo: dispositivoActual(),
-      canal_ref: canalRef,
-      canal_via: canalVia,
-    }
-
-    const { data, error } = await supabase.from('visitas').insert(visita)
-    if (error) throw error
-    return { ok: true, data }
-  } catch (error) {
-    return { ok: false, error }
-  }
+export async function enviarContactoSeguro(datos) {
+  const payload={version:1,request_id:crypto.randomUUID(),nombre:datos.nombre,
+    email:datos.email||null,telefono:datos.telefono||null,mensaje:datos.mensaje,
+    propiedad_id:datos.propiedad_id||null,proyecto_slug:datos.proyecto_slug||null,
+    fuente:datos.fuente}
+  const response=await fetch('/api/contacto',{method:'POST',credentials:'same-origin',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  if(response.status!==201) throw new Error(`contacto_${response.status}`)
+  const result=await response.json()
+  if(result?.ok!==true) throw new Error('contacto_no_confirmado')
+  return {ok:true}
 }
 
 // ── Caché de site_config ──────────────────────────────────────
