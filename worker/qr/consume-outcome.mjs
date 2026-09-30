@@ -57,16 +57,21 @@ function safeLanding(destino, landing) {
     return landing;
   }
 
-  const project = /^\/proyecto-mini\?slug=([a-z0-9][a-z0-9-]*)$/.exec(destino);
+  if (['/', '/propiedades', '/proyectos', '/servicios'].includes(destino)) {
+    if (landing.path !== destino || landing.propiedad_id !== null
+      || landing.proyecto_slug !== null) throw new Error('invalid_landing');
+    return landing;
+  }
+
+  const project = /^\/proyecto-mini\?slug=([a-z0-9][a-z0-9-]*)$/.exec(destino)
+    || /^\/([a-z0-9][a-z0-9-]*)$/.exec(destino);
   if (project) {
     if (!SLUG.test(project[1]) || landing.path !== '/proyecto-mini' || landing.propiedad_id !== null
       || landing.proyecto_slug !== project[1]) throw new Error('invalid_landing');
     return landing;
   }
 
-  if (!['/', '/propiedades', '/proyectos'].includes(destino) || landing.path !== destino
-    || landing.propiedad_id !== null || landing.proyecto_slug !== null) throw new Error('invalid_landing');
-  return landing;
+  throw new Error('invalid_landing');
 }
 
 function outcomeConfig(plan, context) {
