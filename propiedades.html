@@ -581,7 +581,7 @@ fbq('track','PageView');
 </footer>
 
   <script type="module">
-    import { supabase as sbContact, getRef, getRefVia, getSiteConfig } from './js/config.js'
+    import { enviarContactoSeguro, getSiteConfig } from './js/config.js'
     document.getElementById('formContacto').addEventListener('submit', async function(e) {
       e.preventDefault()
       const alerta = document.getElementById('alertaContacto')
@@ -589,16 +589,13 @@ fbq('track','PageView');
       btn.textContent = 'Enviando...'
       btn.disabled = true
       try {
-        const { error } = await sbContact.from('contactos').insert([{
+        await enviarContactoSeguro({
           nombre: document.getElementById('cNombre').value,
           email: document.getElementById('cEmail').value,
           telefono: document.getElementById('cTelefono').value,
           mensaje: document.getElementById('cMensaje').value,
-          canal_ref: getRef(),
-          canal_via: getRefVia(),
-          fecha: new Date().toISOString()
-        }])
-        if (error) throw error
+          fuente: 'propiedades_form'
+        })
         alerta.innerHTML = '<div class="alerta alerta-ok">✓ Mensaje enviado. Te contactamos pronto.</div>'
         this.reset()
       } catch(err) {

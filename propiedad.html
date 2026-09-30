@@ -678,7 +678,7 @@ fbq('track','PageView');
 </footer>
 
 <script type="module">
-import { supabase, getRef, getRefVia } from './js/config.js'
+import { supabase, getRef, enviarContactoSeguro } from './js/config.js'
 
 // ── Tipografías desde site_config ────────────────────────────
 supabase.from('site_config').select('key, value')
@@ -956,15 +956,17 @@ function initForm(formId, alertaId, propId, tituloPropiedad) {
     const prefix = formId === 'eForm' ? 'e' : 'p'
     const btn = e.target.querySelector('.btn-enviar')
     btn.textContent = 'Enviando...'; btn.disabled = true
-    const { error } = await supabase.from('contactos').insert({
-      nombre:   document.getElementById(prefix+'Nombre').value,
-      email:    document.getElementById(prefix+'Email').value,
-      telefono: document.getElementById(prefix+'Telefono').value,
-      mensaje:  document.getElementById(prefix+'Mensaje').value,
-      propiedad_id: propId,
-      canal_ref: getRef(),
-      canal_via: getRefVia()
-    })
+    let error = null
+    try {
+      await enviarContactoSeguro({
+        nombre: document.getElementById(prefix+'Nombre').value,
+        email: document.getElementById(prefix+'Email').value,
+        telefono: document.getElementById(prefix+'Telefono').value,
+        mensaje: document.getElementById(prefix+'Mensaje').value,
+        propiedad_id: propId,
+        fuente: 'propiedad_form'
+      })
+    } catch (err) { error = err }
     const al = document.getElementById(alertaId)
     al.innerHTML = error
       ? `<div class="alerta alerta-err">Error. Intentá de nuevo.</div>`
@@ -1142,15 +1144,17 @@ function renderEstandar(p) {
     e.preventDefault()
     const btn = e.target.querySelector('.btn-enviar')
     btn.textContent = 'Enviando...'; btn.disabled = true
-    const { error } = await supabase.from('contactos').insert({
-      nombre: document.getElementById('eNombre').value,
-      email: document.getElementById('eEmail').value,
-      telefono: document.getElementById('eTelefono').value,
-      mensaje: document.getElementById('eMensaje').value,
-      propiedad_id: p.id,
-      canal_ref: getRef(),
-      canal_via: getRefVia()
-    })
+    let error = null
+    try {
+      await enviarContactoSeguro({
+        nombre: document.getElementById('eNombre').value,
+        email: document.getElementById('eEmail').value,
+        telefono: document.getElementById('eTelefono').value,
+        mensaje: document.getElementById('eMensaje').value,
+        propiedad_id: p.id,
+        fuente: 'propiedad_form'
+      })
+    } catch (err) { error = err }
     document.getElementById('eAlerta').innerHTML = error
       ? `<div class="alerta alerta-err">Error. Intentá de nuevo.</div>`
       : `<div class="alerta alerta-ok">✓ ¡Consulta enviada!</div>`
@@ -1270,15 +1274,17 @@ async function renderPremium(p) {
     e.preventDefault()
     const btn = e.target.querySelector('.btn-enviar')
     btn.textContent = 'Enviando...'; btn.disabled = true
-    const { error } = await supabase.from('contactos').insert({
-      nombre: document.getElementById('pNombre').value,
-      email: document.getElementById('pEmail').value,
-      telefono: document.getElementById('pTelefono').value,
-      mensaje: document.getElementById('pMensaje').value,
-      propiedad_id: p.id,
-      canal_ref: getRef(),
-      canal_via: getRefVia()
-    })
+    let error = null
+    try {
+      await enviarContactoSeguro({
+        nombre: document.getElementById('pNombre').value,
+        email: document.getElementById('pEmail').value,
+        telefono: document.getElementById('pTelefono').value,
+        mensaje: document.getElementById('pMensaje').value,
+        propiedad_id: p.id,
+        fuente: 'propiedad_form'
+      })
+    } catch (err) { error = err }
     document.getElementById('pAlerta').innerHTML = error
       ? `<div class="alerta alerta-err">Error. Intentá de nuevo.</div>`
       : `<div class="alerta alerta-ok">✓ ¡Consulta enviada!</div>`

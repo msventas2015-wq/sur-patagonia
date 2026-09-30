@@ -1115,138 +1115,11 @@ fbq('track','PageView');
 <script type="module">
 // Ruta ABSOLUTA: esta página se sirve en cualquier profundidad de URL
 // (/aldea-los-huemules, /r/codigo, etc.) y una ruta relativa rompería en /r/
-import { supabase, getRef, getRefVia, registrarVisita } from '/js/config.js'
+import { supabase, getRef, registrarVisita, enviarContactoSeguro } from '/js/config.js'
 
-// ── Redirect de QRs: /r/{codigo} ──────────────────────────────────────
-// Los QRs impresos apuntan a surpatagonia.com.ar/r/{codigo}. Como esta
-// página es el fallback universal de Cloudflare, resolvemos acá:
-// buscamos la referencia y redirigimos a su destino con ?canal=.
-const _rMatch = location.pathname.toLowerCase().match(/^\/r\/([a-z0-9-]{2,80})\/?$/)
-function agregarTrackingDestino(destino, codigo, via) {
-  const hashIdx = destino.indexOf('#')
-  const base = hashIdx >= 0 ? destino.slice(0, hashIdx) : destino
-  const hash = hashIdx >= 0 ? destino.slice(hashIdx) : ''
-  const sep = base.includes('?') ? '&' : '?'
-  return `${base}${sep}canal=${encodeURIComponent(codigo)}&via=${encodeURIComponent(via)}${hash}`
-}
-
-function normalizarDestinoUrl(destino) {
-  try {
-    return new URL(destino || '/', location.origin)
-  } catch (e) {
-    return new URL('/', location.origin)
-  }
-}
-
-function dispositivoRedirectActual() {
-  const ua = navigator.userAgent
-  if (/Mobi|Android/i.test(ua)) return 'mobile'
-  if (/Tablet|iPad/i.test(ua)) return 'tablet'
-  return 'desktop'
-}
-
-function referrerRedirectActual() {
-  try {
-    return document.referrer ? new URL(document.referrer).hostname : 'directo'
-  } catch (e) {
-    return 'directo'
-  }
-}
-
-function viaRedirectActual() {
-  const via = new URLSearchParams(location.search).get('via')
-  return via === 'link' ? 'link' : 'qr'
-}
-
-async function esSlugProyectoInstrumentado(path) {
-  const slug = path.replace(/^\/+|\/+$/g, '')
-  if (!slug) return false
-  try {
-    const { data } = await supabase
-      .from('proyectos')
-      .select('slug')
-      .eq('slug', slug)
-      .maybeSingle()
-    return Boolean(data?.slug)
-  } catch (e) {
-    return false
-  }
-}
-
-async function destinoInstrumentado(destino) {
-  const url = normalizarDestinoUrl(destino)
-  if (url.origin !== location.origin) return false
-
-  const path = url.pathname.replace(/\/+$/, '') || '/'
-  const rutasInstrumentadas = new Set([
-    '/',
-    '/index.html',
-    '/proyectos.html',
-    '/propiedades.html',
-    '/servicios.html',
-    '/propiedad.html',
-  ])
-  if (rutasInstrumentadas.has(path)) return true
-
-  const rutasNoInstrumentadas = new Set([
-    '/proximamente',
-    '/proximamente.html',
-  ])
-  if (rutasNoInstrumentadas.has(path)) return false
-
-  if (/^\/[a-z0-9-]+$/i.test(path)) return esSlugProyectoInstrumentado(path)
-  return false
-}
-
-async function registrarVisitaRedirectNoInstrumentado(codigo, via) {
-  try {
-    await supabase.from('visitas').insert({
-      pagina: 'url_personalizada',
-      propiedad_id: null,
-      referrer: referrerRedirectActual(),
-      dispositivo: dispositivoRedirectActual(),
-      canal_ref: codigo,
-      canal_via: via,
-    })
-  } catch (e) {
-    console.warn('[redirect tracking] No se pudo registrar visita previa a redirección:', e)
-  }
-}
-
-if (_rMatch) {
-  document.documentElement.style.visibility = 'hidden'
-  const { data: _r } = await supabase
-    .from('referencias')
-    .select('codigo, destino, activo, canal_id')
-    .eq('codigo', _rMatch[1])
-    .maybeSingle()
-  if (_r && _r.activo) {
-    let _dest = _r.destino || '/'
-    // ── Campaña activa tiene prioridad sobre el destino base ──
-    if (_r.canal_id) {
-      const _now = new Date().toISOString()
-      const { data: _cc } = await supabase
-        .from('campanas_canales')
-        .select('campanas(url_destino, activa, fecha_inicio, fecha_fin)')
-        .eq('canal_id', _r.canal_id)
-      const _camp = (_cc || [])
-        .map(x => x.campanas)
-        .filter(c => c && c.activa
-          && (!c.fecha_inicio || c.fecha_inicio <= _now)
-          && (!c.fecha_fin    || c.fecha_fin    >= _now))
-        .sort((a, b) => (b.fecha_inicio || '').localeCompare(a.fecha_inicio || ''))[0]
-      if (_camp && _camp.url_destino) _dest = _camp.url_destino
-    }
-    const _via = viaRedirectActual()
-    if (!(await destinoInstrumentado(_dest))) {
-      await registrarVisitaRedirectNoInstrumentado(_r.codigo, _via)
-    }
-    location.replace(agregarTrackingDestino(_dest, _r.codigo, _via))
-  } else {
-    location.replace('/')
-  }
-  await new Promise(() => {}) // corta la ejecución del resto del módulo sin error de consola
-}
+// Las rutas /r/* ya no se resuelven desde el 404 ni leen tablas comerciales
+// desde el navegador. Cloudflare las entrega al bootstrap estático y al
+// Worker blindado antes del fallback universal.
 
 // ── Utils ─────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id)
@@ -1921,16 +1794,17 @@ function renderContacto(p) {
     e.preventDefault()
     const btn = $('fBtn')
     btn.disabled = true; btn.textContent = 'Enviando...'
-    const { error } = await supabase.from('contactos').insert({
-      nombre: $('fNombre').value,
-      telefono: $('fTel').value,
-      email: $('fEmail').value,
-      mensaje: `[${nombre}] ${$('fMsg').value}`,
-      proyecto_slug: slug,
-      canal_ref: getRef(),
-      canal_via: getRefVia(),
-      fecha: new Date().toISOString(),
-    })
+    let error = null
+    try {
+      await enviarContactoSeguro({
+        nombre: $('fNombre').value,
+        telefono: $('fTel').value,
+        email: $('fEmail').value,
+        mensaje: `[${nombre}] ${$('fMsg').value}`,
+        proyecto_slug: slug,
+        fuente: 'proyecto_mini_form'
+      })
+    } catch (err) { error = err }
     const m = $('fMsg2')
     if (error) {
       m.className = 'form-err'; m.textContent = 'Error al enviar. Escribinos por WhatsApp.'

@@ -1674,7 +1674,7 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
 </footer>
 
 <script type="module">
-import { supabase, getRef, getRefVia, getSiteConfig } from './js/config.js'
+import { supabase, enviarContactoSeguro, getSiteConfig } from './js/config.js'
 
 document.getElementById('formContacto').addEventListener('submit', async e => {
   e.preventDefault()
@@ -1682,15 +1682,13 @@ document.getElementById('formContacto').addEventListener('submit', async e => {
   const al = document.getElementById('alertaContacto')
   btn.textContent='Enviando...'; btn.disabled=true
   try {
-    const { error } = await supabase.from('contactos').insert({
+    await enviarContactoSeguro({
       nombre: document.getElementById('cNombre').value,
       email: document.getElementById('cEmail').value,
       telefono: document.getElementById('cTelefono').value,
       mensaje: document.getElementById('cMensaje').value,
-      canal_ref: getRef(),
-      canal_via: getRefVia()
+      fuente: 'home_form'
     })
-    if (error) throw error
     al.innerHTML = `<div class="alerta alerta-ok">✓ Mensaje enviado. Te contactamos pronto.</div>`
     e.target.reset()
   } catch(err) {
@@ -2238,7 +2236,7 @@ async function cargarProyectos() {
 </div>
 
 <script type="module">
-import { supabase, getRef, getRefVia } from './js/config.js'
+import { enviarContactoSeguro } from './js/config.js'
 
 // CONTENCIÓN CHATBOT-01: cambiar a true para rehabilitar la interfaz conservada.
 const SP_CHAT_ENABLED = false
@@ -2506,16 +2504,14 @@ async function handleInput(text) {
     addTyping()
     let contactoGuardado = false
     try {
-      const { error } = await supabase.from('contactos').insert({
+      await enviarContactoSeguro({
         nombre: state.nombre,
         email: state.email,
         telefono: state.telefono,
         mensaje: `Chat web — Busca: ${state.operacion || 'consulta'} / ${state.tipo || 'cualquier tipo'} / presupuesto: ${state.presupuesto ? 'USD ' + state.presupuesto : 'sin límite'}`,
-        canal_ref: getRef(),
-        canal_via: getRefVia()
+        fuente: 'home_chatbot'
       })
-      contactoGuardado = !error
-      if (error) console.warn('Error guardando contacto:', error.message)
+      contactoGuardado = true
     } catch(e) { console.warn('Error guardando contacto') }
     removeTyping()
     if (contactoGuardado) {

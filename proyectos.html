@@ -542,7 +542,7 @@ fbq('track','PageView');
 </div>
 
 <script type="module">
-import { supabase, getRef, getRefVia, getSiteConfig } from './js/config.js'
+import { supabase, enviarContactoSeguro, getSiteConfig } from './js/config.js'
 
 /* ── CONTACTO ── */
 document.getElementById('formContacto').addEventListener('submit', async function(e) {
@@ -552,16 +552,13 @@ document.getElementById('formContacto').addEventListener('submit', async functio
   btn.textContent = 'Enviando...'
   btn.disabled = true
   try {
-    const { error } = await supabase.from('contactos').insert([{
+    await enviarContactoSeguro({
       nombre: document.getElementById('cNombre').value,
       email: document.getElementById('cEmail').value,
       telefono: document.getElementById('cTelefono').value,
       mensaje: document.getElementById('cMensaje').value,
-      canal_ref: getRef(),
-      canal_via: getRefVia(),
-      fecha: new Date().toISOString()
-    }])
-    if (error) throw error
+      fuente: 'proyectos_form'
+    })
     alerta.innerHTML = '<div class="alerta alerta-ok">¡Mensaje enviado! Te respondemos a la brevedad.</div>'
     this.reset()
   } catch(err) {
