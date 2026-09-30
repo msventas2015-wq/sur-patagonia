@@ -7,7 +7,7 @@ qr_image='/Users/marianosylvester/Documents/SurPatagonian/QR-Backup-PROD-2026-09
 qr_volume='/Volumes/SP-QR-PROD-2026-09-29'
 qr_dump='/Applications/Postgres.app/Contents/Versions/latest/bin/pg_dump'
 qr_restore='/Applications/Postgres.app/Contents/Versions/latest/bin/pg_restore'
-qr_dsn="postgresql://postgres.${qr_project}@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
+qr_dsn="postgresql://postgres@db.${qr_project}.supabase.co:5432/postgres?sslmode=require"
 qr_label="${1:-baseline}"
 
 if [[ "$qr_label" != 'baseline' && "$qr_label" != 'postcut' ]]; then
