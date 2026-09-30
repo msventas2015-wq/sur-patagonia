@@ -33,6 +33,19 @@ for qr_table in canales referencias visitas contactos personas crm_eventos mensa
   fi
 done
 
+qr_sql_dir="$qr_root/worker/qr/sql"
+qr_package="$qr_sql_dir/package-prod-forward.sql"
+if [[ ! -f "$qr_package" ]]; then
+  print -u2 'ERROR: falta el paquete SQL local; no se instaló nada.'
+  exit 1
+fi
+while IFS= read -r qr_sql_part; do
+  if [[ ! -f "$qr_sql_dir/$qr_sql_part" ]]; then
+    print -u2 "ERROR: falta la dependencia SQL ${qr_sql_part}; no se instaló nada."
+    exit 1
+  fi
+done < <(awk '$1 == "\\ir" { print $2 }' "$qr_package")
+
 qr_keyset=$(security find-generic-password -a marianosylvester -s 'surpatagonian-qr-prod-runtime-v19' -w)
 qr_kid=$(print -r -- "$qr_keyset" | /usr/bin/jq -er '.kid')
 qr_assertion=$(print -r -- "$qr_keyset" | /usr/bin/jq -er '.assertion')
@@ -78,7 +91,7 @@ unset qr_assertion qr_secret_sql
 "$qr_psql" -X -w -v ON_ERROR_STOP=1 -d "$qr_dsn" \
   -v qr_project_ref='wajkfydxutptcvvfwrvq' -v qr_environment='prod' \
   -v "qr_cycle_id=${qr_cycle_id}" -v "qr_assertion_kid=${qr_kid}" \
-  -f "$qr_root/worker/qr/sql/package-prod-forward.sql"
+  -f "$qr_package"
 
 print -r -- "$qr_cycle_id" > "$qr_cycle_file"
 unset PGPASSWORD
