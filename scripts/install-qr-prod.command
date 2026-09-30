@@ -10,7 +10,7 @@ qr_manifest="${qr_backup}.sha256"
 qr_cycle_file="$qr_volume/qr-prod-cycle-v19.txt"
 qr_psql='/Applications/Postgres.app/Contents/Versions/latest/bin/psql'
 qr_restore='/Applications/Postgres.app/Contents/Versions/latest/bin/pg_restore'
-qr_dsn='postgresql://postgres.wajkfydxutptcvvfwrvq@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require'
+qr_dsn='postgresql://postgres@db.wajkfydxutptcvvfwrvq.supabase.co:5432/postgres?sslmode=require'
 
 if [[ ! -d "$qr_volume" ]] || ! hdiutil info | grep -F "image-path      : $qr_image" >/dev/null \
   || ! hdiutil info | grep -F -A12 "image-path      : $qr_image" | grep -F 'image-encrypted : TRUE' >/dev/null; then
