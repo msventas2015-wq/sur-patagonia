@@ -512,7 +512,7 @@ function renderQuality(current, metrics, sources, channels) {
   const testVisits = channels.filter(row => row.test).reduce((sum, row) => sum + row.visits, 0)
   const rowsComplete = current.visitsComplete && current.contactsComplete ? 100 : pct(current.downloadedVisitCount, current.rawVisitCount)
   const items = [
-    { label: 'Lectura completa', detail: `${fmt(current.visits.length)} de ${fmt(current.visits.length)} cargas`, value: rowsComplete, color: rowsComplete === 100 ? '#47d48a' : '#d9825b' },
+    { label: 'Lectura completa', detail: `${fmt(current.downloadedVisitCount)} de ${fmt(current.rawVisitCount)} cargas`, value: rowsComplete, color: rowsComplete === 100 ? '#47d48a' : '#d9825b' },
     { label: 'Páginas clasificadas', detail: `${fmt(pageKnown)} de ${fmt(current.visitCount)}`, value: pct(pageKnown, current.visitCount), color: '#7aaeff' },
     { label: 'Medio conocido', detail: attributed ? `${fmt(mediumKnown)} de ${fmt(attributed)} atribuidas` : 'Sin cargas atribuidas', value: attributed ? pct(mediumKnown, attributed) : 100, color: attributed && mediumKnown < attributed ? '#d9825b' : '#50c878' },
     { label: 'Datos comerciales', detail: testVisits ? `${fmt(testVisits)} cargas en posibles pruebas` : 'Sin pruebas obvias', value: current.visitCount ? Math.max(0, 100 - pct(testVisits, current.visitCount)) : 100, color: testVisits ? '#e8c96a' : '#47d48a' },
