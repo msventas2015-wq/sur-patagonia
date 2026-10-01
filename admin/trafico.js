@@ -1,4 +1,4 @@
-import { crearFiltroDeCatalogo, canalEnCatalogo, registroEnCatalogo } from '../js/admin-canal-visibilidad.js'
+import { crearFiltroDeCatalogo, canalEnCatalogo, registroEnCatalogo } from '../js/admin-canal-visibilidad.js?v=catalogo-20261001-57'
 import { supabase } from '../js/config.js'
 
 const GA4_PROPERTY_ID = '553717417'
