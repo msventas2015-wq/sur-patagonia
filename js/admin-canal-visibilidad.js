@@ -67,29 +67,3 @@ export function crearLectorConCache(limite = 4) {
     return cache.get(clave)
   }
 }
-
-export function instalarFiltroEstadoCanal({ contenedor, id = 'fEstadoCanal', claseGrupo = 'filtro', claseControl = 'admin-input', onChange }) {
-  if (!contenedor) throw new Error('No se encontró el contenedor del filtro de canales')
-  const grupo = document.createElement('div')
-  grupo.className = claseGrupo
-  const label = document.createElement('label')
-  label.htmlFor = id
-  label.textContent = 'Estado del canal'
-  const select = document.createElement('select')
-  select.id = id
-  select.className = claseControl
-  for (const [value, text] of [['activo', 'Canales activos'], ['', 'Todos los canales'], ['inactivo', 'Canales archivados']]) {
-    const option = document.createElement('option')
-    option.value = value
-    option.textContent = text
-    select.appendChild(option)
-  }
-  select.value = 'activo'
-  const nota = document.createElement('small')
-  nota.textContent = 'Listas y métricas según el estado elegido. El historial se conserva.'
-  nota.style.display = 'block'
-  select.addEventListener('change', onChange)
-  grupo.append(label, select, nota)
-  contenedor.prepend(grupo)
-  return select
-}

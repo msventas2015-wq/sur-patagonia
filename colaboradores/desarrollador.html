@@ -608,14 +608,6 @@
 <script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
-const mostrarCanalesArchivados = new URLSearchParams(location.search).get('archivados') === '1'
-const controlArchivados = document.createElement('label')
-controlArchivados.innerHTML='<input type="checkbox" id="mostrarCanalesArchivados"> Incluir canales archivados <small>Las métricas generales conservan el historial completo.</small>'
-controlArchivados.style.cssText='display:block;padding:.5rem 0'
-document.getElementById('canalBadge').parentElement.appendChild(controlArchivados)
-const inputArchivados=document.getElementById('mostrarCanalesArchivados')
-inputArchivados.checked=mostrarCanalesArchivados
-inputArchivados.addEventListener('change',()=>{const p=new URLSearchParams(location.search);p.set('archivados',inputArchivados.checked?'1':'0');location.search=p.toString()})
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 import { aplicarConfigVisual, leerConfigVisual } from '../js/panel-config.js'
 
@@ -1923,7 +1915,7 @@ function renderChartCanales() {
   filtV.forEach(v => { const id = _refToCanal[v.canal_ref] || '__sin_atribuir__'; cClicks[id] = (cClicks[id]||0)+contarAperturas([v]) })
   filtC.forEach(c => { const id = _refToCanal[c.canal_ref] || '__sin_atribuir__'; cLeads[id]  = (cLeads[id] ||0)+1 })
 
-  const filasActividad = [...Object.keys(_canalMap).filter(id => mostrarCanalesArchivados || _canalMap[id].activo === true), ...(cClicks.__sin_atribuir__ || cLeads.__sin_atribuir__ ? ['__sin_atribuir__'] : [])]
+  const filasActividad = [...Object.keys(_canalMap).filter(id => _canalMap[id].activo === true), ...(cClicks.__sin_atribuir__ || cLeads.__sin_atribuir__ ? ['__sin_atribuir__'] : [])]
     .map(id => ({
       id,
       nombre:id === '__sin_atribuir__' ? 'Sin atribuir' : (_canalMap[id].nombre||'—'),
@@ -2019,9 +2011,9 @@ function renderDynamic() {
   filtVDigital.forEach(v => { const id=_refToCanal[v.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].clicks += contarAperturas([v]) })
   filtCDigital.forEach(c => { const id=_refToCanal[c.canal_ref]; if(id&&_canalMap[id]) _canalMap[id].leads++ })
 
-  const canales     = Object.values(_canalMap).filter(c => mostrarCanalesArchivados || c.activo === true)
+  const canales     = Object.values(_canalMap).filter(c => c.activo === true)
   const nCanales    = canales.length
-  const canalesActivos = new Set([...filtV, ...filtC].map(f => _refToCanal[f.canal_ref]).filter(id => id && (mostrarCanalesArchivados || _canalMap[id]?.activo === true)))
+  const canalesActivos = new Set([...filtV, ...filtC].map(f => _refToCanal[f.canal_ref]).filter(id => id && (_canalMap[id]?.activo === true)))
   const nActivos    = canalesActivos.size
   const totalClicks = contarAperturas(filtV)
   const totalLeads  = filtC.length
@@ -2048,7 +2040,7 @@ function renderDynamic() {
   // ── KPIs ──
   document.getElementById('kpiRow').innerHTML = `
     <div class="kpi" style="--c:#b88fd6">
-      <div class="kpi-lbl">${mostrarCanalesArchivados ? 'Canales registrados' : 'Canales activos'}</div>
+      <div class="kpi-lbl">Canales activos</div>
       <div class="kpi-n">${nCanales}</div>
       <div class="kpi-m">${nActivos} con actividad en el período</div>
     </div>
