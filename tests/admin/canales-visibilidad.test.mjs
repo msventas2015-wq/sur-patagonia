@@ -187,3 +187,27 @@ test('historial y escrituras E2 permanecen idénticos a la base publicada', () =
     assert.ok(leer(file).includes("canales.filter(c=>c.canal_activo===true).length!==Number(inventario.canales_activos)") || leer(file).includes('canalIds = canales.map(c => c.id)'),file+' inventario completo')
   }
 })
+
+// Regresión de privacidad: una URL no puede habilitar controles internos.
+test('los paneles externos no incluyen controles de archivo ni parámetros que los habiliten', () => {
+  for (const file of ['colaboradores/index.html','colaboradores/desarrollador.html']) {
+    const source = leer(file)
+    assert.ok(!source.includes('Incluir canales archivados'), file)
+    assert.ok(!source.includes('mostrarCanalesArchivados'), file)
+    assert.ok(!source.includes("get('archivados')"), file)
+    assert.ok(!source.includes('Podés consultar los archivados'), file)
+    assert.ok(source.includes('activo === true'), file)
+    assert.ok(source.includes("storageKey: 'sp-colab-session'"), file)
+  }
+  assert.ok(leer('colaboradores/index.html').includes(".eq('user_id', userId)"))
+  assert.ok(leer('colaboradores/desarrollador.html').includes("meta.tipo_acceso !== 'desarrollador'"))
+})
+
+test('los filtros originales del admin no reciben filas ni aclaraciones adicionales', () => {
+  for (const file of ['admin/contactos.html','admin/crm.html','admin/dashboard.html','admin/monitoreo-qr.html','admin/salud-de-red.html']) {
+    const source = leer(file)
+    assert.ok(!source.includes('instalarFiltroEstadoCanal'), file)
+    assert.ok(source.includes("const filtroEstadoCanal = { value: 'activo' }"), file)
+  }
+  assert.ok(!leer('js/admin-canal-visibilidad.js').includes('El historial se conserva'))
+})

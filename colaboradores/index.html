@@ -1299,15 +1299,7 @@
 </main>
 
 <script type="module">
-const mostrarCanalesArchivados = new URLSearchParams(location.search).get('archivados') === '1'
-const controlArchivados=document.createElement('label')
-controlArchivados.style.cssText='display:block;max-width:1100px;margin:1rem auto;padding:0 1rem'
-controlArchivados.innerHTML='<input type="checkbox" id="mostrarCanalesArchivados"> Incluir canales archivados · Las métricas generales conservan el historial completo'
-document.getElementById('mainContent').before(controlArchivados)
-const inputArchivados=document.getElementById('mostrarCanalesArchivados')
-inputArchivados.checked=mostrarCanalesArchivados
-inputArchivados.addEventListener('change',()=>{const p=new URLSearchParams(location.search);p.set('archivados',inputArchivados.checked?'1':'0');location.search=p.toString()})
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
   import { aplicarConfigVisual, leerConfigVisual } from '../js/panel-config.js'
   import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
 
@@ -1842,7 +1834,7 @@ inputArchivados.addEventListener('change',()=>{const p=new URLSearchParams(locat
     }
 
     const esPasivo  = meta.tipo_acceso === 'pasivo'
-    const canalesVisiblesPanel = () => canales.filter(c => mostrarCanalesArchivados || c.activo === true)
+    const canalesVisiblesPanel = () => canales.filter(c => c.activo === true)
     let codigos   = canales.map(c => c.codigo)
     let ahora     = new Date()
 
@@ -2536,7 +2528,7 @@ inputArchivados.addEventListener('change',()=>{const p=new URLSearchParams(locat
     // ── Render completo desde el snapshot publicado ────────────────────────
     function renderizarPanelCompleto(estadoVisual = null) {
     const main = document.getElementById('mainContent')
-    if (!canalesVisiblesPanel().length) {main.innerHTML='<div class="empty-msg">No hay canales activos asignados. Podés consultar los archivados con el selector de arriba.</div>';return}
+    if (!canalesVisiblesPanel().length) {main.innerHTML='<div class="empty-msg">No hay canales activos asignados.</div>';return}
     if (esPasivo && canalesVisiblesPanel().length > 1) {
       main.classList.add('pv-main')
       const totalRegistrosActivos = contactos.filter(c => c.estado !== 'descartado').length
