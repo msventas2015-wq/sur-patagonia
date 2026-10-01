@@ -219,7 +219,7 @@ test('cada import del módulo de visibilidad corresponde a una exportación real
   for (const dir of ['admin','colaboradores']) {
     for (const name of fs.readdirSync(root + dir).filter(n => /\.(html|js)$/.test(n))) {
       const archivo = `${dir}/${name}`
-      for (const match of leer(archivo).matchAll(/import\s*\{([^}]+)\}\s*from\s*['"][^'"]*admin-canal-visibilidad\.js['"]/g)) {
+      for (const match of leer(archivo).matchAll(/import\s*\{([^}]+)\}\s*from\s*['"][^'"]*admin-canal-visibilidad\.js(?:\?[^'"]*)?['"]/g)) {
         for (const entry of match[1].split(',')) {
           const nombre = entry.trim().split(/\s+as\s+/)[0]
           assert.ok(Object.hasOwn(helpers,nombre), `${archivo}: export inexistente ${nombre}`)
