@@ -907,7 +907,7 @@ function pasaFiltroFecha(l) {
 }
 
 function leadsDeCanalesVisibles() {
-  return _leads.filter(l => registroVisible(resolverCanal(l.canal_ref), filtroEstadoCanal.value))
+  return _leads.filter(l => registroVisible(resolverCanal(l.canal_ref), filtroEstadoCanal.value, l.canal_ref))
 }
 
 function getLeadsFiltrados() {
@@ -1062,7 +1062,7 @@ async function cargar() {
   await Promise.all([cargarMapasFiltros(), cargarUsuariosCrm()])
 
   if (error || !data) return
-  _leads = data.map(enriquecerLead)
+  _leads = data.filter(l => registroVisible(resolverCanal(l.canal_ref), '', l.canal_ref)).map(enriquecerLead)
 
   renderFiltroOpciones()
   renderKpis()

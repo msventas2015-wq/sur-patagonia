@@ -883,7 +883,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script type="module">
-import { registroVisible } from '../js/admin-canal-visibilidad.js'
+import { canalVisible, registroVisible } from '../js/admin-canal-visibilidad.js'
 const filtroEstadoCanal = { value: 'activo' }
 import { supabase } from '../js/config.js'
 
@@ -971,7 +971,7 @@ async function cargarTodo() {
   const canalPorId = {}
   const metaCanal  = {}   // nombre de canal → { ciudad, provincia, lat, lng }
   const canales = rCanales.data || []
-  _canalesRaw = canales.filter(c => c.activo === true)
+  _canalesRaw = canales.filter(c => canalVisible(c))
   _refsRaw    = rRefs.data || []
   const canalEstadoPorId = new Map(canales.map(c=>[c.id,c]))
   _canalEstadoPorRef = new Map(canales.map(c=>[c.codigo,c]))
@@ -980,7 +980,7 @@ async function cargarTodo() {
   _proysRaw   = rProy.data || []
   ;(rCanales.data || []).forEach(c => {
     canalPorId[c.id] = c.nombre
-    metaCanal[c.nombre] = { ciudad: c.ciudad || null, provincia: c.provincia || null,
+    metaCanal[c.nombre] = { id:c.id, ciudad: c.ciudad || null, provincia: c.provincia || null,
                             lat: c.latitud ?? null, lng: c.longitud ?? null, tipo: c.tipo || null,
                             color_index: c.color_index, activo: c.activo }
   })
@@ -1032,7 +1032,7 @@ async function cargarTodo() {
   const proyPorSlug = {}
   ;(rProy.data || []).forEach(p => { proyPorSlug[p.slug || toSlug(p.nombre)] = p.nombre })
 
-  _leads = (rLeads.data || []).map(c => {
+  _leads = (rLeads.data || []).filter(c => registroVisible(_canalEstadoPorRef.get(c.canal_ref) || null, '', c.canal_ref)).map(c => {
     let canalNombre = null
     if (c.canal_ref) {
       canalNombre = canalPorRef[c.canal_ref]
@@ -1067,7 +1067,7 @@ async function cargarTodo() {
 
 // ── Filtros ───────────────────────────────────────────────
 function leadsDeCanalesVisibles(base = _leads) {
-  return base.filter(l => registroVisible(_canalEstadoPorRef.get(l.canal_ref) || null, filtroEstadoCanal.value))
+  return base.filter(l => registroVisible(_canalEstadoPorRef.get(l.canal_ref) || null, filtroEstadoCanal.value, l.canal_ref))
 }
 
 function poblarFiltros() {

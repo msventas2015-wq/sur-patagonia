@@ -381,7 +381,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
-import { registroVisible } from '../js/admin-canal-visibilidad.js'
+import { canalVisible, registroVisible } from '../js/admin-canal-visibilidad.js'
 const filtroEstadoCanal = { value: 'activo' }
 import { contactosAtendidos, diaArgentina, leerPaginado } from '../js/metricas-paneles.js'
 
@@ -457,7 +457,7 @@ async function cargar() {
   if(rCanales.error || rRefs.error){$('listaLeads').innerHTML='<div class="empty-state">No se pudo verificar el catálogo de canales.</div>';$('tablaCanales').innerHTML='<tr><td colspan="4">No se pudo verificar el catálogo de canales.</td></tr>';return}
   const canalEstadoPorId = new Map(canales.map(c=>[c.id,c])), canalEstadoPorCodigo = new Map(canales.map(c=>[c.codigo,c]))
   const canalEstadoPorRef = new Map(refs.map(r=>[r.codigo,canalEstadoPorId.get(r.canal_id)]))
-  const enEstaVista = x => registroVisible(canalEstadoPorRef.get(x.canal_ref) || canalEstadoPorCodigo.get(x.canal_ref) || null, filtroEstadoCanal.value)
+  const enEstaVista = x => registroVisible(canalEstadoPorRef.get(x.canal_ref) || canalEstadoPorCodigo.get(x.canal_ref) || null, filtroEstadoCanal.value, x.canal_ref)
   const leads60 = (rLeads60.data || []).filter(enEstaVista)
   const visitas60 = visitasOk ? rVisitas60.data.filter(enEstaVista) : []
 
@@ -493,7 +493,7 @@ async function cargar() {
   $('kViaSub').textContent = visitasOk ? `${qrClicks30} por QR · ${linkClicks30} por link · ${v30.length} visitas totales` : 'No se pudieron leer las visitas completas'
   $('kProps').textContent = rNumProps.count ?? 0
   $('kProy').textContent  = rNumProy.count ?? 0
-  $('kCan').textContent   = canales.filter(c => filtroEstadoCanal.value === 'activo' ? c.activo === true : filtroEstadoCanal.value === 'inactivo' ? c.activo === false : true).length
+  $('kCan').textContent   = canales.filter(c => canalVisible(c, filtroEstadoCanal.value)).length
   $('kCanSub').textContent = filtroEstadoCanal.value === 'activo' ? 'Canales activos' : filtroEstadoCanal.value === 'inactivo' ? 'Canales archivados' : 'Todos los canales'
   $('tituloRankingCanales').textContent = $('kCanSub').textContent + ' — rendimiento 30 días'
 
@@ -687,7 +687,7 @@ async function cargar() {
       </div>`
 
   // ── Canales activos — rendimiento 30 días ───────────────
-  const canalesActivos = canales.filter(c => filtroEstadoCanal.value === 'activo' ? c.activo === true : filtroEstadoCanal.value === 'inactivo' ? c.activo === false : true)
+  const canalesActivos = canales.filter(c => canalVisible(c, filtroEstadoCanal.value))
 
   const canalRefDeVisita = v => {
     if (!v.canal_ref) return null

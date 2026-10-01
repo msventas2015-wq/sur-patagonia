@@ -178,6 +178,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
+import { canalVisible } from '../js/admin-canal-visibilidad.js'
   import { supabase } from '../js/config.js'
 
   const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
@@ -216,7 +217,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     const { data: ccRows } = await supabase.from('campanas_canales').select('canal_id').eq('campana_id', campId)
     const canalIds = (ccRows||[]).map(r=>r.canal_id)
     const { data: canalesTodos } = canalIds.length ? await supabase.from('canales').select('*').in('id', canalIds) : { data: [] }
-    const canales = (canalesTodos || []).filter(c => c.activo === true)
+    const canales = (canalesTodos || []).filter(c => canalVisible(c))
     const codigos = (canales||[]).map(c=>c.codigo).filter(Boolean)
 
     let scansPorCodigo = {}, leadsPorCodigo = {}
