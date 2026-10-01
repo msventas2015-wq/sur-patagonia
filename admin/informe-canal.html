@@ -731,6 +731,7 @@
         crossorigin=""></script>
 <script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script type="module">
+import { canalEnCatalogo } from '../js/admin-canal-visibilidad.js'
 import { supabase } from '../js/config.js'
 
 const $ = id => document.getElementById(id)
@@ -1008,9 +1009,9 @@ async function cargarBase(canalId) {
       .select('id,nombre,codigo,tipo,ciudad,provincia,email,activo,color_index,user_id,created_at,destino,mapa_base,latitud,longitud')
       .eq('id',canalId).maybeSingle()
   ])
-  state.canales = unwrap(canalesResult,'Canales')
+  state.canales = unwrap(canalesResult,'Canales').filter(canalEnCatalogo)
   if (canalResult.error) throw new Error('Canal: ' + canalResult.error.message)
-  if (!canalResult.data) return false
+  if (!canalResult.data || !canalEnCatalogo(canalResult.data)) return false
   state.canal = canalResult.data
   state.pares = state.canales.filter(canal => canal.activo === true && canal.tipo === state.canal.tipo)
 

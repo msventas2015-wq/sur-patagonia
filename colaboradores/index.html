@@ -1299,6 +1299,7 @@
 </main>
 
 <script type="module">
+import { canalVisible, canalEnCatalogo, crearFiltroDeCatalogo } from '../js/admin-canal-visibilidad.js'
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
   import { aplicarConfigVisual, leerConfigVisual } from '../js/panel-config.js'
   import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
@@ -1834,7 +1835,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     }
 
     const esPasivo  = meta.tipo_acceso === 'pasivo'
-    const canalesVisiblesPanel = () => canales.filter(c => c.activo === true)
+    const canalesVisiblesPanel = () => canales.filter(c => canalVisible(c))
     let codigos   = canales.map(c => c.codigo)
     let ahora     = new Date()
 
@@ -1874,7 +1875,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     let codigosRef = [...new Set([...refCodigos, ...codigos])]
 
     let visitas = [], contactos = [], campanasRows = [], misMensajes = [], relacionesPropiedadRows = []
-    let misSlots = misRefs
+    let misSlots = misRefs.filter(canalEnCatalogo)
     try {
       const cargas = [
         cargarPorBloques('visitas', codigosRef, (refs, bloque) => cargarKeyset(`visitas [${bloque + 1}]`, (cursor, contar) => {
@@ -1908,6 +1909,10 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         esPasivo ? Promise.resolve([]) : cargarRelacionesPropiedadActiva()
       ]
       ;[visitas, contactos, campanasRows, misMensajes, relacionesPropiedadRows] = await Promise.all(cargas)
+      const enCatalogo = crearFiltroDeCatalogo(canales, misRefs)
+      visitas = visitas.filter(enCatalogo)
+      contactos = contactos.filter(enCatalogo)
+      campanasRows = campanasRows.filter(canalEnCatalogo)
       validarRelacionesPropiedad(relacionesPropiedadRows, misRefs)
       const mensajeIds = misMensajes.map(m => m.id)
       const respuestas = mensajeIds.length ? await cargarPorBloques('respuestas', mensajeIds, (ids, bloque) => cargarKeyset(`respuestas [${bloque + 1}]`, (cursor, contar) => {
@@ -5168,12 +5173,13 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         return q
       }, fila => ({created_at:fila.created_at,id:fila.id}))) : []
 
+      const enCatalogo = crearFiltroDeCatalogo(canalesNuevos, referenciasNuevas)
       return {
         canales: canalesNuevos,
         referencias: referenciasNuevas,
-        visitas: visitasNuevas,
-        contactos: contactosNuevos,
-        campanas: campanasNuevas,
+        visitas: visitasNuevas.filter(enCatalogo),
+        contactos: contactosNuevos.filter(enCatalogo),
+        campanas: campanasNuevas.filter(canalEnCatalogo),
         mensajes: adjuntarRespuestas(mensajesNuevos, respuestasNuevas),
         propiedades: propiedadesNuevas,
         proyectos: proyectosNuevos,
@@ -5202,7 +5208,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
       codigos = canales.map(c => c.codigo)
       canalIds = canales.map(c => c.id)
       misRefs = snapshot.referencias
-      misSlots = misRefs
+      misSlots = misRefs.filter(canalEnCatalogo)
       refCodigos = misRefs.map(r => r.codigo)
       codigosRef = [...new Set([...refCodigos, ...codigos])]
       visitas = snapshot.visitas

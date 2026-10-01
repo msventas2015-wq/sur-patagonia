@@ -185,6 +185,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
+import { canalVisible } from '../js/admin-canal-visibilidad.js'
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
   const SUPA_URL = 'https://wajkfydxutptcvvfwrvq.supabase.co'
   const SUPA_KEY = 'sb_publishable_RKpmv1VDwMOB25phyfFrog_OdI-wB8s'
@@ -222,7 +223,7 @@
     }
 
     const { data: canalesTodos } = await supabase.from('canales').select('*').in('id', canalIds)
-    const canales = (canalesTodos || []).filter(c => c.activo === true)
+    const canales = (canalesTodos || []).filter(c => canalVisible(c))
     const codigos = (canales || []).map(c => c.codigo).filter(Boolean)
 
     // Scans y leads filtrados por fechas de campaña

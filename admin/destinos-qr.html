@@ -141,6 +141,7 @@
 </div>
 <script src="../js/paleta-canales.js"></script>
 <script type="module">
+import { canalEnCatalogo } from '../js/admin-canal-visibilidad.js'
 import {supabase,buildPublicUrl,PUBLIC_HOST} from '../js/config.js'
 import {cargarEstadoHistorial,textoAdvertenciaHistorial} from '../js/historial-alertas.js'
 const {data:{session}}=await supabase.auth.getSession()
@@ -255,7 +256,7 @@ function cargarSelectorDestinos(proyectos,propiedades){
   agregarGrupo(sel,'📁 Proyectos',proyectos,item=>`/${item.slug}`,item=>item.nombre)
   agregarGrupo(sel,'🏠 Propiedades',propiedades,item=>`/propiedad.html?id=${item.id}`,item=>item.titulo)
 }
-function visibles(){const q=norm($('buscar').value),estado=$('estadoCanal').value,prov=$('provincia').value,ciu=$('ciudad').value,dest=$('destino').value,rub=$('rubro').value;return canales.filter(c=>(estado==='activo'?c.canal_activo===true:estado==='inactivo'?c.canal_activo===false:true)&&(!q||norm(`${c.canal_nombre} ${c.ciudad} ${c.provincia}`).includes(q))&&(!prov||c.provincia===prov)&&(!ciu||c.ciudad===ciu)&&(!dest||(linksPorCanal.get(c.canal_id)||[]).some(l=>(l.destino_url||'/')===dest))&&(!rub||c.rubro_id===rub))}
+function visibles(){const q=norm($('buscar').value),estado=$('estadoCanal').value,prov=$('provincia').value,ciu=$('ciudad').value,dest=$('destino').value,rub=$('rubro').value;return canales.filter(c=>canalEnCatalogo(c)&&(estado==='activo'?c.canal_activo===true:estado==='inactivo'?c.canal_activo===false:true)&&(!q||norm(`${c.canal_nombre} ${c.ciudad} ${c.provincia}`).includes(q))&&(!prov||c.provincia===prov)&&(!ciu||c.ciudad===ciu)&&(!dest||(linksPorCanal.get(c.canal_id)||[]).some(l=>(l.destino_url||'/')===dest))&&(!rub||c.rubro_id===rub))}
 function referenciasCanal(id){return referencias.filter(r=>r.canal_id===id)}
 function actualizarDisponibilidadCambio(){const bloqueado=accionOcupada||!capacidadE2Verificada||!selectorIntegro||!catalogosVerificados||!estadoHistorial.verificado||estadoHistorial.total!==0||seleccionados.size===0||!$('nuevoDestino').value;$('prepararCambio').disabled=bloqueado;$('nuevoDestino').disabled=accionOcupada||!capacidadE2Verificada||!catalogosVerificados;$('limpiarSeleccion').disabled=accionOcupada;document.querySelectorAll('.canal-check').forEach(ch=>{ch.disabled=accionOcupada})}
 function actualizarSeleccion(data=visibles()){const visiblesIds=new Set(data.map(c=>c.canal_id)),ocultos=[...seleccionados].filter(id=>!visiblesIds.has(id)).length,qr=[...seleccionados].reduce((n,id)=>n+referenciasCanal(id).length,0);$('selectionCount').innerHTML=`${seleccionados.size} canal${seleccionados.size===1?'':'es'} seleccionado${seleccionados.size===1?'':'s'} · <span class="qr">${qr} punto${qr===1?'':'s'} QR totales</span>`;$('selectionNote').textContent=ocultos?`${ocultos} seleccionado${ocultos===1?'':'s'} fuera de la vista actual`:'';$('selectionNote').classList.toggle('selection-warning',ocultos>0);$('todosVisibles').checked=data.length>0&&data.every(c=>seleccionados.has(c.canal_id));$('todosVisibles').indeterminate=data.some(c=>seleccionados.has(c.canal_id))&&!data.every(c=>seleccionados.has(c.canal_id));actualizarDisponibilidadCambio()}
@@ -458,7 +459,7 @@ async function cargar(){
 }
 
 function poblarFiltrosCanales(){
-  const estado=$('estadoCanal').value,base=canales.filter(c=>estado==='activo'?c.canal_activo===true:estado==='inactivo'?c.canal_activo===false:true),ids=new Set(base.map(c=>c.canal_id)),refs=referencias.filter(r=>ids.has(r.canal_id))
+  const estado=$('estadoCanal').value,base=canales.filter(c=>canalEnCatalogo(c)&&(estado==='activo'?c.canal_activo===true:estado==='inactivo'?c.canal_activo===false:true)),ids=new Set(base.map(c=>c.canal_id)),refs=referencias.filter(r=>ids.has(r.canal_id))
   $('kpiCanales').textContent=base.length;$('kpiQr').textContent=refs.length
   opciones('provincia',[...new Set(base.map(c=>c.provincia).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')))
   opciones('ciudad',[...new Set(base.map(c=>c.ciudad).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')))

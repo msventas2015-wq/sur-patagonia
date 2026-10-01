@@ -1056,6 +1056,7 @@
 </div>
 
 <script type="module">
+import { canalVisible } from '../js/admin-canal-visibilidad.js'
 import { supabase } from '../js/config.js'
 
 const PALETA_PUNTOS_QR = [
@@ -1264,9 +1265,7 @@ async function cargarCanales() {
 }
 
 function canalesVisibles() {
-  if (state.estadoCanales === 'activo') return state.canales.filter(c => c.activo === true)
-  if (state.estadoCanales === 'inactivo') return state.canales.filter(c => c.activo === false)
-  return state.canales
+  return state.canales.filter(c => canalVisible(c, state.estadoCanales))
 }
 
 function renderCanalOptions() {
@@ -1281,7 +1280,7 @@ function renderCanalOptions() {
 async function cargarCanalSeleccionado() {
   const id = $('#canalSelect').value
   state.mobilityMigrationMissing = false
-  state.canal = state.canales.find(c => String(c.id) === String(id)) || null
+  state.canal = canalesVisibles().find(c => String(c.id) === String(id)) || null
   state.refs = []
   state.stats = new Map()
   state.configs = new Map()

@@ -1,3 +1,4 @@
+import { crearFiltroDeCatalogo, canalEnCatalogo, registroEnCatalogo } from '../js/admin-canal-visibilidad.js'
 import { supabase } from '../js/config.js'
 
 const GA4_PROPERTY_ID = '553717417'
@@ -275,6 +276,7 @@ function resolveChannel(code, maps) {
   const haystack = `${channel.nombre || ''} ${channel.codigo || ''} ${ref?.nombre || ''}`
   return {
     key: channel.id,
+    id: channel.id,
     activo: channel.activo,
     code,
     name: channel.nombre || channel.codigo || code,
@@ -473,7 +475,7 @@ function renderSources(visits) {
 }
 
 function renderChannels(rows) {
-  const visible = rows.filter(row => (state.estadoCanal === 'activo' ? (row.activo === true || row.desconocido === true) : state.estadoCanal === 'inactivo' ? row.activo === false : true) && !(state.hideTests && row.test)).slice(0, 30)
+  const visible = rows.filter(row => canalEnCatalogo(row) && registroEnCatalogo(row.code) && (state.estadoCanal === 'activo' ? (row.activo === true || row.desconocido === true) : state.estadoCanal === 'inactivo' ? row.activo === false : true) && !(state.hideTests && row.test)).slice(0, 30)
   $('trafficChannels').innerHTML = visible.length ? `<div class="traffic-table-wrap"><table class="traffic-table">
     <thead><tr><th>Canal</th><th>Medio registrado</th><th class="is-number">Cargas</th><th class="is-number">Consultas</th><th class="is-number">Conversión</th></tr></thead>
     <tbody>${visible.map(row => `<tr>
@@ -508,9 +510,9 @@ function renderQuality(current, metrics, sources, channels) {
   const attributed = current.visits.filter(v => v.canal_ref).length
   const mediumKnown = current.visits.filter(v => v.canal_ref && ['qr', 'link'].includes(v.canal_via)).length
   const testVisits = channels.filter(row => row.test).reduce((sum, row) => sum + row.visits, 0)
-  const rowsComplete = current.visitsComplete && current.contactsComplete ? 100 : pct(current.visits.length, current.visitCount)
+  const rowsComplete = current.visitsComplete && current.contactsComplete ? 100 : pct(current.downloadedVisitCount, current.rawVisitCount)
   const items = [
-    { label: 'Lectura completa', detail: `${fmt(current.visits.length)} de ${fmt(current.visitCount)} cargas`, value: rowsComplete, color: rowsComplete === 100 ? '#47d48a' : '#d9825b' },
+    { label: 'Lectura completa', detail: `${fmt(current.downloadedVisitCount)} de ${fmt(current.rawVisitCount)} cargas`, value: rowsComplete, color: rowsComplete === 100 ? '#47d48a' : '#d9825b' },
     { label: 'Páginas clasificadas', detail: `${fmt(pageKnown)} de ${fmt(current.visitCount)}`, value: pct(pageKnown, current.visitCount), color: '#7aaeff' },
     { label: 'Medio conocido', detail: attributed ? `${fmt(mediumKnown)} de ${fmt(attributed)} atribuidas` : 'Sin cargas atribuidas', value: attributed ? pct(mediumKnown, attributed) : 100, color: attributed && mediumKnown < attributed ? '#d9825b' : '#50c878' },
     { label: 'Datos comerciales', detail: testVisits ? `${fmt(testVisits)} cargas en posibles pruebas` : 'Sin pruebas obvias', value: current.visitCount ? Math.max(0, 100 - pct(testVisits, current.visitCount)) : 100, color: testVisits ? '#e8c96a' : '#47d48a' },
@@ -668,12 +670,18 @@ async function loadDashboard() {
   setLoading(true)
   showStatus('<strong>Actualizando datos reales.</strong> Se recorren todas las páginas de resultados; el panel no toma una muestra limitada.')
   try {
-    const [catalogs, current, previous, ga] = await Promise.all([
+    const [catalogs, rawCurrent, rawPrevious, ga] = await Promise.all([
       loadCatalogs(),
       loadRange(state.range.from, state.range.to),
       loadRange(state.range.previousFrom, state.range.previousTo),
       loadGa4(state.range),
     ])
+    const enCatalogo = crearFiltroDeCatalogo(catalogs.channels, catalogs.references)
+    const vista = datos => {
+      const visits = datos.visits.filter(enCatalogo), contacts = datos.contacts.filter(enCatalogo)
+      return { ...datos, visits, contacts, visitCount:visits.length, contactCount:contacts.length, rawVisitCount:datos.visitCount, downloadedVisitCount:datos.visits.length }
+    }
+    const current = vista(rawCurrent), previous = vista(rawPrevious)
     const currentMetrics = coreMetrics(current, catalogs)
     const previousMetrics = coreMetrics(previous, catalogs)
     const sources = renderSources(current.visits)
@@ -692,7 +700,7 @@ async function loadDashboard() {
     if (!current.visitsComplete || !current.contactsComplete) {
       showStatus('<strong>Datos incompletos.</strong> La cantidad descargada no coincide con el conteo exacto. No uses estos indicadores para decisiones.', 'error')
     } else if (ga.status !== 'ready') {
-      showStatus(`<strong>Histórico web completo:</strong> ${fmt(current.visitCount)} cargas y ${fmt(current.contacts.filter(c => c.origen !== 'manual').length)} consultas digitales. La audiencia y el mapa de GA4 quedarán activos al desplegar su función segura.`)
+      showStatus(`<strong>Histórico web completo:</strong> ${fmt(current.visits.length)} cargas y ${fmt(current.contacts.filter(c => c.origen !== 'manual').length)} consultas digitales. La audiencia y el mapa de GA4 quedarán activos al desplegar su función segura.`)
     } else {
       hideStatus()
     }

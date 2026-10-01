@@ -433,6 +433,7 @@
 </div>
 
 <script type="module">
+import { canalEnCatalogo } from '../js/admin-canal-visibilidad.js'
 import { supabase, PUBLIC_BASE_URL } from '../js/config.js'
 import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
 
@@ -705,7 +706,7 @@ async function cargarCanales() {
     }
   })
 
-  _canales = canales
+  _canales = canales.filter(canalEnCatalogo)
   _statsCanales = stats
   _colabsCanales = colabs
   depurarActividadesYaAplicadas(canales)
@@ -771,6 +772,7 @@ function actualizarFiltrosCanalesDesdeUI() {
 
 function canalesFiltrados() {
   return _canales.filter(c => {
+    if (!canalEnCatalogo(c)) return false
     if (_filtrosCanales.provincia && String(c.provincia || '') !== _filtrosCanales.provincia) return false
     if (_filtrosCanales.ciudad && String(c.ciudad || '') !== _filtrosCanales.ciudad) return false
     if (_filtrosCanales.tipo && String(c.tipo || '') !== _filtrosCanales.tipo) return false

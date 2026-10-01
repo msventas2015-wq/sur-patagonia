@@ -403,6 +403,7 @@
 </div>
 
 <script type="module">
+import { canalEnCatalogo } from '../js/admin-canal-visibilidad.js'
   import { supabase } from '../js/config.js'
 
   const esc = s => !s ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
@@ -429,7 +430,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
       supabase.from('referencias').select('id, canal_id, destino, codigo, activo'),
     ])
     campanas    = rCamp.data    || []
-    canales     = rCanales.data || []
+    canales     = (rCanales.data || []).filter(canalEnCatalogo)
     canalesCC   = rCC.data      || []
     referencias = rRefs.data    || []
 
@@ -549,6 +550,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     const prov   = document.getElementById('filtroProv').value
     const buscar = document.getElementById('filtroBuscar').value.toLowerCase().trim()
     return canales.filter(c => {
+      if (!canalEnCatalogo(c)) return false
       if (estado === 'activo' && c.activo !== true) return false
       if (estado === 'inactivo' && c.activo !== false) return false
       if (tipo   && c.tipo     !== tipo)  return false
