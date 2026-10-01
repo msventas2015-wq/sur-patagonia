@@ -581,6 +581,8 @@
 
 <script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script type="module">
+import { registroVisible, instalarFiltroEstadoCanal } from '../js/admin-canal-visibilidad.js'
+const filtroEstadoCanal = instalarFiltroEstadoCanal({ contenedor: document.querySelector('.crm-filtros-grid'), claseGrupo:'crm-filtro-grupo', claseControl:'crm-filtro-control', onChange:aplicarFiltrosDesdeDom })
 import { supabase } from '../js/config.js'
 
 // ── Auth ──
@@ -854,12 +856,13 @@ function leerFiltrosDesdeDom() {
 }
 
 function renderFiltroOpciones() {
-  setOpcionesFiltro('fProvincia', _leads.map(l => l._provincia), 'Todas las provincias')
+  const base = leadsDeCanalesVisibles()
+  setOpcionesFiltro('fProvincia', base.map(l => l._provincia), 'Todas las provincias')
   leerFiltrosDesdeDom()
-  const baseCiudad = _filtros.provincia ? _leads.filter(l => l._provincia === _filtros.provincia) : _leads
+  const baseCiudad = _filtros.provincia ? base.filter(l => l._provincia === _filtros.provincia) : base
   setOpcionesFiltro('fCiudad', baseCiudad.map(l => l._ciudad), 'Todas las ciudades')
-  setOpcionesFiltro('fProyecto', _leads.map(l => l._proyectoNombre), 'Todos los proyectos')
-  setOpcionesFiltro('fCanal', _leads.map(l => l._canalNombre), 'Todos los canales')
+  setOpcionesFiltro('fProyecto', base.map(l => l._proyectoNombre), 'Todos los proyectos')
+  setOpcionesFiltro('fCanal', base.map(l => l._canalNombre), 'Todos los canales')
   leerFiltrosDesdeDom()
 }
 
@@ -903,8 +906,12 @@ function pasaFiltroFecha(l) {
   return true
 }
 
+function leadsDeCanalesVisibles() {
+  return _leads.filter(l => registroVisible(resolverCanal(l.canal_ref), filtroEstadoCanal.value))
+}
+
 function getLeadsFiltrados() {
-  return _leads.filter(l => {
+  return leadsDeCanalesVisibles().filter(l => {
     if (!pasaFiltroFecha(l)) return false
     if (_filtros.provincia && l._provincia !== _filtros.provincia) return false
     if (_filtros.ciudad && l._ciudad !== _filtros.ciudad) return false
@@ -965,7 +972,7 @@ async function cargarMapasFiltros() {
 
   try {
     const [canalesRes, referenciasRes, proyectosRes] = await Promise.all([
-      supabase.from('canales').select('id, codigo, nombre, ciudad, provincia, tipo, tipo_acceso, color_index'),
+      supabase.from('canales').select('id, codigo, nombre, ciudad, provincia, tipo, tipo_acceso, color_index, activo'),
       supabase.from('referencias').select('codigo, canal_id'),
       supabase.from('proyectos').select('slug, nombre')
     ])
@@ -1006,6 +1013,7 @@ function aplicarFiltrosDesdeDom() {
 }
 
 function limpiarFiltros() {
+  filtroEstadoCanal.value = 'activo'
   const valores = {
     fFecha: 'todo',
     fDesde: '',

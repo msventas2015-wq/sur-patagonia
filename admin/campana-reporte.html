@@ -202,6 +202,8 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     return 'activa'
   }
 
+  let incluirArchivados = false
+  let mapaReporte = null
   if (!campId) {
     main.innerHTML = '<div class="empty-msg"><a href="campanas.html" style="color:var(--accent)">← Volver a campañas</a><br><br>No se especificó campaña.</div>'
   } else {
@@ -214,7 +216,8 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
 
     const { data: ccRows } = await supabase.from('campanas_canales').select('canal_id').eq('campana_id', campId)
     const canalIds = (ccRows||[]).map(r=>r.canal_id)
-    const { data: canales } = canalIds.length ? await supabase.from('canales').select('*').in('id', canalIds) : { data: [] }
+    const { data: canalesTodos } = canalIds.length ? await supabase.from('canales').select('*').in('id', canalIds) : { data: [] }
+    const canales = (canalesTodos || []).filter(c => incluirArchivados || c.activo === true)
     const codigos = (canales||[]).map(c=>c.codigo).filter(Boolean)
 
     let scansPorCodigo = {}, leadsPorCodigo = {}
@@ -274,6 +277,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
         Volver a campañas
       </a>
 
+      <label class="btn-acc secondary"><input type="checkbox" id="incluirArchivados" ${incluirArchivados ? 'checked' : ''}> Incluir canales archivados en este reporte</label><p style="color:var(--gris);font-size:.75rem">${incluirArchivados ? 'Historial completo de la campaña' : 'Reporte de los canales activos de la campaña'}</p>
       <div class="rp-hero">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
           <div>
@@ -303,7 +307,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
       <div class="kpi-grid">
         <div class="kpi"><div class="kpi-n accent">${totalScans.toLocaleString('es-AR')}</div><div class="kpi-label">Scans QR</div></div>
         <div class="kpi"><div class="kpi-n dorado">${totalLeads}</div><div class="kpi-label">Consultas</div></div>
-        <div class="kpi"><div class="kpi-n verde">${(canales||[]).length}</div><div class="kpi-label">Puntos activos</div></div>
+        <div class="kpi"><div class="kpi-n verde">${(canales||[]).length}</div><div class="kpi-label">${incluirArchivados ? 'Puntos de la campaña' : 'Puntos activos'}</div></div>
         <div class="kpi"><div class="kpi-n">${ciudades}</div><div class="kpi-label">Ciudades</div></div>
         <div class="kpi"><div class="kpi-n">${provincias}</div><div class="kpi-label">Provincias</div></div>
         <div class="kpi"><div class="kpi-n" style="font-size:1.5rem;">${conv}%</div><div class="kpi-label">Conversión</div></div>
@@ -334,11 +338,12 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     `
 
     // ── Mapa ──
+    document.getElementById('incluirArchivados').addEventListener('change',async e=>{incluirArchivados=e.target.checked;if(mapaReporte){mapaReporte.remove();mapaReporte=null}await init()})
     const conCoords = (canales||[]).filter(c=>c.latitud&&c.longitud)
     const centro = conCoords.length
       ? [conCoords.reduce((s,c)=>s+c.latitud,0)/conCoords.length, conCoords.reduce((s,c)=>s+c.longitud,0)/conCoords.length]
       : [-40.5,-68.5]
-    const mapa = L.map('mapaAdmin').setView(centro, conCoords.length>1?6:9)
+    const mapa = mapaReporte = L.map('mapaAdmin').setView(centro, conCoords.length>1?6:9)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_2i41_1_93e1ef0ea048d3569ec15d42',{attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19}).addTo(mapa)
     conCoords.forEach(c => {
       const sc = scansPorCodigo[c.codigo]||0

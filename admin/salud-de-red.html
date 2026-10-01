@@ -437,6 +437,8 @@
 </div><!-- /admin-layout -->
 
 <script type="module">
+import { canalVisible, registroVisible, instalarFiltroEstadoCanal } from '../js/admin-canal-visibilidad.js'
+const filtroEstadoCanal = instalarFiltroEstadoCanal({contenedor:document.querySelector('.rango-btn').parentElement, onChange:cargar})
 import { supabase } from '../js/config.js'
 import { cargarEstadoHistorial } from '../js/historial-alertas.js'
 import { contactosAtendidos, diaArgentina, leerPaginado } from '../js/metricas-paneles.js'
@@ -541,13 +543,19 @@ async function cargar() {
       cargarEstadoHistorial(supabase),
     ])
 
-    const canales   = rCanales.data   || []
-    const refs      = rRefs.data      || []
-    const visitasLeidas = rVisitas
+    const canalesTodos = rCanales.data || []
+    const canales = canalesTodos.filter(c => canalVisible(c, filtroEstadoCanal.value))
+    const idsVisibles = new Set(canales.map(c => c.id))
+    const referenciasTodas = rRefs.data || []
+    const refs = referenciasTodas.filter(r => idsVisibles.has(r.canal_id))
+    const porId = new Map(canalesTodos.map(c => [c.id,c])), porCodigo = new Map(canalesTodos.map(c => [c.codigo,c]))
+    const porReferencia = new Map(referenciasTodas.map(r => [r.codigo,porId.get(r.canal_id)]))
+    const enEstaVista = x => registroVisible(porReferencia.get(x.canal_ref) || porCodigo.get(x.canal_ref) || null, filtroEstadoCanal.value)
+    const visitasLeidas = rVisitas.filter(enEstaVista)
     const visitas = visitasLeidas.filter(v => new Date(v.created_at) >= new Date(desde))
-    const leadsTodos    = rContactos
+    const leadsTodos    = rContactos.filter(enEstaVista)
     const leadsWeb      = leadsTodos.filter(l => l.origen !== 'manual')
-    const leadsAllTodos = rContactosTodos
+    const leadsAllTodos = rContactosTodos.filter(enEstaVista)
     const leadsAllWeb   = leadsAllTodos.filter(l => l.origen !== 'manual')
     const enEstadoNueva = l => (l.estado || 'nueva') === 'nueva'
     // Atendida = algún evento CRM la llevó a contactado o más allá (aunque hoy figure «nueva»).
@@ -727,7 +735,7 @@ async function cargar() {
       leadsWeb.filter(l => l.canal_ref).length)
     renderChart(diasLabels, visitasDia, leadsDia)
     renderRanking(ranking, maxVisitas)
-    renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal, historialEstado)
+    renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal, historialEstado, canalesTodos)
     renderCalidad(totalCanales, canalesSinRef, refsActivas, refs.length, leadsAllTodos.length, leadsAllConCanal, leadsAllSinCanal)
     renderAtribucion(leadsAllTodos.length, leadsAllConCanal, leadsAllSinCanal,
       leadsAllTodos.filter(l => enEstadoNueva(l) && !atendidos.has(l.id)).length)
@@ -789,7 +797,7 @@ function renderEstadoGeneral(total, activos, inactivos, nuevos, listaSinAct, lis
   grid.innerHTML = ''
 
   const cards = [
-    { l: 'Total de canales',        v: fmt(total),         s: 'En la red',                                                      cls: '' },
+    { l: 'Canales en esta vista',        v: fmt(total),         s: 'En la red',                                                      cls: '' },
     { l: 'Canales activos',         v: fmt(activos),       s: `${pct(activos,total)}% del total`,                               cls: activos/total >= .8 ? 'up' : 'warn' },
     { l: 'Canales inactivos',       v: fmt(inactivos),     s: `${pct(inactivos,total)}% del total`,                             cls: inactivos > 0 ? 'dn' : 'up',  lista: listaInact },
     { l: 'Nuevos este mes',         v: fmt(nuevos),        s: nuevos > 0 ? 'crecimiento activo' : 'sin incorporaciones',        cls: nuevos > 0 ? 'up' : '' },
@@ -797,7 +805,7 @@ function renderEstadoGeneral(total, activos, inactivos, nuevos, listaSinAct, lis
     { l: 'Con usuario asignado',    v: fmt(conUser),       s: `${pct(conUser,total)}% tienen acceso`,                           cls: pct(conUser,total) >= 80 ? 'up' : 'warn' },
   ]
 
-  grid.innerHTML = cards.map(k => `
+  grid.innerHTML = cards.filter(k => filtroEstadoCanal.value !== 'activo' || k.l !== 'Canales inactivos').map(k => `
     <div class="kpi-card">
       <div class="kpi-label">${k.l}</div>
       <div class="kpi-val">${k.v}</div>
@@ -815,7 +823,7 @@ function renderActividad(visitas, consultasTodos, consultasConCanal, leadsWeb, l
     { l: 'Consultas con canal',      v: fmt(consultasConCanal), s: `${pct(consultasConCanal,consultasTodos||1)}% atribuidas`, cls: pct(consultasConCanal,consultasTodos||1) >= 70 ? 'up' : 'warn' },
     { l: 'Leads web sin atribución', v: fmt(leadsWebSinCanal), s: 'sin canal físico asignado', cls: leadsWebSinCanal > 0 ? 'warn' : 'up' },
     { l: 'Tasa de conversión',       v: convPct + '%', s: 'consultas con canal ÷ entradas QR y link', cls: convPct >= 3 ? 'up' : convPct > 0 ? 'warn' : '' },
-    { l: 'Total histórico leads',    v: fmt(leadsAll), s: `${fmt(leadsAllSinCanal)} sin canal`, cls: leadsAllSinCanal === 0 ? 'up' : 'warn' },
+    { l: 'Histórico de esta vista',    v: fmt(leadsAll), s: `${fmt(leadsAllSinCanal)} sin canal`, cls: leadsAllSinCanal === 0 ? 'up' : 'warn' },
   ].map(k => `
     <div class="kpi-card">
       <div class="kpi-label">${k.l}</div>
@@ -879,13 +887,13 @@ function renderRanking(ranking, maxVisitas) {
   }).join('')
 }
 
-function renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal, historialEstado) {
+function renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCanal, historialEstado, canalesTodos) {
   const sinVisita30 = canales.filter(c => c.activo && !canalIdConVisita30.has(c.id))
   const sinLead60   = canales.filter(c => c.activo && !canalIdConLead60.has(c.id))
   const inactivos   = canales.filter(c => !c.activo)
   const sinRef      = canales.filter(c => !(refsPorCanal[c.id]?.length))
-  const canalesPorId = new Map(canales.map(c => [c.id, c]))
-  const historialCanales = [...historialEstado.canalIds].map(id => canalesPorId.get(id) || {
+  const canalesPorId = new Map(canalesTodos.map(c => [c.id, c]))
+  const historialCanales = [...historialEstado.canalIds].filter(id => !canalesPorId.has(id) || canalVisible(canalesPorId.get(id), filtroEstadoCanal.value)).map(id => canalesPorId.get(id) || {
     nombre: `Canal ${id.slice(0, 8)}…`,
     tipo: null,
   })
@@ -932,13 +940,13 @@ function renderAlertas(canales, canalIdConVisita30, canalIdConLead60, refsPorCan
       empty: !historialEstado.verificado
         ? 'No se pudo verificar la integridad del historial'
         : historialEstado.total > 0
-          ? 'Hay fallos sin canal identificable'
+          ? 'Hay fallos en el historial completo; pueden pertenecer a canales fuera de esta vista'
           : 'El historial se registró completo',
       emptyIcon: historialEstado.verificado && historialEstado.total === 0 ? '✓' : '⚠',
       total: historialEstado.verificado ? historialEstado.total : 0,
       itemTotal: historialCanales.length,
     },
-  ].map(a => `
+  ].filter(a => filtroEstadoCanal.value !== 'activo' || a.titulo !== 'Canales inactivos').map(a => `
     <div class="alerta-card ${a.riesgo ? 'riesgo' : 'ok'}">
       <div class="alerta-header">
         <div class="alerta-dot ${a.dot}"></div>
@@ -990,7 +998,7 @@ function renderAtribucion(totalLeads, leadsConCanal, leadsSinCanal, sinRevisar) 
 
   const grid = document.getElementById('kpiAtribucion')
   grid.innerHTML = [
-    { l: 'Leads totales (histórico)',  v: fmt(totalLeads),     s: 'todos los tiempos' },
+    { l: 'Leads históricos de esta vista',  v: fmt(totalLeads),     s: 'todos los tiempos' },
     { l: 'Con canal atribuido',        v: fmt(leadsConCanal),  s: `${atribPct}% de los leads`, cls: atribPct >= 70 ? 'up' : 'warn' },
     { l: 'Sin canal (no atribuibles)', v: fmt(leadsSinCanal),  s: `${noAtrib}% sin origen`, cls: leadsSinCanal > 0 ? 'warn' : 'up' },
     { l: 'Estado "Nueva" (sin revisar)',v: fmt(sinRevisar), s: 'pendientes de gestión', cls: sinRevisar > 5 ? 'warn' : 'up' },

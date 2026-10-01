@@ -343,7 +343,7 @@
 
     <!-- CANALES ACTIVOS -->
     <div class="sec-header canales-header">
-      <h3>Canales activos — rendimiento 30 días</h3>
+      <h3 id="tituloRankingCanales">Canales activos — rendimiento 30 días</h3>
       <a href="canales.html" class="sec-link">Ver todos →</a>
     </div>
     <div class="chart-card" style="margin-bottom:1.4rem; overflow-x:auto;">
@@ -381,6 +381,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script type="module">
 import { supabase } from '../js/config.js'
+import { registroVisible, instalarFiltroEstadoCanal } from '../js/admin-canal-visibilidad.js'
+const filtroEstadoCanal = instalarFiltroEstadoCanal({contenedor:document.querySelector('.admin-header-copy'),onChange:cargar})
 import { contactosAtendidos, diaArgentina, leerPaginado } from '../js/metricas-paneles.js'
 
 const $ = id => document.getElementById(id)
@@ -411,7 +413,14 @@ const hora = new Date().getHours()
 $('saludo').textContent = (hora < 13 ? 'Buen día' : hora < 20 ? 'Buenas tardes' : 'Buenas noches') + ' — el pulso de Sur Patagonian, de un vistazo'
 
 // ── Datos ─────────────────────────────────────────────────
+let cargaSeq = 0
 async function cargar() {
+  const seq = ++cargaSeq
+  for(const id of ['k30','kNuevas','kVia','kCan'])$(id).textContent='—'
+  for(const id of ['k30D','k30Sub','kViaSub','kCanSub','chOrigenModulo'])$(id).textContent=''
+  $('tablaCanales').innerHTML='<tr><td colspan="4">Verificando canales…</td></tr>'
+  $('listaLeads').textContent='Verificando canales…'
+  Chart.getChart($('chEvolucion'))?.destroy()
   const hace60 = new Date(); hace60.setDate(hace60.getDate() - 60)
 
   // Lecturas completas: si fallan, las cifras que dependen de ellas muestran «—», nunca cero.
@@ -420,13 +429,13 @@ async function cargar() {
     .gte('created_at', hace60.toISOString()).order('created_at', { ascending: false }).order('id', { ascending: false }))
     .then(data => ({ data, error: null }), error => ({ data: null, error }))
   const sinAtenderCompletas = leerPaginado(() => supabase.from('contactos')
-    .select('id', { count: 'exact' }).eq('estado', 'nueva')
+    .select('id, canal_ref', { count: 'exact' }).eq('estado', 'nueva')
     .order('created_at', { ascending: true }).order('id', { ascending: true }))
     .then(async nuevas => {
       const atendidas = await contactosAtendidos(supabase, nuevas.map(c => c.id))
-      return { n: nuevas.filter(c => !atendidas.has(c.id)).length, error: null }
+      return { data: nuevas.filter(c => !atendidas.has(c.id)), error: null }
     })
-    .catch(error => ({ n: null, error }))
+    .catch(error => ({ data: null, error }))
 
   const [rLeads60, rVisitas60, rCanales, rRefs, rProps, rNumProps, rNumProy, rNuevas] = await Promise.all([
     supabase.from('contactos').select('nombre, mensaje, canal_ref, canal_via, origen, proyecto_slug, estado, leido, created_at, propiedades(titulo, codigo_interno)')
@@ -440,12 +449,17 @@ async function cargar() {
     sinAtenderCompletas,
   ])
 
-  const leads60 = rLeads60.data || []
+  if(seq !== cargaSeq)return
   const visitasOk = !rVisitas60.error
   if (!visitasOk) console.error('[dashboard] Lectura incompleta de visitas', rVisitas60.error)
-  const visitas60 = visitasOk ? rVisitas60.data : []
   const canales = rCanales.data || []
   const refs    = rRefs.data || []
+  if(rCanales.error || rRefs.error){$('listaLeads').innerHTML='<div class="empty-state">No se pudo verificar el catálogo de canales.</div>';$('tablaCanales').innerHTML='<tr><td colspan="4">No se pudo verificar el catálogo de canales.</td></tr>';return}
+  const canalEstadoPorId = new Map(canales.map(c=>[c.id,c])), canalEstadoPorCodigo = new Map(canales.map(c=>[c.codigo,c]))
+  const canalEstadoPorRef = new Map(refs.map(r=>[r.codigo,canalEstadoPorId.get(r.canal_id)]))
+  const enEstaVista = x => registroVisible(canalEstadoPorRef.get(x.canal_ref) || canalEstadoPorCodigo.get(x.canal_ref) || null, filtroEstadoCanal.value)
+  const leads60 = (rLeads60.data || []).filter(enEstaVista)
+  const visitas60 = visitasOk ? rVisitas60.data.filter(enEstaVista) : []
 
   // Mapas de atribución
   const canalPorId  = {}; canales.forEach(c => canalPorId[c.id] = c.nombre)
@@ -471,7 +485,7 @@ async function cargar() {
   }
   $('k30Sub').textContent = `vs ${lPrev.length} en los 30 días previos`
   if (rNuevas.error) console.error('[dashboard] No se pudo verificar la atención de consultas', rNuevas.error)
-  $('kNuevas').textContent = rNuevas.n ?? '—'
+  $('kNuevas').textContent = rNuevas.error ? '—' : (rNuevas.data || []).filter(enEstaVista).length
   const vCan30 = v30.filter(v => v.canal_ref && esEntrada(v))
   $('kVia').textContent = visitasOk ? vCan30.length : '—'
   const qrClicks30 = vCan30.filter(v => v.canal_via === 'qr').length
@@ -479,8 +493,9 @@ async function cargar() {
   $('kViaSub').textContent = visitasOk ? `${qrClicks30} por QR · ${linkClicks30} por link · ${v30.length} visitas totales` : 'No se pudieron leer las visitas completas'
   $('kProps').textContent = rNumProps.count ?? 0
   $('kProy').textContent  = rNumProy.count ?? 0
-  $('kCan').textContent   = canales.length
-  $('kCanSub').textContent = `${canales.filter(c => c.activo).length} activos`
+  $('kCan').textContent   = canales.filter(c => filtroEstadoCanal.value === 'activo' ? c.activo === true : filtroEstadoCanal.value === 'inactivo' ? c.activo === false : true).length
+  $('kCanSub').textContent = filtroEstadoCanal.value === 'activo' ? 'Canales activos' : filtroEstadoCanal.value === 'inactivo' ? 'Canales archivados' : 'Todos los canales'
+  $('tituloRankingCanales').textContent = $('kCanSub').textContent + ' — rendimiento 30 días'
 
   // ── Gráficos ────────────────────────────────────────────
   Chart.defaults.color = 'rgba(255,255,255,.42)'
@@ -575,6 +590,7 @@ async function cargar() {
   const maxEvolucion = Math.max(...actividadTotal, 0)
   const peakIdx = maxEvolucion > 0 ? actividadTotal.indexOf(maxEvolucion) : -1
 
+  Chart.getChart($('chEvolucion'))?.destroy()
   new Chart($('chEvolucion'), {
     type: 'line',
     data: {
@@ -671,7 +687,7 @@ async function cargar() {
       </div>`
 
   // ── Canales activos — rendimiento 30 días ───────────────
-  const canalesActivos = canales.filter(c => c.activo)
+  const canalesActivos = canales.filter(c => filtroEstadoCanal.value === 'activo' ? c.activo === true : filtroEstadoCanal.value === 'inactivo' ? c.activo === false : true)
 
   const canalRefDeVisita = v => {
     if (!v.canal_ref) return null
@@ -712,7 +728,7 @@ async function cargar() {
       }).join('')
     : '<tr><td colspan="4" style="color:var(--gris-claro)">Sin canales activos.</td></tr>'
 
-  // ── Últimas consultas (6) ───────────────────────────────
+  // ── Últimas consultas de esta vista (6) ───────────────────────────────
   const ult = leads60.slice(0, 6)
   $('listaLeads').innerHTML = !ult.length
     ? '<div class="empty-state">Sin consultas todavía.</div>'

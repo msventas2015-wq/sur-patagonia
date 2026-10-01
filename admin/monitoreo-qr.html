@@ -132,7 +132,7 @@
       <article class="kpi" style="--c:var(--adm-qr)"><div class="kpi-num" id="kpiQr">—</div><div class="kpi-lbl">QR totales</div></article>
       <article class="kpi" style="--c:var(--adm-text)"><div class="kpi-num" id="kpiContenidos">—</div><div class="kpi-lbl">Contenidos con QR</div></article>
       <article class="kpi" style="--c:var(--adm-qr)"><div class="kpi-num" id="kpiPaginas">—</div><div class="kpi-lbl">QR a páginas del sitio</div></article>
-      <article class="kpi" style="--c:var(--adm-channel)"><div class="kpi-num" id="kpiCanales">—</div><div class="kpi-lbl">Canales alcanzados</div></article>
+      <article class="kpi" style="--c:var(--adm-channel)"><div class="kpi-num" id="kpiCanales">—</div><div class="kpi-lbl">Canales de esta vista</div></article>
     </section>
     <section class="panel">
       <div class="crm-filtros">
@@ -140,7 +140,7 @@
         <div class="filtro"><label for="tipo">Tipo</label><select id="tipo"><option value="">Todos</option><option value="propiedad">Propiedad</option><option value="proyecto">Proyecto</option><option value="pagina">Página del sitio</option></select></div>
         <div class="filtro"><label for="provincia">Provincia</label><select id="provincia"><option value="">Todas</option></select></div>
         <div class="filtro"><label for="clase">Clase de canal</label><select id="clase"><option value="">Todos</option><option value="pasivo">Pasivos</option><option value="activo">Activos</option></select></div>
-        <div class="filtro"><label for="estado">Estado</label><select id="estado"><option value="">Todos</option><option value="vigente">Vigente</option><option value="no-vigente">No vigente</option></select></div>
+        <div class="filtro"><label for="estado">Estado del contenido</label><select id="estado"><option value="">Todos</option><option value="vigente">Vigente</option><option value="no-vigente">No vigente</option></select></div>
         <div class="filtro"><label for="ordenar">Ordenar por</label><div class="orden-control"><select id="ordenar"></select><button class="orden-dir" id="ordenDir" type="button" title="Invertir orden" aria-label="Invertir dirección del orden">↓</button></div></div>
         <button class="btn-clear" id="limpiar">Limpiar</button>
       </div><div class="filtro-resumen" id="resumen">Cargando contenidos…</div>
@@ -153,6 +153,10 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="../js/paleta-canales.js?v=color-gov-canonica-01"></script>
 <script type="module">
+import { canalVisible, instalarFiltroEstadoCanal, resumirContenidoVisible, crearLectorConCache } from '../js/admin-canal-visibilidad.js'
+const filtroEstadoCanal = instalarFiltroEstadoCanal({contenedor:document.querySelector('.crm-filtros'), onChange:()=>{seleccion=null;seleccionTipo=null;$('detalle').classList.add('oculto');cargar(false)}})
+let canalesPorId=new Map()
+const leerDetalle=crearLectorConCache(4)
 import { supabase, buildPublicUrl } from '../js/config.js'
 import { cargarEstadoHistorial, textoAdvertenciaHistorial } from '../js/historial-alertas.js'
 const { data:{ session } }=await supabase.auth.getSession()
@@ -184,8 +188,20 @@ function enlaceCompacto(l){const url=esc(buildPublicUrl(l.destino_url)),nombre=e
 function resumenCanal(x){const todos=destinosDistintos(x.canal_id);return `<span class="que-muestra-total">${todos.length} contenido${todos.length===1?'':'s'}</span><div class="lista-links">${todos.map(enlaceCompacto).join('')}</div>`}
 function filaTecnica(x,colspan,key){return `<tr class="fila-tecnica ${x.referencia_activa===false?'inactivo ':''}oculto" data-tecnico="${esc(key)}"><td colspan="${colspan}"><div class="tecnico-contenido"><span><strong>Código:</strong> <span class="codigo">${esc(x.codigo)}</span></span><span><strong>Ruta exacta:</strong> <span class="destino-crudo">${esc(x.destino_url)}</span></span>${x.origen?`<span><strong>Origen:</strong> ${x.origen==='simulacion_demo'?'Simulación de prueba':esc(x.origen)}</span>`:''}</div></td></tr>`}
 function renderAdvertenciaHistorial(){const texto=textoAdvertenciaHistorial(estadoHistorial,fecha),aviso=$('historialAdvertencia');aviso.textContent=texto;aviso.classList.toggle('oculto',!texto)}
-async function cargarCatalogos(){const [rp,ry,rl]=await Promise.all([supabase.from('propiedades').select('id,titulo,activa,ciudad,provincia'),supabase.from('proyectos').select('id,nombre,slug,estado,ciudad,provincia'),supabase.rpc('admin_monitoreo_links_qr')]);for(const p of rp.data||[]){const x={...p,tipo:'propiedad',vigente:p.activa};catalogoId.set(p.id,x)}for(const p of ry.data||[]){const x={...p,tipo:'proyecto',vigente:p.estado==='activo'};catalogoId.set(p.id,x)}linksQr=rl.data||[];for(const l of linksQr){if(!linksPorCanal.has(l.canal_id))linksPorCanal.set(l.canal_id,[]);linksPorCanal.get(l.canal_id).push(l);const k=`${l.contenido_tipo}:${l.contenido_id||''}`;if(!linksPorContenido.has(k))linksPorContenido.set(k,[]);linksPorContenido.get(k).push(l)}}
+async function cargarCatalogos(){const [rp,ry,rl,rc]=await Promise.all([supabase.from('propiedades').select('id,titulo,activa,ciudad,provincia'),supabase.from('proyectos').select('id,nombre,slug,estado,ciudad,provincia'),supabase.rpc('admin_monitoreo_links_qr'),supabase.from('canales').select('id,activo,tipo,provincia,ciudad')]);if(rc.error)throw rc.error;canalesPorId=new Map((rc.data||[]).map(c=>[c.id,c]));for(const p of rp.data||[]){const x={...p,tipo:'propiedad',vigente:p.activa};catalogoId.set(p.id,x)}for(const p of ry.data||[]){const x={...p,tipo:'proyecto',vigente:p.estado==='activo'};catalogoId.set(p.id,x)}linksQr=rl.data||[];for(const l of linksQr){if(!linksPorCanal.has(l.canal_id))linksPorCanal.set(l.canal_id,[]);linksPorCanal.get(l.canal_id).push(l);const k=`${l.contenido_tipo}:${l.contenido_id||''}`;if(!linksPorContenido.has(k))linksPorContenido.set(k,[]);linksPorContenido.get(k).push(l)}}
+async function detalleContenido(tipo,id,params){
+ const key=JSON.stringify(['contenido',tipo,id,params.p_provincia,params.p_clase_canal]);return leerDetalle(key,async()=>{const {data,error}=await supabase.rpc('admin_monitoreo_detalle',{p_contenido_tipo:tipo,p_contenido_id:id,p_provincia:params.p_provincia,p_clase_canal:params.p_clase_canal});if(error)throw error;return data||[]})
+}
+async function detallesPaginas(params){
+ const resultado=[];const clase=c=>['inmobiliaria','particular'].includes(c.tipo)?'activo':'pasivo'
+ for(const c of canalesPorId.values()){
+  if(!canalVisible(c,filtroEstadoCanal.value)||(params.p_provincia&&c.provincia!==params.p_provincia)||(params.p_clase_canal&&clase(c)!==params.p_clase_canal))continue
+  const filas=await leerDetalle('canal:'+c.id,async()=>{const {data,error}=await supabase.rpc('admin_monitoreo_canal_detalle',{p_canal_id:c.id});if(error)throw error;return data||[]})
+  for(const x of filas)if(x.contenido_tipo==='general')resultado.push({...x,canal_id:c.id,canal_clase:clase(c),provincia:c.provincia,ciudad:c.ciudad})
+ }return resultado
+}
 async function cargar(inicial=false){
+ $('tbody').innerHTML='<tr><td colspan="7" class="empty-state">Verificando canales…</td></tr>';for(const id of ['kpiQr','kpiContenidos','kpiPaginas','kpiCanales'])$(id).textContent='—';capaMapa?.clearLayers()
  if(inicial&&!catalogoId.size)await cargarCatalogos()
  const seq=++cargaSeq,tipo=$('tipo').value,nombreRpc=vista==='contenido'?'admin_monitoreo_contenidos':'admin_monitoreo_canales',params={p_busqueda:null,p_provincia:$('provincia').value||null,p_clase_canal:$('clase').value||null,p_contenido_tipo:tipo==='pagina'?null:tipo||null}
  const [{data,error},{data:paginas,error:errorPaginas},historial]=await Promise.all([supabase.rpc(nombreRpc,params),supabase.rpc('admin_monitoreo_paginas_sitio',{p_provincia:params.p_provincia,p_clase_canal:params.p_clase_canal}),cargarEstadoHistorial(supabase)])
@@ -193,11 +209,27 @@ async function cargar(inicial=false){
  estadoHistorial=historial;renderAdvertenciaHistorial()
  if(error||errorPaginas){$('tbody').innerHTML='<tr><td colspan="7" class="empty-state error">No tenés permiso para ver este monitoreo o no se pudo cargar.</td></tr>';return}
  let base=(data||[]).filter(x=>x.contenido_tipo!=='general').map(x=>{const ls=linksPorContenido.get(`${x.contenido_tipo}:${x.contenido_id||''}`)||[];return {...x,contenido_nombre:vista==='contenido'?nombreContenidoActual(x):x.contenido_nombre,ultima_actividad:ls.reduce((m,l)=>!m||String(l.observado_desde)>String(m)?l.observado_desde:m,null)}});if(vista==='canal'&&tipo==='pagina')base=base.filter(x=>(linksPorCanal.get(x.canal_id)||[]).some(l=>l.contenido_tipo==='general'))
- const filasPagina=(paginas||[]).map(x=>({...x,ultima_actividad:x.observado_desde}));filas=vista==='contenido'?[...base,...((!tipo||tipo==='pagina')?filasPagina:[])]:base;if(inicial)filasBase=filas
+ if(vista==='contenido' && filtroEstadoCanal.value){
+  try{
+   base=await Promise.all(base.map(async x=>(Number(x.puntos_qr||0)+Number(x.puntos_qr_inactivos||0)+Number(x.visitas||0)+Number(x.consultas||0)===0)?x:resumirContenidoVisible(x,await detalleContenido(x.contenido_tipo,x.contenido_id,params),canalesPorId,filtroEstadoCanal.value)))
+  }catch(e){if(seq!==cargaSeq)return;$('tbody').innerHTML='<tr><td colspan="7" class="empty-state error">No se pudo verificar el monitoreo por canales activos.</td></tr>';return}
+ }else base=base.filter(x=>canalVisible(canalesPorId.get(x.canal_id),filtroEstadoCanal.value))
+ let periodosPagina=[];try{if(vista==='contenido' && filtroEstadoCanal.value && (!tipo || tipo==='pagina') && (paginas||[]).length)periodosPagina=await detallesPaginas(params)}catch(e){if(seq!==cargaSeq)return;$('tbody').innerHTML='<tr><td colspan="7" class="empty-state error">No se pudo verificar el alcance de las páginas.</td></tr>';return}
+ if(seq!==cargaSeq)return
+ let paginasVisibles=paginas||[]
+ if(vista==='contenido' && filtroEstadoCanal.value && (!tipo || tipo==='pagina')){
+  try{
+   resumirContenidoVisible({},periodosPagina,canalesPorId,filtroEstadoCanal.value)
+   const destinos=new Set(paginasVisibles.map(x=>x.destino_url))
+   if(periodosPagina.some(f=>f.vigente_hasta==null && f.referencia_activa===true && !destinos.has(f.destino_url)))throw new Error('Las rutas vigentes no coinciden con el catálogo de páginas')
+   paginasVisibles=paginasVisibles.map(x=>resumirContenidoVisible(x,periodosPagina.filter(f=>f.destino_url===x.destino_url),canalesPorId,filtroEstadoCanal.value))
+  }catch(e){if(seq!==cargaSeq)return;$('tbody').innerHTML='<tr><td colspan="7" class="empty-state error">No se pudo verificar el alcance de las páginas.</td></tr>';return}
+ }
+ const filasPagina=paginasVisibles.map(x=>({...x,ultima_actividad:x.observado_desde}));filas=vista==='contenido'?[...base,...((!tipo||tipo==='pagina')?filasPagina:[])]:base;if(inicial)filasBase=filas
  $('kpiQr').textContent=filas.reduce((n,x)=>n+Number(x.puntos_qr||0),0)
  $('kpiContenidos').textContent=vista==='contenido'?filas.filter(x=>Number(x.puntos_qr)>0).length:filas.length
  $('kpiPaginas').textContent=filasPagina.reduce((n,x)=>n+Number(x.puntos_qr||0),0)
- if(inicial){const {count}=await supabase.from('canales').select('id',{count:'exact',head:true});$('kpiCanales').textContent=count??'—'}
+ $('kpiCanales').textContent=[...canalesPorId.values()].filter(c=>canalVisible(c,filtroEstadoCanal.value)).length
  if(inicial&&vista==='contenido'){const provincias=[...new Set(filasBase.flatMap(x=>x.lista_provincias||[]))].sort((a,b)=>a.localeCompare(b,'es'));$('provincia').innerHTML='<option value="">Todas</option>'+provincias.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}
  $('buscarOpciones').innerHTML=filas.map(x=>`<option value="${esc(vista==='contenido'?x.contenido_nombre:x.canal_nombre)}"></option>`).join('')
  configurarOrden();render();actualizarMapa()
@@ -208,7 +240,7 @@ async function actualizarMapa(){
  const seq=++mapaSeq;asegurarMapa();const porContenido=vista==='contenido'&&seleccion
  const {data,error}=await supabase.rpc('admin_monitoreo_mapa',{p_provincia:$('provincia').value||null,p_clase_canal:$('clase').value||null,p_contenido_tipo:porContenido?seleccionTipo:null,p_contenido_id:porContenido?seleccion:null})
  if(seq!==mapaSeq)return;capaMapa.clearLayers();if(error){$('mapaMeta').textContent='No se pudo cargar el mapa';return}
- const puntos=data||[];separarCoordenadas(puntos);const bounds=[],contenidoElegido=porContenido?filas.find(f=>f.contenido_id===seleccion):null
+ const puntos=(data||[]).filter(x=>canalVisible(canalesPorId.get(x.canal_id),filtroEstadoCanal.value));separarCoordenadas(puntos);const bounds=[],contenidoElegido=porContenido?filas.find(f=>f.contenido_id===seleccion):null
  puntos.forEach(x=>{
   const elegido=vista==='canal'&&seleccion===x.canal_id,color=colorCssSeguro(colorCanalDesdeIndex(x.color_index)),resaltado=porContenido||elegido
   const icon=L.divIcon({className:'',html:`<div class="map-dot ${resaltado?'seleccionado':''}" style="--dot:${color}"></div>`,iconSize:resaltado?[18,18]:[14,14],iconAnchor:resaltado?[9,9]:[7,7]})
@@ -256,7 +288,7 @@ async function abrirDetalle(tipo,id){
  seleccion=id;seleccionTipo=tipo;render();actualizarMapa();$('detalle').classList.remove('oculto');$('detalleTitulo').textContent='Cargando detalle…';$('detalleMeta').textContent='';$('detalleBody').innerHTML='<tr><td colspan="8" class="empty-state">Consultando QR…</td></tr>'
  const fila=filas.find(x=>x.contenido_id===id),{data,error}=await supabase.rpc('admin_monitoreo_detalle',{p_contenido_tipo:tipo,p_contenido_id:id,p_provincia:$('provincia').value||null,p_clase_canal:$('clase').value||null})
  if(error){$('detalleTitulo').textContent='No se pudo cargar el detalle';$('detalleBody').innerHTML='<tr><td colspan="8" class="empty-state error">La consulta fue rechazada.</td></tr>';return}
- const actuales=(data||[]).filter(x=>x.esta_vigente),historicos=[...new Map((data||[]).filter(x=>!x.esta_vigente).map(x=>[`${x.asignacion_id}:${x.referencia_id}`,x])).values()],inactivos=totalQrInactivos(data)
+ const visibles=(data||[]).filter(x=>canalVisible(canalesPorId.get(x.canal_id),filtroEstadoCanal.value)),actuales=visibles.filter(x=>x.esta_vigente),historicos=[...new Map(visibles.filter(x=>!x.esta_vigente).map(x=>[`${x.asignacion_id}:${x.referencia_id}`,x])).values()],inactivos=totalQrInactivos(visibles)
  $('detalleTitulo').textContent=fila.contenido_nombre;$('detalleMeta').textContent=`${actuales.length} QR vigentes · ${inactivos} QR inactivos · ${historicos.length} períodos no vigentes`
  $('detalleHead').innerHTML='<tr><th>Canal</th><th>Ubicación</th><th>Punto</th><th>Desde · Hasta</th><th class="metrica">Visitas</th><th class="metrica">Consultas</th><th>Destino</th><th>Más</th></tr>'
  $('detalleBody').innerHTML=actuales.map((x,i)=>{const key=`contenido-vigente-${i}`;return `<tr><td><div class="canal-identidad"><span class="clase-pill clase-${x.canal_clase}">${x.canal_clase}</span><span class="detalle-dato">${esc(x.canal_nombre)}</span></div></td><td><span class="ubicacion-ciudad">${esc(lugar(x.ciudad))}</span><span class="ubicacion-provincia">${esc(lugar(x.provincia))}</span></td><td>${esc(punto(x))}<span class="dato-desglose">${esc(x.punto_ubicacion||'')}</span></td><td>${periodoDesde(x)}<span class="dato-desglose">Vigente · ${duracion(x.duracion_segundos)}</span></td><td class="metrica"><span class="dato-principal num-views">${x.visitas}</span></td><td class="metrica"><span class="dato-principal num-leads">${x.consultas}</span></td><td>${linkDestino(x.destino_url,fila.contenido_nombre,fila.contenido_vigente)}</td><td><button class="tecnico-toggle" data-ver-tecnico="${key}">Datos técnicos</button></td></tr>${filaTecnica(x,8,key)}`}).join('')||'<tr><td colspan="8" class="empty-state">No hay QR vigentes con estos filtros.</td></tr>'
@@ -270,11 +302,11 @@ $('ordenar').addEventListener('change',()=>{orden=$('ordenar').value;desc=orden.
 $('ordenDir').addEventListener('click',()=>{desc=!desc;configurarOrden();render()})
 $('tablaHead').addEventListener('click',e=>{const th=e.target.closest('[data-sort]');if(!th)return;const next=th.dataset.sort;if(orden===next)desc=!desc;else{orden=next;desc=true}configurarOrden();render()})
 $('detalle').addEventListener('click',e=>{const btn=e.target.closest('[data-ver-tecnico]');if(!btn)return;const row=document.querySelector(`[data-tecnico="${CSS.escape(btn.dataset.verTecnico)}"]`);if(!row)return;const abierto=!row.classList.toggle('oculto');btn.textContent=abierto?'Ocultar datos':'Datos técnicos'})
-$('limpiar').addEventListener('click',()=>{for(const id of ['buscar','tipo','provincia','clase','estado'])$(id).value='';cargar(false)})
+$('limpiar').addEventListener('click',()=>{filtroEstadoCanal.value='activo';seleccion=null;seleccionTipo=null;$('detalle').classList.add('oculto');for(const id of ['buscar','tipo','provincia','clase','estado'])$(id).value='';cargar(false)})
 $('cerrarDetalle').addEventListener('click',()=>{$('detalle').classList.add('oculto');seleccion=null;seleccionTipo=null;render();actualizarMapa()})
 document.querySelectorAll('.vista-btn').forEach(btn=>btn.addEventListener('click',()=>{if(vista===btn.dataset.vista)return;vista=btn.dataset.vista;orden='puntos_qr';desc=true;seleccion=null;seleccionTipo=null;$('buscar').value='';$('detalle').classList.add('oculto');document.querySelectorAll('.vista-btn').forEach(x=>x.classList.toggle('activo',x===btn));$('pageTitle').textContent=vista==='contenido'?'Monitoreo de contenidos':'Monitoreo por canal';$('pageSub').textContent=vista==='contenido'?'Dónde se muestra cada propiedad, proyecto y página del sitio':'Qué muestra cada canal de la red';$('estado').disabled=vista==='canal';$('tablaPrincipal').classList.toggle('vista-canal',vista==='canal');$('tablaHead').innerHTML=vista==='contenido'?'<tr><th class="sort" data-sort="contenido_nombre">Contenido</th><th>Ubicación</th><th class="sort sort-qr" data-sort="puntos_qr" title="Cantidad de códigos QR físicos asignados">QR</th><th class="sort" data-sort="canales">Canales</th><th class="sort" data-sort="provincias">Alcance</th><th class="sort sort-views metrica" data-sort="visitas">Visitas</th><th class="sort sort-leads metrica" data-sort="consultas">Consultas</th></tr>':'<tr><th class="sort" data-sort="canal_nombre">Canal</th><th class="sort" data-sort="provincia">Ubicación</th><th class="sort sort-qr" data-sort="puntos_qr" title="Cantidad de códigos QR físicos asignados">QR</th><th class="sort" data-sort="contenidos">Qué muestra</th><th class="sort sort-views metrica" data-sort="visitas">Visitas</th><th class="sort sort-leads metrica" data-sort="consultas">Consultas</th><th class="sort" data-sort="ultima_actividad">Última actividad</th></tr>';cargar(true)}))
 const mapaCerrado=localStorage.getItem('monitoreo_mapa_cerrado')==='1';$('mapaWrap').classList.toggle('cerrado',mapaCerrado);$('mapaToggle').textContent=mapaCerrado?'Mostrar mapa':'Ocultar mapa';$('mapaToggle').addEventListener('click',()=>{const cerrado=$('mapaWrap').classList.toggle('cerrado');localStorage.setItem('monitoreo_mapa_cerrado',cerrado?'1':'0');$('mapaToggle').textContent=cerrado?'Mostrar mapa':'Ocultar mapa';if(!cerrado)setTimeout(()=>mapa?.invalidateSize(),0)})
-cargar(true)
+cargar(true).catch(e=>{$('tbody').innerHTML='<tr><td colspan="7" class="empty-state error">No se pudo verificar el catálogo de canales.</td></tr>'})
 </script>
 </body>
 </html>

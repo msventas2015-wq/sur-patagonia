@@ -1299,6 +1299,14 @@
 </main>
 
 <script type="module">
+const mostrarCanalesArchivados = new URLSearchParams(location.search).get('archivados') === '1'
+const controlArchivados=document.createElement('label')
+controlArchivados.style.cssText='display:block;max-width:1100px;margin:1rem auto;padding:0 1rem'
+controlArchivados.innerHTML='<input type="checkbox" id="mostrarCanalesArchivados"> Incluir canales archivados · Las métricas generales conservan el historial completo'
+document.getElementById('mainContent').before(controlArchivados)
+const inputArchivados=document.getElementById('mostrarCanalesArchivados')
+inputArchivados.checked=mostrarCanalesArchivados
+inputArchivados.addEventListener('change',()=>{const p=new URLSearchParams(location.search);p.set('archivados',inputArchivados.checked?'1':'0');location.search=p.toString()})
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
   import { aplicarConfigVisual, leerConfigVisual } from '../js/panel-config.js'
   import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm'
@@ -1834,6 +1842,7 @@
     }
 
     const esPasivo  = meta.tipo_acceso === 'pasivo'
+    const canalesVisiblesPanel = () => canales.filter(c => mostrarCanalesArchivados || c.activo === true)
     let codigos   = canales.map(c => c.codigo)
     let ahora     = new Date()
 
@@ -1844,7 +1853,7 @@
       headerCanalEl.innerHTML = ''
     } else {
       headerCanalEl.innerHTML =
-        `<div style="display:flex;align-items:center;gap:.65rem;"><div><strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}</div></div>`
+        `<div style="display:flex;align-items:center;gap:.65rem;"><div><strong>${esc(canalesVisiblesPanel()[0]?.nombre || 'Sin canales activos')}</strong>${canalesVisiblesPanel().length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canalesVisiblesPanel().length - 1} canales</span>` : ''}</div></div>`
     }
 
     // ── Cargar métricas globales + mensajes ───────
@@ -2082,7 +2091,7 @@
     // ── UNA LINEA POR COMERCIO (canal), NUNCA por punto QR ──────────────
     // Los puntos QR son segmentacion interna de administracion y no se
     // exponen al aliado. Cada comercio suma las visitas de todos sus puntos.
-    let comerciosDelAliado = canales.map(c => {
+    let comerciosDelAliado = canalesVisiblesPanel().map(c => {
       const refs = misSlots.filter(s => s.canal_id === c.id && s.activo !== false)
       const principal = refs.find(r => r.punto_tipo === 'principal') || refs[0]
       return {
@@ -2419,7 +2428,7 @@
     }
 
     // ── Cards de canales (activo) ──────────────────
-    const renderCards = () => canales.map(c => {
+    const renderCards = () => canalesVisiblesPanel().map(c => {
       // Todos los codigos (referencia o canal directo) que pertenecen a este canal
       const misCodigos = new Set([c.codigo, ...(misRefs || []).filter(r => r.canal_id === c.id).map(r => r.codigo)])
       const cScans    = visitas.filter(v => misCodigos.has(v.canal_ref) && esEntrada(v)).length
@@ -2463,7 +2472,7 @@
     }
 
     const renderUnidadesPasivas = () => {
-      const cards = canales.map(canal => {
+      const cards = canalesVisiblesPanel().map(canal => {
         const d = datosComercioPasivo(canal)
         const color = window.SPCanalColors?.colorCanalDesdeIndex?.(canal.color_index) || '#8a8a82'
         const geo = [canal.ciudad, canal.provincia].filter(Boolean).join(', ') || 'Ubicación no informada'
@@ -2527,7 +2536,8 @@
     // ── Render completo desde el snapshot publicado ────────────────────────
     function renderizarPanelCompleto(estadoVisual = null) {
     const main = document.getElementById('mainContent')
-    if (esPasivo && canales.length > 1) {
+    if (!canalesVisiblesPanel().length) {main.innerHTML='<div class="empty-msg">No hay canales activos asignados. Podés consultar los archivados con el selector de arriba.</div>';return}
+    if (esPasivo && canalesVisiblesPanel().length > 1) {
       main.classList.add('pv-main')
       const totalRegistrosActivos = contactos.filter(c => c.estado !== 'descartado').length
       const mkFlip = (num, color) => String(num).split('').map((d, i) =>
@@ -2540,7 +2550,7 @@
             <h1>Tus comercios</h1>
             <div class="pv-sec-sub">Resultados combinados de todos tus espacios.</div>
           </div>
-          <div class="pv-multi-count"><strong>${canales.length.toLocaleString('es-AR')}</strong><span>comercios</span></div>
+          <div class="pv-multi-count"><strong>${canalesVisiblesPanel().length.toLocaleString('es-AR')}</strong><span>comercios</span></div>
         </div>
 
         <div class="pv-titular-grid">
@@ -2580,7 +2590,7 @@
       }))
     } else if (esPasivo) {
       main.classList.add('pv-main')
-      const canal = canales[0]
+      const canal = canalesVisiblesPanel()[0]
       const geo = [canal.ciudad, canal.provincia].filter(Boolean).join(', ')
       const estadoQR = !canal.activo ? 'inactivo' : campanaActiva[canal.id] ? 'campana' : 'activo'
       const dotColor = estadoQR === 'activo' ? '#50c878' : estadoQR === 'campana' ? '#c9a84c' : '#444'
@@ -2705,12 +2715,12 @@
         } catch (error) { reject(error) }
       }))
     } else {
-      const primerC    = canales[0]
+      const primerC    = canalesVisiblesPanel()[0]
       const geoAct     = [primerC.ciudad, primerC.provincia].filter(Boolean).join(', ')
       const estadoAct  = !primerC.activo ? 'inactivo' : campanaActiva[primerC.id] ? 'campana' : 'activo'
       const dotColorAct = estadoAct === 'activo' ? '#52d68c' : estadoAct === 'campana' ? '#c9a84c' : '#444'
       const dotLabelAct = estadoAct === 'inactivo' ? 'Canal inactivo' : estadoAct === 'campana' ? `Campaña: ${esc(campanaActiva[primerC.id])}` : 'Canal activo'
-      const nombreDisplay = canales.length > 1 ? `${primerC.nombre} +${canales.length - 1}` : primerC.nombre
+      const nombreDisplay = canalesVisiblesPanel().length > 1 ? `${primerC.nombre} +${canalesVisiblesPanel().length - 1}` : primerC.nombre
 
       main.classList.add('pv-main')
       main.innerHTML = `
@@ -3362,8 +3372,8 @@
       const cerradoN = sumaEstado(['cerrado'])
       const agenciaNombre = (() => {
         if (typeof canales !== 'undefined' && canales?.length) {
-          const primero = canales[0]?.nombre || 'Tus canales'
-          return canales.length > 1 ? `${primero} +${canales.length - 1}` : primero
+          const primero = canalesVisiblesPanel()[0]?.nombre || 'Tus canales'
+          return canalesVisiblesPanel().length > 1 ? `${primero} +${canalesVisiblesPanel().length - 1}` : primero
         }
         return 'TUS CANALES'
       })()
@@ -4764,6 +4774,10 @@
     // ── Canal activo: derivación manual ───────────────────────────────────────
     let _derFocoAnterior = null
 
+    function canalesElegiblesParaDerivar() {
+      return principalesElegiblesPropias().filter(({ canal }) => canal.activo === true)
+    }
+
     function principalesElegiblesPropias() {
       return canales.map(canal => {
         const principales = misSlots.filter(r =>
@@ -4783,7 +4797,7 @@
     }
 
     window.abrirDerivar = async function() {
-      const elegibles = principalesElegiblesPropias()
+      const elegibles = canalesElegiblesParaDerivar()
       if (!elegibles.length) {
         alert('No hay una referencia principal elegible en tus canales. Pedile al administrador que revise las guardas.')
         return
@@ -4850,7 +4864,7 @@
         return
       }
 
-      const elegibles = principalesElegiblesPropias()
+      const elegibles = canalesElegiblesParaDerivar()
       const seleccion = elegibles.find(({ canal }) => canal.id === canalId)
       if (!seleccion) {
         errorEl.textContent = 'El canal elegido ya no tiene una principal elegible.'
@@ -5220,7 +5234,7 @@
       })
       ;[...misSlots].sort((a,b) => a.codigo.localeCompare(b.codigo)).forEach(s => colorDeSlot(s.codigo))
 
-      comerciosDelAliado = canales.map(c => {
+      comerciosDelAliado = canalesVisiblesPanel().map(c => {
         const refs = misSlots.filter(s => s.canal_id === c.id && s.activo !== false)
         const principal = refs.find(r => r.punto_tipo === 'principal') || refs[0]
         return {
@@ -5259,7 +5273,7 @@
 
       headerCanalEl.hidden = esPasivo
       if (esPasivo) headerCanalEl.innerHTML = ''
-      else headerCanalEl.innerHTML = `<div style="display:flex;align-items:center;gap:.65rem;"><div><strong>${esc(canales[0].nombre)}</strong>${canales.length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canales.length - 1} canales</span>` : ''}</div></div>`
+      else headerCanalEl.innerHTML = `<div style="display:flex;align-items:center;gap:.65rem;"><div><strong>${esc(canalesVisiblesPanel()[0]?.nombre || 'Sin canales activos')}</strong>${canalesVisiblesPanel().length > 1 ? ` <span style="font-size:.65rem;opacity:.6;">+${canalesVisiblesPanel().length - 1} canales</span>` : ''}</div></div>`
 
       mensajesAbiertos.clear()
       const idsVigentes = new Set(misMensajes.map(m => m.id))

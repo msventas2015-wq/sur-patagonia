@@ -450,6 +450,10 @@
 </div>
 
 <script type="module">
+import { canalVisible, instalarFiltroEstadoCanal } from '../js/admin-canal-visibilidad.js'
+const contenedorEstadoCanal=document.createElement('div')
+document.getElementById('tbodyUsuarios').closest('table').before(contenedorEstadoCanal)
+const filtroEstadoCanal=instalarFiltroEstadoCanal({contenedor:contenedorEstadoCanal,onChange:cargarUsuarios})
 import { supabase } from '../js/config.js'
 
 // ── Auth ──────────────────────────────────────────────────
@@ -500,7 +504,7 @@ onRolChange()
 async function cargarUsuarios() {
   const [{ data: usuarios, error }, { data: canales }, { data: proyectosData }] = await Promise.all([
     supabase.rpc('admin_listar_usuarios_2f'),
-    supabase.from('canales').select('id, nombre, codigo, user_id').not('user_id', 'is', null),
+    supabase.from('canales').select('id, nombre, codigo, user_id, activo').not('user_id', 'is', null),
     supabase.from('proyectos').select('id, nombre, slug').order('nombre'),
   ])
   if (proyectosData) _proyectos = proyectosData
@@ -512,7 +516,7 @@ async function cargarUsuarios() {
 
   // Un titular puede administrar más de un canal.
   const canalesDeUser = {}
-  ;(canales || []).forEach(c => {
+  ;(canales || []).filter(c => canalVisible(c, filtroEstadoCanal.value)).forEach(c => {
     if (!canalesDeUser[c.user_id]) canalesDeUser[c.user_id] = []
     canalesDeUser[c.user_id].push(c)
   })
