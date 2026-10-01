@@ -246,7 +246,7 @@
         <div class="kpi-sub">en este momento</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">Canales en campaña</div>
+        <div class="kpi-label">Canales activos en campaña</div>
         <div class="kpi-valor" id="kEnCampana">—</div>
         <div class="kpi-sub">QRs redirigidos ahora</div>
       </div>
@@ -285,6 +285,11 @@
       <div class="seccion-header">
         <span class="seccion-titulo">Asignar canales a campaña</span>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <select class="filtro-sel" id="filtroEstado" onchange="filtrarCanales()">
+            <option value="activo" selected>Canales activos</option>
+            <option value="">Todos los canales</option>
+            <option value="inactivo">Canales archivados</option>
+          </select>
           <select class="filtro-sel" id="filtroTipo" onchange="filtrarCanales()">
             <option value="">Todos los tipos</option>
             <option value="punto_venta">Punto de venta</option>
@@ -453,7 +458,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     const activas    = campanas.filter(c => estadoCampana(c) === 'activa')
     const programadas = campanas.filter(c => estadoCampana(c) === 'programada')
     const enCampana  = new Set(
-      canalesCC.filter(cc => activas.find(c => c.id === cc.campana_id)).map(cc => cc.canal_id)
+      canalesCC.filter(cc => canales.some(c => c.id === cc.canal_id && c.activo === true) && activas.find(c => c.id === cc.campana_id)).map(cc => cc.canal_id)
     ).size
     document.getElementById('kActivas').textContent    = activas.length
     document.getElementById('kEnCampana').textContent  = enCampana
@@ -473,7 +478,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
     }
     cont.innerHTML = lista.map(c => {
       const est   = estadoCampana(c)
-      const count = canalesCC.filter(cc => cc.campana_id === c.id).length
+      const count = canalesCC.filter(cc => cc.campana_id === c.id && canales.some(canal => canal.id === cc.canal_id && canal.activo === true)).length
       const estLabel = est === 'activa' ? 'Activa' : est === 'programada' ? 'Programada' : 'Finalizada'
       return `
       <div class="campana-card ${est}">
@@ -492,7 +497,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
           <span class="campana-fecha">Fin: <strong>${c.fecha_fin ? fmtDate(c.fecha_fin) : 'Sin vencimiento'}</strong></span>
         </div>
         <div class="campana-bottom">
-          <span class="campana-canales-count">${count} canal${count !== 1 ? 'es' : ''} asignado${count !== 1 ? 's' : ''}</span>
+          <span class="campana-canales-count">${count} canal${count !== 1 ? 'es' : ''} activo${count !== 1 ? 's' : ''} asignado${count !== 1 ? 's' : ''}</span>
           <div class="campana-acciones">
             <a class="btn-sm" href="campana-reporte.html?id=${esc(c.id)}" style="text-decoration:none;">Ver reporte</a>
             <button class="btn-sm" onclick="compartirCampana('${esc(c.id)}')">Compartir</button>
@@ -507,9 +512,13 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
 
   // ── Poblar filtros y selects ───────────────────
   function poblarFiltros() {
-    const provs = [...new Set(canales.map(c => c.provincia).filter(Boolean))].sort()
+    const estado = document.getElementById('filtroEstado').value
+    const provs = [...new Set(canales.filter(c => !estado || (estado === 'activo' ? c.activo === true : c.activo === false)).map(c => c.provincia).filter(Boolean))].sort()
     const sel   = document.getElementById('filtroProv')
+    const anterior = sel.value
+    sel.innerHTML = '<option value="">Todas las provincias</option>'
     provs.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o) })
+    if (provs.includes(anterior)) sel.value = anterior
   }
 
   function poblarSelectCampana() {
@@ -525,13 +534,23 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
   }
 
   // ── Render tabla de canales ────────────────────
-  window.filtrarCanales = function() { renderTablaCanales() }
+  window.filtrarCanales = function() {
+    poblarFiltros()
+    const visiblesIds = new Set(canalesVisibles().map(c => c.id))
+    seleccionados.forEach(id => { if (!visiblesIds.has(id)) seleccionados.delete(id) })
+    document.getElementById('checkAll').checked = false
+    renderTablaCanales()
+    actualizarAccionBar()
+  }
 
   function canalesVisibles() {
+    const estado = document.getElementById('filtroEstado').value
     const tipo   = document.getElementById('filtroTipo').value
     const prov   = document.getElementById('filtroProv').value
     const buscar = document.getElementById('filtroBuscar').value.toLowerCase().trim()
     return canales.filter(c => {
+      if (estado === 'activo' && c.activo !== true) return false
+      if (estado === 'inactivo' && c.activo !== false) return false
       if (tipo   && c.tipo     !== tipo)  return false
       if (prov   && c.provincia !== prov) return false
       if (buscar && !c.nombre?.toLowerCase().includes(buscar) && !c.ciudad?.toLowerCase().includes(buscar)) return false
@@ -597,7 +616,7 @@ if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.
   }
 
   window.seleccionarPorTipo = function(tipo) {
-    canales.filter(c => c.tipo === tipo).forEach(c => seleccionados.add(c.id))
+    canalesVisibles().filter(c => c.tipo === tipo).forEach(c => seleccionados.add(c.id))
     renderTablaCanales()
     actualizarAccionBar()
   }

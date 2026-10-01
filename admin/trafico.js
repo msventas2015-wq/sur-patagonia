@@ -19,6 +19,7 @@ const state = {
   catalogs: null,
   lastData: null,
   hideTests: true,
+  estadoCanal: 'activo',
 }
 
 const fmt = (value, maximumFractionDigits = 0) => Number(value || 0).toLocaleString('es-AR', { maximumFractionDigits })
@@ -269,11 +270,12 @@ function resolveChannel(code, maps) {
   if (!code) return null
   const ref = maps.refsByCode.get(code)
   const channel = ref ? maps.channelsById.get(ref.canal_id) : maps.channelsByCode.get(code)
-  if (!channel) return { key: code, code, name: code, type: 'sin identificar', ref: null, test: TEST_RE.test(code) }
+  if (!channel) return { key: code, code, name: code, type: 'sin identificar', ref: null, desconocido: true, test: TEST_RE.test(code) }
   const point = ref?.nombre || ref?.punto_ubicacion || ref?.punto_tipo || ''
   const haystack = `${channel.nombre || ''} ${channel.codigo || ''} ${ref?.nombre || ''}`
   return {
     key: channel.id,
+    activo: channel.activo,
     code,
     name: channel.nombre || channel.codigo || code,
     type: channel.tipo || 'otro',
@@ -471,7 +473,7 @@ function renderSources(visits) {
 }
 
 function renderChannels(rows) {
-  const visible = rows.filter(row => !(state.hideTests && row.test)).slice(0, 30)
+  const visible = rows.filter(row => (state.estadoCanal === 'activo' ? (row.activo === true || row.desconocido === true) : state.estadoCanal === 'inactivo' ? row.activo === false : true) && !(state.hideTests && row.test)).slice(0, 30)
   $('trafficChannels').innerHTML = visible.length ? `<div class="traffic-table-wrap"><table class="traffic-table">
     <thead><tr><th>Canal</th><th>Medio registrado</th><th class="is-number">Cargas</th><th class="is-number">Consultas</th><th class="is-number">Conversión</th></tr></thead>
     <tbody>${visible.map(row => `<tr>
@@ -724,6 +726,10 @@ $('trafficApply').addEventListener('click', () => {
 $('trafficRefresh').addEventListener('click', loadDashboard)
 $('trafficHideTests').addEventListener('change', (event) => {
   state.hideTests = event.target.checked
+  if (state.lastData) renderChannels(state.lastData.channels)
+})
+$('trafficEstadoCanal').addEventListener('change', event => {
+  state.estadoCanal = event.target.value
   if (state.lastData) renderChannels(state.lastData.channels)
 })
 $('trafficGaLink').href = GA4_URL

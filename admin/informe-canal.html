@@ -1012,7 +1012,7 @@ async function cargarBase(canalId) {
   if (canalResult.error) throw new Error('Canal: ' + canalResult.error.message)
   if (!canalResult.data) return false
   state.canal = canalResult.data
-  state.pares = state.canales.filter(canal => canal.tipo === state.canal.tipo)
+  state.pares = state.canales.filter(canal => canal.activo === true && canal.tipo === state.canal.tipo)
 
   const peerIds = state.pares.map(row => row.id)
   const [refsResult,peerRefsResult] = await Promise.all([
@@ -1071,7 +1071,15 @@ async function cargarBase(canalId) {
 function renderSelector() {
   const selector = $('canalSelector')
   selector.innerHTML = ''
-  state.canales.forEach(canal => {
+  if(state.canal.activo !== true){
+    const placeholder = document.createElement('option')
+    placeholder.value = ''
+    placeholder.textContent = 'Elegí un canal activo'
+    placeholder.disabled = true
+    placeholder.selected = true
+    selector.appendChild(placeholder)
+  }
+  state.canales.filter(canal => canal.activo === true).forEach(canal => {
     const option = document.createElement('option')
     option.value = canal.id
     option.textContent = canal.nombre || canal.codigo || 'Canal sin nombre'

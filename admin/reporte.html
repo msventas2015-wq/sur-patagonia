@@ -202,8 +202,16 @@
     document.getElementById('errorState').style.display = 'block'
   }
 
-  if (!campId) { mostrarError() } else { init() }
 
+  let incluirArchivados = false
+  const selectorArchivo = document.createElement('label')
+  selectorArchivo.style.cssText='display:block;margin:1rem 0'
+  selectorArchivo.innerHTML='<input type="checkbox" id="incluirArchivados"> Incluir canales archivados en este reporte'
+  document.getElementById('appContent').prepend(selectorArchivo)
+  document.getElementById('incluirArchivados').addEventListener('change',e=>{incluirArchivados=e.target.checked;location.search=new URLSearchParams({...Object.fromEntries(params),archivados:incluirArchivados?'1':'0'}).toString()})
+  incluirArchivados=params.get('archivados')==='1'
+  document.getElementById('incluirArchivados').checked=incluirArchivados
+  if (!campId) { mostrarError() } else { init() }
   async function init() {
     // Cargar campaña
     const { data: camp } = await supabase.from('campanas').select('*').eq('id', campId).maybeSingle()
@@ -220,7 +228,8 @@
       return
     }
 
-    const { data: canales } = await supabase.from('canales').select('*').in('id', canalIds)
+    const { data: canalesTodos } = await supabase.from('canales').select('*').in('id', canalIds)
+    const canales = (canalesTodos || []).filter(c => incluirArchivados || c.activo === true)
     const codigos = (canales || []).map(c => c.codigo).filter(Boolean)
 
     // Scans y leads filtrados por fechas de campaña
@@ -253,7 +262,7 @@
     renderProvincias(canales || [], scansPorCodigo)
     renderTabla(canales || [], scansPorCodigo, leadsPorCodigo, maxScans)
 
-    document.getElementById('rpTimestamp').textContent = 'Generado el ' + new Date().toLocaleString('es-AR')
+    document.getElementById('rpTimestamp').textContent = (incluirArchivados ? 'Historial completo · Generado el ' : 'Canales activos · Generado el ') + new Date().toLocaleString('es-AR')
     document.getElementById('loadingState').style.display = 'none'
     document.getElementById('appContent').style.display = 'block'
   }

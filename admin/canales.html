@@ -386,9 +386,9 @@
         <div class="crm-filtro-grupo">
           <label for="fEstado">Estado</label>
           <select id="fEstado" class="crm-filtro-control">
-            <option value="">Todos los estados</option>
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
+            <option value="">Todos los canales</option>
+            <option value="activo" selected>Canales activos</option>
+            <option value="inactivo">Canales archivados</option>
           </select>
         </div>
         <div class="crm-filtro-grupo">
@@ -460,7 +460,7 @@ const _filtrosCanales = {
   ciudad: '',
   tipo: '',
   acceso: '',
-  estado: '',
+  estado: 'activo',
   buscar: ''
 }
 
@@ -673,7 +673,7 @@ async function cargarCanales() {
   const canalDeRef = {}
   refs.forEach(r => { canalDeRef[r.codigo] = r.canal_id })
   const stats = {}
-  canales.forEach(c => { stats[c.id] = { clicks: 0, clicksQr: 0, clicksLink: 0, leads: 0, refs: 0, ultimo: null } })
+  canales.forEach(c => { stats[c.id] = { clicks: 0, clicksQr: 0, clicksLink: 0, leads: 0, leadsMes: 0, refs: 0, ultimo: null } })
   refs.forEach(r => { if (stats[r.canal_id] && r.activo) stats[r.canal_id].refs++ })
 
   function canalIdPorRef(canalRef) {
@@ -700,29 +700,10 @@ async function cargarCanales() {
     const cid = canalIdPorRef(l.canal_ref)
     if (cid && stats[cid]) {
       stats[cid].leads++
+      if (Date.parse(l.created_at) >= Date.now() - 30 * 86400000) stats[cid].leadsMes++
       if (!stats[cid].ultimo || l.created_at > stats[cid].ultimo) stats[cid].ultimo = l.created_at
     }
   })
-
-  // KPIs generales
-  const activos = canales.filter(c => c.activo).length
-  document.getElementById('kCanales').textContent    = canales.length
-  document.getElementById('kCanalesSub').textContent = `${activos} activo${activos === 1 ? '' : 's'}`
-  document.getElementById('kRefs').textContent       = refs.filter(r => r.activo).length
-  const sinRubro = canales.filter(c => !esActivo(c.tipo) && !c.rubro_id).length
-  document.getElementById('kSinRubro').textContent   = sinRubro
-  const entradas = visitas.filter(esEntrada)
-  const clicksQr = entradas.filter(v => v.canal_via === 'qr').length
-  const clicksLink = entradas.length - clicksQr
-  document.getElementById('kClicks').textContent     = entradas.length
-  document.getElementById('kClicksSub').textContent  = `${clicksQr} por QR · ${clicksLink} por link`
-  document.getElementById('kLeads').textContent      = leads.length
-  const mes = new Date(); mes.setDate(mes.getDate() - 30)
-  const leadsMes = leads.filter(l => new Date(l.created_at) >= mes).length
-  document.getElementById('kLeadsSub').textContent   = `${leadsMes} en los últimos 30 días`
-  const top = canales.map(c => ({ c, n: stats[c.id].clicks, leads: stats[c.id].leads })).sort((a,b) => b.n - a.n)[0]
-  document.getElementById('kTop').textContent    = top && top.n > 0 ? top.c.nombre : '—'
-  document.getElementById('kTopSub').textContent = top && top.n > 0 ? `${top.n} click${top.n === 1 ? '' : 's'} · ${top.leads} consulta${top.leads === 1 ? '' : 's'}` : 'sin clicks aún'
 
   _canales = canales
   _statsCanales = stats
@@ -730,6 +711,22 @@ async function cargarCanales() {
   depurarActividadesYaAplicadas(canales)
   renderFiltroOpcionesCanales()
   renderCanalesGrid()
+}
+
+function renderKpisCanales() {
+  const base = _canales.filter(c => !_filtrosCanales.estado || (_filtrosCanales.estado === 'activo' ? c.activo === true : c.activo === false))
+  const total = campo => base.reduce((n,c) => n + Number(_statsCanales[c.id]?.[campo] || 0), 0)
+  document.getElementById('kCanales').textContent = base.length
+  document.getElementById('kCanalesSub').textContent = _filtrosCanales.estado === 'activo' ? 'Canales activos' : _filtrosCanales.estado === 'inactivo' ? 'Canales archivados' : 'Todos los canales'
+  document.getElementById('kRefs').textContent = total('refs')
+  document.getElementById('kSinRubro').textContent = base.filter(c => !esActivo(c.tipo) && !c.rubro_id).length
+  document.getElementById('kClicks').textContent = total('clicks')
+  document.getElementById('kClicksSub').textContent = `${total('clicksQr')} por QR · ${total('clicksLink')} por link`
+  document.getElementById('kLeads').textContent = total('leads')
+  document.getElementById('kLeadsSub').textContent = `${total('leadsMes')} en los últimos 30 días`
+  const top = base.map(c => ({c,n:_statsCanales[c.id]?.clicks || 0,leads:_statsCanales[c.id]?.leads || 0})).sort((a,b)=>b.n-a.n)[0]
+  document.getElementById('kTop').textContent = top && top.n > 0 ? top.c.nombre : '—'
+  document.getElementById('kTopSub').textContent = top && top.n > 0 ? `${top.n} clicks · ${top.leads} consultas` : 'sin clicks aún'
 }
 
 const esActivo = t => t === 'inmobiliaria' || t === 'particular'
@@ -751,14 +748,15 @@ function setOpcionesCanales(id, valores, placeholder, valorActual = '') {
 }
 
 function renderFiltroOpcionesCanales() {
+  const base = _canales.filter(c => !_filtrosCanales.estado || (_filtrosCanales.estado === 'activo' ? c.activo === true : c.activo === false))
   const provincia = _filtrosCanales.provincia
-  const baseCiudad = provincia ? _canales.filter(c => String(c.provincia || '') === provincia) : _canales
+  const baseCiudad = provincia ? base.filter(c => String(c.provincia || '') === provincia) : base
   const ciudades = valoresUnicosCanales('ciudad', baseCiudad)
   if (_filtrosCanales.ciudad && !ciudades.includes(_filtrosCanales.ciudad)) _filtrosCanales.ciudad = ''
 
-  setOpcionesCanales('fProvincia', valoresUnicosCanales('provincia'), 'Todas las provincias', _filtrosCanales.provincia)
+  setOpcionesCanales('fProvincia', valoresUnicosCanales('provincia', base), 'Todas las provincias', _filtrosCanales.provincia)
   setOpcionesCanales('fCiudad', ciudades, 'Todas las ciudades', _filtrosCanales.ciudad)
-  setOpcionesCanales('fTipo', valoresUnicosCanales('tipo'), 'Todos los tipos', _filtrosCanales.tipo)
+  setOpcionesCanales('fTipo', valoresUnicosCanales('tipo', base), 'Todos los tipos', _filtrosCanales.tipo)
   setOpcionesCanales('fAcceso', ['Activo', 'Pasivo'], 'Todos los accesos', _filtrosCanales.acceso)
 }
 
@@ -778,7 +776,7 @@ function canalesFiltrados() {
     if (_filtrosCanales.tipo && String(c.tipo || '') !== _filtrosCanales.tipo) return false
     if (_filtrosCanales.acceso && claseAccesoCanal(c) !== _filtrosCanales.acceso) return false
     if (_filtrosCanales.estado) {
-      const estado = c.activo ? 'activo' : 'inactivo'
+      const estado = c.activo === true ? 'activo' : c.activo === false ? 'inactivo' : 'no-verificado'
       if (estado !== _filtrosCanales.estado) return false
     }
     if (_filtrosCanales.buscar) {
@@ -849,6 +847,7 @@ function renderCanalCard(c) {
 }
 
 function renderCanalesGrid() {
+  renderKpisCanales()
   const grid = document.getElementById('gridCanales')
   const filtrados = canalesFiltrados()
   const resumen = document.getElementById('canalesFiltroResumen')
@@ -877,9 +876,10 @@ function initFiltrosCanales() {
   document.getElementById('fBuscar')?.addEventListener('input', aplicarFiltrosCanales)
   document.getElementById('btnLimpiarFiltros')?.addEventListener('click', () => {
     Object.keys(_filtrosCanales).forEach(k => { _filtrosCanales[k] = '' })
+    _filtrosCanales.estado = 'activo'
     ;['fProvincia','fCiudad','fTipo','fAcceso','fEstado','fBuscar'].forEach(id => {
       const el = document.getElementById(id)
-      if (el) el.value = ''
+      if (el) el.value = id === 'fEstado' ? 'activo' : ''
     })
     renderFiltroOpcionesCanales()
     renderCanalesGrid()
