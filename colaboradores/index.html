@@ -3790,16 +3790,16 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
         const base = [
           {
             label:'Interacciones', data:lblsData[0], order:2,
-            borderColor:'#7aaeff', borderWidth: multiSlot ? 2 : 1.8, tension:0, fill: true,
-            cubicInterpolationMode:'default',
+            borderColor:'#7aaeff', borderWidth: multiSlot ? 2 : 1.8, tension:0.4, fill: true,
+            cubicInterpolationMode:'monotone',
             backgroundColor: gradAzul,
             pointRadius:0, pointHoverRadius:6,
             pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2
           },
           {
             label:'Consultas', data:lblsData[1], order:1,
-            borderColor:'#e8c96a', borderWidth: 1.6, tension:0, fill:false,
-            cubicInterpolationMode:'default', spanGaps:true,
+            borderColor:'#e8c96a', borderWidth: 1.6, tension:0.4, fill:false,
+            cubicInterpolationMode:'monotone', spanGaps:true,
             pointRadius:0, pointHoverRadius:7,
             pointBackgroundColor:'#0c0c0e', pointBorderColor:'#e8c96a', pointBorderWidth:2,
             pointHoverBackgroundColor:'#e8c96a', pointHoverBorderColor:'#fff4c4', pointHoverBorderWidth:3
@@ -3810,8 +3810,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
           slotLines.forEach((ln, i) => {
             base.push({
               label: ln.nombre, _seriesKey: ln.key, data: ln.data, order: 10 + i,
-              borderColor: ln.color, borderWidth: 1.4, tension: 0, fill: false,
-              cubicInterpolationMode: 'default', spanGaps: true,
+              borderColor: ln.color, borderWidth: 1.4, tension: 0.4, fill: false,
+              cubicInterpolationMode: 'monotone', spanGaps: true,
               pointRadius: 0, pointHoverRadius: 4,
               pointHoverBackgroundColor: ln.color, pointHoverBorderColor: '#fff', pointHoverBorderWidth: 1.5,
               hidden: window._pvSlotHidden[ln.key] === true
@@ -4355,8 +4355,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 data,
                 borderColor: colorHex,
                 borderWidth: 2.5,
-                tension: 0,
-                cubicInterpolationMode: 'default',
+                tension: 0.4,
+                cubicInterpolationMode: 'monotone',
                 fill: true,
                 backgroundColor: (context) => {
                   const chart = context.chart
@@ -4378,8 +4378,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
                 data: dataCons,
                 borderColor: '#e8c96a',
                 borderWidth: 1.5,
-                tension: 0,
-                cubicInterpolationMode: 'default',
+                tension: 0.4,
+                cubicInterpolationMode: 'monotone',
                 fill: false,
                 spanGaps: true,
                 pointRadius: dataCons.map(v => v > 0 ? 5 : 0),
@@ -4472,11 +4472,11 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
       const ctxAct = document.getElementById('pvPanelAct30')?.getContext('2d')
       if (ctxAct && (dataScans.some(x=>x>0) || dataCons.some(x=>x>0))) {
         const datasets = [
-          { label:'Total interacciones digitales', data:dataScans, order:2, borderColor:'#7aaeff', borderWidth:3.5, tension:0, fill:true, cubicInterpolationMode:'default', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
+          { label:'Total interacciones digitales', data:dataScans, order:2, borderColor:'#7aaeff', borderWidth:3.5, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#7aaeff', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2,
             backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(122,174,255,.32)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(122,174,255,.72)'); g.addColorStop(0.45,'rgba(122,174,255,.34)'); g.addColorStop(1,'rgba(122,174,255,0)'); return g } },
-          { label:'Consultas', data:dataCons, order:1, borderColor:'#e8c96a', borderWidth:2.5, tension:0, fill:false, cubicInterpolationMode:'default', spanGaps:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#e8c96a', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2 }
+          { label:'Consultas', data:dataCons, order:1, borderColor:'#e8c96a', borderWidth:2.5, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#e8c96a', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2 }
         ]
-        slotLines.forEach((ln,i) => datasets.push({ label:ln.nombre, _seriesKey:ln.key, data:ln.data, order:10+i, borderColor:ln.color, borderWidth:1.4, tension:0, fill:false, cubicInterpolationMode:'default', spanGaps:true, pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor:ln.color, pointHoverBorderColor:'#fff', pointHoverBorderWidth:1.5, hidden: window._pvPanelHidden?.[ln.key] === true }))
+        slotLines.forEach((ln,i) => datasets.push({ label:ln.nombre, _seriesKey:ln.key, data:ln.data, order:10+i, borderColor:ln.color, borderWidth:1.4, tension:0.4, fill:false, cubicInterpolationMode:'monotone', spanGaps:true, pointRadius:0, pointHoverRadius:4, pointHoverBackgroundColor:ln.color, pointHoverBorderColor:'#fff', pointHoverBorderWidth:1.5, hidden: window._pvPanelHidden?.[ln.key] === true }))
         _pvPanelAct = new Chart(ctxAct, {
           type:'line', data:{labels, datasets},
           options:{ responsive:true, maintainAspectRatio:false, animation:{duration:700,easing:'easeOutQuart'}, interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#fff', bodyColor:'rgba(255,255,255,.76)', titleFont:{size:11,weight:'600'}, bodyFont:{size:11}, displayColors:true, usePointStyle:true, padding:10, cornerRadius:8, callbacks:{ label(ctx){ return ` ${ctx.dataset.label}: ${Number(ctx.raw||0).toLocaleString('es-AR')}` } } } }, scales:{ x:{display:true,border:{display:false},grid:{display:false},ticks:{color:'rgba(255,255,255,.34)',maxTicksLimit:6,maxRotation:0,font:{size:9,family:'Inter'}}}, y:{beginAtZero:true,display:true,grace:'10%',border:{display:false},grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.34)',precision:0,maxTicksLimit:4,font:{size:9,family:'Inter'}}} } }
@@ -4517,7 +4517,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
       if (ctxConv && convDiaria.some(x=>x !== null)) {
         _pvPanelConv = new Chart(ctxConv, {
           type:'line',
-          data:{ labels, datasets:[{ label:'Conversión diaria', data:convDiaria, borderColor:'#ffa050', borderWidth:2.5, tension:0, fill:true, cubicInterpolationMode:'default', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#ffa050', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2, backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(255,160,80,.2)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(255,160,80,.4)'); g.addColorStop(1,'rgba(255,160,80,0)'); return g } }] },
+          data:{ labels, datasets:[{ label:'Conversión diaria', data:convDiaria, borderColor:'#ffa050', borderWidth:2.5, tension:0.4, fill:true, cubicInterpolationMode:'monotone', pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:'#ffa050', pointHoverBorderColor:'#fff', pointHoverBorderWidth:2, backgroundColor:(c)=>{ const {ctx:cc,chartArea}=c.chart; if(!chartArea) return 'rgba(255,160,80,.2)'; const g=cc.createLinearGradient(0,chartArea.top,0,chartArea.bottom); g.addColorStop(0,'rgba(255,160,80,.4)'); g.addColorStop(1,'rgba(255,160,80,0)'); return g } }] },
           options:{ responsive:true, maintainAspectRatio:false, animation:{duration:700,easing:'easeOutQuart'}, interaction:{mode:'index',intersect:false}, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(18,18,21,.96)', borderColor:'rgba(255,255,255,.12)', borderWidth:1, titleColor:'#fff', bodyColor:'#ffa050', titleFont:{size:11,weight:'600'}, bodyFont:{size:11,weight:'600'}, padding:10, cornerRadius:8, callbacks:{ label(ctx){ return ctx.raw === null ? ' Sin base de cálculo' : ` ${ctx.raw}% conversión` } } } }, scales:{ x:{display:true,border:{display:false},grid:{display:false},ticks:{color:'rgba(255,255,255,.34)',maxTicksLimit:6,maxRotation:0,font:{size:9,family:'Inter'}}}, y:{beginAtZero:true,display:true,grace:'15%',border:{display:false},grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'rgba(255,255,255,.34)',maxTicksLimit:4,font:{size:9,family:'Inter'},callback:v=>v+'%'}} } }
         })
       }
