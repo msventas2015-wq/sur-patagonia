@@ -44,6 +44,22 @@ test('staging rejects production, aliases and a wrong project before serving ass
   assert.equal((await staging.fetch(new Request(STAGING.origin),env())).status,403);
 });
 
+test('Access fetches certificates without following redirects and rejects a redirected endpoint',async()=>{
+  const redirectedIssuer='https://sp-staging-redirect-test.cloudflareaccess.com';
+  const reasons=[];
+  let calls=0;
+  const fetchCertificates=async(url,options)=>{
+    calls++;
+    assert.equal(url,`${redirectedIssuer}/cdn-cgi/access/certs`);
+    assert.equal(options.redirect,'manual');
+    return new Response(null,{status:302,headers:{Location:'https://other.example/certs'}});
+  };
+  assert.equal(await validateAccess(await request({iss:redirectedIssuer}),
+    {...env(),STAGING_ACCESS_ISSUER:redirectedIssuer},fetchCertificates,reason=>reasons.push(reason)),false);
+  assert.equal(calls,1);
+  assert.deepEqual(reasons,['jwks_http']);
+});
+
 test('all assets are private, no-store and noindex; QR CSP points only to QA',async()=>{
   await validateAccess(await request(),env(),certs);
   const home=await staging.fetch(await request(),env());

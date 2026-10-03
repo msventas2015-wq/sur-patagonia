@@ -28,7 +28,8 @@ export async function validateAccess(request, env, fetchImpl = fetch, onReject =
     if (typeof payload.iat !== 'number' || payload.iat > now+60) return reject('issued_at');
     if (payload.nbf !== undefined && (typeof payload.nbf !== 'number' || payload.nbf > now+60)) return reject('not_before');
     if (!cachedKeys || cachedKeys.issuer !== issuer || cachedKeys.expires <= now) {
-      const response = await fetchImpl(`${issuer}/cdn-cgi/access/certs`,{redirect:'error'});
+      // Workers supports manual redirects; the non-OK check also rejects every 3xx.
+      const response = await fetchImpl(`${issuer}/cdn-cgi/access/certs`,{redirect:'manual'});
       if (!response.ok) return reject('jwks_http');
       const result = await response.json();
       if (!Array.isArray(result.keys)) return reject('jwks_format');
