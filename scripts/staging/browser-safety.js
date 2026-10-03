@@ -30,7 +30,11 @@
   const canNavigate = value => {
     if (!value) return true; // Blank window used for printing local PDFs.
     const url = target(value);
-    return url.origin === config.origin || url.protocol === 'blob:';
+    // Masterplans created in the clone are read from its QA images bucket.
+    // Keep Auth, REST, arbitrary buckets and all production URLs blocked.
+    const qaMasterplan = config.dataReady && url.origin === config.databaseOrigin &&
+      /^\/storage\/v1\/object\/(public|sign)\/imagenes\//.test(url.pathname);
+    return url.origin === config.origin || url.protocol === 'blob:' || qaMasterplan;
   };
   window.open = (url, ...args) => {
     if (!canNavigate(url)) { alert('Salida externa deshabilitada en pruebas.'); return null; }

@@ -49,6 +49,10 @@ test('all assets are private, no-store and noindex; QR CSP points only to QA',as
   const home=await staging.fetch(await request(),env());
   assert.equal(home.status,200); assert.match(home.headers.get('X-Robots-Tag'),/noindex/);
   assert.equal(home.headers.get('Cache-Control'),'no-store');
+  const imgSources=home.headers.get('Content-Security-Policy').split(';').find(x=>x.trim().startsWith('img-src ')).trim().split(/\s+/).slice(1);
+  for(const source of ['https://tile.openstreetmap.org','https://*.tile.openstreetmap.org','https://*.basemaps.cartocdn.com']) assert.ok(imgSources.includes(source),source);
+  assert.ok(!imgSources.includes('https:') && !imgSources.includes('*'));
+
   assert.ok(!home.headers.get('Content-Security-Policy').includes(PRODUCTION.projectRef));
   const qr=await staging.fetch(await request({},'/r/staging-code'),env());
   assert.equal(qr.status,200); assert.ok(qr.headers.get('Content-Security-Policy').includes(STAGING.projectRef));
@@ -86,6 +90,11 @@ test('browser guard blocks production and external messaging even when QA is ena
   await assert.rejects(window.fetch(STAGING.databaseOrigin+'/auth/v1/recover',{method:'POST'}),/staging_outbound_blocked/);
   assert.equal(await window.fetch(STAGING.databaseOrigin+'/rest/v1/propiedades'),'ok');
   assert.equal(calls,1);assert.equal(window.open('https://wa.me/test'),null);
+  assert.equal(window.open(STAGING.databaseOrigin+'/storage/v1/object/public/imagenes/masterplan.pdf'),true);
+  assert.equal(window.open(STAGING.databaseOrigin+'/storage/v1/object/sign/imagenes/masterplan.pdf?token=test'),true);
+  for(const path of ['/auth/v1/recover','/rest/v1/propiedades','/storage/v1/object/public/otro/masterplan.pdf']) assert.equal(window.open(STAGING.databaseOrigin+path),null);
+  assert.equal(window.open(`https://${PRODUCTION.projectRef}.supabase.co/storage/v1/object/public/imagenes/masterplan.pdf`),null);
+
   assert.throws(()=>new window.WebSocket(`wss://${PRODUCTION.projectRef}.supabase.co/realtime/v1`),/staging_outbound_blocked/);
   assert.ok(new window.WebSocket(STAGING.databaseOrigin.replace('https:','wss:')+'/realtime/v1'));
   assert.equal(context.navigator.sendBeacon('https://example.com','test'),false);
