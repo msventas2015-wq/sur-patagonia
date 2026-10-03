@@ -695,7 +695,33 @@ window.cambiarRol = async (id, sel, email) => {
 
 // ── Eliminar usuario ──────────────────────────────────────
 window.eliminarUsuario = async (id, email) => {
-  if (!confirm(`¿Eliminar definitivamente al usuario ${email}?\n\nEsta acción no se puede deshacer. Su canal y sus leads NO se borran, solo quedan sin usuario asignado.`)) return
+  const [crmCheck, alqCheck] = await Promise.all([
+    supabase.from('crm_eventos').select('id').eq('actor_id', id).limit(1),
+    supabase.from('alq_v_parte_usuario').select('id').eq('auth_user_id', id).limit(1),
+  ])
+
+  if (crmCheck.error || alqCheck.error) {
+    console.error('[usuarios] no se pudieron verificar dependencias', {
+      crm: crmCheck.error,
+      alquileres: alqCheck.error,
+    })
+    alert('No se pudo verificar si el usuario tiene actividad vinculada. No se realizó ninguna eliminación. Intentá nuevamente.')
+    return
+  }
+
+  const motivos = []
+  if (crmCheck.data?.length) motivos.push('eventos registrados en el CRM')
+  if (alqCheck.data?.length) motivos.push('un vínculo con el sistema de alquileres')
+  if (motivos.length) {
+    alert(`No se puede borrar al usuario ${email} porque tiene ${motivos.join(' y ')}. Para conservar el historial, corresponde desactivarlo.`)
+    return
+  }
+
+  if (!confirm(
+    `¿Eliminar definitivamente al usuario ${email}?\n\n` +
+    'Esta acción no se puede deshacer. También se eliminarán sus vínculos de propiedad y su perfil de titular. ' +
+    'Su canal y sus leads NO se borran; quedarán sin usuario asignado.'
+  )) return
 
   const { error } = await supabase.rpc('admin_eliminar_usuario', { p_user_id: id })
   if (error) {

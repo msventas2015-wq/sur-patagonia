@@ -249,7 +249,11 @@ async function cargar(){
 function render(){
   if(!D.prop.length){
     $('props').innerHTML='<div class="empty">Tu usuario no tiene propiedades vinculadas todavía. Hablá con la administración.</div>';
-    $('kpis').innerHTML='';$('liqs').innerHTML='<div class="empty">Sin acceso a propiedades.</div>';return;
+    $('kpis').innerHTML='';$('liqs').innerHTML='<div class="empty">Sin acceso a propiedades.</div>';
+    $('ncProp').innerHTML='<option value="">Sin propiedades habilitadas</option>';
+    $('ncProp').disabled=true;$('ncTexto').disabled=true;$('btnNueva').disabled=true;
+    $('msgNueva').textContent='Necesitás una propiedad habilitada para enviar una consulta.';
+    $('msgNueva').className='op-msg';return;
   }
   const cargosInquilino=D.cargo.filter(c=>{
     const con=D.con.find(x=>x.id===c.contrato_id);
@@ -289,6 +293,8 @@ function render(){
       </div></div>`;
   }).join('');
   $('ncProp').innerHTML=D.prop.map(p=>`<option value="${p.id}">${esc(p.direccion)}</option>`).join('');
+  $('ncProp').disabled=false;$('ncTexto').disabled=false;$('btnNueva').disabled=false;
+  $('msgNueva').textContent='';$('msgNueva').className='op-msg';
   const liquidaciones=[...D.liq].sort((a,b)=>String(b.periodo).localeCompare(String(a.periodo))||
     Number(b.version_documento)-Number(a.version_documento));
   $('liqs').innerHTML=liquidaciones.length?liquidaciones.map(x=>{
@@ -398,11 +404,13 @@ async function responder(cid){
 }
 $('btnNueva').onclick=async()=>{
   const m=$('msgNueva');m.className='op-msg';m.textContent='';
+  const propiedadId=$('ncProp').value;
+  if(!propiedadId || !D.prop?.some(p=>p.id===propiedadId)){m.textContent='Necesitás una propiedad habilitada para enviar una consulta.';m.className='op-msg op-err';return}
   const t=$('ncTexto').value.trim();
   if(!t){m.textContent='Escribí tu consulta.';m.className='op-msg op-err';return}
   $('btnNueva').disabled=true;
-  const {error}=await sb.rpc('alq_prop_abrir_consulta',{p_propiedad:$('ncProp').value,p_texto:t,p_adjunto:null});
-  $('btnNueva').disabled=false;
+  const {error}=await sb.rpc('alq_prop_abrir_consulta',{p_propiedad:propiedadId,p_texto:t,p_adjunto:null});
+  $('btnNueva').disabled=!D.prop.length;
   if(error){m.textContent=error.message;m.className='op-msg op-err';return}
   $('ncTexto').value='';toast('Consulta enviada a la administración');await cargar();
 };
