@@ -30,6 +30,11 @@ export function transform(source, path, productionKeys, qaKey) {
     result = result.replace(new RegExp(`(?<![a-zA-Z0-9.-])${escapeRegex(host)}(?![a-zA-Z0-9.-])`, 'g'), STAGING.host);
   }
   if (path.endsWith('.html')) {
+    // The normal Alquileres source includes environment labels in screens and
+    // printable documents. Keep both truthful in the staging artifact.
+    if (/^admin\/alquileres-(admin|franjas|propietario)\.html$/.test(path)) {
+      result = result.replaceAll('PRODUCCIÓN', 'PRUEBAS').replaceAll('Producción', 'Pruebas');
+    }
     // Disable external analytics, preserving a harmless gtag stub in browser-safety.
     result = result.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, tag =>
       /googletagmanager|google-analytics|gtag\('config'/.test(tag) ? '' : tag);
