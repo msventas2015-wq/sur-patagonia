@@ -11,6 +11,116 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="../css/admin-theme.css?v=traffic-dashboard-v2" />
   <link rel="stylesheet" href="./trafico.css?v=traffic-dashboard-v2" />
+<style id="trafico-unificado">
+:root{--oro-g:linear-gradient(135deg,#c9a84c,#e8c96a);--oro-s:rgba(255,255,255,.09);--activo:#04c097;--pasivo:#6b3fa0;--rubro:#0f6e80;--directo:#cc7044;--informe:#c94869}
+html,body{background:#0c0c0e}
+.admin-main{background:transparent!important}
+/* Título de pantalla */
+.admin-page-title{font-family:'Inter',system-ui,sans-serif!important;font-size:clamp(2rem,5vw,3rem)!important;font-weight:800!important;letter-spacing:-.03em!important;line-height:1.05!important;margin:0 0 .4rem!important;text-transform:uppercase!important;background:linear-gradient(120deg,#fff 0%,rgba(255,255,255,.55) 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important}
+.adm-eyebrow{display:block;margin-bottom:.7rem;color:#c9a84c;font:700 .56rem 'Inter',system-ui,sans-serif;letter-spacing:.24em;text-transform:uppercase}
+/* Piezas reutilizables (aplicarlas por selector propio de cada página con las mismas declaraciones) */
+.u-oro{display:inline-flex!important;align-items:center;justify-content:center;height:36px!important;min-height:36px!important;padding:0 1.1rem!important;border:0!important;border-radius:8px!important;background:var(--oro-g)!important;color:#0c0c0e!important;font:700 .64rem 'Inter',system-ui,sans-serif!important;letter-spacing:.07em!important;text-transform:uppercase!important;box-shadow:none!important;text-decoration:none!important;cursor:pointer}
+.u-txt{display:inline-flex!important;align-items:center;height:36px!important;min-height:36px!important;padding:0 .5rem!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:rgba(255,255,255,.6)!important;font:650 .64rem 'Inter',system-ui,sans-serif!important;letter-spacing:.1em!important;text-transform:uppercase!important;text-decoration:none!important;cursor:pointer}
+.u-barra{display:inline-flex!important;align-items:center;gap:0!important;width:max-content;max-width:100%;padding:3px!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:8px!important;background:#131315!important;box-shadow:none!important}
+.u-barra>*{height:26px!important;min-height:26px!important;padding:0 .9rem!important;border:0!important;border-radius:6px!important;background:transparent!important;box-shadow:none!important;color:rgba(255,255,255,.55)!important;font:650 .62rem 'Inter',system-ui,sans-serif!important;letter-spacing:.08em!important;text-transform:uppercase!important;cursor:pointer}
+.u-barra.menu{display:flex!important;width:auto}.u-barra.menu>*{flex:1;height:38px!important;min-height:38px!important;font-size:.66rem!important}
+.u-barra>.on,.u-barra>.activo,.u-barra>.active{background:rgba(255,255,255,.09)!important;color:#fff!important}
+.u-campo{height:32px!important;min-height:32px!important;padding-top:0!important;padding-bottom:0!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:7px!important;background:#111113!important;color:rgba(255,255,255,.88)!important;font-size:.72rem!important;box-sizing:border-box!important;color-scheme:dark}
+.u-limpiar{display:inline-flex!important;align-items:center;height:32px!important;min-height:32px!important;padding:0 .9rem!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:7px!important;background:transparent!important;color:rgba(255,255,255,.55)!important;font:650 .64rem 'Inter',system-ui,sans-serif!important;letter-spacing:.07em!important;text-transform:uppercase!important}
+.u-panel{padding:.9rem 1rem!important;border:1px solid rgba(255,255,255,.07)!important;border-top-color:rgba(255,255,255,.13)!important;border-radius:12px!important;background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02))!important;box-shadow:none!important}
+.u-plano{padding:1.7rem 0 1.4rem!important;margin:0!important;border:0!important;border-top:1px solid rgba(255,255,255,.08)!important;border-radius:0!important;background:none!important;box-shadow:none!important;backdrop-filter:none!important}
+.u-rot{font:700 .52rem 'Inter',system-ui,sans-serif!important;letter-spacing:.14em!important;text-transform:uppercase!important;color:rgba(255,255,255,.36)!important}
+.u-sec{font:700 .6rem 'Inter',system-ui,sans-serif!important;letter-spacing:.22em!important;text-transform:uppercase!important;color:rgba(255,255,255,.72)!important}
+/* Acciones de fila: barra unida + peligro en texto abajo */
+.u-acc{display:flex!important;flex-wrap:wrap;align-items:center;gap:0!important;row-gap:.35rem}
+.u-acc>*{order:0;height:32px!important;min-height:32px!important;margin:0 0 0 -1px!important;padding:0 .9rem!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:0!important;background:#131315!important;box-shadow:none!important;color:rgba(255,255,255,.85)!important;font:650 .58rem 'Inter',system-ui,sans-serif!important;letter-spacing:.08em!important;text-transform:uppercase!important;display:inline-flex;align-items:center;text-decoration:none}
+.u-acc::after{content:"";flex-basis:100%;order:1}
+.u-acc>.pel{order:2;height:24px!important;min-height:24px!important;margin:0 0 0 1.1rem!important;padding:0 .2rem!important;border:0!important;background:none!important;color:rgba(255,255,255,.42)!important;font-size:.54rem!important;letter-spacing:.1em!important}
+.u-acc>.pel:not(.pel ~ .pel){margin-left:auto!important}
+/* KPI estilo Tráfico */
+.u-kpi{position:relative!important;overflow:hidden!important;padding:1.15rem 1.25rem!important;border:1px solid rgba(255,255,255,.07)!important;border-top-color:rgba(255,255,255,.13)!important;border-radius:12px!important;background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02))!important;box-shadow:none!important}
+.u-kpi::before{content:""!important;position:absolute!important;left:0!important;top:20%!important;bottom:20%!important;width:2px!important;height:auto!important;border-radius:99px!important;background:var(--kc,#8a8a82)!important}
+
+/* ═══ Tráfico — pantalla de referencia: solo se ajusta lo que choca con las reglas generales ═══ */
+:root{--traffic-accent:#c9a84c}
+/* Cabecera */
+.traffic-header{align-items:flex-end!important;margin-bottom:1.4rem!important}
+.traffic-kicker.adm-eyebrow{display:flex!important;align-items:center;gap:.55rem;margin-bottom:.7rem!important;color:#c9a84c!important;font:700 .625rem 'Inter',system-ui,sans-serif!important;letter-spacing:.24em!important}
+.traffic-head-actions{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;justify-content:flex-end;padding-bottom:.35rem}
+.traffic-head-actions .traffic-updated{margin-right:.6rem;font-size:.68rem!important;color:rgba(255,255,255,.36)!important}
+.traffic-head-actions .u-txt:hover{color:#fff!important}
+/* Barra de filtros: panel con período compacto + fechas de 32 px en la misma línea */
+.traffic-toolbar{gap:1.1rem!important;padding:.75rem 1rem!important;border-radius:12px!important}
+.traffic-periods.u-barra{flex-wrap:nowrap!important}
+.traffic-periods.u-barra>.is-active{background:rgba(255,255,255,.09)!important;color:#fff!important}
+.traffic-periods.u-barra>.traffic-period:hover:not(.is-active){color:rgba(255,255,255,.85)!important}
+.traffic-custom{align-items:center!important;gap:.9rem!important;margin-left:0!important}
+.traffic-date{display:flex!important;align-items:center;gap:.5rem!important}
+.traffic-date span{font-size:.625rem!important;font-weight:700!important;letter-spacing:.14em!important;color:rgba(255,255,255,.42)!important}
+.traffic-date input{height:32px!important;min-height:32px!important;padding:0 .6rem!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:7px!important;background:#111113!important;color:rgba(255,255,255,.88)!important;font-size:.72rem!important;box-sizing:border-box!important;color-scheme:dark}
+.traffic-date input:focus{border-color:rgba(201,168,76,.5)!important;box-shadow:none!important}
+#trafficApply.u-limpiar{cursor:pointer}
+#trafficApply.u-limpiar:hover{color:#fff!important;border-color:rgba(255,255,255,.28)!important}
+/* Paneles: radio 12 (sin tocar su composición) */
+.traffic-panel{border-radius:12px!important}
+/* Etiquetas tipo píldora -> texto chico gris */
+.traffic-source-chip,.traffic-source-chip.is-supabase,.traffic-source-chip.is-ga4{display:inline-flex;align-items:center;gap:.5rem;padding:0!important;border:0!important;border-radius:0!important;background:none!important;color:rgba(255,255,255,.4)!important;font-size:.625rem!important;font-weight:650!important;letter-spacing:.1em!important;white-space:nowrap}
+.traffic-source-chip input{margin-right:0!important;accent-color:#c9a84c!important}
+.traffic-source-chip select.admin-input{width:auto!important;height:32px!important;min-height:32px!important;padding:0 1.8rem 0 .6rem!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:7px!important;background-color:#111113!important;color:rgba(255,255,255,.88)!important;font:500 .72rem 'Inter',system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;color-scheme:dark}
+.traffic-panel-head:has(#trafficEstadoCanal){align-items:center!important;flex-wrap:wrap}
+.traffic-panel-head:has(#trafficEstadoCanal)>div:first-child{flex:1 1 320px}
+.traffic-warning-badge{display:inline-block!important;margin-top:.2rem;padding:0!important;border:0!important;border-radius:0!important;font-size:.625rem!important}
+/* Tabla de la Red: nombres en mayúscula, sin fondo al pasar, vía con punto (no cuadrado) */
+#trafficChannels .traffic-name{text-transform:uppercase;letter-spacing:.02em}
+.traffic-table tbody tr:hover td{background:none!important}
+.traffic-via::before{border:0!important;border-radius:50%!important;background:currentColor!important}
+.traffic-via{color:rgba(255,255,255,.6)!important;font-size:.66rem!important}
+.traffic-via--qr::before{background:#50c878!important}
+.traffic-via--link::before{background:#6495ed!important}
+.traffic-via--unknown::before{background:#8a8a82!important}
+/* Nota GA4: el filete naranja pasa a dorado */
+.traffic-ga-note{border-left-color:#c9a84c!important;background:rgba(201,168,76,.045)!important}
+/* Mínimo legible: todo texto de menos de 10 px sube a 10 px (.625rem) */
+.traffic-kpi-label,.traffic-panel-title,.traffic-list-meta,.traffic-table th,.traffic-secondary,.traffic-ga-stat span,.traffic-ga-stat small,.geo-disclaimer{font-size:.625rem!important}
+.traffic-kpi-label{letter-spacing:.18em!important}
+.traffic-head-actions{flex-wrap:nowrap!important;flex-shrink:0;white-space:nowrap}
+/* KPIs: rótulo con alto de dos líneas para que los números queden alineados entre cajas */
+.traffic-kpi-label{min-height:2.9em;line-height:1.45}
+/* Rendimiento de la Red: filtros en una línea propia bajo el título */
+.traffic-panel-head:has(#trafficEstadoCanal){justify-content:flex-start!important;gap:.7rem 1.8rem!important}
+.traffic-panel-head:has(#trafficEstadoCanal)>div:first-child{flex:1 1 100%!important}
+/* Gráficos: alto definido (sin esto el lienzo crece con el ancho del panel y la dona queda gigante) */
+.traffic-chart{height:366px}
+.traffic-chart--small{height:300px}
+/* Audiencia y geografía: la tabla de ciudades entra completa (antes País/Usuarios/Sesiones quedaban fuera de vista) */
+.traffic-grid--geo{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+.traffic-grid--geo>div:first-child{display:flex;flex-direction:column}
+#trafficGeoMap{flex:1 1 auto}
+#trafficGeoRows .traffic-table{min-width:0!important}
+#trafficGeoRows .traffic-table th,#trafficGeoRows .traffic-table td{padding-left:.4rem!important;padding-right:.4rem!important}
+.traffic-periods.u-barra>.traffic-period{font-size:.625rem!important}
+</style>
+<style id="barras-neutras">
+/* Barras de opciones: la activa en gris, sin dorado (decisión de Mariano 5-oct-2026) */
+.traffic-period:hover,
+.traffic-period.is-active{border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.09)}
+html:not(#_) body :is(.sec-nav,.vistas,.seg,.u-barra,.filtros,.f-periodo,.mapa-rangos,.rangos.u-barra,.pdf-tabs,.modo-toggle){background:rgba(14,14,16,.94)!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+html:not(#_) body :is(.u-barra>.on,.u-barra>.activo,.u-barra>.active){background:rgba(255,255,255,.09)!important;color:#fff!important}
+</style>
+<style id="superficies-unificadas">
+/* Superficies unificadas: fondo, paneles, indicadores, campos, títulos, tablas y ventanas (9 decisiones de Mariano 5-oct-2026) */
+html:not(#_),html:not(#_) body{background:#0c0c0e!important}
+html:not(#_) body th{font-size:10px!important;font-weight:700!important;letter-spacing:.12em!important;text-transform:uppercase!important}
+html:not(#_) body .sec-nav{padding:3px!important}html:not(#_) body .sec-nav a{height:38px!important;min-height:38px!important}
+html:not(#_) body :is(.vistas,.sec-nav,.u-barra,.ap-menu){box-shadow:none!important}
+html:not(#_) body .pie-barra{background:rgba(14,14,16,.94)!important}
+html:not(#_) body div.traffic-kicker.adm-eyebrow{display:none!important}
+html:not(#_) body span.traffic-live-dot{display:none!important}
+@media(min-width:1101px){html:not(#_) body div.traffic-shell{margin-top:24px!important}}
+html:not(#_) body .admin-main article.traffic-kpi{background-image:linear-gradient(155deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.016))!important;background-position-x:initial!important;background-position-y:initial!important;background-size:initial!important;background-repeat:initial!important;background-attachment:initial!important;background-origin:initial!important;background-clip:initial!important;background-color:initial!important;border-top-left-radius:12px!important;border-top-right-radius:12px!important;border-bottom-right-radius:12px!important;border-bottom-left-radius:12px!important;box-shadow:none!important;backdrop-filter:blur(4px)!important;border-left-color:rgba(255, 255, 255, 0.07)!important;border-right-color:rgba(255, 255, 255, 0.07)!important;border-bottom-color:rgba(255, 255, 255, 0.07)!important;border-top-color:rgba(255, 255, 255, 0.13)!important}
+html:not(#_) body .admin-main article.traffic-panel,html:not(#_) body .admin-main section.traffic-panel,html:not(#_) body .admin-main #trafficGaPanel,html:not(#_) body .admin-main div.traffic-ga-stat,html:not(#_) body .admin-main section.traffic-ga-block{border-top-left-radius:12px!important;border-top-right-radius:12px!important;border-bottom-right-radius:12px!important;border-bottom-left-radius:12px!important;box-shadow:none!important;backdrop-filter:blur(4px)!important;background-image:linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02))!important;background-position-x:initial!important;background-position-y:initial!important;background-size:initial!important;background-repeat:initial!important;background-attachment:initial!important;background-origin:initial!important;background-clip:initial!important;background-color:initial!important;border-left-color:rgba(255, 255, 255, 0.07)!important;border-right-color:rgba(255, 255, 255, 0.07)!important;border-bottom-color:rgba(255, 255, 255, 0.07)!important;border-top-color:rgba(255, 255, 255, 0.13)!important}
+html:not(#_) body .admin-main div.traffic-panel-title{font-size:9.6px!important;font-weight:700!important;letter-spacing:0.22em!important;color:rgba(255, 255, 255, 0.72)!important}
+</style>
 </head>
 <body>
 <div class="adm-bg-brand" aria-hidden="true"></div>
@@ -112,15 +222,19 @@
     <div class="traffic-shell">
       <header class="traffic-header">
         <div>
-          <div class="traffic-kicker"><span class="traffic-live-dot"></span>Inteligencia comercial</div>
-          <h2>Tráfico y rendimiento</h2>
+          <div class="traffic-kicker adm-eyebrow"><span class="traffic-live-dot"></span>Inteligencia comercial</div>
+          <h2 class="admin-page-title">Tráfico y rendimiento</h2>
           <p>Audiencia, contenido, procedencia y resultados de la Red. Cada cifra identifica su fuente y su unidad para no confundir personas, sesiones y cargas de página.</p>
         </div>
-        <div class="traffic-updated" id="trafficUpdated">Esperando actualización</div>
+        <div class="traffic-head-actions">
+          <div class="traffic-updated" id="trafficUpdated">Esperando actualización</div>
+          <button class="traffic-action u-txt" id="trafficRefresh">Actualizar</button>
+          <a class="ga4-link u-txt" id="trafficGaLink" href="#" target="_blank" rel="noopener">Abrir GA4</a>
+        </div>
       </header>
 
       <div class="traffic-toolbar" aria-label="Filtros del panel">
-        <div class="traffic-periods">
+        <div class="traffic-periods u-barra">
           <button class="traffic-period" data-days="1">Hoy</button>
           <button class="traffic-period" data-days="7">7 días</button>
           <button class="traffic-period is-active" data-days="30">30 días</button>
@@ -129,11 +243,8 @@
         <div class="traffic-custom">
           <label class="traffic-date"><span>Desde</span><input type="date" id="trafficFrom"></label>
           <label class="traffic-date"><span>Hasta</span><input type="date" id="trafficTo"></label>
-          <button class="traffic-action" id="trafficApply">Aplicar</button>
+          <button class="traffic-action u-limpiar" id="trafficApply">Aplicar</button>
         </div>
-        <div class="traffic-toolbar-spacer"></div>
-        <button class="traffic-action" id="trafficRefresh">Actualizar</button>
-        <a class="ga4-link" id="trafficGaLink" href="#" target="_blank" rel="noopener">Abrir GA4</a>
       </div>
 
       <div class="traffic-status" id="trafficStatus" role="status"></div>
@@ -232,6 +343,6 @@
   </main>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script type="module" src="./trafico.js?v=traffic-dashboard-v2-catalogo-20261001"></script>
+<script type="module" src="./trafico.js?v=traffic-dashboard-v2-unificado-02"></script>
 </body>
 </html>

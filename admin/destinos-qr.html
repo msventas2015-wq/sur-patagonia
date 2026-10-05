@@ -18,9 +18,157 @@
     .modal-overlay{display:none;position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,.78)}.modal-overlay.open{display:flex}.modal-box{width:min(620px,100%);max-height:90vh;overflow-y:auto;padding:1.6rem;background:var(--adm-card);border:1px solid var(--adm-border-strong);border-radius:var(--adm-radius);box-shadow:var(--adm-shadow)}.modal-title{margin:0 0 .5rem;font-size:1.05rem}.modal-sub{margin:0 0 1rem;color:var(--adm-muted);font-size:.72rem;line-height:1.5}.modal-destino{display:block;padding:.65rem .75rem;margin-bottom:1rem;border:1px solid var(--adm-border);border-radius:8px;background:var(--adm-bg-soft);color:var(--adm-gold-soft);font:600 .72rem ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}.modal-stats{display:grid;gap:.55rem;padding:.8rem;border:1px solid var(--adm-border);border-radius:10px;background:var(--adm-card-soft)}.modal-stat{display:flex;justify-content:space-between;gap:1rem;color:var(--adm-muted);font-size:.72rem}.modal-stat strong{color:var(--adm-text)}.modal-stat .modal-sha{max-width:62%;font:500 .58rem ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;text-align:right}.modal-impacto{display:grid;gap:.45rem;margin-top:.8rem}.modal-impacto-canal{padding:.62rem .7rem;border:1px solid var(--adm-border);border-radius:8px;background:var(--adm-bg-soft);font-size:.68rem;line-height:1.45}.modal-impacto-canal strong{display:block;color:var(--adm-text);margin-bottom:.18rem}.modal-impacto-qr{color:var(--adm-muted);overflow-wrap:anywhere}.modal-error{margin-top:.8rem;color:var(--adm-error);font-size:.7rem;line-height:1.45}.modal-actions{display:flex;justify-content:flex-end;gap:.65rem;margin-top:1.2rem}
     @media(max-width:1280px){.filtros{grid-template-columns:repeat(2,1fr)}.filtro.buscar{grid-column:1/-1}}@media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.kpis,.filtros{grid-template-columns:1fr}.filtro.buscar{grid-column:auto}.admin-main{padding-left:1rem;padding-right:1rem}.panel{padding:1rem}.destination-action{width:100%;min-width:0}.modal-actions{flex-direction:column-reverse}.modal-actions .btn{width:100%}}
   </style>
+<style id="destinos-qr-unificado">
+:root{--oro-g:linear-gradient(135deg,#c9a84c,#e8c96a);--oro-s:rgba(255,255,255,.09);--activo:#04c097;--pasivo:#6b3fa0;--rubro:#0f6e80;--directo:#cc7044;--informe:#c94869}
+html,body{background:#0c0c0e}
+.admin-main{background:transparent!important}
+/* Título de pantalla */
+.admin-page-title{font-family:'Inter',system-ui,sans-serif!important;font-size:clamp(2rem,5vw,3rem)!important;font-weight:800!important;letter-spacing:-.03em!important;line-height:1.05!important;margin:0 0 .4rem!important;text-transform:uppercase!important;background:linear-gradient(120deg,#fff 0%,rgba(255,255,255,.55) 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important}
+.adm-eyebrow{display:block;margin-bottom:.7rem;color:#c9a84c;font:700 .56rem 'Inter',system-ui,sans-serif;letter-spacing:.24em;text-transform:uppercase}
+/* Piezas reutilizables (aplicarlas por selector propio de cada página con las mismas declaraciones) */
+.u-oro{display:inline-flex!important;align-items:center;justify-content:center;height:36px!important;min-height:36px!important;padding:0 1.1rem!important;border:0!important;border-radius:8px!important;background:var(--oro-g)!important;color:#0c0c0e!important;font:700 .64rem 'Inter',system-ui,sans-serif!important;letter-spacing:.07em!important;text-transform:uppercase!important;box-shadow:none!important;text-decoration:none!important;cursor:pointer}
+.u-txt{display:inline-flex!important;align-items:center;height:36px!important;min-height:36px!important;padding:0 .5rem!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:rgba(255,255,255,.6)!important;font:650 .64rem 'Inter',system-ui,sans-serif!important;letter-spacing:.1em!important;text-transform:uppercase!important;text-decoration:none!important;cursor:pointer}
+.u-barra{display:inline-flex!important;align-items:center;gap:0!important;width:max-content;max-width:100%;padding:3px!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:8px!important;background:#131315!important;box-shadow:none!important}
+.u-barra>*{height:26px!important;min-height:26px!important;padding:0 .9rem!important;border:0!important;border-radius:6px!important;background:transparent!important;box-shadow:none!important;color:rgba(255,255,255,.55)!important;font:650 .62rem 'Inter',system-ui,sans-serif!important;letter-spacing:.08em!important;text-transform:uppercase!important;cursor:pointer}
+.u-barra.menu{display:flex!important;width:auto}.u-barra.menu>*{flex:1;height:38px!important;min-height:38px!important;font-size:.66rem!important}
+.u-barra>.on,.u-barra>.activo,.u-barra>.active{background:rgba(255,255,255,.09)!important;color:#fff!important}
+.u-campo{height:32px!important;min-height:32px!important;padding-top:0!important;padding-bottom:0!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:7px!important;background:#111113!important;color:rgba(255,255,255,.88)!important;font-size:.72rem!important;box-sizing:border-box!important;color-scheme:dark}
+.u-limpiar{display:inline-flex!important;align-items:center;height:32px!important;min-height:32px!important;padding:0 .9rem!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:7px!important;background:transparent!important;color:rgba(255,255,255,.55)!important;font:650 .64rem 'Inter',system-ui,sans-serif!important;letter-spacing:.07em!important;text-transform:uppercase!important}
+.u-panel{padding:.9rem 1rem!important;border:1px solid rgba(255,255,255,.07)!important;border-top-color:rgba(255,255,255,.13)!important;border-radius:12px!important;background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02))!important;box-shadow:none!important}
+.u-plano{padding:1.7rem 0 1.4rem!important;margin:0!important;border:0!important;border-top:1px solid rgba(255,255,255,.08)!important;border-radius:0!important;background:none!important;box-shadow:none!important;backdrop-filter:none!important}
+.u-rot{font:700 .52rem 'Inter',system-ui,sans-serif!important;letter-spacing:.14em!important;text-transform:uppercase!important;color:rgba(255,255,255,.36)!important}
+.u-sec{font:700 .6rem 'Inter',system-ui,sans-serif!important;letter-spacing:.22em!important;text-transform:uppercase!important;color:rgba(255,255,255,.72)!important}
+/* Acciones de fila: barra unida + peligro en texto abajo */
+.u-acc{display:flex!important;flex-wrap:wrap;align-items:center;gap:0!important;row-gap:.35rem}
+.u-acc>*{order:0;height:32px!important;min-height:32px!important;margin:0 0 0 -1px!important;padding:0 .9rem!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:0!important;background:#131315!important;box-shadow:none!important;color:rgba(255,255,255,.85)!important;font:650 .58rem 'Inter',system-ui,sans-serif!important;letter-spacing:.08em!important;text-transform:uppercase!important;display:inline-flex;align-items:center;text-decoration:none}
+.u-acc::after{content:"";flex-basis:100%;order:1}
+.u-acc>.pel{order:2;height:24px!important;min-height:24px!important;margin:0 0 0 1.1rem!important;padding:0 .2rem!important;border:0!important;background:none!important;color:rgba(255,255,255,.42)!important;font-size:.54rem!important;letter-spacing:.1em!important}
+.u-acc>.pel:not(.pel ~ .pel){margin-left:auto!important}
+/* KPI estilo Tráfico */
+.u-kpi{position:relative!important;overflow:hidden!important;padding:1.15rem 1.25rem!important;border:1px solid rgba(255,255,255,.07)!important;border-top-color:rgba(255,255,255,.13)!important;border-radius:12px!important;background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02))!important;box-shadow:none!important}
+.u-kpi::before{content:""!important;position:absolute!important;left:0!important;top:20%!important;bottom:20%!important;width:2px!important;height:auto!important;border-radius:99px!important;background:var(--kc,#8a8a82)!important}
+/* ═══ Destinos QR — hoja propia ═══ */
+.admin-main,.modal-overlay{--adm-accent:#c9a84c}
+/* Cabecera */
+.admin-main .page-head{margin-bottom:1.6rem}
+.admin-main .page-kicker.adm-eyebrow{display:block;margin-bottom:.7rem;color:#c9a84c;font:700 .56rem 'Inter',system-ui,sans-serif;letter-spacing:.24em;text-transform:uppercase}
+.admin-main .page-sub{margin:.2rem 0 0;max-width:62rem;color:rgba(255,255,255,.5);font-size:.8rem;line-height:1.5}
+/* KPIs */
+.admin-main .kpis{gap:.85rem;margin-bottom:1.1rem}
+.admin-main .kpi{position:relative;overflow:hidden;padding:1.15rem 1.25rem;border:1px solid rgba(255,255,255,.07);border-top-color:rgba(255,255,255,.13);border-radius:12px;background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02));box-shadow:none}
+.admin-main .kpi::before{content:"";position:absolute;left:0;top:20%;bottom:20%;width:2px;height:auto;border-radius:99px;background:var(--kc,#8a8a82);opacity:1}
+.admin-main .kpi{min-height:0;display:block;transform:none}.admin-main .kpi:hover{transform:none;box-shadow:none;border-color:rgba(255,255,255,.07);border-top-color:rgba(255,255,255,.13)}
+.admin-main .kpi-num{font-size:2.3rem;font-weight:300;line-height:1}
+.admin-main .kpi-lbl{margin-top:.5rem;font:700 .52rem 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.36)}
+/* Aviso de historial (solo aparece si hay fallos): plano */
+.admin-main #historialAdvertencia{margin:0 0 1.1rem;padding:.8rem 0;border:0;border-top:1px solid rgba(224,92,92,.4);border-radius:0;background:none;box-shadow:none;color:#e05c5c;font-size:.74rem;line-height:1.5}
+/* Filtros dentro de panel */
+.admin-main .panel{box-shadow:none}
+.admin-main .panel-filtros{margin:0 0 .4rem;padding:.9rem 1rem;border:1px solid rgba(255,255,255,.07);border-top-color:rgba(255,255,255,.13);border-radius:12px;background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02))}
+.admin-main .filtros{grid-template-columns:1.4fr 1.2fr repeat(4,minmax(110px,1fr)) auto;gap:.7rem;align-items:end}
+.admin-main .filtro label{display:block;margin-bottom:.4rem;font:700 .52rem 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.36)}
+.admin-main .filtro input,.admin-main .filtro select{width:100%;height:32px;min-height:32px;padding:0 .7rem;border:1px solid rgba(255,255,255,.1);border-radius:7px;background-color:#111113;color:rgba(255,255,255,.88);font:500 .72rem 'Inter',system-ui,sans-serif;box-sizing:border-box;color-scheme:dark;box-shadow:none}
+.admin-main .filtro input::placeholder{color:rgba(255,255,255,.3)}
+.admin-main .filtro input:focus,.admin-main .filtro select:focus{outline:0;border-color:rgba(201,168,76,.55)}
+.admin-main .btn.btn-limpiar{display:inline-flex;align-items:center;height:32px;min-height:32px;padding:0 .9rem;border:1px solid rgba(255,255,255,.12);border-radius:7px;background:transparent;color:rgba(255,255,255,.55);font:650 .64rem 'Inter',system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
+.admin-main .btn.btn-limpiar:hover{background:transparent;color:rgba(255,255,255,.85)}
+/* Sección canales: plana (barra de selección + tabla) */
+.admin-main .seccion-canales{margin:1.4rem 0 0;padding:1.3rem 0 1.4rem;border:0;border-top:1px solid rgba(255,255,255,.08);border-radius:0;background:none;box-shadow:none;backdrop-filter:none}
+.admin-main .selection-bar{display:flex;align-items:flex-end;gap:.4rem .9rem;flex-wrap:wrap;margin-bottom:1.3rem}
+.admin-main .select-visible{height:36px;gap:.6rem;color:rgba(255,255,255,.85);font-size:.72rem;font-weight:600;cursor:pointer}
+.admin-main .selection-count{display:flex;align-items:center;height:36px;font-size:.8rem;font-weight:600;color:rgba(255,255,255,.88)}
+.admin-main .selection-count .qr{margin-left:.3em;color:#50c878}
+.admin-main .selection-note{display:flex;align-items:center;min-height:36px;font-size:.68rem;color:rgba(255,255,255,.5)}
+.admin-main .selection-note:empty{display:none}
+.admin-main .selection-warning{color:#e8c96a;font-weight:600}
+.admin-main .canal-check{width:15px;height:15px;accent-color:#c9a84c;color-scheme:dark}
+.admin-main .destination-action{width:min(280px,100%);min-width:220px}
+.admin-main .destination-action select{height:36px;min-height:36px}
+.admin-main .destination-action select:disabled{opacity:.45}
+.admin-main .action-feedback{flex-basis:100%;padding-top:.5rem;font-size:.72rem;line-height:1.5;color:rgba(255,255,255,.55)}
+.admin-main .action-feedback.error{color:#e05c5c}
+.admin-main .action-feedback.success{color:#6ee89a}
+/* Botones */
+.btn.btn-oro{display:inline-flex;align-items:center;justify-content:center;height:36px;min-height:36px;padding:0 1.1rem;border:0;border-radius:8px;background:linear-gradient(135deg,#c9a84c,#e8c96a);color:#0c0c0e;font:700 .64rem 'Inter',system-ui,sans-serif;letter-spacing:.07em;text-transform:uppercase;box-shadow:none;white-space:nowrap;cursor:pointer}
+.btn.btn-oro:hover{background:linear-gradient(135deg,#c9a84c,#e8c96a);filter:brightness(1.06)}
+.btn.btn-oro:disabled{opacity:.38;filter:none;cursor:not-allowed}
+.btn.btn-txt{display:inline-flex;align-items:center;height:36px;min-height:36px;padding:0 .5rem;border:0;border-radius:0;background:none;box-shadow:none;color:rgba(255,255,255,.6);font:650 .64rem 'Inter',system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;cursor:pointer}
+.btn.btn-txt:hover{background:none;color:#fff}
+.btn.btn-txt:disabled{opacity:.38}
+/* Tabla: sin caja */
+.admin-main .tabla-wrap{margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;overflow-x:auto}
+.admin-main .tabla{min-width:1040px}
+.admin-main .tabla th{padding:.55rem .65rem;border-bottom:1px solid rgba(255,255,255,.1);font:700 .52rem 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.36)}
+.admin-main .tabla th.metrica{text-align:right}
+.admin-main .tabla td{padding:1rem .65rem;border-bottom:1px solid rgba(255,255,255,.07);font-size:.73rem;vertical-align:top;background:none}
+.admin-main .tabla th:first-child,.admin-main .tabla td:first-child{width:34px;padding-left:.2rem;padding-right:.2rem}
+.admin-main .tabla td:first-child{padding-top:1.05rem}
+.admin-main .tabla tr:hover td{background:none}
+.admin-main .tabla tr.seleccionada td{background:rgba(201,168,76,.07)}
+.admin-main .identidad{display:flex;flex-direction:column;align-items:flex-start;gap:.42rem}
+.admin-main .canal-nombre{font-weight:700;font-size:.76rem;letter-spacing:.02em;text-transform:uppercase;color:#fff}
+.admin-main .canal-meta{display:flex;flex-wrap:wrap;gap:.2rem .9rem}
+.admin-main .pasivo-pill,.admin-main .canal-rubro{display:inline-flex;align-items:center;gap:.4rem;padding:0;border:0;border-radius:0;background:none;color:rgba(255,255,255,.6);font:600 .56rem 'Inter',system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.admin-main .pasivo-pill::before,.admin-main .canal-rubro::before{content:"";width:7px;height:7px;border-radius:50%;background:#6b3fa0;flex:none}
+.admin-main .canal-rubro::before{background:#0f6e80}
+.admin-main .ubicacion-ciudad{font-weight:600}
+.admin-main .ubicacion-provincia{margin-top:.3rem;color:rgba(255,255,255,.45);font-size:.68rem}
+.admin-main .dato-principal{font-size:1.1rem;font-weight:500}
+.admin-main .dato-principal small{color:rgba(255,255,255,.45);font-size:.6rem;font-weight:600;letter-spacing:.08em}
+.admin-main .num-qr,.admin-main .destino-qr{color:#50c878}
+.admin-main .num-views{color:#7aaeff}
+.admin-main .num-leads{color:#e8c96a}
+.admin-main .que-muestra-total{padding-bottom:0;margin-bottom:.45rem;border-bottom:0;font:700 .52rem 'Inter',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.36)}
+.admin-main .destino-linea{grid-template-columns:3rem minmax(0,1fr)}
+.admin-main .destino-link{color:rgba(255,255,255,.88)}
+.admin-main .fecha{color:rgba(255,255,255,.7)}
+.admin-main .empty{padding:2.5rem;color:rgba(255,255,255,.45)}
+.admin-main .empty.error{color:#e05c5c}
+/* Ventana de confirmación */
+.modal-overlay .modal-box{padding:1.7rem 1.8rem;border:1px solid rgba(255,255,255,.1);border-top-color:rgba(255,255,255,.16);border-radius:12px;background:#17171a;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.modal-overlay .modal-title{margin:0 0 .5rem;font:700 1.05rem 'Inter',system-ui,sans-serif;color:#fff}
+.modal-overlay .modal-sub{color:rgba(255,255,255,.55)}
+.modal-overlay .modal-destino{padding:.9rem 0;margin:0;border:0;border-top:1px solid rgba(255,255,255,.08);border-radius:0;background:none;color:#e8c96a;font:600 .76rem 'Inter',system-ui,sans-serif}
+.modal-overlay .modal-stats{gap:0;padding:0;border:0;border-top:1px solid rgba(255,255,255,.08);border-radius:0;background:none}
+.modal-overlay .modal-stat{padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.06);color:rgba(255,255,255,.55)}
+.modal-overlay .modal-stat strong{color:#fff;font-weight:600}
+.modal-overlay .modal-stat .modal-sha{color:rgba(255,255,255,.5)}
+.modal-overlay .modal-impacto{gap:0;margin-top:.4rem}
+.modal-overlay .modal-impacto-canal{padding:.7rem 0;border:0;border-bottom:1px solid rgba(255,255,255,.06);border-radius:0;background:none}
+.modal-overlay .modal-impacto-canal strong{text-transform:uppercase;letter-spacing:.04em;font-size:.66rem}
+.modal-overlay .modal-error{color:#e05c5c}
+.modal-overlay .modal-actions{align-items:center;gap:.8rem;margin-top:1.4rem}
+@media(max-width:1280px){.admin-main .filtros{grid-template-columns:repeat(3,1fr)}.admin-main .filtro.buscar{grid-column:1/-1}}
+@media(max-width:680px){.admin-main .filtros{grid-template-columns:1fr}.admin-main .destination-action select{width:100%}}
+/* build.py agrega una segunda capa de fondo; la página ya trae la suya (.sp-bg-brand) */
+.adm-bg-brand{display:none!important}
+/* Decisión de Mariano: la palabra va en el color (pasivo, rubro) */
+.admin-main .pasivo-pill{color:#6b3fa0!important}
+.admin-main .canal-rubro{color:#0f6e80!important}.admin-main .canal-rubro::before{background:#0f6e80!important}
+</style>
+<style id="barras-neutras">
+/* Barras de opciones: la activa en gris, sin dorado (decisión de Mariano 5-oct-2026) */
+html:not(#_) body :is(.sec-nav,.vistas,.seg,.u-barra,.filtros,.f-periodo,.mapa-rangos,.rangos.u-barra,.pdf-tabs,.modo-toggle){background:rgba(14,14,16,.94)!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+html:not(#_) body :is(.u-barra>.on,.u-barra>.activo,.u-barra>.active){background:rgba(255,255,255,.09)!important;color:#fff!important}
+</style>
+<style id="superficies-unificadas">
+/* Superficies unificadas: fondo, paneles, indicadores, campos, títulos, tablas y ventanas (9 decisiones de Mariano 5-oct-2026) */
+html:not(#_),html:not(#_) body{background:#0c0c0e!important}
+html:not(#_) body th{font-size:10px!important;font-weight:700!important;letter-spacing:.12em!important;text-transform:uppercase!important}
+html:not(#_) body .sec-nav{padding:3px!important}html:not(#_) body .sec-nav a{height:38px!important;min-height:38px!important}
+html:not(#_) body :is(.vistas,.sec-nav,.u-barra,.ap-menu){box-shadow:none!important}
+html:not(#_) body .pie-barra{background:rgba(14,14,16,.94)!important}
+html:not(#_) body div.page-kicker.adm-eyebrow{display:none!important}
+@media(min-width:1101px){html:not(#_) body header.page-head{margin-top:24px!important}}
+html:not(#_) body .admin-main article.kpi{background-image:linear-gradient(155deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.016))!important;background-position-x:initial!important;background-position-y:initial!important;background-size:initial!important;background-repeat:initial!important;background-attachment:initial!important;background-origin:initial!important;background-clip:initial!important;background-color:initial!important;border-top-left-radius:12px!important;border-top-right-radius:12px!important;border-bottom-right-radius:12px!important;border-bottom-left-radius:12px!important;box-shadow:none!important;backdrop-filter:blur(4px)!important;border-left-color:rgba(255, 255, 255, 0.07)!important;border-right-color:rgba(255, 255, 255, 0.07)!important;border-bottom-color:rgba(255, 255, 255, 0.07)!important;border-top-color:rgba(255, 255, 255, 0.13)!important}
+html:not(#_) body .admin-main section.panel.panel-filtros{border-top-left-radius:12px!important;border-top-right-radius:12px!important;border-bottom-right-radius:12px!important;border-bottom-left-radius:12px!important;box-shadow:none!important;backdrop-filter:blur(4px)!important;background-image:linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02))!important;background-position-x:initial!important;background-position-y:initial!important;background-size:initial!important;background-repeat:initial!important;background-attachment:initial!important;background-origin:initial!important;background-clip:initial!important;background-color:initial!important;border-left-color:rgba(255, 255, 255, 0.07)!important;border-right-color:rgba(255, 255, 255, 0.07)!important;border-bottom-color:rgba(255, 255, 255, 0.07)!important;border-top-color:rgba(255, 255, 255, 0.13)!important}
+html:not(#_) body #modalCambioDestino{background-image:initial!important;background-position-x:initial!important;background-position-y:initial!important;background-size:initial!important;background-repeat:initial!important;background-attachment:initial!important;background-origin:initial!important;background-clip:initial!important;background-color:rgba(0, 0, 0, 0.78)!important;backdrop-filter:blur(6px)!important}
+html:not(#_) body div.modal-box{background-image:initial!important;background-position-x:initial!important;background-position-y:initial!important;background-size:initial!important;background-repeat:initial!important;background-attachment:initial!important;background-origin:initial!important;background-clip:initial!important;background-color:rgb(15, 15, 17)!important;border-top-left-radius:14px!important;border-top-right-radius:14px!important;border-bottom-right-radius:14px!important;border-bottom-left-radius:14px!important;box-shadow:rgba(0, 0, 0, 0.6) 0px 24px 60px!important;border-left-color:rgba(255, 255, 255, 0.12)!important;border-right-color:rgba(255, 255, 255, 0.12)!important;border-bottom-color:rgba(255, 255, 255, 0.12)!important;border-top-color:rgba(255, 255, 255, 0.12)!important}
+</style>
 </head>
 <body>
 <div class="sp-bg-brand"></div>
+<div class="adm-bg-brand"></div>
 <div class="admin-layout">
   <aside class="admin-sidebar">
     <div class="admin-sidebar-logo"><img src="../assets/logos/logo-vertical-blanco.png" alt="Sur Patagonian" /></div>
@@ -111,12 +259,12 @@
     </nav>
   </aside>
   <main class="admin-main">
-    <header class="page-head"><div class="page-kicker">Red pasiva · cambio seguro de destinos</div><h1 class="page-title">Destinos QR</h1><p class="page-sub">Seleccioná canales pasivos completos, revisá el impacto y confirmá antes de cambiar el destino de todos sus QR, activos e inactivos.</p></header>
+    <header class="page-head"><div class="page-kicker adm-eyebrow">Red pasiva · cambio seguro de destinos</div><h1 class="page-title admin-page-title">Destinos QR</h1><p class="page-sub">Seleccioná canales pasivos completos, revisá el impacto y confirmá antes de cambiar el destino de todos sus QR, activos e inactivos.</p></header>
     <section class="panel error" id="historialAdvertencia" role="alert" hidden></section>
-    <section class="kpis"><article class="kpi" style="--c:var(--adm-channel)"><div class="kpi-num" id="kpiCanales">—</div><div class="kpi-lbl">Canales pasivos</div></article><article class="kpi" style="--c:var(--adm-qr)"><div class="kpi-num" id="kpiQr">—</div><div class="kpi-lbl">Puntos QR totales</div></article><article class="kpi" style="--c:var(--adm-text)"><div class="kpi-num" id="kpiVisibles">—</div><div class="kpi-lbl">Canales visibles</div></article></section>
-    <section class="panel"><div class="filtros"><div class="filtro buscar"><label for="buscar">Buscar</label><input id="buscar" placeholder="Canal, ciudad o provincia" autocomplete="off" /></div><div class="filtro"><label for="estadoCanal">Estado del canal</label><select id="estadoCanal"><option value="activo" selected>Canales activos</option><option value="">Todos los canales</option><option value="inactivo">Canales archivados</option></select></div><div class="filtro"><label for="provincia">Provincia</label><select id="provincia"><option value="">Todas</option></select></div><div class="filtro"><label for="ciudad">Ciudad</label><select id="ciudad"><option value="">Todas</option></select></div><div class="filtro"><label for="destino">Destino actual</label><select id="destino"><option value="">Todos</option></select></div><div class="filtro"><label for="rubro">Rubro</label><select id="rubro"><option value="">Todos</option></select></div><button class="btn" id="limpiarFiltros" type="button">Limpiar filtros</button></div></section>
-    <section class="panel selection-bar"><label class="select-visible"><input class="canal-check" id="todosVisibles" type="checkbox" />Seleccionar todos los visibles</label><div class="selection-count" id="selectionCount">0 canales seleccionados · <span class="qr">0 puntos QR</span></div><div class="selection-note" id="selectionNote"></div><div class="selection-spacer"></div><div class="filtro destination-action"><label for="nuevoDestino">Nuevo destino</label><select class="admin-input" id="nuevoDestino" disabled><option value="">— Seleccionar destino —</option></select></div><button class="btn" id="prepararCambio" type="button" disabled>Revisar cambio</button><button class="btn" id="limpiarSeleccion" type="button">Limpiar selección</button><div class="action-feedback" id="accionFeedback" role="status" aria-live="polite" hidden></div></section>
-    <section class="panel tabla-wrap"><table class="tabla"><thead><tr><th></th><th>Canal</th><th>Ubicación</th><th style="color:var(--adm-qr)">QR</th><th>Qué muestra hoy</th><th class="metrica">Visitas</th><th class="metrica">Consultas</th><th>Última actividad</th></tr></thead><tbody id="tbody"><tr><td colspan="8" class="empty">Cargando canales pasivos…</td></tr></tbody></table></section>
+    <section class="kpis"><article class="kpi" style="--c:var(--adm-text);--kc:#6b3fa0"><div class="kpi-num" id="kpiCanales">—</div><div class="kpi-lbl">Canales pasivos</div></article><article class="kpi" style="--c:var(--adm-qr);--kc:#50c878"><div class="kpi-num" id="kpiQr">—</div><div class="kpi-lbl">Puntos QR totales</div></article><article class="kpi" style="--c:var(--adm-text);--kc:#8a8a82"><div class="kpi-num" id="kpiVisibles">—</div><div class="kpi-lbl">Canales visibles</div></article></section>
+    <section class="panel panel-filtros"><div class="filtros"><div class="filtro buscar"><label for="buscar">Buscar</label><input id="buscar" placeholder="Canal, ciudad o provincia" autocomplete="off" /></div><div class="filtro"><label for="estadoCanal">Estado del canal</label><select id="estadoCanal"><option value="activo" selected>Canales activos</option><option value="">Todos los canales</option><option value="inactivo">Canales archivados</option></select></div><div class="filtro"><label for="provincia">Provincia</label><select id="provincia"><option value="">Todas</option></select></div><div class="filtro"><label for="ciudad">Ciudad</label><select id="ciudad"><option value="">Todas</option></select></div><div class="filtro"><label for="destino">Destino actual</label><select id="destino"><option value="">Todos</option></select></div><div class="filtro"><label for="rubro">Rubro</label><select id="rubro"><option value="">Todos</option></select></div><button class="btn btn-limpiar" id="limpiarFiltros" type="button">Limpiar filtros</button></div></section>
+    <section class="panel seccion-canales"><div class="selection-bar"><label class="select-visible"><input class="canal-check" id="todosVisibles" type="checkbox" />Seleccionar todos los visibles</label><div class="selection-count" id="selectionCount">0 canales seleccionados · <span class="qr">0 puntos QR</span></div><div class="selection-note" id="selectionNote"></div><div class="selection-spacer"></div><button class="btn btn-txt" id="limpiarSeleccion" type="button">Limpiar selección</button><div class="filtro destination-action"><label for="nuevoDestino">Nuevo destino</label><select class="admin-input" id="nuevoDestino" disabled><option value="">— Seleccionar destino —</option></select></div><button class="btn btn-oro" id="prepararCambio" type="button" disabled>Revisar cambio</button><div class="action-feedback" id="accionFeedback" role="status" aria-live="polite" hidden></div></div>
+    <div class="tabla-wrap"><table class="tabla"><thead><tr><th></th><th>Canal</th><th>Ubicación</th><th style="color:var(--adm-qr)">QR</th><th>Qué muestra hoy</th><th class="metrica">Visitas</th><th class="metrica">Consultas</th><th>Última actividad</th></tr></thead><tbody id="tbody"><tr><td colspan="8" class="empty">Cargando canales pasivos…</td></tr></tbody></table></div></section>
   </main>
 </div>
 <div class="modal-overlay" id="modalCambioDestino" role="dialog" aria-modal="true" aria-labelledby="modalCambioTitulo" aria-hidden="true">
@@ -136,7 +284,7 @@
     </div>
     <div class="modal-impacto" id="modalImpactoDetalle"></div>
     <div class="modal-error" id="modalCambioError" role="alert" hidden></div>
-    <div class="modal-actions"><button class="btn" id="cancelarCambio" type="button">Cancelar</button><button class="btn" id="confirmarCambio" type="button">Confirmar cambio</button></div>
+    <div class="modal-actions"><button class="btn btn-txt" id="cancelarCambio" type="button">Cancelar</button><button class="btn btn-oro" id="confirmarCambio" type="button">Confirmar cambio</button></div>
   </div>
 </div>
 <script src="../js/paleta-canales.js"></script>
@@ -260,7 +408,7 @@ function visibles(){const q=norm($('buscar').value),estado=$('estadoCanal').valu
 function referenciasCanal(id){return referencias.filter(r=>r.canal_id===id)}
 function actualizarDisponibilidadCambio(){const bloqueado=accionOcupada||!capacidadE2Verificada||!selectorIntegro||!catalogosVerificados||!estadoHistorial.verificado||estadoHistorial.total!==0||seleccionados.size===0||!$('nuevoDestino').value;$('prepararCambio').disabled=bloqueado;$('nuevoDestino').disabled=accionOcupada||!capacidadE2Verificada||!catalogosVerificados;$('limpiarSeleccion').disabled=accionOcupada;document.querySelectorAll('.canal-check').forEach(ch=>{ch.disabled=accionOcupada})}
 function actualizarSeleccion(data=visibles()){const visiblesIds=new Set(data.map(c=>c.canal_id)),ocultos=[...seleccionados].filter(id=>!visiblesIds.has(id)).length,qr=[...seleccionados].reduce((n,id)=>n+referenciasCanal(id).length,0);$('selectionCount').innerHTML=`${seleccionados.size} canal${seleccionados.size===1?'':'es'} seleccionado${seleccionados.size===1?'':'s'} · <span class="qr">${qr} punto${qr===1?'':'s'} QR totales</span>`;$('selectionNote').textContent=ocultos?`${ocultos} seleccionado${ocultos===1?'':'s'} fuera de la vista actual`:'';$('selectionNote').classList.toggle('selection-warning',ocultos>0);$('todosVisibles').checked=data.length>0&&data.every(c=>seleccionados.has(c.canal_id));$('todosVisibles').indeterminate=data.some(c=>seleccionados.has(c.canal_id))&&!data.every(c=>seleccionados.has(c.canal_id));actualizarDisponibilidadCambio()}
-function render(){const data=visibles();$('kpiVisibles').textContent=data.length;if(!data.length){$('tbody').innerHTML='<tr><td colspan="8" class="empty">No hay canales que coincidan con los filtros.</td></tr>';actualizarSeleccion(data);return}$('tbody').innerHTML=data.map(c=>{const total=referenciasCanal(c.canal_id).length;return `<tr class="${seleccionados.has(c.canal_id)?'seleccionada':''}"><td><input class="canal-check row-check" type="checkbox" data-id="${esc(c.canal_id)}" ${seleccionados.has(c.canal_id)?'checked':''} aria-label="Seleccionar ${esc(c.canal_nombre)}" /></td><td><div class="identidad"><span class="pasivo-pill">Pasivo</span><span class="canal-nombre">${esc(c.canal_nombre)}</span></div></td><td><span class="ubicacion-ciudad">${esc(c.ciudad||'—')}</span><span class="ubicacion-provincia">${esc(c.provincia||'')}</span></td><td><span class="dato-principal num-qr">${total}<small>QR</small></span></td><td>${resumenDestinos(c)}</td><td class="metrica"><span class="dato-principal num-views">${c.visitas}</span></td><td class="metrica"><span class="dato-principal num-leads">${c.consultas}</span></td><td class="fecha">${fecha(c.ultima_actividad)}</td></tr>`}).join('');document.querySelectorAll('.row-check').forEach(ch=>ch.addEventListener('change',()=>{if(ch.checked)seleccionados.add(ch.dataset.id);else seleccionados.delete(ch.dataset.id);render()}));actualizarSeleccion(data)}
+function render(){const data=visibles();$('kpiVisibles').textContent=data.length;if(!data.length){$('tbody').innerHTML='<tr><td colspan="8" class="empty">No hay canales que coincidan con los filtros.</td></tr>';actualizarSeleccion(data);return}$('tbody').innerHTML=data.map(c=>{const total=referenciasCanal(c.canal_id).length;return `<tr class="${seleccionados.has(c.canal_id)?'seleccionada':''}"><td><input class="canal-check row-check" type="checkbox" data-id="${esc(c.canal_id)}" ${seleccionados.has(c.canal_id)?'checked':''} aria-label="Seleccionar ${esc(c.canal_nombre)}" /></td><td><div class="identidad"><span class="canal-nombre">${esc(c.canal_nombre)}</span><span class="canal-meta"><span class="pasivo-pill">Pasivo</span>${c.rubro?`<span class="canal-rubro">${esc(c.rubro)}</span>`:''}</span></div></td><td><span class="ubicacion-ciudad">${esc(c.ciudad||'—')}</span><span class="ubicacion-provincia">${esc(c.provincia||'')}</span></td><td><span class="dato-principal num-qr">${total}<small>QR</small></span></td><td>${resumenDestinos(c)}</td><td class="metrica"><span class="dato-principal num-views">${c.visitas}</span></td><td class="metrica"><span class="dato-principal num-leads">${c.consultas}</span></td><td class="fecha">${fecha(c.ultima_actividad)}</td></tr>`}).join('');document.querySelectorAll('.row-check').forEach(ch=>ch.addEventListener('change',()=>{if(ch.checked)seleccionados.add(ch.dataset.id);else seleccionados.delete(ch.dataset.id);render()}));actualizarSeleccion(data)}
 
 function validarDestino(valor){
   const url=typeof valor==='string'?valor:''

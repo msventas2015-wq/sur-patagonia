@@ -178,7 +178,11 @@ async function loadCatalogs() {
   return state.catalogs
 }
 
+// En el clon de pruebas Analytics está deshabilitado: no se consulta GA4 ni se simulan datos.
+const GA4_DESHABILITADO_EN_PRUEBAS = typeof window !== 'undefined' && !!window.__SP_STAGING__
+
 async function loadGa4(range) {
+  if (GA4_DESHABILITADO_EN_PRUEBAS) return { status: 'disabled_staging' }
   try {
     const { data, error } = await supabase.functions.invoke('ga4-admin-report', {
       body: { desde: range.fromKey, hasta: range.toKey },
@@ -395,8 +399,8 @@ function chartBaseOptions() {
       tooltip: { backgroundColor: 'rgba(18,18,21,.96)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1, titleColor: '#f5f3f0', bodyColor: 'rgba(255,255,255,.7)' },
     },
     scales: {
-      x: { ticks: { color: 'rgba(255,255,255,.34)', maxTicksLimit: 12, font: { family: 'Inter', size: 9 } }, grid: { color: 'rgba(255,255,255,.04)' } },
-      y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,.34)', precision: 0, font: { family: 'Inter', size: 9 } }, grid: { color: 'rgba(255,255,255,.05)' } },
+      x: { ticks: { color: 'rgba(255,255,255,.34)', maxTicksLimit: 12, font: { family: 'Inter', size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
+      y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,.34)', precision: 0, font: { family: 'Inter', size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' } },
     },
   }
 }
@@ -558,6 +562,18 @@ function geoCoordinates(row) {
 
 function renderGa4(ga) {
   const panel = $('trafficGaPanel')
+  if (ga.status === 'disabled_staging') {
+    panel.classList.add('is-unavailable')
+    $('trafficGaStatus').textContent = 'Analytics deshabilitado en el entorno de pruebas'
+    $('trafficGaSummary').innerHTML = ['Usuarios', 'Sesiones', 'Vistas GA4', 'Interacción'].map(label => `<div class="traffic-ga-stat"><span>${label}</span><strong>—</strong></div>`).join('')
+    $('trafficGaNote').textContent = 'En el entorno de pruebas no se consulta Google Analytics. Los guiones indican que no hay dato: no son ceros ni datos de ejemplo. La audiencia real se ve solo en producción.'
+    $('trafficGeoRows').innerHTML = '<div class="traffic-empty">Sin datos de GA4 en el entorno de pruebas.</div>'
+    ;['trafficGaAcquisition', 'trafficGaPages', 'trafficGaEvents'].forEach(id => {
+      $(id).innerHTML = '<div class="traffic-empty">Sin datos de GA4 en el entorno de pruebas.</div>'
+    })
+    renderGeoMap([])
+    return
+  }
   if (ga.status !== 'ready') {
     panel.classList.add('is-unavailable')
     $('trafficGaStatus').textContent = 'Integración pendiente de despliegue'
@@ -601,7 +617,7 @@ function renderGaDetails(ga) {
     name: row => `${row.sessionSource || '(direct)'} / ${row.sessionMedium || '(none)'}`,
     meta: row => `${fmt(row.activeUsers)} usuario${Number(row.activeUsers) === 1 ? '' : 's'}`,
     value: row => Number(row.sessions || 0),
-    color: () => '#d76f3f',
+    color: () => '#9aa7b2',
     empty: 'GA4 todavía no registró fuentes en este período.',
   })
   renderList('trafficGaPages', (ga.pages || []).slice(0, 8), {
@@ -700,7 +716,7 @@ async function loadDashboard() {
     if (!current.visitsComplete || !current.contactsComplete) {
       showStatus('<strong>Datos incompletos.</strong> La cantidad descargada no coincide con el conteo exacto. No uses estos indicadores para decisiones.', 'error')
     } else if (ga.status !== 'ready') {
-      showStatus(`<strong>Histórico web completo:</strong> ${fmt(current.visits.length)} cargas y ${fmt(current.contacts.filter(c => c.origen !== 'manual').length)} consultas digitales. La audiencia y el mapa de GA4 quedarán activos al desplegar su función segura.`)
+      showStatus(`<strong>Histórico web completo:</strong> ${fmt(current.visits.length)} cargas y ${fmt(current.contacts.filter(c => c.origen !== 'manual').length)} consultas digitales. ${ga.status === 'disabled_staging' ? 'La audiencia y el mapa de GA4 no se consultan en el entorno de pruebas.' : 'La audiencia y el mapa de GA4 quedarán activos al desplegar su función segura.'}`)
     } else {
       hideStatus()
     }
