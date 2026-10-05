@@ -183,7 +183,16 @@ test('historial y escrituras E2 permanecen idénticos a la base publicada', () =
     ['colaboradores/index.html','    function principalesElegiblesPropias()','    window.cerrarDerivar']
   ]) {
     assert.ok(base(file).includes(a) && leer(file).includes(a),file+' protección encontrada')
-    assert.equal(block(leer(file),a,b),block(base(file),a,b),file+' protección sin cambios')
+    let actual=block(leer(file),a,b), esperado=block(base(file),a,b)
+    if(file==='admin/canales.html') {
+      // El lote aprobado reemplaza sólo la primera confirmación nativa por el
+      // diálogo en cola. Todo el protocolo E2 restante sigue bajo esta comparación.
+      const dialogo='    if (!await confirmarActividadCanal(canal, activoSolicitado, accion, totalQr, aclaracionArchivo.trim())) {'
+      const nativa=esperado.split('\n').find(line=>line.startsWith('    if (!confirm(') && line.includes('¿Confirmás'))
+      assert.ok(nativa && actual.includes(dialogo),'confirmación aprobada encontrada')
+      actual=actual.replace(dialogo,nativa)
+    }
+    assert.equal(actual,esperado,file+' protocolo protegido sin cambios')
   }
   for(const file of ['admin/destinos-qr.html','colaboradores/index.html']) {
     assert.ok(leer(file).includes("canales.filter(c=>c.canal_activo===true).length!==Number(inventario.canales_activos)") || leer(file).includes('canalIds = canales.map(c => c.id)'),file+' inventario completo')
