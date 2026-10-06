@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sur-patagonia-aliados-v11';
+const CACHE_NAME = 'sur-patagonia-aliados-v12';
 const CACHE_PREFIX = 'sur-patagonia-aliados-';
 
 const STATIC_ASSETS = [
@@ -7,7 +7,7 @@ const STATIC_ASSETS = [
   '/assets/app-icon-maskable-512.png',
   '/assets/app-icon-180.png',
   '/assets/logohorizontalnegro.png',
-  '/assets/camion-red-inmobiliaria.jpg',
+  '/assets/fondo-local-sur-patagonian.jpg',
 ];
 
 self.addEventListener('install', event => {
