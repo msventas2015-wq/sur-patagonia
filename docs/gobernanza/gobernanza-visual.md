@@ -1,6 +1,6 @@
 # CANON VISUAL — Sur Patagonian / Netin
 
-**Versión:** 03.1 · **Estado:** VIGENTE · **Firmado por Mariano:** 2 de septiembre de 2026 · **Enmienda firmada:** 12 de septiembre de 2026
+**Versión:** 03.4 · **Estado:** VIGENTE · **Firmado por Mariano:** 2 de septiembre de 2026 · **Enmiendas firmadas:** 12 de septiembre de 2026 · 5 de octubre de 2026 (fondo, foto y superficies internas) · Promoción a producción autorizada: 6 de octubre de 2026
 **Reemplaza y deroga:** la v02 (3-ago-2026, Mac) · la "Gobernanza Visual v1.0 borrador" (30-jun-2026, GitHub) · `docs/gobernanza/paleta-canales.md` · cualquier resumen de gobernanza en skills o configuraciones.
 
 > **Único documento de gobernanza visual.** Vive en `docs/gobernanza/gobernanza-visual.md` en GitHub. Lo que no está acá, no existe. Toda orden visual a Codex o a Claude cita "canon v03".
@@ -42,7 +42,7 @@ Los mismos diez en `colaboradores/index.html` y `colaboradores/desarrollador.htm
 
 ```css
 :root {
-  --bg:#090909;                 /* fondo, siempre */
+  --bg:#0d1014;                 /* fondo de todo panel interno, siempre (enmienda 5-oct-2026; antes #090909) */
   --card:#141414;               /* sólido: solo modal y selects */
   --border:rgba(255,255,255,.07);
   --accent:#d76f3f;
@@ -103,11 +103,16 @@ Ninguna card tiene fondo sólido. Es un degradado de blanco translúcido sobre e
 - **Card de comercio** (`.pv-comercio-card`): borde-top 2px del color del canal · fondo `color-mix(var(--canal-color) 11%, #151515)` · halo del color del canal al 8 % con blur 20. Es el único halo permitido y lleva el color del canal, nunca dorado.
 - **Resumen "Ver más"** (`.pv-detalle-summary`): borde `rgba(232,201,106,.2)` · top `.42` · fondo `135deg, rgba(232,201,106,.105) → .035 → rgba(255,255,255,.018)` · sombra oscura. Sin glow dorado.
 - **Barra "en vivo"** (`.pv-live-bar`): `135deg, rgba(110,232,154,.08) → .02` · borde `rgba(110,232,154,.18)`.
-- **Header:** `rgba(9,9,9,.96)` · `blur(14px)` · borde inferior `--border`.
+- **Header:** `rgba(13,16,20,.96)` · `blur(14px)` · borde inferior `--border`. El menú lateral del admin usa el mismo tono (`--adm-sidebar:#0d1014`).
 - **Modal** (`.der-card`): `#141414` sólido · borde `.12` · radio 16 · sombra `0 24px 70px rgba(0,0,0,.55)` · overlay `rgba(0,0,0,.78)` + `blur(5px)`.
-- **Ghost de marca** (`.sp-bg-brand`): `assets/camion-red-inmobiliaria.jpg`, fijo, `grayscale(1) brightness(.75)`, `opacity:.11`, máscara 12 % → 82 %. Todo panel interno lo lleva.
+- **Ghost de marca** (`.sp-bg-brand`): `assets/fondo-local-sur-patagonian.jpg` (foto del local; enmienda 5-oct-2026, reemplaza al camión), fijo, `grayscale(1) brightness(.75)`, `opacity:.11`, máscara 12 % → 82 %. Todo panel interno lo lleva.
 
 **CSS muerto a borrar de `colaboradores/index.html`** (ningún elemento lo usa): `.pv-hero` (L302, borde dorado + radial naranja), `.pasivo-hero` (L85), `.pv-monogram` (L310), `.pv-carta-stat-main` (L672).
+
+---
+
+
+**Superficies del admin aprobadas el 5-oct-2026 y promoción autorizada el 6-oct-2026:** bloques y botones `#14171b`; campos y selectores `#121519`; campos y cajas de texto `#16191d`; barras de opciones `rgba(15,18,22,.94)`. Sustituyen respectivamente `#131315`, `#111113`, `#151517` y `rgba(14,14,16,.94)` sólo en fondos de las veinte pantallas del lote visual y `admin/trafico.css`. No sustituyen colores de texto, colores semánticos, vidrio translúcido de colaboradores ni fondos de mapas/visores. En Destinos QR, la cuadrícula `.panel-filtros .filtros` usa fondo transparente y sin blur: la superficie pertenece al panel contenedor.
 
 ---
 
@@ -301,6 +306,7 @@ Paleta SPORT (8: `#EA3341 #CCFF00 #39FF14 #FF5C00 #0099E5 #E0186B #74EE15 #D4ED0
 6. Los tres azules 0/1/2 quedan como están.
 7. Gráfico de actividad: regla de §9.1 (pasivo por negocios, activo por propiedades, mismo dibujo en todos los períodos).
 8. Oferta enviada: verde dinero `#3bbf88` en todas las superficies; violeta `#d9a7ff` derogado para ese estado (12-sep-2026).
+9. Fondo y foto de marca de los paneles internos (5-oct-2026): el fondo pasa de `#090909` a `#0d1014` en admin (menú lateral incluido) y en los paneles de colaboradores (pasivo, activo, desarrollador, propietario); el ghost de marca pasa del camión a `assets/fondo-local-sur-patagonian.jpg`. El sitio público queda fuera de esta enmienda y conserva `#090909` (`--negro` en `css/estilos.css`). Esta primera enmienda cambia el color de fondo y la imagen; la enmienda siguiente fija las superficies del admin.
 
 ---
 
@@ -325,6 +331,9 @@ Paleta SPORT (8: `#EA3341 #CCFF00 #39FF14 #FF5C00 #0099E5 #E0186B #74EE15 #D4ED0
 | D5 | `colaboradores/desarrollador.html` | delta `#6ee89a`/`#f0956a` → `#47d48a`/`#d9825b`; estado CRM en rect → píldora | brief 2-sep |
 | D6 | `admin/nuevo-canal.html` | asignación de color: falta umbral 20, veto al vecino, aviso y liberación de archivados | brief 2-sep |
 | D7 | `css/admin-theme.css` · `admin/canales.html` | `#161513`, `#aaa`, `#9aa7b2` prohibidos en uso | sin brief (pendiente 3) |
+| D8 | ocho pantallas secundarias del admin | fondo #0d1014 aplicado en el mismo lote por la precisión de Mariano «nuevo color para todo»; estilos funcionales conservados | corregido en fuente; promoción a producción autorizada, aceptación de estas ocho pantallas pendiente |
+| D9 | `colaboradores/sw.js` | caché v12 y precarga de `fondo-local-sur-patagonian.jpg`; permite renovar panel-config al actualizar el panel | corregido en fuente; staging no instala Service Workers, aceptación de actualización en producción pendiente |
+| D10 | veinte pantallas del admin y `admin/trafico.css` | cuatro superficies retintadas según aprobación; cuadrícula de filtros de Destinos QR transparente | corregido en fuente (144 declaraciones); quedan fuera mapas/visores, pantallas secundarias y ajustes adicionales de colaboradores |
 
 ---
 
@@ -343,7 +352,7 @@ Sin cambios respecto de la v02: no se toca Supabase, queries, RLS, auth, trackin
 - [ ] ¿Se copió la receta del panel de colaboradores (§4), no solo los HEX?
 - [ ] ¿Sin glow dorado, sin fondo dorado, sin radial naranja?
 - [ ] ¿Dorado en gráfico solo como línea fina de consultas?
-- [ ] ¿`--gris:#aaa`, fondo `#090909`, ghost de marca presente?
+- [ ] ¿`--gris:#aaa`, fondo `#0d1014` en paneles internos (`#090909` solo en el sitio público), ghost de marca presente?
 - [ ] ¿Un HEX = un concepto, salvo la excepción firmada de §7.6? ¿Ningún reservado usado para otra cosa?
 - [ ] ¿Canal desde `colorCanalDesdeIndex(color_index)`, sin array local?
 - [ ] ¿Estado CRM en píldora? ¿Tipo de canal en rect 5px? ¿Vía en cuadradito hueco?
