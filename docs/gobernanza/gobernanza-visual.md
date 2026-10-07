@@ -1,6 +1,6 @@
 # CANON VISUAL — Sur Patagonian / Netin
 
-**Versión:** 03.4 · **Estado:** VIGENTE · **Firmado por Mariano:** 2 de septiembre de 2026 · **Enmiendas firmadas:** 12 de septiembre de 2026 · 5 de octubre de 2026 (fondo, foto y superficies internas) · Promoción a producción autorizada: 6 de octubre de 2026
+**Versión:** 03.5 · **Estado:** VIGENTE · **Firmado por Mariano:** 2 de septiembre de 2026 · **Enmiendas firmadas:** 12 de septiembre de 2026 · 5 de octubre de 2026 (fondo, foto y superficies internas) · 6 de octubre de 2026 (difuminado de tarjetas y capa única de foto) · Promoción a producción autorizada: 6 de octubre de 2026
 **Reemplaza y deroga:** la v02 (3-ago-2026, Mac) · la "Gobernanza Visual v1.0 borrador" (30-jun-2026, GitHub) · `docs/gobernanza/paleta-canales.md` · cualquier resumen de gobernanza en skills o configuraciones.
 
 > **Único documento de gobernanza visual.** Vive en `docs/gobernanza/gobernanza-visual.md` en GitHub. Lo que no está acá, no existe. Toda orden visual a Codex o a Claude cita "canon v03".
@@ -84,18 +84,18 @@ Cormorant permitido en: sitio público · h1 del desarrollador · logo de texto 
 
 ## 4. Superficies — la receta del vidrio
 
-Ninguna card tiene fondo sólido. Es un degradado de blanco translúcido sobre el negro, borde tenue con el borde superior más claro, y a veces blur. **Seis recetas, todas vigentes:**
+Ninguna card tiene fondo sólido. Es un degradado de blanco translúcido sobre el negro, borde tenue con el borde superior más claro, y difuminado de 2 px. **Seis recetas, todas vigentes:**
 
 | Pieza | Receta | Fuente |
 |---|---|---|
-| Card estándar | `linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02))` · borde `.07` · borde-top `.12` · radio 14 · `backdrop-filter:blur(4px)` · padding 1.4rem | D `.card` `.sec-blk` · I `.seccion` `.qr-status` |
-| Sección del panel | `155deg, .042 → .014` · borde `.07` · top `.12` · radio 12 · sin blur · padding 1.45/1.55rem | I `.pv-sec` `.pv-panel` |
+| Card estándar | `linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02))` · borde `.07` · borde-top `.12` · radio 14 · `backdrop-filter:blur(2px)` · padding 1.4rem | D `.card` `.sec-blk` · I `.seccion` `.qr-status` |
+| Sección del panel | `155deg, .042 → .014` · borde `.07` · top `.12` · radio 12 · `backdrop-filter:blur(2px)` · padding 1.45/1.55rem | I `.pv-sec` `.pv-panel` |
 | KPI pasivo/activo | `145deg, .052 → .018` · borde `.07` · top `.13` · radio 12 · barra 2px izquierda | I `.pv-kpi` |
 | KPI desarrollador | `135deg, .06 → .02` · borde `.08` · top `.14` · radio 14 · barra 2px izquierda | D `.kpi` |
 | Titular / slot | `155deg, .052 → .016` · top `.13` · radio 14 · barra 2px del color | I `.pv-titular-card` `.slot-full-card` |
 | Paso de pipeline | `160deg, .048 → .015` · borde-top del color de etapa `.35` · radio 12 | I y D `.pv-pipe-step` |
 
-**Regla general:** ángulo 135°–160°, blanco al 4–6 % arriba y 1,2–2 % abajo, borde 1px al 7–8 % con el superior al 12–14 %, radio 12 en piezas internas y 14 en contenedores, blur 4px solo en cards grandes. Sombra: ninguna, salvo el resumen "Ver más" (`0 18px 48px rgba(0,0,0,.28)`) y el modal.
+**Regla general:** ángulo 135°–160°, blanco al 4–6 % arriba y 1,2–2 % abajo, borde 1px al 7–8 % con el superior al 12–14 %, radio 12 en piezas internas y 14 en contenedores, difuminado de 2 px en todas las tarjetas. Sombra: ninguna, salvo el resumen "Ver más" (`0 18px 48px rgba(0,0,0,.28)`) y el modal.
 
 **Otras piezas:**
 
@@ -113,6 +113,10 @@ Ninguna card tiene fondo sólido. Es un degradado de blanco translúcido sobre e
 
 
 **Superficies del admin aprobadas el 5-oct-2026 y promoción autorizada el 6-oct-2026:** bloques y botones `#14171b`; campos y selectores `#121519`; campos y cajas de texto `#16191d`; barras de opciones `rgba(15,18,22,.94)`. Sustituyen respectivamente `#131315`, `#111113`, `#151517` y `rgba(14,14,16,.94)` sólo en fondos de las veinte pantallas del lote visual y `admin/trafico.css`. No sustituyen colores de texto, colores semánticos, vidrio translúcido de colaboradores ni fondos de mapas/visores. En Destinos QR, la cuadrícula `.panel-filtros .filtros` usa fondo transparente y sin blur: la superficie pertenece al panel contenedor.
+
+**Difuminado de tarjetas (aprobado por Mariano el 6-oct-2026):** toda tarjeta de todo panel interno lleva `backdrop-filter:blur(2px)`; ninguna con otro valor y ninguna sin difuminado. No cambian el encabezado (14 px), el velo de las ventanas emergentes (5–6 px), las barras de opciones (8 px), las etiquetas ni los globos de mapa. La foto de marca es una sola capa visible, `z-index:0`, opacidad .11, igual al Dashboard.
+
+Toda declaración lleva también `-webkit-backdrop-filter:blur(2px)`. Tarjeta: superficie propia translúcida o borde, radio ≥8 px y tamaño ≥180 ×70 px. Se conservan las piezas expresamente planas (`.u-plano`, `.usr-form`, `.usr-lista-wrap`, `.seccion-canales` y `.panel-filtros .filtros`) y el halo `filter` de la tarjeta de comercio. Esta enmienda sustituye cualquier receta anterior de difuminado de tarjetas. La norma es definitiva; la implementación pendiente se registra en §16. El login conserva su decisión visual propia.
 
 ---
 
@@ -334,6 +338,8 @@ Paleta SPORT (8: `#EA3341 #CCFF00 #39FF14 #FF5C00 #0099E5 #E0186B #74EE15 #D4ED0
 | D8 | ocho pantallas secundarias del admin | fondo #0d1014 aplicado en el mismo lote por la precisión de Mariano «nuevo color para todo»; estilos funcionales conservados | corregido en fuente; promoción a producción autorizada, aceptación de estas ocho pantallas pendiente |
 | D9 | `colaboradores/sw.js` | caché v12 y precarga de `fondo-local-sur-patagonian.jpg`; permite renovar panel-config al actualizar el panel | corregido en fuente; staging no instala Service Workers, aceptación de actualización en producción pendiente |
 | D10 | veinte pantallas del admin y `admin/trafico.css` | cuatro superficies retintadas según aprobación; cuadrícula de filtros de Destinos QR transparente | corregido en fuente (144 declaraciones); quedan fuera mapas/visores, pantallas secundarias y ajustes adicionales de colaboradores |
+| D11 | diecinueve rutas del admin (Lote A) | capa única de foto y tarjetas de apertura en 2 px | fuente 06e5636 auditada; publicación y postcheck pendientes |
+| D12 | tarjetas dinámicas, secundarios, CSS compartido y colaboradores (Lote B) | completar 2 px y renovar caché de colaboradores | preparación en rama; medición de Claude y aceptación antes de publicar |
 
 ---
 
