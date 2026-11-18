@@ -1,7 +1,7 @@
 import {utf8,unicode} from './codec.mjs';
 import {strictJson} from './strict-json.mjs';
 const REQUIRED=['version','request_id','nombre','mensaje','propiedad_id','proyecto_slug','fuente'];
-const ALLOWED=new Set([...REQUIRED,'email','telefono']);
+const ALLOWED=new Set([...REQUIRED,'email','telefono','lote_id']);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const UUID4=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const GENERAL=new Set(['home_form','home_chatbot','propiedades_form','proyectos_form','servicios_form','burbuja_global']);
@@ -57,7 +57,9 @@ export function parseContactPayload(bytes) {
   if(normalizedEmail===null&&telefono===null) throw Error('missing_contact');
   if(p.propiedad_id!==null&&(typeof p.propiedad_id!=='string'||!UUID.test(p.propiedad_id))) throw Error('invalid_property_shape');
   if(p.proyecto_slug!==null&&(typeof p.proyecto_slug!=='string'||! /^[a-z0-9][a-z0-9-]*$/.test(p.proyecto_slug))) throw Error('invalid_project_shape');
-  return Object.freeze({version:1,request_id:p.request_id,nombre,email:normalizedEmail,telefono,mensaje,propiedad_id:p.propiedad_id,proyecto_slug:p.proyecto_slug,fuente:p.fuente});
+  const lot=p.lote_id;
+  if(lot!==undefined && (typeof lot!=='string'||!UUID.test(lot)||p.fuente!=='proyecto_mini_form'||!p.proyecto_slug||p.propiedad_id!==null)) throw Error('invalid_project_lot');
+  return Object.freeze({...(lot===undefined?{}:{lote_id:lot}),version:1,request_id:p.request_id,nombre,email:normalizedEmail,telefono,mensaje,propiedad_id:p.propiedad_id,proyecto_slug:p.proyecto_slug,fuente:p.fuente});
 }
 
 // A false matrix result is SEMANTIC, not a pre-ledger parse rejection. The RPC

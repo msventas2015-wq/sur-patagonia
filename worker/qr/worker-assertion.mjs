@@ -64,6 +64,7 @@ function contactArgs(plan) {
     ||(a.p_email!==null&&typeof a.p_email!=='string')
     ||(a.p_telefono!==null&&typeof a.p_telefono!=='string')
     ||typeof a.p_mensaje!=='string'
+    ||(Object.hasOwn(a,'p_lote_id') && !UUID.test(a.p_lote_id))
     ||(a.p_propiedad_id!==null&&!UUID.test(a.p_propiedad_id))
     ||(a.p_proyecto_slug!==null&&typeof a.p_proyecto_slug!=='string')
     ||typeof a.p_fuente!=='string'||typeof a.p_cookie_scan_state!=='string'
@@ -98,6 +99,7 @@ export function contactArgumentsBytes(plan) {
     bytes32(a.p_network_hash),lp(a.p_cookie_scan_state),
     int64(BigInt(a.p_cookie_family_count)),int64(BigInt(a.p_cookie_family_bytes)),
     candidateBytes(a.p_cookie_candidates),
+    ...(a.p_lote_id?[uuidBytes(a.p_lote_id)]:[]),
   );
 }
 

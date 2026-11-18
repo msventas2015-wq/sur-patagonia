@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700&amp;family=Montserrat:wght@400;500;600;700;800;900&amp;display=swap"><title>Recorridos 360° · Sur Patagonian</title><link rel="stylesheet" href="./css/recorrido-constructor.css?v=20261117-ficha-reserva"><link rel="stylesheet" href="./css/recorrido-medios.css"></head>
+<body class="rg-home"><header><small>Sur Patagonian</small><h1>Recorridos de loteos</h1></header><main><p role="status">Abriendo recorrido…</p><form hidden><label>Nombre del proyecto<input name="nombre" required maxlength="100" autocomplete="off"></label><button>Abrir editor</button></form><div id="actions"></div></main>
+<script type="module">
+import {openScene} from './js/recorrido-escena.mjs?v=20261117-ficha-reserva';
+import {localMediaDraft,isLocalMediaHost,readPublishedMedia} from './js/recorrido-medios.mjs?v=20261118-miniweb';
+const loadEditor=()=>import('./js/recorrido-constructor.mjs?v=20261115-nombre360');
+const q=s=>document.querySelector(s),status=q('[role=status]'),args=new URLSearchParams(location.search),slug=args.get('proyecto'),local=isLocalMediaHost();
+// Older embedded Terrazas pages predate the explicit viewer layout parameter.
+if(args.get('integrado')==='1' && window.parent!==window && (args.get('interfaz')==='inmersivo'||slug==='terrazas-del-piltri')){
+ document.body.classList.add('rg-integrado-inmersivo');
+}
+function button(label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>Promise.resolve().then(fn).catch(e=>status.textContent=e.message);q('#actions').append(b);return b;}
+function openLocalCreator(draft,identity){
+ const shell=document.createElement('dialog'),frame=document.createElement('iframe');
+ shell.className='rg-creator-shell';shell.setAttribute('aria-label','Creador de páginas del proyecto');frame.title='Creador de miniwebs';
+ frame.src='./admin/miniweb-editor.html?v=20261117-cierre-venta1';shell.append(frame);
+ const reply=data=>frame.contentWindow?.postMessage(data,location.origin);
+ async function receive(event){
+   if(event.origin!==location.origin || event.source!==frame.contentWindow)return;
+   const m=event.data;
+   if(m.type==='mw-ready')reply({type:'mw-init',tourEditor:true,localCreator:true,project:{id:identity.id,nombre:identity.nombre,slug:identity.slug},lots:[],config:draft.config});
+   if(m.type==='mw-open-tour'){const {openCreatorTour}=await loadEditor();openCreatorTour({frame,config:m.config,identity,lots:[],upload:draft.upload,local:true});}
+   if(m.type==='mw-upload'){try{if(!(m.file instanceof File)||!/^image\/(jpeg|png|webp)$/.test(m.file.type)||m.file.size>30*1024*1024)throw Error('Elegí una imagen JPG, PNG o WebP de hasta 30 MB.');reply({type:'mw-upload-result',id:m.id,url:await draft.upload(m.file)});}catch(e){reply({type:'mw-upload-result',id:m.id,error:e.message});}}
+   if(m.type==='mw-cancel')shell.close();
+   if(m.type==='mw-apply'){
+     try{await draft.save(m.config);Object.assign(draft.config,m.config);status.textContent='Proyecto guardado en este navegador.';shell.close();}
+     catch(e){frame.contentWindow?.alert(e.message);}
+   }
+ }
+ window.addEventListener('message',receive);shell.addEventListener('cancel',e=>{e.preventDefault();reply({type:'mw-request-cancel'});});
+ shell.addEventListener('close',()=>{window.removeEventListener('message',receive);shell.remove();},{once:true});
+ document.body.append(shell);shell.showModal();
+}
+async function main(){
+ if(local&&!slug){
+   status.textContent='Elegí un proyecto guardado o escribí el nombre de uno nuevo.';const form=q('form');form.hidden=false;
+   form.onsubmit=e=>{e.preventDefault();const name=form.elements.nombre.value.trim();if(!name)return;location.search=new URLSearchParams({proyecto:name,editar:'1'});};
+   const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('sur-recorrido-medios-local',1);r.onupgradeneeded=()=>r.result.createObjectStore('borradores');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+   const keys=await new Promise((resolve,reject)=>{const r=db.transaction('borradores').objectStore('borradores').getAllKeys();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();
+   for(const k of keys.filter(k=>typeof k==='string'&&k.startsWith('constructor:')))button(k.slice(12),()=>location.search=new URLSearchParams({proyecto:k.slice(12),editar:'1'}));
+   const {materialsGuide}=await loadEditor();const help=materialsGuide();help.open=false;q('main').after(help);return;
+ }
+ if(!slug||slug.length>100)throw Error('Elegí un proyecto válido.');
+ if(local){
+   const draft=await localMediaDraft('constructor:'+slug);window.addEventListener('pagehide',()=>draft.dispose(),{once:true});
+   const identity={id:draft.projectId,slug,nombre:slug,ready:true};q('h1').textContent=slug;status.textContent='Edición local en este navegador.';
+   const open=()=>openScene(draft.config.recorrido?.escena,{local:true,config:draft.config});
+   const edit=async()=>{const {editScene}=await loadEditor();return editScene({identity,config:draft.config,upload:draft.upload,local:true,onApply:async next=>{await draft.save(next);Object.assign(draft.config,next);status.textContent='Borrador guardado en este navegador.';}});};
+   button('Abrir creador de páginas',()=>openLocalCreator(draft,identity));button(draft.config.recorrido?.escena?'Editar recorrido 360°':'Crear recorrido 360°',edit);if(draft.config.recorrido?.escena)button('Ver como visitante',open);const a=document.createElement('a');a.href='./recorrido.html?v=20261117-cierre-venta1';a.textContent='Mis proyectos';q('#actions').append(' · ',a);
+   if(args.has('creador'))openLocalCreator(draft,identity);else if(args.has('editar'))await edit();else if(draft.config.recorrido?.escena)open();return;
+ }
+ const published=await readPublishedMedia(slug,{visitorTour:true}),scene=published?.config.recorrido?.escena;
+ if(!scene?.enabled)throw Error('Este proyecto todavía no tiene un recorrido habilitado.');
+ let reviewMedia=[], reviewStart=args.get('revision'), detailStart=args.get('detalle'), initialFlight=args.get('vista');
+ let displayScene=scene;
+ if(slug==='terrazas-del-piltri'){
+   try{
+     const parentQuery=new URL(window.parent.location.href).searchParams;
+     reviewStart ||= parentQuery.get('revision');
+     detailStart ||= parentQuery.get('detalle');
+     initialFlight ||= parentQuery.get('vista');
+   }catch{}
+   const library='/assets/recorridos/terrazas-revision/';
+   async function readViews(file,fallback){
+     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),3500);
+     try{
+       const response=await fetch(library+file,{signal:controller.signal});
+       if(!response.ok)return fallback;
+       const value=await response.json();
+       return value && typeof value==='object' && Array.isArray(value)===Array.isArray(fallback) ? value : fallback;
+     }catch{return fallback;}
+     finally{clearTimeout(timeout);}
+   }
+   if(reviewStart && location.hostname==='staging.surpatagonian.com') {
+     reviewMedia=(await readViews('catalogo.json',[])).filter(item=>item?.id && item.url);
+   } else {
+     let moduleTimer;
+     try {
+       const selectionModule=Promise.race([
+         import('/js/recorrido-terrazas-seleccion.mjs?v=seleccion-publica1'),
+         new Promise(resolve=>{moduleTimer=setTimeout(()=>resolve(null),3500);})
+       ]);
+       const [details,additions,registrations,colorPhotos,selection]=await Promise.all([
+         readViews('detalle-terreno.json?v=20261116-pilares',[]),readViews('aereas.json?v=0310-3e76259cae48',[]),
+         readViews('calces-fotograficos.json?v=20261116-pilares',{}),
+         readViews('color/estaciones.json?v=20261117-cielo1',{}),selectionModule
+       ]);
+       if(selection)displayScene={...scene,cameras:selection.composeTerrazasTour(scene.cameras,additions,details,registrations,colorPhotos)};
+     }catch(error){console.warn('No se pudieron combinar las vistas adicionales del recorrido.',error);}
+     finally{clearTimeout(moduleTimer);}
+   }
+ }
+ q('h1').textContent=scene.name;status.textContent='';
+ const show=()=>openScene(displayScene,{...published,reviewMedia,reviewStart,detailStart,initialFlight,returnUrl:'/'+encodeURIComponent(slug),slug,lotId:args.get('lote')});
+ button('Abrir recorrido',show);show();
+}
+main().catch(e=>status.textContent=e.message);
+</script></body></html>

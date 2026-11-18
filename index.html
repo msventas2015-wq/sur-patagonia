@@ -2013,7 +2013,9 @@ const proyTit = s => String(s || '').toLocaleLowerCase('es-AR').replace(/(^|[\s(
 async function cargarProyectos() {
   const grid = document.getElementById('proyGrid')
   if (!grid) return
-  const { data, error } = await supabase.from('proyectos').select('*').eq('estado','activo')
+  const { data, error } = await supabase.from('proyectos_publicos_v1')
+    .select('nombre,slug,foto_portada,categoria,ciudad,provincia,tagline,descripcion,precio_desde,sup_min_m2,sup_max_m2,cantidad_lotes,distancia_km,servicios,monto_reserva')
+    .eq('estado','activo')
     .order('destacado', { ascending:false, nullsFirst:false })
     .order('created_at', { ascending:false })
     .limit(3)
@@ -2406,7 +2408,8 @@ async function mostrarDesarrollos() {
   state.step = 'desarrollos'
   addTyping()
   try {
-    const { data } = await supabase.from('proyectos').select('*').eq('estado', 'activo').limit(3)
+    const { data } = await supabase.from('proyectos_publicos_v1')
+      .select('nombre,slug,foto_portada,tipo_propiedad,categoria,ciudad').eq('estado', 'activo').limit(3)
     removeTyping()
     if (data && data.length > 0) {
       addMsg('Estos son nuestros desarrollos activos:')

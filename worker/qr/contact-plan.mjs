@@ -25,7 +25,8 @@ function validatePayload(p) {
     ||(p.telefono!==null&&typeof p.telefono!=='string')
     ||(p.propiedad_id!==null&&typeof p.propiedad_id!=='string')
     ||(p.proyecto_slug!==null&&typeof p.proyecto_slug!=='string')
-    ||Object.keys(p).sort().join(',')!=='email,fuente,mensaje,nombre,propiedad_id,proyecto_slug,request_id,telefono,version') {
+    ||(Object.hasOwn(p,'lote_id') && (p.fuente!=='proyecto_mini_form'||!p.proyecto_slug||p.propiedad_id!==null||typeof p.lote_id!=='string'||!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(p.lote_id)))
+    ||Object.keys(p).filter(key=>key!=='lote_id').sort().join(',')!=='email,fuente,mensaje,nombre,propiedad_id,proyecto_slug,request_id,telefono,version') {
     throw Error('invalid_contact_payload');
   }
 }
@@ -41,6 +42,7 @@ function payloadFields(p) {
     ['telefono','text',p.telefono],['mensaje','text',p.mensaje],
     ['propiedad_id','uuid',p.propiedad_id],['proyecto_slug','text',p.proyecto_slug],
     ['fuente','text',p.fuente],['version','int64',1n],
+    ...(p.lote_id?[['lote_id','uuid',p.lote_id]]:[]),
   ];
 }
 
@@ -72,6 +74,7 @@ export async function prepareContactPlan({payload,cookieHeader=null,normalizedEd
       p_email:payload.email,
       p_telefono:payload.telefono,
       p_mensaje:payload.mensaje,
+      ...(payload.lote_id?{p_lote_id:payload.lote_id}:{}),
       p_propiedad_id:payload.propiedad_id,
       p_proyecto_slug:payload.proyecto_slug,
       p_fuente:payload.fuente,
