@@ -431,6 +431,17 @@ html:not(#_):not(#__):not(#___) body .admin-main :is(.proyecto-card){-webkit-bac
       <a href="nuevo-proyecto.html" class="btn-nuevo">+ Nuevo proyecto</a>
     </div>
 
+    <section id="traspaso-terrazas" hidden aria-labelledby="titulo-traspaso">
+      <h3 id="titulo-traspaso">Importar Terrazas del Piltrí como borrador</h3>
+      <p><label>Archivo de Terrazas <input id="archivo-terrazas" type="file" accept=".json"></label></p>
+      <button class="btn-accion" id="crear-terrazas" type="button" disabled>Crear borrador con los 80 lotes</button>
+      <p><label>Recibo de creación guardado <input id="recibo-terrazas" type="file" accept=".json"></label></p>
+      <button class="btn-accion" id="completar-terrazas" type="button" disabled>Completar borrador y recorrido</button>
+      <p id="estado-traspaso" role="status"></p>
+      <label>Recibo del último paso <textarea id="resultado-traspaso" readonly rows="3"></textarea></label>
+      <a id="descargar-recibo-terrazas" hidden>Descargar recibo</a>
+    </section>
+
     <div class="filtros">
       <button class="filtro-btn activo" data-f="todos">Todos</button>
       <button class="filtro-btn" data-f="activo">Activos</button>
@@ -468,6 +479,69 @@ import { supabase, PUBLIC_HOST } from '../js/config.js'
 const { data: { session } } = await supabase.auth.getSession()
 if (!session) { window.location.href = 'login.html'; throw new Error('no session') }
 if (session.user.app_metadata?.rol !== 'admin') { window.location.href = 'login.html'; throw new Error('not admin') }
+
+if (location.origin === 'https://surpatagonian.com' && new URLSearchParams(location.search).get('traspaso') === 'terrazas') {
+  const panel = document.getElementById('traspaso-terrazas')
+  const file = document.getElementById('archivo-terrazas')
+  const savedReceipt = document.getElementById('recibo-terrazas')
+  const createButton = document.getElementById('crear-terrazas')
+  const completeButton = document.getElementById('completar-terrazas')
+  const status = document.getElementById('estado-traspaso')
+  const output = document.getElementById('resultado-traspaso')
+  const sealedHash = '877159c4fb46934a9f66fa94fdd20362fafdde6e795d16431c91de0599423d09'
+  let busy = false
+  let created = false
+  let finished = false
+  let uncertain = false
+  function refreshControls() {
+    file.disabled = busy || finished || uncertain
+    savedReceipt.disabled = busy || finished || uncertain
+    createButton.disabled = file.disabled || created || !file.files.length || !!savedReceipt.files.length
+    completeButton.disabled = file.disabled || !file.files.length || !savedReceipt.files.length
+  }
+  async function transfer(step) {
+    if (busy || finished || uncertain) return
+    busy = true
+    refreshControls()
+    status.textContent = 'Comprobando el archivo…'
+    try {
+      const bytes = await file.files[0].arrayBuffer()
+      const digest = await crypto.subtle.digest('SHA-256', bytes)
+      const hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('')
+      if (hash !== sealedHash) throw new Error('El archivo no coincide con el aprobado.')
+      const plan = JSON.parse(new TextDecoder().decode(bytes))
+      const receipt = step === 'completar' ? JSON.parse(await savedReceipt.files[0].text()) : undefined
+      const { runTerrazasStep } = await import('../js/traspaso-terrazas.mjs?v=ca4069ed')
+      const result = await runTerrazasStep(supabase, plan, {
+        step, receipt, origin: location.origin,
+        authorization: step === 'crear' ? 'CREAR_TERRAZAS_PRODUCCION' : 'COMPLETAR_TERRAZAS_PRODUCCION'
+      })
+      output.value = JSON.stringify(result)
+      const download = document.getElementById('descargar-recibo-terrazas')
+      if (download.hasAttribute('href')) URL.revokeObjectURL(download.href)
+      download.href = URL.createObjectURL(new Blob([output.value], { type: 'application/json' }))
+      download.download = 'terrazas-recibo-prod-' + step + '.json'
+      download.hidden = false
+      created = true
+      finished = step === 'completar'
+      status.textContent = finished
+        ? 'Borrador completo. Guardá el recibo y abrí Editar para revisar el recorrido.'
+        : 'Borrador creado. Guardá el recibo y seleccioná su archivo para completar el recorrido.'
+      await cargar()
+    } catch (error) {
+      uncertain = error.message === 'TRASPASO_RESULTADO_INCIERTO_NO_REINTENTAR'
+      status.textContent = uncertain ? 'Resultado incierto. Revisá el borrador antes de continuar.' : error.message
+    } finally {
+      busy = false
+      refreshControls()
+    }
+  }
+  file.addEventListener('change', refreshControls)
+  savedReceipt.addEventListener('change', refreshControls)
+  createButton.addEventListener('click', () => transfer('crear'))
+  completeButton.addEventListener('click', () => transfer('completar'))
+  panel.hidden = false
+}
 
 document.getElementById('btnLogout').addEventListener('click', async (e) => {
   e.preventDefault()
