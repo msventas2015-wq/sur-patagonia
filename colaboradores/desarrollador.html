@@ -1338,11 +1338,22 @@ async function cargarTodo({ manual = false } = {}) {
 }
 
 // ── INVENTARIO (estático) ──────────────────────────────────────
+const estadosLoteDesarrollador = {
+  disponible: {label:'Disponible', color:'#4dc992'}, reservado: {label:'Reservado', color:'#b8955a'},
+  vendido: {label:'Vendido', color:'#993C1D'}, proximamente: {label:'Próximamente', color:'#6fb1ff'},
+  no_a_la_venta: {label:'No a la venta', color:'#9aa0a0'}, sin: {label:'Sin informar', color:'#b7b6b1'}
+}
+function claveEstadoLote(estado) {
+  return Object.hasOwn(estadosLoteDesarrollador,estado) ? estado : 'sin'
+}
 function renderInventario() {
   const total  = _lotes.length
   const vend   = _lotes.filter(l => l.estado==='vendido').length
   const rsv    = _lotes.filter(l => l.estado==='reservado').length
-  const disp   = _lotes.filter(l => l.estado==='disponible'||!l.estado).length
+  const disp   = _lotes.filter(l => l.estado==='disponible').length
+  const adicionales = ['proximamente','no_a_la_venta','sin'].map(clave => ({
+    ...estadosLoteDesarrollador[clave], cantidad:_lotes.filter(l=>claveEstadoLote(l.estado)===clave).length
+  })).filter(e=>e.cantidad)
   const comerc = total > 0 ? Math.round((vend+rsv)/total*100) : 0
 
   document.getElementById('pctBadge').textContent = `${comerc}% comercializado`
@@ -1373,6 +1384,7 @@ function renderInventario() {
         <div class="inv-leg"><div class="inv-dot" style="background:#993C1D"></div><span class="inv-lnm">Vendidos</span><span class="inv-ln">${vend}</span><span class="inv-lp">${total?Math.round(vend/total*100):0}%</span></div>
         <div class="inv-leg"><div class="inv-dot" style="background:#b8955a"></div><span class="inv-lnm">Reservados</span><span class="inv-ln">${rsv}</span><span class="inv-lp">${total?Math.round(rsv/total*100):0}%</span></div>
         <div class="inv-leg"><div class="inv-dot" style="background:#4dc992"></div><span class="inv-lnm">Disponibles</span><span class="inv-ln">${disp}</span><span class="inv-lp">${total?Math.round(disp/total*100):0}%</span></div>
+        ${adicionales.map(e=>`<div class="inv-leg"><div class="inv-dot" style="background:${e.color}"></div><span class="inv-lnm">${e.label}</span><span class="inv-ln">${e.cantidad}</span><span class="inv-lp">${Math.round(e.cantidad/total*100)}%</span></div>`).join('')}
       </div>
     </div>`
 
@@ -1391,8 +1403,8 @@ function renderInventario() {
           <span class="zona-cnt">${lotes.length} lotes</span>
         </div>
         <div class="lote-grid">${lotes.map(l=>{
-          const cls=l.estado==='vendido'?'vendido':l.estado==='reservado'?'reservado':'disponible'
-          return `<div class="lote-sq ${cls}" title="Lote ${l.numero||'?'} · ${l.estado||'disponible'}">${l.numero||'?'}</div>`
+          const cls=claveEstadoLote(l.estado), info=estadosLoteDesarrollador[cls]
+          return `<div class="lote-sq ${cls}" style="background:${info.color}" title="Lote ${esc(l.numero||'?')} · ${info.label}">${esc(l.numero||'?')}</div>`
         }).join('')}</div>
       </div>`).join('')
   }</div>`
@@ -1817,7 +1829,7 @@ function renderMapaLotesDash() {
       <div id="mlPopup-dash" class="ml-popup-dash"></div>
     </div>
     <div style="display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;margin-top:.9rem;font-size:.65rem;color:var(--gris)">
-      <span>Disponible</span><span>Reservado</span><span>Vendido</span>
+      ${Object.entries(estadosLoteDesarrollador).filter(([k])=>lotesConPos.some(l=>claveEstadoLote(l.estado)===k)).map(([,e])=>`<span>${e.label}</span>`).join('')}
     </div>`
 
   const img = document.getElementById('mlMapImg-dash')
@@ -1840,8 +1852,8 @@ function renderMapaLotesDash() {
       const tipX = (l.mapa_x / 100) * W
       const tipY = (l.mapa_y / 100) * H
       const zona = l.tipo_lote || 'Bosque'
-      const estado = l.estado || 'disponible'
-      const color = estado === 'disponible' ? (zonaColor(zona) || '#8aab78') : estado === 'reservado' ? '#b8955a' : '#c4734a' // DEV-E4.2
+      const estado = claveEstadoLote(l.estado)
+      const color = estado === 'disponible' ? (zonaColor(zona) || '#8aab78') : estadosLoteDesarrollador[estado].color // DEV-E4.2
       const muted = estado === 'vendido'
       const g = mk('g')
       g.setAttribute('class', 'ml-lot-dash')
@@ -1880,7 +1892,7 @@ function renderMapaLotesDash() {
         let py = (ccy * sy) + (svgR.top - wrapR.top) - 22
         if (px + 195 > wrapR.width) px -= 210
         if (py < 0) py += 48
-        const eLabel = estado === 'disponible' ? 'Disponible' : estado === 'reservado' ? 'Reservado' : 'Vendido'
+        const eLabel = estadosLoteDesarrollador[estado].label
         popup.innerHTML = `<div class="ml-popup-lote">Lote ${esc(l.numero || '—')}</div><div class="ml-popup-zona">${esc(zona)}</div><span class="ml-popup-badge ${esc(estado)}">${eLabel}</span>`
         popup.style.left = px + 'px'
         popup.style.top = py + 'px'
@@ -2149,7 +2161,7 @@ function renderDynamic() {
   // ── Embudo ──
   const lVend = _lotes.filter(l=>l.estado==='vendido').length
   const lRsv  = _lotes.filter(l=>l.estado==='reservado').length
-  const lDisp = _lotes.filter(l=>l.estado==='disponible'||!l.estado).length
+  const lDisp = _lotes.filter(l=>l.estado==='disponible').length
   const lTot  = _lotes.length
   const conRef = filtC.filter(c=>c.canal_ref).length
   const funnelData = [

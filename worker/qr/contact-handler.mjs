@@ -27,6 +27,8 @@ function project(outcome) {
     || typeof outcome.replayed !== 'boolean') return unavailable();
   if (outcome.ok === true && outcome.resultado === 'contacto_creado'
     && !Object.hasOwn(outcome, 'retry_after')) return answer(201, { ok: true });
+  if (outcome.ok === false && outcome.resultado === 'lote_no_disponible'
+    && !Object.hasOwn(outcome,'retry_after')) return answer(409,{ok:false,error:'lote_no_disponible'});
   if (outcome.ok === false && outcome.resultado === 'payload_invalid'
     && !Object.hasOwn(outcome, 'retry_after')) return invalid();
   if (outcome.ok === false && outcome.resultado === 'rate_limited'

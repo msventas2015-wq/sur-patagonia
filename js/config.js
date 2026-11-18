@@ -63,16 +63,38 @@ export async function registrarVisita(opciones={}) {
   } catch(error) { return {ok:false,error} }
 }
 
-export async function enviarContactoSeguro(datos) {
-  const payload={version:1,request_id:crypto.randomUUID(),nombre:datos.nombre,
+// El formulario conserva su intento en memoria mientras el resultado es incierto.
+const intentosContacto = new WeakMap()
+
+export async function enviarContactoSeguro(datos, formulario) {
+  const payload={version:1,nombre:datos.nombre,
     email:datos.email||null,telefono:datos.telefono||null,mensaje:datos.mensaje,
     propiedad_id:datos.propiedad_id||null,proyecto_slug:datos.proyecto_slug||null,
     fuente:datos.fuente}
+  if(datos.lote_id != null) payload.lote_id=datos.lote_id
+  const contenido=JSON.stringify(payload)
+  let intento=formulario && intentosContacto.get(formulario)
+  if(!intento || intento.contenido!==contenido){
+    intento={contenido,id:crypto.randomUUID(),envio:null}
+    if(formulario) intentosContacto.set(formulario,intento)
+  }
+  if(intento.envio) return intento.envio
+  const terminar=()=>{
+    if(formulario && intentosContacto.get(formulario)===intento) intentosContacto.delete(formulario)
+  }
+  intento.envio=enviarSolicitudContacto({...payload,request_id:intento.id},terminar)
+  try { return await intento.envio } finally { intento.envio=null }
+}
+
+async function enviarSolicitudContacto(payload,terminar) {
   const response=await fetch('/api/contacto',{method:'POST',credentials:'same-origin',
     headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  if([400,409,429].includes(response.status)) terminar()
+  if(response.status===409 && payload.lote_id && (await response.json()).error==='lote_no_disponible') throw new Error('lote_no_disponible')
   if(response.status!==201) throw new Error(`contacto_${response.status}`)
   const result=await response.json()
   if(result?.ok!==true) throw new Error('contacto_no_confirmado')
+  terminar()
   return {ok:true}
 }
 

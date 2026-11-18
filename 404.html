@@ -17,7 +17,7 @@
   <meta property="og:image" content="https://surpatagonian.com/assets/og-image.jpg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500&family=Raleway:wght@300;400;500&family=Josefin+Sans:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500&family=Raleway:wght@300;400;500&family=Josefin+Sans:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -34,7 +34,7 @@
       --muted:      #888880;
       --line:       rgba(255,255,255,0.08);
       /* Tipografías por defecto */
-      --font-serif: 'Cormorant Garamond', serif;
+      --font-serif: Inter, system-ui, sans-serif;
       --font-sans:  'Montserrat', sans-serif;
     }
     /* Las paletas y fuentes se aplican vía JS inline style en :root — no necesitamos clases CSS */
@@ -75,29 +75,19 @@
 
     /* ══ LOADING ════════════════════════════════════════════════════════ */
     #loading {
-      position: fixed; inset: 0; background: var(--bg);
+      position: fixed; inset: 0; background: #000;
       display: flex; align-items: center; justify-content: center;
       z-index: 9999; transition: opacity 0.7s;
     }
     #loading.fade { opacity: 0; pointer-events: none; }
-    .loading-nombre {
-      font-family: var(--font-serif);
-      font-size: clamp(2rem, 6vw, 3.8rem);
-      font-weight: 300; letter-spacing: 0.12em;
-      color: var(--gold); margin-bottom: 2rem; text-align: center; line-height: 1.1;
-    }
     .loading-bar {
-      width: 100px; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto; overflow: hidden;
+      width: 72px; height: 1px; background: rgba(255,255,255,.15); overflow: hidden;
     }
     .loading-fill {
-      height: 100%; background: var(--gold);
+      height: 100%; background: rgba(255,255,255,.65);
       animation: loadFill 1.4s ease-in-out infinite;
     }
-    .loading-by {
-      font-size: 0.6rem; letter-spacing: 0.55em; text-transform: uppercase;
-      color: rgba(255,255,255,0.5); text-align: center; margin-top: 2.2rem;
-    }
-    .loading-by span { color: var(--gold); opacity: 0.9; }
+    @media (prefers-reduced-motion: reduce) { .loading-fill { animation: none; width: 100%; } }
     @keyframes loadFill {
       0%   { width: 0; margin-left: 0; }
       50%  { width: 100%; margin-left: 0; }
@@ -559,6 +549,8 @@
     }
     .cta-form button:hover { background: var(--gold2); }
     .cta-form button:disabled { opacity: 0.6; cursor: default; }
+    #fContextoLote:not([hidden]) { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    #fQuitarLote { width: auto; background: transparent; color: var(--gold); padding: 0.6rem; text-decoration: underline; }
     .form-ok  { font-size: 0.78rem; color: var(--gold); margin-top: 1rem; }
     .form-err { font-size: 0.78rem; color: #c94c4c; margin-top: 1rem; }
 
@@ -866,256 +858,16 @@ fbq('track','PageView');
 </head>
 <body>
 
-<!-- FONDO TEXTURA — foto oscura sutil como trama de fondo -->
-<div id="bgTextura"></div>
-
 <!-- LOADING -->
-<div id="loading">
-  <div>
-    <div class="loading-nombre" id="loadingNombre">—</div>
-    <div class="loading-bar"><div class="loading-fill"></div></div>
-    <div class="loading-by">by <span>Sur Patagonian</span></div>
-  </div>
+<div id="loading" role="status" aria-label="Cargando proyecto">
+  <div class="loading-bar" aria-hidden="true"><div class="loading-fill"></div></div>
 </div>
-
-<!-- LIGHTBOX -->
-<div id="lightbox" onclick="if(event.target===this)closeLightbox()">
-  <button class="lb-close" onclick="closeLightbox()">✕</button>
-  <button class="lb-nav lb-prev" id="lbPrev" onclick="lbNavigate(-1)">&#8592;</button>
-  <img id="lbImg" src="" alt="" />
-  <button class="lb-nav lb-next" id="lbNext" onclick="lbNavigate(1)">&#8594;</button>
-  <div class="lb-counter" id="lbCounter"></div>
-</div>
-
-<!-- NAV -->
-<nav id="nav">
-  <a href="/index.html" class="nav-brand">
-    <div class="nav-brand-nombre" id="navBrandNombre">—</div>
-    <div class="nav-brand-by">by Sur <span>Patagonian</span></div>
-  </a>
-  <div class="nav-links">
-    <a href="#presentacion" class="nav-link">Proyecto</a>
-    <a href="#plano" class="nav-link">Plano</a>
-    <a href="#disponibilidad" class="nav-link">Lotes</a>
-    <a href="#galeria" class="nav-link">Galería</a>
-    <a href="#contacto" class="nav-cta" id="navWsp">Consultar</a>
-  </div>
-</nav>
-
-<!-- ══ HERO ══════════════════════════════════════════════════════════════ -->
-<section id="hero">
-  <div class="hero-video-wrap" id="heroMedia"></div>
-  <div class="hero-overlay"></div>
-  <div class="hero-content">
-    <p class="hero-eyebrow" id="heroEyebrow">Sur Patagonian · Proyectos</p>
-    <h1 class="hero-title" id="heroTitle">&nbsp;</h1>
-    <p class="hero-tagline" id="heroTagline"></p>
-    <div class="hero-stats" id="heroStats"></div>
-  </div>
-  <div class="hero-scroll">
-    <span>Scroll</span>
-    <div class="hero-scroll-line"></div>
-  </div>
-</section>
-
-<!-- ══ ATMÓSFERA ══════════════════════════════════════════════════════════ -->
-<section id="atmosfera" style="display:none;">
-  <div class="atm-bg" id="atmBg"></div>
-  <div class="atm-overlay"></div>
-  <div class="atm-content">
-    <div class="atm-linea"></div>
-    <h2 class="atm-quote" id="atmQuote"></h2>
-    <p class="atm-sub" id="atmSub"></p>
-  </div>
-</section>
-
-<!-- ══ PRESENTACIÓN ════════════════════════════════════════════════════ -->
-<section id="presentacion">
-  <div class="pres-left">
-    <p class="pres-eyebrow" id="presEyebrow">El desarrollo</p>
-    <h2 class="pres-titulo" id="presTitulo">&nbsp;</h2>
-    <div class="pres-linea"></div>
-    <p class="pres-desc" id="presDesc"></p>
-    <div id="presStats"></div>
-  </div>
-  <div class="pres-right">
-    <div class="pres-lote-wrap" id="presLote"></div>
-  </div>
-</section>
-
-<!-- ══ PLANO ══════════════════════════════════════════════════════════ -->
-<section id="plano">
-  <div class="plano-header" id="planoHeader">
-    <div>
-      <p class="plano-eyebrow">Plano de mensura</p>
-      <h2 class="plano-titulo" id="planoTitulo">&nbsp;</h2>
-    </div>
-    <div class="plano-legend">
-      <div class="plano-leg"><div class="leg-dot leg-disp"></div>Disponible</div>
-      <div class="plano-leg"><div class="leg-dot leg-res"></div>Reservado</div>
-      <div class="plano-leg"><div class="leg-dot leg-vend"></div>Vendido</div>
-    </div>
-  </div>
-  <div class="plano-img-wrap" id="planoWrap" style="display:none;" onclick="openLightbox(this.querySelector('img').src)">
-    <img id="planoImg" src="" alt="Plano del proyecto" />
-    <div class="plano-watermark" id="planoMarca"></div>
-  </div>
-  <div class="plano-hint" id="planoHint" style="display:none;">
-    <span>↗ Hacé clic</span> en el plano para verlo en pantalla completa
-  </div>
-</section>
-
-<!-- ══ MAPA INTERACTIVO DE LOTES (solo aldea-los-huemules) ══════════════ -->
-<section id="mapa-lotes" style="display:none;">
-  <div class="ml-header">
-    <p class="ml-eyebrow">Mapa interactivo</p>
-    <h2 class="ml-titulo">Elegí <em>tu lugar</em></h2>
-    <p class="ml-sub">Hacé clic en cualquier lote para ver superficie, precio y disponibilidad</p>
-  </div>
-  <div class="ml-counters" id="mlCounters"></div>
-  <div class="ml-map-wrap" id="mlMapWrap">
-    <img src="/mapa_huemules.png" alt="Mapa Aldea Los Huemules" class="ml-map-img" id="mlMapImg" />
-    <svg class="ml-svg-overlay" id="mlSvg" viewBox="0 0 1400 1145" preserveAspectRatio="xMidYMid meet"></svg>
-    <div class="ml-popup" id="mlPopup"></div>
-  </div>
-  <div class="ml-leyenda">
-    <div class="ml-leg-item"><span class="ml-leg-dot ml-c-laguna"></span>Laguna — disponible</div>
-    <div class="ml-leg-item"><span class="ml-leg-dot ml-c-bosque"></span>Bosque — disponible</div>
-    <div class="ml-leg-item"><span class="ml-leg-dot ml-c-rio"></span>Río — disponible</div>
-    <div class="ml-leg-item"><span class="ml-leg-dot ml-c-vend"></span>Vendido / Reservado</div>
-    <div class="ml-leg-item"><span class="ml-leg-dot ml-c-comp"></span>Complejo turístico</div>
-  </div>
-</section>
-
-<!-- ══ DISPONIBILIDAD ══════════════════════════════════════════════════ -->
-<section id="disponibilidad">
-  <div class="disp-head" id="dispHead">
-    <div>
-      <p class="disp-eyebrow">Disponibilidad en tiempo real</p>
-      <h2 class="disp-titulo">Lotes disponibles</h2>
-    </div>
-    <div class="disp-filtros">
-      <button class="disp-filtro activo" data-f="todos">Todos</button>
-      <button class="disp-filtro" data-f="disponible">Disponibles</button>
-      <button class="disp-filtro" data-f="reservado">Reservados</button>
-    </div>
-  </div>
-  <div class="disp-tabla-wrap" id="dispTabla">
-    <table class="disp-tabla">
-      <thead>
-        <tr>
-          <th>N° Lote</th><th>Superficie</th><th>Precio</th>
-          <th>Frente agua</th><th>Estado</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="lotesBody">
-        <tr><td colspan="6" class="disp-empty">Cargando...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<!-- ══ GALERÍA ══════════════════════════════════════════════════════════ -->
-<section id="galeria" style="display:none;">
-  <div class="gal-head" id="galHead">
-    <p class="gal-eyebrow">Fotografía del proyecto</p>
-    <h2 class="gal-titulo">Nuestro <em>entorno</em></h2>
-  </div>
-  <div class="gal-grid" id="galeriaGrid"></div>
-</section>
-
-<!-- ══ INFO + SERVICIOS ════════════════════════════════════════════════ -->
-<section id="info">
-  <div class="info-foto-col" id="infoFotoCol" style="display:none;">
-    <img id="infoFotoImg" src="" alt="" />
-  </div>
-  <div class="info-data-col">
-    <div class="info-wrap">
-      <div id="infoLeft">
-        <p class="info-col-label">Información del proyecto</p>
-        <div id="infoItems"></div>
-      </div>
-      <div id="infoRight">
-        <p class="info-col-label">Servicios e infraestructura</p>
-        <div class="chips" id="serviciosChips"></div>
-        <div id="condicionesBlq" style="display:none; margin-top:2.5rem;">
-          <p class="info-lbl" style="margin-bottom:0.7rem;">Condiciones de venta</p>
-          <p style="font-size:0.83rem; line-height:1.95; color:var(--muted);" id="condicionesText"></p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══ UBICACIÓN ════════════════════════════════════════════════════════ -->
-<section id="ubicacion" style="display:none;">
-  <div class="ubic-header" id="ubicHeader">
-    <p class="ubic-eyebrow">Ubicación</p>
-    <h2 class="ubic-titulo" id="ubicTitulo"></h2>
-    <p class="ubic-desc" id="ubicDesc"></p>
-  </div>
-  <div class="ubic-mapa" id="ubicMapa"></div>
-</section>
-
-<!-- ══ CONTACTO ════════════════════════════════════════════════════════ -->
-<section id="contacto">
-  <div id="contactoInner">
-    <p class="cta-eyebrow">Reservá tu lote</p>
-    <h2 class="cta-titulo">Hablemos<br>de tu <em>lugar</em></h2>
-    <p class="cta-sub">Nuestro equipo te asesora sin compromiso sobre disponibilidad, precios y condiciones.</p>
-    <div class="cta-btns">
-      <a id="btnWsp" href="#" class="btn-wsp" target="_blank" rel="noopener" style="display:none;">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.964-1.405A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.946 7.946 0 01-4.031-1.09l-.29-.172-2.947.835.797-2.877-.189-.295A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
-        WhatsApp
-      </a>
-      <a id="btnMail" href="#" class="btn-mail" style="display:none;">
-        <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
-        Enviar email
-      </a>
-      <button class="btn-brochure" id="btnBrochure" onclick="generarBrochure()">
-        <svg viewBox="0 0 24 24"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg>
-        Descargar Brochure
-      </button>
-    </div>
-    <div class="cta-form">
-      <p>O escribinos directamente</p>
-      <form id="formContacto">
-        <input type="text"  id="fNombre" placeholder="Tu nombre" required />
-        <input type="tel"   id="fTel"    placeholder="Tu WhatsApp" />
-        <input type="email" id="fEmail"  placeholder="Tu email" />
-        <textarea id="fMsg" placeholder="¿Qué querés saber sobre este proyecto?"></textarea>
-        <button type="submit" id="fBtn">Enviar consulta</button>
-        <p id="fMsg2"></p>
-      </form>
-    </div>
-  </div>
-</section>
-
-<!-- ══ REPRESENTANTES ════════════════════════════════════════════════════ -->
-<section id="representantes" style="display:none;">
-  <div class="rep-pub-inner">
-    <div class="rep-pub-main">
-      <span class="rep-pub-main-label">Comercializado por</span>
-      <img class="rep-pub-main-logo" src="/logovertical.png" alt="Sur Patagonian" />
-    </div>
-    <div class="rep-pub-divider"></div>
-    <div class="rep-pub-right">
-      <span class="rep-pub-right-label">Representantes por zona</span>
-      <div class="rep-pub-grid" id="repPubGrid"></div>
-    </div>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-brand">Sur <em>Patagonian</em> · Propiedades</div>
-  <a href="/index.html" class="footer-back">← Volver al sitio</a>
-</footer>
 
 <script type="module">
 // Ruta ABSOLUTA: esta página se sirve en cualquier profundidad de URL
 // (/aldea-los-huemules, /r/codigo, etc.) y una ruta relativa rompería en /r/
-import { supabase, getRef, registrarVisita, enviarContactoSeguro } from '/js/config.js'
+let supabase, getRef, registrarVisita, enviarContactoSeguro
+const cargarServiciosDelProyecto = () => import('/js/config.js?v=20261118-miniweb')
 
 // Las rutas /r/* ya no se resuelven desde el 404 ni leen tablas comerciales
 // desde el navegador. Cloudflare las entrega al bootstrap estático y al
@@ -1125,7 +877,6 @@ import { supabase, getRef, registrarVisita, enviarContactoSeguro } from '/js/con
 const $ = id => document.getElementById(id)
 const slug = new URLSearchParams(location.search).get('slug')
   || location.pathname.replace(/^\//, '').split('/')[0] || null
-let allLotes = []
 
 
 const SERVICIOS = {
@@ -1170,7 +921,7 @@ const PALETAS = {
   huemules: { '--gold':'#d76f3f', '--gold2':'#928c58', '--bg':'#fafaf8', '--surface':'#ede8df', '--text':'#29231d', '--muted':'#7a6e62', '--line':'rgba(41,35,29,0.1)' },
 }
 const FUENTES_TITULO = {
-  cormorant:   "'Cormorant Garamond', serif",
+  inter:       "Inter, system-ui, sans-serif",
   playfair:    "'Playfair Display', serif",
   'dm-serif':  "'DM Serif Display', serif",
   baskerville: "'Libre Baskerville', serif",
@@ -1269,14 +1020,14 @@ function buildLoteSVG(p) {
 }
 
 function applyTema(tema) {
-  let t = { paleta: 'clasico', titulo: 'cormorant', cuerpo: 'montserrat' }
+  let t = { paleta: 'clasico', titulo: 'inter', cuerpo: 'montserrat' }
   if (tema) {
     try { t = JSON.parse(tema) } catch(e) { t.paleta = tema } // fallback formato antiguo
   }
   const root = document.documentElement
   const pal = PALETAS[t.paleta] || PALETAS.clasico
   for (const [k, v] of Object.entries(pal)) root.style.setProperty(k, v)
-  root.style.setProperty('--font-serif', FUENTES_TITULO[t.titulo] || FUENTES_TITULO.cormorant)
+  root.style.setProperty('--font-serif', FUENTES_TITULO[t.titulo] || FUENTES_TITULO.inter)
   root.style.setProperty('--font-sans',  FUENTES_CUERPO[t.cuerpo]  || FUENTES_CUERPO.montserrat)
   // Overlays adaptativos según el color de fondo
   const bgHex = (pal['--bg'] || '#080808').replace('#', '')
@@ -1335,43 +1086,60 @@ function applyTema(tema) {
 }
 
 // ── Init ─────────────────────────────────────────────────────────────
+function mostrarEntradaProyecto(temporal) {
+  $('loading').classList.add('fade')
+  document.body.insertAdjacentHTML('beforeend', `
+      <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080808;color:#f0ede8;font-family:'Montserrat',sans-serif;z-index:9999;text-align:center;padding:2rem;">
+        <p style="font-size:0.65rem;letter-spacing:0.4em;text-transform:uppercase;color:#c9a84c;margin-bottom:1.5rem;">Sur Patagonian</p>
+        <h1 style="font-family:Inter, system-ui, sans-serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:300;margin-bottom:1rem;">${temporal ? 'No se pudo cargar el proyecto' : 'Proyecto no disponible'}</h1>
+        <p style="color:rgba(240,237,232,0.5);font-size:0.8rem;margin-bottom:2rem;">${temporal ? 'Revise su conexión y vuelva a intentar.' : 'Esta página no está disponible desde este enlace.'}</p>
+        ${temporal ? '<button type="button" id="reintentarProyecto" style="margin-bottom:1rem;padding:.75rem 1.5rem">Reintentar</button>' : ''}
+        <a href="/" style="color:#c9a84c;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;text-decoration:none;border-bottom:1px solid rgba(201,168,76,0.4);padding-bottom:0.25rem;">Volver al inicio →</a>
+      </div>`)
+  if (temporal) $('reintentarProyecto').onclick = () => location.reload()
+}
 async function init() {
   if (!slug) { $('loading').classList.add('fade'); return }
 
-  // Mostrar slug mientras carga
-  $('loadingNombre').textContent = slug.replace(/-/g, ' ').toUpperCase()
 
-  // Aplicar tema cacheado para que el loading ya aparezca con los colores correctos
+  // Recuperar el tema del proyecto; el indicador de carga permanece neutro
   try {
     const temaCache = localStorage.getItem('tema_' + slug)
     if (temaCache) applyTema(temaCache)
   } catch(e) {}
 
-  const { data: p } = await supabase
-    .from('proyectos').select('*').eq('slug', slug).single()
-
-  // Actualizar loading y nav con nombre real
-  if (p?.nombre) {
-    $('loadingNombre').textContent = p.nombre
-    $('navBrandNombre').textContent = p.nombre
+  let p
+  try {
+    const servicios = await cargarServiciosDelProyecto()
+    ;({supabase, getRef, registrarVisita, enviarContactoSeguro} = servicios)
+    const camposPublicos = [
+      'id,nombre,slug,categoria,tipo_propiedad,tagline,descripcion,provincia,ciudad,descripcion_ubicacion,distancia_km,tipo_acceso,acceso_desc,latitud,longitud',
+      'hectareas_total,cantidad_lotes,sup_min_m2,sup_max_m2,zonificacion,altura_max,fos,reglamento_obs,servicios,fecha_entrega,cronograma',
+      'precio_desde,precio_hasta,monto_reserva,condiciones_venta,financiacion,tema,foto_portada,fotos,foto_atmosfera,foto_fondo,opacidad_fondo',
+      'video_url,masterplan_url,brochure_url,mapa_imagen_url,mapa_zonas,mapa_pin_estilo,mapa_activo,plano_activo,rep_activo,representantes',
+      'contacto_nombre,contacto_whatsapp,contacto_email'
+    ].join(',')
+    let respuesta = await supabase.from('proyectos_publicos_v1').select(camposPublicos).eq('slug',slug).maybeSingle()
+    if (!respuesta.error && !respuesta.data && supabase.auth) {
+      const {data} = await supabase.auth.getSession()
+      if (data?.session?.user?.app_metadata?.rol === 'admin') {
+        // «Ver miniweb» del admin también abre sus borradores. La tabla conserva su RLS.
+        respuesta = await supabase.from('proyectos').select(camposPublicos).eq('slug',slug).maybeSingle()
+      }
+    }
+    if (respuesta.error) throw respuesta.error
+    p = respuesta.data
+  } catch {
+    mostrarEntradaProyecto(true)
+    return
   }
-
   if (!p) {
-    $('loading').classList.add('fade')
-    // Mostrar mensaje visible en lugar de pantalla en blanco
-    document.body.insertAdjacentHTML('beforeend', `
-      <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080808;color:#f0ede8;font-family:'Montserrat',sans-serif;z-index:9999;text-align:center;padding:2rem;">
-        <p style="font-size:0.65rem;letter-spacing:0.4em;text-transform:uppercase;color:#c9a84c;margin-bottom:1.5rem;">Sur Patagonian</p>
-        <h1 style="font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:300;margin-bottom:1rem;">Proyecto no encontrado</h1>
-        <p style="color:rgba(240,237,232,0.5);font-size:0.8rem;margin-bottom:2rem;">Este proyecto no existe o fue dado de baja.</p>
-        <a href="/" style="color:#c9a84c;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;text-decoration:none;border-bottom:1px solid rgba(201,168,76,0.4);padding-bottom:0.25rem;">Volver al inicio →</a>
-      </div>`)
+    mostrarEntradaProyecto(false)
     return
   }
 
   applyTema(p.tema)
-  // Guardar tema en cache para la próxima visita (evita flash en el loading)
-  if (slug && p.tema) localStorage.setItem('tema_' + slug, p.tema)
+  try { if (p.tema) localStorage.setItem('tema_' + slug, p.tema) } catch { /* La caché es opcional. */ }
 
   // Fondo de textura dinámico desde Supabase
   if (p.foto_fondo) {
@@ -1382,26 +1150,87 @@ async function init() {
 
   document.title = `${p.nombre} — Sur Patagonian`
 
-  const { data: lotes } = await supabase
-    .from('lotes').select('*').eq('proyecto_id', p.id).order('numero')
-  allLotes = lotes || []
+  let allLotes = [], inventory
+  try {
+    const {leerInventarioCompleto} = await import('/js/lotes-inventario.mjs?v=20261117-publico')
+    const lectura = await leerInventarioCompleto(supabase,p.id)
+    if (lectura.error) throw lectura.error
+    allLotes = lectura.data
+    const {projectSaleInventory} = await import('/js/zonas-venta.mjs?v=20261115-inventario')
+    inventory = projectSaleInventory(p, allLotes)
+  } catch (error) {
+    console.error('No se pudo comprobar la disponibilidad de los lotes.', error)
+  }
+  const publicLots = inventory?.lots || []
+  const publicProject = {...p, cantidad_lotes: inventory?.total}
 
   // Guardar datos globalmente para el brochure PDF
-  window._proyectoData = p
-  window._lotesData = allLotes
+  window._proyectoData = publicProject
+  window._lotesData = inventory?.lots
   window._galeria = p.fotos || []
 
-  renderHero(p)
+  // New miniwebs are opt-in through the existing tema JSON. QA comparison is
+  // URL-only and never saves data or changes the project slug/QR contracts.
+  const miniwebTema = inventory?.config
+  const miniwebParams = new URLSearchParams(location.search)
+  const miniwebQa = location.hostname === 'staging.surpatagonian.com'
+  const miniwebOverride = miniwebQa && ['inmersivo','editorial','arquitectonico','sectores','catalogo'].includes(miniwebParams.get('miniweb'))
+  if (inventory && ((miniwebTema && miniwebTema.activa !== false) || miniwebOverride)) {
+    try {
+      const {mountMiniweb} = await import('/js/miniweb.mjs?v=20261118-miniweb')
+      const mount = document.createElement('div')
+      mount.id = 'miniweb-root'
+      document.body.append(mount)
+      let miniwebProject = p
+      if (miniwebQa && p.slug === 'alamos' && miniwebParams.get('comparar') === '1') {
+        // Static copies of this project's public media keep QA isolated. No DB
+        // rewrite, external proxy or relaxation of the staging CSP.
+        const qaImages = {"/storage/v1/object/public/imagenes/portadas/1780034911010-oc1crpb6mkk.webp":"/assets/miniweb-alamos/portada.webp","/storage/v1/object/public/imagenes/mapas/alamos/1781906820699_DJI_0266_copia.webp":"/assets/miniweb-alamos/mapa.webp","/storage/v1/object/public/imagenes/masterplans/1781905680312-gwdjyhi67zr.webp":"/assets/miniweb-alamos/plano.webp","/storage/v1/object/public/imagenes/galeria/1781905555041-bl745stwocs.webp":"/assets/miniweb-alamos/galeria-01.webp","/storage/v1/object/public/imagenes/galeria/1781905568048-worhqtvn5s.webp":"/assets/miniweb-alamos/galeria-02.webp","/storage/v1/object/public/imagenes/galeria/1781905575076-tjna460ga3q.webp":"/assets/miniweb-alamos/galeria-03.webp","/storage/v1/object/public/imagenes/galeria/1781905579863-qgh41jbp1ns.webp":"/assets/miniweb-alamos/galeria-04.webp","/storage/v1/object/public/imagenes/galeria/1781905585300-8z27o0fmobn.webp":"/assets/miniweb-alamos/galeria-05.webp","/storage/v1/object/public/imagenes/galeria/1781905600128-p859q4wbzjg.webp":"/assets/miniweb-alamos/galeria-06.webp","/storage/v1/object/public/imagenes/galeria/1781905609265-4rf0r6bcaen.webp":"/assets/miniweb-alamos/galeria-07.webp","/storage/v1/object/public/imagenes/galeria/1781905613303-sv1xweefytj.webp":"/assets/miniweb-alamos/galeria-08.webp","/storage/v1/object/public/imagenes/galeria/1781905617955-uupgm4u8i4.webp":"/assets/miniweb-alamos/galeria-09.webp"}
+        const localImage = value => { try { return qaImages[new URL(value, location.origin).pathname] || value } catch { return value } }
+        miniwebProject = {...p, foto_portada:localImage(p.foto_portada), fotos:(p.fotos || []).map(localImage),
+          masterplan_url:localImage(p.masterplan_url), mapa_imagen_url:localImage(p.mapa_imagen_url), mapa_activo:true,
+          representantes:p.representantes}
+      }
+      let miniwebPreviewConfig = miniwebOverride ? {...miniwebTema,estilo:miniwebParams.get('miniweb')} : miniwebTema
+      // Explicit comparison-only photo preview. Never saves or changes the project.
+      if (miniwebQa && miniwebParams.get('comparar') === '1' && miniwebParams.get('medio') === 'foto') {
+        miniwebPreviewConfig = {...miniwebPreviewConfig,medio:'foto'}
+        if (Array.isArray(miniwebPreviewConfig.bloques)) miniwebPreviewConfig.bloques = miniwebPreviewConfig.bloques.map(b => b.tipo === 'portada' ? {...b,opciones:{...b.opciones,medio:'foto'}} : b)
+      }
+      await mountMiniweb(mount, {project:miniwebProject, lots:allLotes, publicPage:true,
+        compare:miniwebQa && miniwebParams.get('comparar') === '1',
+        config:miniwebPreviewConfig,
+        onContact: fields => enviarContactoSeguro({lote_id:fields.lote_id,nombre:fields.nombre,telefono:fields.telefono,email:fields.email,mensaje:`[${p.nombre}] ${fields.mensaje}`,proyecto_slug:slug,fuente:'proyecto_mini_form'},mount),
+        onPdf: () => window.generarBrochure()
+      })
+      $('loading').remove()
+      // Shadow DOM isolates the new compositions from legacy typography and GSAP.
+      document.documentElement.style.background = '#0c1113'
+      document.body.style.margin = '0'
+      if (!miniwebQa || miniwebParams.get('comparar') !== '1') registrarVisita({pagina:slug}).catch(() => {})
+      return
+    } catch (error) {
+      document.getElementById('miniweb-root')?.remove()
+      console.error('No se pudo cargar la nueva presentación; se conserva la miniweb.', error)
+    }
+  }
+
+  const { montarProyectoClasico } = await import('/js/proyecto-clasico.mjs?v=20261118-consulta-lote')
+  montarProyectoClasico($('loading'))
+  $('navBrandNombre').textContent = p.nombre || ''
+  document.addEventListener('keydown', navegarLightbox)
+  window.addEventListener('scroll', actualizarNavClasica, { passive: true })
+  renderHero(publicProject)
   renderAtmosfera(p)
-  renderPres(p)
+  renderPres(publicProject, publicLots)
   renderPlano(p)
-  if (p.mapa_imagen_url && p.mapa_activo !== false) renderMapaLotes(allLotes, p.mapa_imagen_url, p.mapa_pin_estilo || 'gotita')
+  const consultarLote = renderContacto(p)
+  if (p.mapa_imagen_url && p.mapa_activo !== false && inventory) renderMapaLotes(publicLots, p.mapa_imagen_url, p.mapa_pin_estilo || 'gotita', consultarLote)
   if (p.representantes?.length && p.rep_activo !== false) renderRepresentantes(p.representantes)
-  renderDisponibilidad(allLotes)
+  renderDisponibilidad(publicLots, consultarLote)
   renderGaleria(p)
   renderInfo(p)
   renderMapa(p)
-  renderContacto(p)
 
   registrarVisita({ pagina: slug }).catch(() => {})
 
@@ -1438,7 +1267,7 @@ function renderHero(p) {
 }
 
 // ── Presentación ─────────────────────────────────────────────────────
-function renderPres(p) {
+function renderPres(p, lotes) {
   $('presTitulo').innerHTML = `<em>${p.nombre}</em>`
   $('presDesc').textContent = p.descripcion || ''
 
@@ -1446,7 +1275,7 @@ function renderPres(p) {
   if (loc) $('presEyebrow').textContent = loc
 
   // Stats en columna izquierda
-  const disp = allLotes.filter(l => l.estado === 'disponible').length
+  const disp = lotes.filter(l => l.estado === 'disponible').length
   const stats = []
   if (p.hectareas_total) stats.push({ n: parseFloat(p.hectareas_total), u: 'ha',  l: 'Superficie total' })
   if (p.cantidad_lotes)  stats.push({ n: parseInt(p.cantidad_lotes),    u: '',    l: 'Lotes en total' })
@@ -1500,7 +1329,7 @@ function renderRepresentantes(lista) {
 // ── Mapa interactivo de lotes (dinámico desde Supabase) ───────────────
 const ZONA_COLOR = { 'Laguna':'#7ec8d4', 'Bosque':'#8aab78', 'Río':'#6aabb4', 'Complejo turístico':'#c8bfa8' }
 
-function renderMapaLotes(lotes, mapaImagenUrl, pinEstilo) {
+function renderMapaLotes(lotes, mapaImagenUrl, pinEstilo, consultarLote) {
   const seccion = document.getElementById('mapa-lotes')
   const img   = document.getElementById('mlMapImg')
   const svg   = document.getElementById('mlSvg')
@@ -1513,14 +1342,32 @@ function renderMapaLotes(lotes, mapaImagenUrl, pinEstilo) {
   if (!lotesConPos.length && !mapaImagenUrl) return
 
   if (seccion) seccion.style.display = ''
+  img.alt = 'Mapa de ' + (window._proyectoData?.nombre || 'lotes')
   img.src = mapaImagenUrl
+  const leyenda = seccion.querySelector('.ml-leyenda')
+  const esHuemules = window._proyectoData?.slug === 'aldea-los-huemules'
+  const tipos = esHuemules ? Object.keys(ZONA_COLOR) : [...new Set(lotesConPos.map(lote => lote.tipo_lote).filter(Boolean))]
+  function agregarReferencia(texto, color, clase = '') {
+    const item = document.createElement('div')
+    item.className = 'ml-leg-item'
+    const punto = document.createElement('span')
+    punto.className = 'ml-leg-dot ' + clase
+    if (color) punto.style.backgroundColor = color
+    item.append(punto, texto)
+    leyenda.append(item)
+  }
+  for (const tipo of tipos.filter(tipo => tipo !== 'Complejo turístico')) {
+    agregarReferencia(esHuemules ? tipo + ' — disponible' : tipo, ZONA_COLOR[tipo] || '#8aab78')
+  }
+  agregarReferencia('Vendido / Reservado', null, 'ml-c-vend')
+  if (tipos.includes('Complejo turístico')) agregarReferencia('Complejo turístico', null, 'ml-c-comp')
 
   // Contadores
   let disp=0, res=0, vend=0
   lotes.forEach(l => {
     if (l.estado==='disponible') disp++
     else if (l.estado==='reservado') res++
-    else vend++
+    else if(l.estado==='vendido')vend++
   })
   const cntEl = document.getElementById('mlCounters')
   if (cntEl) cntEl.innerHTML = `
@@ -1551,9 +1398,9 @@ function renderMapaLotes(lotes, mapaImagenUrl, pinEstilo) {
       const tipX = (l.mapa_x / 100) * W
       const tipY = (l.mapa_y / 100) * H
 
-      const zona   = l.tipo_lote || 'Bosque'
+      const zona   = l.tipo_lote || (esHuemules ? 'Bosque' : '')
       const isComp = zona === 'Complejo turístico'
-      const estado = isComp ? 'complejo' : (l.estado || 'vendido')
+      const estado = isComp ? 'complejo' : (l.estado || 'sin')
       const muted  = estado === 'vendido' || estado === 'complejo'
       const fo     = muted ? '0.62' : '0.93'
       const color  = estado==='disponible' ? (ZONA_COLOR[zona] || '#8aab78')
@@ -1642,18 +1489,22 @@ function renderMapaLotes(lotes, mapaImagenUrl, pinEstilo) {
         let py = (ccy * sy) + (svgR.top  - wrapR.top)  - 24
         if (px + 210 > wrapR.width) px -= 228
         if (py < 0) py += 56
-        const eLabel = estado==='disponible'?'Disponible':estado==='reservado'?'Reservado':estado==='complejo'?'Complejo turístico':'Vendido'
+        const eLabel = estado==='disponible'?'Disponible':estado==='reservado'?'Reservado':estado==='complejo'?'Complejo turístico':estado==='vendido'?'Vendido':estado==='proximamente'?'Próximamente':'Sin informar'
         let html = `<div class="ml-popup-lote">Lote ${l.numero}</div><div class="ml-popup-zona">${zona}</div>`
         if (l.superficie_m2) html += `<div class="ml-popup-row"><span class="ml-popup-lbl">Superficie</span><span class="ml-popup-val">${Number(l.superficie_m2).toLocaleString('es-AR')} m²</span></div>`
         if (l.precio_usd && estado==='disponible') html += `<div class="ml-popup-row"><span class="ml-popup-lbl">Precio</span><span class="ml-popup-val">USD ${Number(l.precio_usd).toLocaleString('es-AR')}</span></div>`
         html += `<span class="ml-popup-badge ${estado}">${eLabel}</span>`
-        if (estado==='disponible') html += `<a class="ml-popup-cta" href="#contacto">Consultar este lote →</a>`
+        if (l.permiteConsulta && !isComp) html += `<a class="ml-popup-cta" href="#contacto">Consultar este lote →</a>`
         popup.innerHTML = html
+        popup.querySelector('.ml-popup-cta')?.addEventListener('click', event => {
+          event.preventDefault()
+          consultarLote(l)
+        })
         popup.style.left = px + 'px'; popup.style.top = py + 'px'
         popup.classList.add('visible')
       })
       g.addEventListener('mouseleave', () => popup.classList.remove('visible'))
-      g.addEventListener('click', () => { if (estado==='disponible') document.querySelector('#contacto')?.scrollIntoView({behavior:'smooth'}) })
+      g.addEventListener('click', () => { if (l.permiteConsulta && !isComp) consultarLote(l) })
       svg.appendChild(g)
     })
   }
@@ -1662,18 +1513,18 @@ function renderMapaLotes(lotes, mapaImagenUrl, pinEstilo) {
   else img.addEventListener('load', dibujar)
 }
 
-function renderDisponibilidad(lotes) {
-  renderLotes(lotes, 'todos')
+function renderDisponibilidad(lotes, consultarLote) {
+  renderLotes(lotes, 'todos', consultarLote)
   document.querySelectorAll('.disp-filtro').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.disp-filtro').forEach(b => b.classList.remove('activo'))
       btn.classList.add('activo')
-      renderLotes(lotes, btn.dataset.f)
+      renderLotes(lotes, btn.dataset.f, consultarLote)
     })
   })
 }
 
-function renderLotes(lotes, filtro) {
+function renderLotes(lotes, filtro, consultarLote) {
   const tb = $('lotesBody')
   const list = filtro === 'todos' ? lotes : lotes.filter(l => l.estado === filtro)
   if (!list.length) {
@@ -1686,11 +1537,17 @@ function renderLotes(lotes, filtro) {
     <td class="lote-precio">${l.precio_usd ? 'USD ' + Number(l.precio_usd).toLocaleString() : '—'}</td>
     <td>${l.frente_agua ? '<span style="color:var(--gold)">✦ Sí</span>' : '—'}</td>
     <td><span class="badge badge-${l.estado}">${
-      l.estado === 'disponible' ? 'Disponible' : l.estado === 'reservado' ? 'Reservado' : 'Vendido'
+      l.estado === 'disponible' ? 'Disponible' : l.estado === 'reservado' ? 'Reservado' : l.estado === 'vendido' ? 'Vendido' : l.estado === 'proximamente' ? 'Próximamente' : 'Sin informar'
     }</span></td>
-    <td>${l.estado === 'disponible'
+    <td>${l.permiteConsulta
       ? `<a href="#contacto" class="lote-cta">Consultar →</a>` : ''}</td>
   </tr>`).join('')
+  tb.onclick = event => {
+    const enlace = event.target.closest('.lote-cta')
+    if (!enlace) return
+    event.preventDefault()
+    consultarLote(list[enlace.closest('tr').sectionRowIndex])
+  }
 }
 
 // ── Atmósfera ─────────────────────────────────────────────────────────
@@ -1790,30 +1647,61 @@ function renderContacto(p) {
   $('btnMail').href = `mailto:${SUR_EMAIL}?subject=${encodeURIComponent('Consulta: ' + nombre)}`
   $('btnMail').style.display = 'inline-flex'
 
+  let loteSeleccionado = null
+  function indicarLote(lote) {
+    loteSeleccionado = lote
+    $('fContextoLote').hidden = !lote
+    $('fLote').textContent = lote ? 'Consulta por lote ' + lote.numero : ''
+  }
+  $('fQuitarLote').onclick = () => {
+    indicarLote(null)
+    $('fMsg2').textContent = ''
+    $('fMsg').focus()
+  }
   $('formContacto').addEventListener('submit', async e => {
     e.preventDefault()
+    const form = e.currentTarget
     const btn = $('fBtn')
+    if (btn.disabled) return
     btn.disabled = true; btn.textContent = 'Enviando...'
+    $('fQuitarLote').disabled = true
     let error = null
     try {
-      await enviarContactoSeguro({
+      const {validarConsulta} = await import('/js/consulta-miniweb.mjs')
+      const campos = validarConsulta({
         nombre: $('fNombre').value,
         telefono: $('fTel').value,
         email: $('fEmail').value,
-        mensaje: `[${nombre}] ${$('fMsg').value}`,
+        mensaje: (loteSeleccionado ? 'Consulta por lote ' + loteSeleccionado.numero + '.\n\n' : '') + $('fMsg').value
+      }, `[${nombre}] `)
+      await enviarContactoSeguro({
+        ...campos, mensaje: `[${nombre}] ${campos.mensaje}`,
+        ...(loteSeleccionado ? {lote_id: loteSeleccionado.id} : {}),
         proyecto_slug: slug,
         fuente: 'proyecto_mini_form'
-      })
+      },form)
     } catch (err) { error = err }
+    $('fQuitarLote').disabled = false
     const m = $('fMsg2')
     if (error) {
-      m.className = 'form-err'; m.textContent = 'Error al enviar. Escribinos por WhatsApp.'
+      m.className = 'form-err'
+      try {
+        const {errorConsulta} = await import('/js/consulta-miniweb.mjs')
+        m.textContent = errorConsulta(error)
+      } catch { m.textContent = 'No pudimos confirmar el envío. Puede volver a intentarlo.' }
       btn.disabled = false; btn.textContent = 'Enviar consulta'
     } else {
       m.className = 'form-ok'; m.textContent = '¡Consulta recibida! Te contactamos pronto.'
-      e.target.reset(); btn.textContent = 'Enviado ✓'
+      form.reset(); indicarLote(null); btn.disabled = false; btn.textContent = 'Enviar consulta'
     }
   })
+  return lote => {
+    if (!lote?.permiteConsulta || !lote.id || $('fBtn').disabled) return
+    indicarLote(lote)
+    $('fMsg2').textContent = ''
+    $('contacto').scrollIntoView({behavior:'smooth'})
+    $('fNombre').focus({preventScroll:true})
+  }
 }
 
 // ── Lightbox ──────────────────────────────────────────────────────────
@@ -1847,16 +1735,17 @@ window.lbNavigate = dir => {
   const next = _lbIndex + dir
   if (next >= 0 && next < _lbFotos.length) lbShow(next)
 }
-document.addEventListener('keydown', e => {
+function navegarLightbox(e) {
   if (!$('lightbox').classList.contains('open')) return
   if (e.key === 'Escape')     closeLightbox()
   if (e.key === 'ArrowLeft')  lbNavigate(-1)
   if (e.key === 'ArrowRight') lbNavigate(1)
-})
+}
 
 // ── Nav scroll ────────────────────────────────────────────────────────
-window.addEventListener('scroll', () =>
-  document.getElementById('nav').classList.toggle('scrolled', scrollY > 60), { passive: true })
+function actualizarNavClasica() {
+  $('nav').classList.toggle('scrolled', scrollY > 60)
+}
 
 // ── Animaciones GSAP ──────────────────────────────────────────────────
 function initAnimations() {
@@ -1962,12 +1851,21 @@ function initAnimations() {
 init()
 
 // ══ BROCHURE PDF ═════════════════════════════════════════════════════════
+let generandoBrochure = false
 window.generarBrochure = async function() {
+  if (!Array.isArray(window._lotesData)) {
+    alert('No se pudo verificar la disponibilidad de los lotes. Volvé a cargar la página para descargar el brochure.')
+    return
+  }
   const btn = document.getElementById('btnBrochure')
-  if (!btn || btn.classList.contains('loading')) return
-  btn.classList.add('loading')
-  btn.disabled = true
-  btn.textContent = 'Generando...'
+  if (generandoBrochure) return
+  generandoBrochure = true
+  const contenido = btn ? [...btn.childNodes] : []
+  if (btn) {
+    btn.classList.add('loading')
+    btn.disabled = true
+    btn.textContent = 'Generando...'
+  }
 
   try {
     await ensureBrochureV43Deps()
@@ -1981,7 +1879,7 @@ window.generarBrochure = async function() {
     const servicios = (Array.isArray(p.servicios) ? p.servicios : [])
       .filter(Boolean)
       .map(k => BROCHURE_SERVICE_LABELS[k] || brochureHumanLabel(k))
-    const { PUBLIC_BASE_URL, PUBLIC_HOST } = await import('/js/config.js')
+    const { PUBLIC_BASE_URL, PUBLIC_HOST } = await import('/js/config.js?v=20261118-miniweb')
     // S6 cambia solo esta línea cuando exista el QR con canal.
     const codigo = getRef()
     const publicUrl = `${PUBLIC_BASE_URL}/${encodeURIComponent(p.slug || '')}`
@@ -2027,9 +1925,10 @@ window.generarBrochure = async function() {
       y = brochureParagraph(g, logo, p.descripcion, y, 'EL LOTEO') + 8
     }
 
-    const supMin = brochureM2(p.sup_min_m2)
-    const supMax = brochureM2(p.sup_max_m2)
-    const rango = supMin && supMax ? `${supMin} — ${supMax}` : (supMin || supMax || '—')
+    const areas = lotes.map(lote => Number(lote.superficie_m2)).filter(area => Number.isFinite(area) && area > 0)
+    const extremos = areas.length ? [Math.min(...areas), Math.max(...areas)] : [p.sup_min_m2, p.sup_max_m2]
+    const cifras = extremos.map(Number).filter(area => Number.isFinite(area) && area > 0)
+    const rango = cifras.length ? [...new Set(cifras)].map(area => area.toLocaleString('es-AR')).join(' a ') + ' m²' : '—'
     y = brochureEnsure(g, logo, y, 31)
     g.filete(y, true); y += 9
     brochureMetric(g, M, y, rango, 'SUPERFICIES')
@@ -2056,7 +1955,7 @@ window.generarBrochure = async function() {
     g.filete(y, true); y += 12
     g.titulo(20); g.tinta(); doc.text('Lotes disponibles', M, y); y += 8
     doc.setTextColor(...BROCHURE_V43.GRIS); g.sans(7.2)
-    doc.text(`${disponibles.length} disponibles de ${totalDeclarado}`, M, y); y += 10
+    doc.text(`${disponibles.length} ${disponibles.length === 1 ? 'disponible' : 'disponibles'} de ${totalDeclarado}`, M, y); y += 10
     y = brochureLotsHeader(g, y)
 
     if (!disponibles.length) {
@@ -2154,16 +2053,15 @@ window.generarBrochure = async function() {
     console.error('Brochure error:', err)
     alert('Error al generar el PDF. Intentá de nuevo.')
   } finally {
-    btn.classList.remove('loading')
-    btn.disabled = false
-    btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8"><path d="M12 15V3m0 12l-4-4m4 4l4-4M3 21h18"/></svg> Descargar Brochure'
+    generandoBrochure = false
+    if (btn) {
+      btn.classList.remove('loading')
+      btn.disabled = false
+      btn.replaceChildren(...contenido)
+    }
   }
 }
 
-const brochureButton = document.getElementById('btnBrochure')
-if (brochureButton) {
-  brochureButton.removeAttribute('onclick')
-}
 document.addEventListener('click', event => {
   const target = event.target instanceof Element ? event.target : null
   if (!target?.closest('#btnBrochure')) return
