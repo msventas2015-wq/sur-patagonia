@@ -47,12 +47,12 @@ export function hideLotInquiry(slug, lot) {
   return lot?.estado === 'vendido' || lot?.estado === 'no_a_la_venta' || lot?.zonaOculta === true;
 }
 
-export function appendLotReturnLinks(container, slug, lotId, lot) {
+export function appendLotReturnLinks(container, slug, lotId, lot, {includeInquiry=true}={}) {
   const nav = document.createElement('nav');
   nav.setAttribute('aria-label', 'Acciones del lote');
   nav.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 16px;margin-block:12px';
   for (const [label, consult] of [['Volver a la ficha',false],['Consultar este lote',true]]) {
-    if (consult && hideLotInquiry(slug, lot)) continue;
+    if (consult && (!includeInquiry || hideLotInquiry(slug, lot))) continue;
     const link = document.createElement('a');
     link.href = lotReturnUrl(slug, lotId, consult);
     link.target = '_top';

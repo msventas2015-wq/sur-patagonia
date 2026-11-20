@@ -2,7 +2,7 @@ import {isTerrainDetail,terrainCamera,terrainLayer} from './recorrido-detalle-te
 import {ringIdentity,alignRingRows,placeRings,syncMapRings} from './zonas-anillos.mjs?v=20261114-anillo7b';
 import {LOT_STATES,isListedLot} from './zonas-venta.mjs?v=20261116-oferta360';
 import {unitPriceLabel,unitPriceText} from './lote-precio.mjs';
-import {appendLotReturnLinks,lotReturnUrl,hideLotInquiry,findPublicLot,lotLinkId} from './recorrido-enlaces.mjs?v=20261115-consulta-terrazas1';
+import {appendLotReturnLinks,lotReturnUrl,hideLotInquiry,findPublicLot,lotLinkId} from './recorrido-enlaces.mjs?v=20261120-terrazas';
 import {blockName,estados,paintLot,tourZones,tourZoneLegend} from './recorrido-estilo.mjs?v=20261114-anillo7b';
 import {simulatedSales,simulateLotStates} from './recorrido-terrazas-qa.mjs?v=20261116-ficha';
 import {lotTitle} from './ficha-lote-recorrido.mjs';
@@ -485,6 +485,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
       }
       const badge=node('small',estados[lot.estado]||'Sin información','rg-availability');badge.dataset.state=lot.estado||'';
       const mobile = photoMode();
+      const desktopSale = slug === 'terrazas-del-piltri' && !mobile && matchMedia('(min-width: 761px)').matches;
       const heading=node('div',null,'rg-card-heading'),name=node('h3');
       const lines=f.name.split(/\s+(?=·\s+Lote\b)/i);
       if(mobile){name.className='rg-lot-identity';name.textContent=f.name;heading.append(badge);}
@@ -545,18 +546,25 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
       if (!mobile) {
         const details=node('details');details.append(node('summary','Información del lote'));
         for(const value of [lot.precio_usd==null?'Precio a consultar':'USD '+Number(lot.precio_usd).toLocaleString('es-AR'),lot.precio_usd==null?'':unitPriceLabel+' · '+unitPriceText(lot),lot.tipo_lote,lot.frente_agua?'Frente al agua':'',lot.notas])if(value)details.append(node('p',value));
-        if(slug)appendLotReturnLinks(body,slug,lotLinkId(config,lot.id),lot);
+        if(slug)appendLotReturnLinks(body,slug,lotLinkId(config,lot.id),lot,{includeInquiry:!desktopSale});
         body.append(details);if(phase)body.append(node('p','Datos de la ficha del lote. Etapa según el plano.','rg-card-source'));
       }
-      if (mobile && slug && !hideLotInquiry(slug,lot)) {
-        const nav=node('nav');
-        nav.setAttribute('aria-label','Acciones del lote');
+      if ((mobile || desktopSale) && slug && !hideLotInquiry(slug,lot)) {
+        const nav=node('nav',null,desktopSale?'rg-desktop-inquiry':'');
+        nav.setAttribute('aria-label',desktopSale?'Consulta por el lote':'Acciones del lote');
         const label=lot.estado==='disponible' ? 'Quiero reservar este lote' :
           lot.estado==='proximamente' ? 'Avisarme cuando salga a la venta' : 'Consultar este lote';
         const action=node('a',label,'rg-lot-inquiry');
         action.href=lotReturnUrl(slug,lotLinkId(config,lot.id),true);
         action.target='_top';
-        nav.append(action);body.append(nav);
+        nav.append(action);
+        if (desktopSale && lot.estado==='disponible') {
+          const help=node('p','Se abre una consulta con Sur Patagonian para coordinar la reserva.');
+          help.id='rg-reserva-'+lot.id;
+          action.setAttribute('aria-describedby',help.id);
+          nav.append(help);
+        }
+        body.insertBefore(nav,desktopSale?locate:null);
       }
       if(mobile)body.append(locate);
       if (simulating) for (const link of body.querySelectorAll('nav a')) {

@@ -1,0 +1,696 @@
+const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-actions{display:flex!important;justify-content:center;align-items:center;margin:24px auto 0;gap:0}
+    .miniweb[data-propuesta] .hero .hero-actions>:not(.primary){display:none!important}
+    .miniweb[data-propuesta] .hero .hero-actions a.primary{
+      display:inline-flex!important;align-items:center;justify-content:center;gap:18px;min-height:46px;
+      font:600 16px/1.25 var(--sans);text-transform:none;letter-spacing:0;
+      color:var(--ink)!important;background:var(--bg)!important;
+      padding:10px 20px;border:0;border-radius:2px;box-sizing:border-box;text-shadow:none
+    }
+    .miniweb[data-propuesta] .hero .hero-actions a.primary::after{content:'↓';font:400 19px/1 var(--sans);margin:0}
+    .miniweb[data-propuesta] .hero .hero-actions a.primary:hover{filter:brightness(.93)}
+    .miniweb[data-propuesta] .hero .hero-copy .hero-phrase{font:500 clamp(16px,1.5vw,21px)/1.45 var(--sans);max-width:40ch;text-wrap:balance;margin:16px auto 0}
+    .miniweb[data-propuesta] .hero .hero-copy{text-shadow:0 1px 9px #12201dc7}
+    .miniweb[data-propuesta] .hero .hero-media::after{background:linear-gradient(180deg,#101a1b50,transparent 25%,#0c181a40 53%,#0b171936)}
+    .miniweb[data-propuesta] .cifras .shell{display:grid;grid-template-columns:1.12fr 1.05fr .86fr;gap:0;align-items:start}
+    .miniweb[data-propuesta] .cifras .shell>div{min-width:0;padding:0 clamp(20px,3.8vw,70px);border:0;border-left:1px solid var(--line)}
+    .miniweb[data-propuesta] .cifras .shell>div:first-child{border:0;padding-left:0}
+    .miniweb[data-propuesta] .cifras .shell strong{font:400 clamp(38px,4.3vw,70px)/1.08 var(--display);letter-spacing:-.03em;color:var(--ink);white-space:nowrap}
+    .miniweb[data-propuesta] .cifras .shell span{display:block;font:500 16px/1.45 var(--sans);color:var(--ink);letter-spacing:0;text-transform:none;margin:7px 0 0}
+    .miniweb[data-propuesta] .enlace-financiacion{
+      display:inline-flex;align-items:center;min-height:44px;color:var(--ink);font:600 16px/1.4 var(--sans);
+      text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px
+    }
+    .miniweb[data-propuesta] .enlace-financiacion{margin-top:6px}
+    .miniweb[data-propuesta] .pagos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px;margin:28px 0 0}
+    .miniweb[data-propuesta] .pagos div{padding-top:18px;border-top:1px solid var(--line)}
+    .miniweb[data-propuesta] .pagos dt,.miniweb[data-propuesta] .pagos small{font:500 16px/1.5 var(--sans);color:var(--ink)}
+    .miniweb[data-propuesta] .pagos dd{font:400 clamp(32px,3.4vw,54px)/1.15 var(--display);letter-spacing:-.025em;margin:7px 0}
+    .miniweb[data-propuesta] .payment-summary{font:500 17px/1.55 var(--sans);margin:22px 0 0;color:var(--ink)}
+    .miniweb[data-propuesta] .local-reglamento{font:400 17px/1.6 var(--sans);max-width:65ch}
+    .miniweb[data-propuesta] .location-map{width:100%;min-height:300px;border:0}
+    .miniweb[data-propuesta] :is(.enlace-financiacion,.hero-actions .primary):focus-visible{outline:2px solid currentColor;outline-offset:4px}
+    @media(max-width:700px){
+      .miniweb[data-propuesta] .hero .hero-copy .hero-actions{margin-top:20px}
+      .miniweb[data-propuesta] .cifras .shell{grid-template-columns:1.22fr 1fr;gap:20px 0}
+      .miniweb[data-propuesta] .cifras .shell>div{padding:0 0 0 16px}
+      .miniweb[data-propuesta] .cifras .shell>div:first-child{grid-column:1/-1;border-bottom:1px solid var(--line);padding-bottom:12px}
+      .miniweb[data-propuesta] .cifras .shell>div:nth-child(2){border:0;padding:0 12px 0 0}
+      .miniweb[data-propuesta] .cifras .shell strong{font-size:clamp(32px,8.2vw,40px);white-space:normal}
+      .miniweb[data-propuesta] .cifras .shell>div:first-child strong{font-size:40px}
+      .miniweb[data-propuesta] .pagos{grid-template-columns:1fr;gap:16px}
+      .miniweb[data-propuesta] .pagos div{padding-top:14px}
+    }
+
+    #inicio .hero-copy .hero-phrase{color:#fff}
+    #fotos-terrazas>figure:nth-child(n+4){display:none!important}
+    #inicio .hero-actions a.primary{pointer-events:auto}
+    @media(min-width:701px){.miniweb[data-propuesta] #inicio .hero-copy .hero-actions{display:none!important}}
+    @media(min-width:701px) and (max-width:800px){.miniweb.sale[data-propuesta] .nav-links>a[href="#lotes"]{display:inline-flex!important;align-items:center;min-height:44px}}
+    #inicio[data-video-cover=pending] .hero-media>img{visibility:visible}
+
+    #inicio .hero .scroll,#inicio .scroll{display:none!important}
+    #inicio .hero-copy .hero-phrase{letter-spacing:.12em;text-transform:uppercase}
+    #imageDialog .album-count{position:absolute;left:20px;top:18px;color:white;font:500 16px/1.4 var(--sans)}
+    #fotos-terrazas{display:grid;grid-template-columns:2fr 1fr 1fr}
+    @media(min-width:701px){#fotos-terrazas>figure:nth-child(-n+3) button{aspect-ratio:auto;height:clamp(220px,26vw,450px)}}
+    @media(max-width:700px){#fotos-terrazas{grid-template-columns:1fr 1fr}}
+
+    #fotos-terrazas>figure:nth-child(-n+3){grid-column:auto!important;margin:0!important}
+    #fotos-terrazas img{width:100%;height:100%;object-fit:cover}
+    #fotos-terrazas button{aspect-ratio:4/3;overflow:hidden}
+    #fotos-terrazas{gap:4px}
+    #imageDialog[data-album] #imageTitle{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+    #imageDialog[data-album] header{justify-content:flex-end}
+    @media(max-width:700px){
+      #fotos-terrazas>figure:first-child{grid-column:1/-1!important}
+      #fotos-terrazas>figure:first-child button{aspect-ratio:3/2}
+    }
+    @media(max-width:700px){
+      .miniweb.sale[data-style][data-propuesta] .cifras .shell{
+        grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)!important
+      }
+      .miniweb.sale[data-style][data-propuesta] .cifras .shell>div{min-width:0}
+    }
+    .miniweb[data-propuesta] .hero .scroll{display:none}
+    @media(max-width:520px){
+      .miniweb.sale[data-style][data-propuesta] .cifras .shell{grid-template-columns:1fr!important;gap:18px;width:calc(100% - 48px)}
+      .miniweb.sale[data-style][data-propuesta] .cifras .shell>div{border:0;padding:0}
+      .miniweb.sale[data-style][data-propuesta] .cifras .shell>div:first-child{padding-bottom:10px;border-bottom:1px solid var(--line)}
+      .miniweb.sale[data-style][data-propuesta] .cifras .shell strong{white-space:nowrap}
+      .miniweb.sale[data-style][data-propuesta] .cifras .shell>div:not(:first-child) span{margin-top:3px}
+    }
+
+    .miniweb.sale[data-palette][data-propuesta] .block-stream>[data-block-type=servicios]{
+      min-height:0!important;padding-block:clamp(30px,4vw,58px) 12px!important
+    }
+    .miniweb.sale[data-propuesta] [data-block-type=servicios] h2{font-size:clamp(26px,2.5vw,38px);margin:0}
+    .miniweb.sale[data-palette][data-propuesta] .block-stream>[data-block-type=ficha-tecnica]{
+      min-height:0!important;padding-block:18px clamp(32px,4vw,64px)!important
+    }
+    .miniweb.sale[data-propuesta] [data-block-type=ficha-tecnica] h2{font-size:clamp(24px,2.1vw,34px);margin:0 0 12px}
+    .miniweb.sale[data-propuesta] .local-reglamento{color:var(--ink)!important}
+    .miniweb.sale[data-palette][data-propuesta] .block-stream>[data-block-type=financiacion]{padding-block:clamp(40px,5vw,74px)!important}
+    .miniweb.sale[data-palette][data-propuesta] [data-block-type=financiacion]{
+      background:#273637!important;color:#faf6ec!important;--ink:#faf6ec;--line:#8c9791}
+    .miniweb.sale[data-palette][data-propuesta] [data-block-type=financiacion] :is(h2,dt,dd,.payment-summary){color:#faf6ec!important}
+    .miniweb.sale[data-propuesta] .commerce-network .network-layout:has(>.network-principal:only-child){display:block}
+    .miniweb.sale[data-propuesta] .commerce-network .network-principal:only-child{border:0;padding-inline:0}
+    @media(max-width:700px){
+      .miniweb.sale[data-propuesta] #lotes.selector-aprobado>.approved-selector-host:not([data-list-only=true]){
+        --selector-height:clamp(440px,145vw,580px)!important;
+        height:var(--selector-height)!important;min-height:0!important
+      }
+    }`;
+
+const captions=[
+      'El loteo y su entorno, al pie de la cordillera.',
+      'El terreno y las laderas vistas desde el pastizal.',
+      'Una de las calles internas del desarrollo.',
+      'Vista aérea de las calles y los terrenos.',
+      'El trazado de las calles, visto desde arriba.',
+      'Vista amplia del valle de El Bolsón.',
+      'Las calles paralelas y el bosque al fondo.',
+      'El desarrollo y las viviendas de su entorno.',
+      'El terreno, el bosque y el perfil de los cerros.'
+    ];
+// Presentación inicial de los bloques existentes. Los títulos y fotos editados
+// en el creador tienen preferencia sobre los valores editoriales iniciales.
+export function configuracionTerrazas(original, project) {
+  const config=structuredClone(original);
+  const byId=new Map((config.bloques || []).map(block=>[block.id,block]));
+  const block=id=>byId.get(id);
+  const title=(id,value,previous='')=>{
+    const b=block(id);
+    if(b && (b.contenido.titulo || '')===previous)b.contenido.titulo=value;
+  };
+  title('portada-1','Lotes en El Bolsón, Río Negro');
+  const portada=block('portada-1');
+  if(portada)portada.contenido.botonPrincipal ||= 'Ver lotes disponibles';
+  const cifras=block('cifras-1');
+  if(cifras && !cifras.opciones.cifras)cifras.opciones.cifras=['precio','superficies','total'];
+  title('bloque-58e67cf3','Recorra el terreno en 360°','RECORRIDO INMERSIVO');
+  const recorrido=block('bloque-58e67cf3');
+  if(recorrido)recorrido.contenido.texto ||= 'El loteo está cerca del Arroyo Negro y tiene vistas a la cordillera.';
+  title('explorador-1','Elija su lote');
+  const selector=block('explorador-1');
+  if(selector)selector.contenido.texto ||= 'Elija un lote en el plano o en la lista para ver su precio y superficie.';
+  title('galeria-1','“El loteo”');
+  const gallery=block('galeria-1');
+  const photos=project.fotos || [];
+  if(gallery && !gallery.contenido.fotos?.length && photos.length){
+    const order=photos.length===9?[2,3,1,0,4,7,8,5,6]:photos.map((_,i)=>i);
+    gallery.contenido.fotos=order.map(i=>{
+      const photo=typeof photos[i]==='string'?{url:photos[i]}:{...photos[i]};
+      return {...photo,alt:photo.alt || (photos.length===9?captions[i]:'') || project.nombre,pie:'',mostrarPie:'no'};
+    });
+    Object.assign(gallery.opciones,{textosCabecera:'si',textosFotos:'ocultos',cantidadFotos:photos.length});
+  }
+  for(const id of ['foto-texto-1','ficha-tecnica-1','servicios-1']){
+    const b=block(id);
+    if(b && !b.contenido.titulo && !b.contenido.texto)b.activo=false;
+  }
+  title('financiacion-1','Financiación');
+  title('contacto-1','Consulte a Sur Patagonian');
+  // La disposición nueva adelanta sólo las cifras que estaban después del recorrido.
+  const blocks=config.bloques;
+  if(cifras && recorrido && blocks.indexOf(cifras)>blocks.indexOf(recorrido)){
+    blocks.splice(blocks.indexOf(cifras),1);
+    blocks.splice(blocks.indexOf(recorrido),0,cifras);
+  }
+  return config;
+}
+    export function presentarTerrazas(root,project,lots){
+      const app=root.querySelector('.miniweb');app.dataset.propuesta='';
+      const style=document.createElement('style');
+      style.textContent=estilos;root.append(style);
+      const section=type=>app.querySelector('[data-block-type="'+type+'"]');
+      const recorrido=section('panoramica360');
+      const tourNav=section('portada')?.querySelector('.nav-links [data-aerial-tour],.nav-links a[href*="/recorrido"]');
+      if(tourNav && recorrido){
+        tourNav.href='#'+recorrido.id;
+        tourNav.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();recorrido.scrollIntoView({block:'start'});});
+      }
+      const gallery=section('galeria');
+      const grid=gallery?.querySelector('.photo-grid');
+      if(grid)grid.id='fotos-terrazas';
+      section('portada')?.querySelectorAll('.scroll,[data-scroll-cue]').forEach(cue=>cue.remove());
+      const strip=section('cifras'),groups=strip?.querySelectorAll('.shell>div');
+      const finance=section('financiacion');
+      if(groups?.length===3 && groups[0].querySelector('span')?.textContent.includes('precio') && groups[2].querySelector('span')?.textContent.includes('total')){
+
+      if(Number(project.precio_desde)===Number(project.precio_hasta))groups[0].querySelector('span').textContent='por lote';
+      groups[1].querySelector('span').textContent='Superficie de los lotes';
+      groups[2].querySelector('strong').textContent='Financiación';
+      groups[2].querySelector('span').remove();
+      if(finance){
+      const paymentLink=document.createElement('a');
+      paymentLink.href='#'+finance.id;paymentLink.className='enlace-financiacion';
+      paymentLink.textContent='Ver entrega y cuotas';
+      groups[2].append(paymentLink);
+      }
+      }
+      if(finance?.querySelector('.finance-options') && project.financiacion?.trim()==='Entrega de USD 28.000 y saldo de USD 12.000 en 8 cuotas fijas de USD 1.500.' && Number(project.precio_desde)===40000 && Number(project.precio_hasta)===40000){
+      const payments=document.createElement('dl');payments.className='pagos';
+      for(const [title,value] of [['Entrega inicial','USD 28.000'],['8 cuotas fijas de','USD 1.500']]){
+        const group=document.createElement('div'),label=document.createElement('dt'),amount=document.createElement('dd');
+        label.textContent=title;amount.textContent=value;group.append(label,amount);
+        payments.append(group);
+      }
+      const summary=document.createElement('p');
+      summary.className='payment-summary';
+      summary.textContent='USD 40.000 por lote · Saldo financiado USD 12.000';
+      finance.querySelector('.finance-options').replaceWith(payments,summary);
+      }
+      instalarInteracciones(root,project,lots);
+      // The public renderer uses a shadow root. Direct these new links to that tree.
+      app.addEventListener('click',event=>{
+        const anchor=event.target.closest('a[href^="#"]');
+        if(!anchor||!anchor.matches('.enlace-financiacion,.hero-actions .primary'))return;
+        const target=root.getElementById(anchor.hash.slice(1));
+        if(target){event.preventDefault();target.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})}
+      });
+    }
+function instalarInteracciones(root, project, lots) {
+  const element = id => root.getElementById(id);
+  const form = element('contactForm');
+  const message = element('contactMessage');
+  const inquiry = root.querySelector('[data-block-type="contacto"]');
+  const byId = new Map(lots.map(lot => [lot.id, lot]));
+  const theme = typeof project.tema === 'string' ? JSON.parse(project.tema) : project.tema;
+  const publicIds = new Map(lots.map(lot => [theme?.miniweb?.lotes?.[lot.id]?.idEnlace || lot.id, lot]));
+  if (!inquiry?.querySelector('.contact-side') || !inquiry.querySelector('.contact-invitation h2') || !form)return;
+  const drafts = new Map();
+  let activeLot = null;
+  const sheet = root.querySelector('.lot-sheet');
+  const style = document.createElement('style');
+  style.textContent = `
+    .miniweb.sale #imageDialog {position:fixed}
+    .miniweb.sale #imageDialog .gallery-turn {
+      position:absolute;top:55%;transform:translateY(-50%);display:grid;
+      place-items:center;width:48px;height:48px;border:1px solid #ffffff70;
+      border-radius:50%;background:#152624d9;color:white;cursor:pointer;
+      font:400 28px/1 var(--sans)
+    }
+    .miniweb.sale #imageDialog .gallery-turn[hidden] {display:none}
+    .miniweb.sale #imageDialog .gallery-turn.prev {left:12px}
+    .miniweb.sale #imageDialog .gallery-turn.next {right:12px}
+    .miniweb.sale .sheet-actions {align-items:center}
+    .miniweb.sale .lot-sheet .sheet-actions>[data-consult] {
+      background:var(--ink);border:1px solid var(--ink);color:var(--bg);
+      font:650 15px/1.3 var(--sans);min-height:48px;padding:12px 22px;
+      cursor:pointer
+    }
+    .miniweb.sale .sheet-inquiry-note {font:400 15px/1.5 var(--sans);margin:12px 0 0}
+    @media(max-width:700px) {
+      .miniweb.sale .lot-sheet .sheet-actions>[data-consult] {width:100%}
+    }`;
+  root.append(style);
+
+  const lightbox = element('imageDialog');
+  const counter=document.createElement('span');counter.className='album-count';
+  counter.setAttribute('aria-live','polite');lightbox.append(counter);
+  let touchStart=null;
+  lightbox.addEventListener('touchstart',e=>{touchStart=e.touches.length===1?e.touches[0]:null},{passive:true});
+  lightbox.addEventListener('touchend',e=>{
+    if(!touchStart || !photos.length)return;
+    const dx=e.changedTouches[0].clientX-touchStart.clientX,dy=e.changedTouches[0].clientY-touchStart.clientY;
+    if(Math.abs(dx)>48 && Math.abs(dx)>Math.abs(dy)*1.5)step(dx<0?1:-1);
+    touchStart=null;
+  },{passive:true});
+  let photos = [];
+  let index = 0;
+  function step(delta) {
+    if (photos.length < 2) return;
+    index = (index + delta + photos.length) % photos.length;
+    counter.textContent=(index+1)+' / '+photos.length;
+    const button = photos[index];
+    const caption = button.closest('figure')?.querySelector('figcaption')?.textContent.trim();
+    const title = caption || button.dataset.imageTitle || project.nombre;
+    element('expandedImage').src = button.dataset.image;
+    element('expandedImage').alt = button.querySelector('img')?.alt || title;
+    element('imageTitle').textContent = title;
+  }
+  const turns = [-1, 1].map(delta => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'gallery-turn ' + (delta < 0 ? 'prev' : 'next');
+    button.setAttribute('aria-label', delta < 0 ? 'Foto anterior' : 'Foto siguiente');
+    button.textContent = delta < 0 ? '‹' : '›';
+    button.hidden = true;
+    button.addEventListener('click', () => step(delta));
+    lightbox.append(button);
+    return button;
+  });
+  lightbox.addEventListener('keydown', event => {
+    if (!photos.length || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    step(event.key === 'ArrowLeft' ? -1 : 1);
+  });
+  lightbox.addEventListener('close', () => {
+    photos = [];
+    turns.forEach(button => { button.hidden = true; });
+  });
+  root.addEventListener('click', event => {
+    const image = event.target.closest('[data-image]');
+    if (!image) return;
+    const gallery = image.closest('[data-block-type="galeria"], [data-block-type="asi-se-vive"]');
+    photos = gallery ? Array.from(gallery.querySelectorAll('button[data-image]')) : [];
+    lightbox.toggleAttribute('data-album', Boolean(gallery));
+    index = photos.indexOf(image);
+    counter.textContent=photos.length?(index+1)+' / '+photos.length:'';
+    turns.forEach(button => { button.hidden = photos.length < 2; });
+  }, true);
+
+  function improveSheet() {
+    const action = sheet.querySelector('.sheet-actions [data-consult-lot]');
+    const lot = byId.get(action?.dataset.consultLot);
+    if (!lot || lot.estado !== 'disponible' || action.dataset.propuesta) return;
+    action.dataset.propuesta = 'reserva';
+    action.textContent = 'QUIERO RESERVAR ESTE LOTE';
+    action.parentElement.prepend(action);
+    const note = document.createElement('p');
+    note.className = 'sheet-inquiry-note';
+    note.textContent = 'Se abre una consulta con Sur Patagonian para coordinar la reserva.';
+    action.parentElement.after(note);
+  }
+  new MutationObserver(improveSheet).observe(sheet, {childList:true, subtree:true});
+  improveSheet();
+
+  function showInquiryHeading() {
+    const nav = root.querySelector('.project-nav');
+    const navTop = nav ? parseFloat(getComputedStyle(nav).top) || 0 : 0;
+    formHeading.style.scrollMarginTop = Math.max(0, navTop + (nav?.offsetHeight || 0)) + 16 + 'px';
+    formHeading.scrollIntoView({block:'start', behavior:'instant'});
+  }
+  function startDraft(lot, goal) {
+    activeLot = lot;
+    const saved = drafts.get(lot.id);
+    formHeading.textContent = goal === 'reserva' ? 'Coordine su reserva' : 'Consulte por este lote';
+    element('contactLotLabel').hidden = false;
+    element('contactLotNumber').value = lot.numero;
+    message.value = saved ?? (goal === 'reserva'
+      ? 'Quisiera coordinar la reserva de ' + lot.numero + ' de ' + project.nombre + '.'
+      : 'Quisiera información sobre ' + lot.numero + ' de ' + project.nombre + '.');
+    check.checked = message.value.split('\n').includes(visitLine);
+    showInquiryHeading();
+  }
+  message.addEventListener('input', () => drafts.set(activeLot?.id || '', message.value));
+  root.addEventListener('click', event => {
+    const button = event.target.closest('[data-consult-lot]');
+    if (button) {
+      const lot = byId.get(button.dataset.consultLot);
+      if (lot) setTimeout(() => startDraft(lot, button.dataset.propuesta), 0);
+      return;
+    }
+    const link = event.target.closest('a[href^="#"]');
+    if (!link || !inquiry || link.hash !== '#' + inquiry.id) return;
+    if (!activeLot && !drafts.has('')) {
+      setTimeout(showInquiryHeading, 0);
+      return;
+    }
+    // Volver al formulario conserva el lote y el borrador actual.
+    event.preventDefault();
+    event.stopPropagation();
+    showInquiryHeading();
+    form.elements.nombre.focus({preventScroll:true});
+  }, true);
+
+  const selector = root.querySelector('.approved-selector-host')?.shadowRoot;
+  if (selector) {
+    const card = selector.querySelector('.card');
+    const selectorHost = selector.host;
+    const syncSheet = () => selectorHost.toggleAttribute('data-detail-open', sheet.open);
+    new MutationObserver(syncSheet).observe(sheet, {attributes:true, attributeFilter:['open']});
+    syncSheet();
+    const selectorStyle = document.createElement('style');
+    selectorStyle.textContent = `
+      :host([data-detail-open]) .sel .card.show {visibility:hidden!important;pointer-events:none}
+      .sel .chips [hidden] {display:none!important}
+      .sel .card.show .top {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px}
+      .sel .card.show .top .x {position:static;grid-column:1;grid-row:1;justify-self:start;width:44px;height:44px}
+      .sel .card .top .st {grid-column:2;grid-row:1;justify-self:end}
+      .sel .card .st[data-available]{background:none;border:0;padding:0;color:#34d17f;font-size:20px;font-weight:800;letter-spacing:-.025em;text-transform:uppercase}
+      .sel .card .st[data-available] i{display:none}
+      .sel .card .acts .card-finance{grid-column:1/-1;margin:0;font-size:16px;font-weight:650}
+      .sel .card .top .lot-name {grid-column:1;grid-row:2;min-width:0;margin:0;
+        font-size:16px;font-weight:600;line-height:1.24;letter-spacing:-.02em}
+      .sel .card .top .lot-area {grid-column:2;grid-row:2;text-align:right;
+        font-size:16px;font-weight:600;line-height:1.24;white-space:nowrap}
+      .sel .card .top .lot-zone {grid-column:1/-1;grid-row:3;width:max-content;margin:0}
+      .sel .card .sale-metrics {display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+        flex-wrap:wrap;margin:14px 0 8px}
+      .sel .card .sale-price {font-size:clamp(32px,3vw,40px);font-weight:750;letter-spacing:-.035em}
+      .sel .card .sale-unit {font-size:14px}
+      .sel .card .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));min-width:0}
+      .sel .card .acts [data-action="consult"] {grid-column:1/-1;min-height:50px;font-weight:700;font-size:19px}
+      .sel .card .acts .reservation-note {grid-column:1/-1;font:inherit;font-size:14px;
+        line-height:1.4;margin:0 0 4px;color:inherit}
+      @media (max-width:900px) {
+        .sel.photo-plan:not([data-list-only=true]) .card.show {max-height:calc(100% - 24px)}
+        .sel.photo-plan .card.show .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+      }
+      @media (max-width:365px) {
+        .sel.photo-plan .card.show {padding:12px}
+        .sel .card .acts .btn {min-width:0}
+      }
+    `;
+    selector.append(selectorStyle);
+    const chips = selector.querySelector('.chips');
+    function showRelevantFilters() {
+      chips.querySelectorAll('button[data-state]').forEach(button => {
+        const count = Number(button.querySelector('b')?.textContent);
+        button.hidden = Boolean(button.dataset.state) && count === 0;
+      });
+    }
+    new MutationObserver(showRelevantFilters).observe(chips, {childList:true});
+    showRelevantFilters();
+    function improveSelection() {
+      const action = card?.querySelector('[data-action="consult"]');
+      const top = card?.querySelector('.top');
+      if (!top || top.querySelector('.lot-name')) return;
+      const identity = top.querySelector('h3').parentElement;
+      const name = document.createElement('h3');
+      name.className = 'lot-name';
+      name.textContent = [identity.querySelector('h3').textContent, identity.querySelector('.big').textContent].join(' · ');
+      const zone = identity.querySelector('.zone-tag');
+      if (zone) { zone.classList.add('lot-zone'); top.append(zone); }
+      identity.replaceWith(name);
+      const facts = card.querySelector('.kv');
+      const [price, area, unit] = [...facts.querySelectorAll('dd')].map(value => value.textContent);
+      const surface = document.createElement('strong');
+      surface.className = 'lot-area';
+      surface.textContent = area;
+      surface.setAttribute('aria-label','Superficie: ' + area);
+      top.append(surface);
+      const metrics = document.createElement('div');
+      metrics.className = 'sale-metrics';
+      const amount = document.createElement('strong'), perMetre = document.createElement('span');
+      amount.className = 'sale-price'; amount.textContent = price;
+      amount.setAttribute('aria-label','Precio del lote: ' + price);
+      perMetre.className = 'sale-unit'; perMetre.textContent = unit && unit !== '—' ? unit + ' / m²' : '';
+      metrics.append(amount, perMetre); facts.replaceWith(metrics);
+      if (!action || card.querySelector('.st')?.textContent.trim() !== 'Disponible') return;
+      const availability = card.querySelector('.st');
+      availability.dataset.available='';
+      action.dataset.propuesta = 'reserva';
+      action.querySelector('span').textContent = 'QUIERO RESERVAR ESTE LOTE';
+      const note = document.createElement('p');
+      note.className = 'reservation-note';
+      note.id = 'selector-reservation-note';
+      note.textContent = 'Se abre una consulta con Sur Patagonian para coordinar la reserva.';
+      action.setAttribute('aria-describedby', note.id);
+      const financing = document.createElement('p');
+      financing.className = 'card-finance';
+      financing.textContent = 'Con financiación';
+      action.after(financing,note);
+    }
+    if (card) {
+      new MutationObserver(improveSelection).observe(card, {childList:true});
+      improveSelection();
+    }
+    selector.addEventListener('click', event => {
+      const action = event.target.closest('[data-action="consult"], [data-compare-consult]');
+      if (!action) return;
+      // El selector nativo fija el ID público antes de enfocar el formulario.
+      setTimeout(() => {
+        const id = new URL(location.href).searchParams.get('lote');
+        const lot = publicIds.get(id) || byId.get(id);
+        if (lot) startDraft(lot, action.dataset.propuesta);
+      }, 0);
+    }, true);
+  }
+
+  // El proyecto recibe la consulta. La visita es una opción del mensaje.
+  const panel = inquiry.querySelector('.contact-side');
+  const formHeading = inquiry.querySelector('.contact-invitation h2');
+  if (!formHeading.textContent.trim())formHeading.textContent = 'Consulte a Sur Patagonian';
+  formHeading.id = 'titulo-consulta-terrazas';
+  const help = document.createElement('p');
+  help.className = 'contact-help';
+  help.textContent = 'Sur Patagonian recibirá su consulta y hará el seguimiento.';
+  const nativeTitle=panel.querySelector('.contact-form-title');
+  if(nativeTitle)nativeTitle.hidden=true;
+  panel.prepend(formHeading, help);
+  inquiry.querySelector('.contact-invitation').remove();
+  form.setAttribute('aria-labelledby',formHeading.id);
+  form.prepend(element('contactLotLabel'));
+  const phone=form.elements.telefono,email=form.elements.email;
+  phone.required=true;email.required=false;
+  email.closest('label').firstChild.textContent='Correo electrónico (opcional)';
+  const visit = document.createElement('label');
+  visit.className = 'visit-option';
+  const check = document.createElement('input');
+  check.type = 'checkbox';
+  visit.append(check, document.createTextNode('Me interesa visitar este lote'));
+  const visitLine = 'También quisiera coordinar una visita.';
+  check.addEventListener('change', () => {
+    const lines = message.value.split('\n').filter(line => line !== visitLine);
+    message.value = lines.join('\n').trimEnd();
+    if (check.checked) message.value += (message.value ? '\n\n' : '') + visitLine;
+    message.dispatchEvent(new Event('input', {bubbles:true}));
+  });
+  message.addEventListener('input', () => { check.checked = message.value.split('\n').includes(visitLine); });
+  message.closest('label').after(visit);
+
+  const contactStyle = document.createElement('style');
+  contactStyle.textContent = `
+    .miniweb.sale[data-style-body][data-palette][data-propuesta] section.contacto {
+      display:block;box-sizing:border-box;padding:clamp(32px,5vw,80px) var(--gutter)!important}
+    .miniweb.sale[data-style-body][data-palette][data-propuesta] .contact-side {
+      width:min(760px,100%);margin:auto;box-sizing:border-box;padding:clamp(20px,4vw,55px)!important}
+    .miniweb.sale[data-style-body][data-palette][data-propuesta] .contact-side h2 {
+      font:400 clamp(32px,3.5vw,56px)/1.09 var(--display);letter-spacing:-.03em;max-width:none;
+      margin:0 0 12px;color:var(--ink);text-wrap:balance}
+    .miniweb.sale[data-style-body][data-palette][data-propuesta] .contact-help {
+      font:400 17px/1.5 var(--sans);margin:0 0 24px;max-width:54ch;color:var(--ink)}
+    .miniweb.sale[data-propuesta] #contactForm .visit-option {display:flex;align-items:center;
+      flex-direction:row;gap:10px;min-height:44px;cursor:pointer;text-transform:none;
+      letter-spacing:normal;color:var(--ink);font:500 16px/1.4 var(--sans)}
+    .miniweb.sale[data-propuesta] #contactForm .visit-option input {inline-size:19px;block-size:19px;
+      min-height:0;flex:none;appearance:auto;accent-color:var(--ink);margin:0;padding:0}
+    .miniweb.sale[data-propuesta] #contactLotLabel:not([hidden]) {display:grid}
+    .miniweb.sale[data-propuesta] .interactive-section-heading .offer-summary {
+      font:600 clamp(17px,1.4vw,21px)/1.4 var(--sans);color:var(--ink);margin:8px 0}
+  `;
+  root.append(contactStyle);
+  root.addEventListener('miniweb-consulta', event => {
+    const href = event.detail?.href;
+    if (!href) return;
+    const url = new URL(href, location.href);
+    const lot = publicIds.get(url.searchParams.get('lote')) || byId.get(url.searchParams.get('lote'));
+    if (lot && event.defaultPrevented) {
+      const finish = () => startDraft(lot, lot.estado === 'disponible' ? 'reserva' : 'consulta');
+      if (document.fullscreenElement) document.addEventListener('fullscreenchange', () => requestAnimationFrame(finish), {once:true});
+      else setTimeout(finish, 0);
+    }
+  });
+
+  const entry=new URL(location.href);
+  if(entry.hash==='#consulta-lote'){
+    const id=entry.searchParams.get('lote');
+    const lot=publicIds.get(id)||byId.get(id);
+    if(lot?.estado==='disponible' && !element('contactLotLabel').hidden)startDraft(lot,'reserva');
+  }
+}
+
+export function presentarRecorridoTerrazas(doc, frame=null, root=null) {
+    {
+      const W = doc.defaultView;
+      const initialStation = 'detalle-0323';
+      const requestedLot = new URL(frame?.src || doc.location.href, doc.location.href).searchParams.has('lote');
+      const css = doc.createElement('style');
+      css.textContent = `
+        .rg-tour .paso-visual {
+          position:absolute; z-index:6; left:50%; transform:translateX(-50%);
+          bottom:clamp(100px,17%,168px); display:flex; align-items:center; gap:12px;
+          padding:11px 16px 11px 19px; min-height:48px; width:max-content;
+          max-width:calc(100% - 40px); border-radius:2px; border:1px solid #ffffffa3;
+          background:rgba(16,27,25,.92); color:white; cursor:pointer;
+          font:600 16px/1.2 var(--tour-font,Inter,sans-serif); letter-spacing:0;
+        }
+        .rg-tour .paso-visual:focus-visible {outline:3px solid white; outline-offset:3px}
+        .rg-tour .paso-visual:hover {background:#182925}
+        .rg-tour .paso-visual:disabled, .rg-tour:has(.rg-card:not([hidden])) .paso-visual,
+        .rg-tour:has(.rg-atlas:not([hidden])) .paso-visual,
+        .rg-tour:has(.rg-locator:not([hidden])) .paso-visual {display:none}
+        @media(max-width:760px){.rg-tour .paso-visual {bottom:clamp(104px,20%,140px);font-size:15px;min-height:46px}}
+      `;
+      css.textContent += `
+        @media(min-width:761px){.rg-tour .rg-lot-card{width:min(380px,90%)}}
+        .rg-tour .rg-lot-card .rg-card-heading{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:12px;padding-top:0}
+        .rg-tour .rg-lot-card .rg-card-heading .rg-card-x{position:static;grid-column:1;grid-row:1;width:44px;height:44px;display:grid;place-items:center;margin:0;padding:0}
+        .rg-tour .rg-lot-card .rg-card-heading .rg-availability{grid-column:2;grid-row:1;justify-self:end}
+        .rg-tour .rg-lot-card .rg-availability[data-state=disponible]{background:none;border:0;padding:0;max-width:none;color:#176a40;text-transform:uppercase;font:800 20px/1.1 var(--tour-font)}
+        html[data-photo-touch] .rg-tour .rg-lot-card .rg-availability[data-state=disponible]{color:#34d17f}
+        .rg-tour .rg-lot-card .rg-availability::before{display:none}
+        .rg-tour .rg-lot-card .rg-measures{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:8px 0;margin:0}
+        .rg-tour .rg-lot-card .rg-measures h3,.rg-tour .rg-lot-card .rg-measures .rg-area{font:600 16px/1.4 var(--tour-font);letter-spacing:0;margin:0;padding:0}
+        .rg-tour .rg-lot-card .rg-measures h3 span{display:inline}
+        .rg-tour .rg-lot-card .rg-measures h3 span+span::before{content:' '}
+        .rg-tour .rg-lot-card .rg-measures .rg-area small{display:inline;color:inherit;font-size:1em}
+        .rg-tour .rg-lot-card .rg-proposed-price{color:inherit;font:750 clamp(32px,3vw,40px)/1.1 var(--tour-font);letter-spacing:-.035em;margin:8px 0 12px}
+        .rg-tour .rg-lot-card nav .rg-lot-inquiry{display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;min-height:50px;font:700 19px/1.2 var(--tour-font)}
+        html .rg-tour .rg-lot-card nav .rg-lot-inquiry{background:#d64218;color:#fff4ef;border-color:#d64218}
+        .rg-tour .rg-lot-card nav .card-finance{font:650 16px/1.4 var(--tour-font);color:inherit;margin:8px 0 4px}
+        .rg-tour .rg-lot-card .rg-card-visual{height:clamp(54px,10vh,90px)}
+      `;
+      css.textContent += ':root[data-photo-touch]:not([data-touch-exploring]) .rg-tour .paso-visual{visibility:hidden}';
+      doc.head.append(css);
+
+      function mountEntry() {
+        const tour = doc.querySelector('.rg-tour');
+        const selector = tour?.querySelector('footer select');
+        const nativeNext = tour?.querySelector('footer [data-next]');
+        if (!selector || !nativeNext || tour.querySelector('.paso-visual')) return;
+        const button = doc.createElement('button');
+        button.type = 'button';
+        button.className = 'paso-visual';
+        button.innerHTML = 'Siguiente vista <svg aria-hidden="true" width="24" height="20" viewBox="0 0 24 20" fill="none"><path d="M2 10h19m-7-7 7 7-7 7" stroke="currentColor" stroke-width="1.7"/></svg>';
+        button.addEventListener('click', () => nativeNext.click());
+        // En móvil, la capa nativa que permite desplazar la página deja el iframe
+        // inerte hasta el primer toque. El mismo control vive sobre esa capa.
+        const hostStage = frame?.closest('.tour-embed');
+        let mobileButton;
+        if(hostStage && root){
+        mobileButton = hostStage.ownerDocument.createElement('button');
+        mobileButton.type = 'button';
+        mobileButton.className = 'paso-visual-movil';
+        mobileButton.innerHTML = button.innerHTML;
+        hostStage.querySelector('.paso-visual-movil')?.remove();
+        root.querySelector('style[data-paso-visual]') || (() => {
+          const style = hostStage.ownerDocument.createElement('style');
+          style.dataset.pasoVisual = '';
+          style.textContent = `
+            .miniweb .paso-visual-movil {display:none}
+            .miniweb .tour-embed[data-touch-mode=page]>.paso-visual-movil:not(:disabled) {
+              display:flex;align-items:center;gap:12px;position:absolute;z-index:9;left:50%;
+              transform:translateX(-50%);bottom:clamp(104px,20%,140px);
+              width:max-content;min-height:46px;padding:11px 16px 11px 19px;border-radius:2px;
+              border:1px solid #ffffffa3;background:rgba(16,27,25,.92);color:white;
+              font:600 15px/1.2 var(--sans,sans-serif);cursor:pointer;touch-action:manipulation
+            }
+            .miniweb .paso-visual-movil:focus-visible {outline:3px solid white;outline-offset:3px}
+          `;
+          root.append(style);
+        })();
+        mobileButton.addEventListener('click', () => nativeNext.click());
+        hostStage.append(mobileButton);
+        }
+        const sync = () => {button.disabled=nativeNext.disabled;if(mobileButton)mobileButton.disabled=button.disabled};
+        const nativeState = new W.MutationObserver(sync);
+        nativeState.observe(nativeNext, {attributes: true, attributeFilter: ['disabled']});
+        sync();
+        tour.append(button);
+
+        if (requestedLot || !Array.from(selector.options).some(option => option.value === initialStation)) return;
+        selector.value = initialStation;
+        selector.dispatchEvent(new W.Event('change', {bubbles:true}));
+        // En el encuadre de entrada se ven ambas calles y la cordillera hacia el este.
+        const status = tour.querySelector('[data-panorama-state]');
+        if (!status) return;
+        const aim = () => {
+          if (selector.value !== initialStation || status.dataset.panoramaState === 'error') { ready.disconnect(); return; }
+          if (status.dataset.panoramaState !== 'ready') return;
+          const canvas = tour.querySelector('.rg-stage canvas');
+          const bearing = Number(tour.querySelector('.rg-compass')?.textContent.match(/(\d+)°/)?.[1]);
+          if (!canvas || !Number.isFinite(bearing)) return;
+          ready.disconnect();
+          const degrees = ((94 - bearing + 540) % 360) - 180;
+          canvas.dispatchEvent(new W.CustomEvent('mw-inline-turn', {detail:{delta: -degrees * Math.PI / 180 / .005}}));
+          canvas.dispatchEvent(new W.KeyboardEvent('keydown', {key:'ArrowUp',bubbles:true}));
+          canvas.dispatchEvent(new W.KeyboardEvent('keydown', {key:'ArrowUp',bubbles:true}));
+        };
+        const ready = new W.MutationObserver(aim);
+        ready.observe(status, {attributes:true, attributeFilter:['data-panorama-state']});
+        aim();
+        tour.addEventListener('close', () => {ready.disconnect();nativeState.disconnect()}, {once:true});
+      }
+      const arrival = new W.MutationObserver(mountEntry);
+      arrival.observe(doc.body, {childList:true});
+      mountEntry();
+    }
+    function presentTourCard(body) {
+      const heading = body?.querySelector('.rg-card-heading');
+      const close = body?.parentElement.querySelector(':scope > .rg-card-x');
+      if (heading && close) heading.prepend(close);
+      if (!body || body.querySelector('.rg-proposed-price')) return;
+      const measures = body.querySelector('.rg-measures');
+      if (!measures) return;
+      const facts = body.querySelector('.rg-lot-facts');
+      const label = facts && Array.from(facts.querySelectorAll('dt')).find(term => term.textContent === 'Precio');
+      const source = label ? label.nextElementSibling : body.querySelector('details p');
+      if (!source) return;
+      const name = body.querySelector('.rg-card-heading h3');
+      if (name) measures.prepend(name);
+      const price = doc.createElement('p');
+      price.className = 'rg-proposed-price';
+      price.textContent = source.textContent;
+      price.setAttribute('aria-label','Precio del lote: '+price.textContent);
+      measures.after(price);
+      label?.remove();
+      source.remove();
+      const action = body.querySelector('.rg-lot-inquiry');
+      if (action && body.querySelector('.rg-availability')?.dataset.state === 'disponible') {
+        action.textContent = 'QUIERO RESERVAR ESTE LOTE';
+        const nav = action.parentElement;
+        price.after(nav);
+        const financing = doc.createElement('p');
+        financing.className = 'card-finance';
+        financing.textContent = 'Con financiación';
+        action.after(financing);
+      }
+    }
+    const watchedCards = new WeakSet();
+    function watchCard(){
+      const card=doc.querySelector('.rg-tour .rg-card');
+      if(!card || watchedCards.has(card))return;
+      watchedCards.add(card);
+      const update=()=>{if(!card.hidden && card.classList.contains('rg-lot-card'))presentTourCard(card.querySelector('.rg-card-body'));};
+      const observer=new MutationObserver(update);
+      observer.observe(card,{childList:true});
+      card.closest('.rg-tour').addEventListener('close',()=>observer.disconnect(),{once:true});
+      update();
+    }
+    new MutationObserver(watchCard).observe(doc.body,{childList:true});
+    watchCard();
+  }
