@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700&amp;family=Montserrat:wght@400;500;600;700;800;900&amp;display=swap"><title>Recorridos 360° · Sur Patagonian</title><link rel="stylesheet" href="./css/recorrido-constructor.css?v=20261117-ficha-reserva"><link rel="stylesheet" href="./css/recorrido-medios.css"></head>
+<html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700&amp;family=Montserrat:wght@400;500;600;700;800;900&amp;display=swap"><title>Recorridos 360° · Sur Patagonian</title><link rel="stylesheet" href="./css/recorrido-constructor.css?v=20261120-terrazas"><link rel="stylesheet" href="./css/recorrido-medios.css"></head>
 <body class="rg-home"><header><small>Sur Patagonian</small><h1>Recorridos de loteos</h1></header><main><p role="status">Abriendo recorrido…</p><form hidden><label>Nombre del proyecto<input name="nombre" required maxlength="100" autocomplete="off"></label><button>Abrir editor</button></form><div id="actions"></div></main>
 <script type="module">
-import {openScene} from './js/recorrido-escena.mjs?v=20261117-ficha-reserva';
+import {openScene} from './js/recorrido-escena.mjs?v=20261120-terrazas';
 import {localMediaDraft,isLocalMediaHost,readPublishedMedia} from './js/recorrido-medios.mjs?v=20261118-miniweb';
 const loadEditor=()=>import('./js/recorrido-constructor.mjs?v=20261115-nombre360');
 const q=s=>document.querySelector(s),status=q('[role=status]'),args=new URLSearchParams(location.search),slug=args.get('proyecto'),local=isLocalMediaHost();
@@ -91,7 +91,14 @@ async function main(){
      finally{clearTimeout(moduleTimer);}
    }
  }
- q('h1').textContent=scene.name;status.textContent='';
+ if(slug==='terrazas-del-piltri' && !isLocalMediaHost()){
+   const {presentarRecorridoTerrazas}=await import('/js/terrazas-comercial.mjs?v=20261120');
+   displayScene={...displayScene,name:'Terrazas del Piltriquitrón',title:'Terrazas del Piltriquitrón'};
+   let frame,root;
+   try{frame=window.frameElement;root=frame?.getRootNode();}catch{}
+   presentarRecorridoTerrazas(document,frame,root);
+ }
+ q('h1').textContent=displayScene.name;status.textContent='';
  const show=()=>openScene(displayScene,{...published,reviewMedia,reviewStart,detailStart,initialFlight,returnUrl:'/'+encodeURIComponent(slug),slug,lotId:args.get('lote')});
  button('Abrir recorrido',show);show();
 }

@@ -1197,12 +1197,19 @@ async function init() {
         miniwebPreviewConfig = {...miniwebPreviewConfig,medio:'foto'}
         if (Array.isArray(miniwebPreviewConfig.bloques)) miniwebPreviewConfig.bloques = miniwebPreviewConfig.bloques.map(b => b.tipo === 'portada' ? {...b,opciones:{...b.opciones,medio:'foto'}} : b)
       }
+      const comercial = slug==='terrazas-del-piltri' && !miniwebOverride && miniwebPreviewConfig?.estilo==='inmersivo'
+        ? await import('/js/terrazas-comercial.mjs?v=20261120') : null
+      if (comercial) {
+        if (['Terrazas del Piltriquitron','Terrazas del Piltri','Terrazas del Piltrí'].includes(p.nombre)) miniwebProject={...miniwebProject,nombre:'Terrazas del Piltriquitrón'}
+        miniwebPreviewConfig=comercial.configuracionTerrazas(miniwebPreviewConfig,miniwebProject)
+      }
       await mountMiniweb(mount, {project:miniwebProject, lots:allLotes, publicPage:true,
         compare:miniwebQa && miniwebParams.get('comparar') === '1',
         config:miniwebPreviewConfig,
         onContact: fields => enviarContactoSeguro({lote_id:fields.lote_id,nombre:fields.nombre,telefono:fields.telefono,email:fields.email,mensaje:`[${p.nombre}] ${fields.mensaje}`,proyecto_slug:slug,fuente:'proyecto_mini_form'},mount),
         onPdf: () => window.generarBrochure()
       })
+      if (comercial) comercial.presentarTerrazas(mount.shadowRoot,miniwebProject,allLotes)
       $('loading').remove()
       // Shadow DOM isolates the new compositions from legacy typography and GSAP.
       document.documentElement.style.background = '#0c1113'
