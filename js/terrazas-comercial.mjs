@@ -45,6 +45,7 @@ const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-actions{display
     #fotos-terrazas>figure:nth-child(n+4){display:none!important}
     #inicio .hero-actions a.primary{pointer-events:auto}
     @media(min-width:701px){.miniweb[data-propuesta] #inicio .hero-copy .hero-actions{display:none!important}}
+    @media(min-width:701px) and (max-width:800px){.miniweb.sale[data-propuesta] .nav-links>a[href="#lotes"]{display:inline-flex!important;align-items:center;min-height:44px}}
     #inicio[data-video-cover=pending] .hero-media>img{visibility:visible}
 
     #inicio .hero .scroll,#inicio .scroll{display:none!important}

@@ -1201,12 +1201,13 @@ async function init() {
         ? await import('/js/terrazas-comercial.mjs?v=20261120') : null
       if (comercial) {
         if (['Terrazas del Piltriquitron','Terrazas del Piltri','Terrazas del Piltrí'].includes(p.nombre)) miniwebProject={...miniwebProject,nombre:'Terrazas del Piltriquitrón'}
+        document.title=miniwebProject.nombre+' — Sur Patagonian'
         miniwebPreviewConfig=comercial.configuracionTerrazas(miniwebPreviewConfig,miniwebProject)
       }
       await mountMiniweb(mount, {project:miniwebProject, lots:allLotes, publicPage:true,
         compare:miniwebQa && miniwebParams.get('comparar') === '1',
         config:miniwebPreviewConfig,
-        onContact: fields => enviarContactoSeguro({lote_id:fields.lote_id,nombre:fields.nombre,telefono:fields.telefono,email:fields.email,mensaje:`[${p.nombre}] ${fields.mensaje}`,proyecto_slug:slug,fuente:'proyecto_mini_form'},mount),
+        onContact: fields => enviarContactoSeguro({lote_id:fields.lote_id,nombre:fields.nombre,telefono:fields.telefono,email:fields.email,mensaje:`[${miniwebProject.nombre}] ${fields.mensaje}`,proyecto_slug:slug,fuente:'proyecto_mini_form'},mount),
         onPdf: () => window.generarBrochure()
       })
       if (comercial) comercial.presentarTerrazas(mount.shadowRoot,miniwebProject,allLotes)
