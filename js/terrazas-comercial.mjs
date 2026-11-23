@@ -119,10 +119,18 @@ const captions=[
 // bloques guardados del proyecto. Deja la marca recursos.cierreTerrazas='bloques'; después de eso, lo que se edite
 // en el creador manda y esta función no vuelve a tocarlo. No lee ni cambia inventario, precios ni datos del proyecto.
 // Referencia visual: la maqueta final aprobada por Mariano (docs/maquetas/terrazas-miniweb-claude.html, sin parámetros).
-export const COMPOSICION_TERRAZAS='2026-11-23-maqueta';
+const COMPOSICION_ANTERIOR='2026-11-23-maqueta';
+export const COMPOSICION_TERRAZAS='2026-11-23-maqueta-portada';
 export const composicionTerrazasAplicada=config=>config?.recursos?.cierreTerrazas==='bloques';
 // Al día: ya tiene esta misma referencia. Una composición aplicada con una referencia anterior se puede actualizar desde el creador.
 export const composicionTerrazasAlDia=config=>composicionTerrazasAplicada(config)&&config.recursos.composicionTerrazas===COMPOSICION_TERRAZAS;
+function ajustarDegradePortada(portada){
+  const o=portada?.opciones;
+  if(!o || o.degradeActivo==='no' || (o.degradeColor && o.degradeColor!=='negro'))return;
+  if(Number(o.degradeAltura)===70 && Number(o.degradeArriba)===37 && Number(o.degradeAbajo)===14){
+    Object.assign(o,{degradeAltura:55,degradeArriba:18,degradeAbajo:0});
+  }
+}
 const ALBUMES_COMARCA=[
   ['Lagos y ríos',['c61ee28dead7c964','2980d1b50a912370','ac82dae29207022f','e2b9f604078ff8e5']],
   ['Montaña y nieve',['0be483c6d44d4d87','7b61fccdd4f0862d','5cc979b726b0eb41','0414b5cd3bd2d56e']],
@@ -141,6 +149,12 @@ const TEXTO_PROYECTO=[
 const FOTO_PROYECTO=['1794711682075-xb77j4wkq4i','167e03b4495662fce04b1a82'];
 export function aplicarComposicionTerrazas(original, project, contextPhotos=[]) {
   if(project?.slug!=='terrazas-del-piltri' || original?.estilo!=='inmersivo' || composicionTerrazasAlDia(original))return {config:original,aplicada:false,faltantes:[]};
+  if(composicionTerrazasAplicada(original) && original.recursos.composicionTerrazas===COMPOSICION_ANTERIOR){
+    const config=structuredClone(original);
+    ajustarDegradePortada(config.bloques?.find(b=>b.tipo==='portada'));
+    config.recursos.composicionTerrazas=COMPOSICION_TERRAZAS;
+    return {config,aplicada:true,faltantes:[]};
+  }
   const config=configuracionTerrazas(original,project),faltantes=[];
   const section=type=>config.bloques.find(b=>b.tipo===type && (type!=='panoramica360' || b.variante==='recorrido'));
   if(!section('experiencias'))config.bloques.push({id:'experiencias-comarca',tipo:'experiencias',variante:'albumes',activo:true,fuente:'editorial',contenido:{},opciones:{}});
@@ -162,7 +176,7 @@ export function aplicarComposicionTerrazas(original, project, contextPhotos=[]) 
   config.bloques=[...active.filter(b=>b!==last),...inactive,...(last?[last]:[])];
   config.controlBloques=1;config.medio='video';config.videoActivo=true;
   const edit=(type,change)=>{const b=section(type);if(b)change(b)};
-  edit('portada',b=>{Object.assign(b.opciones,{medio:'video',autoplay:'si'});b.contenido.titulo='Lotes en El Bolsón, Río Negro'});
+  edit('portada',b=>{Object.assign(b.opciones,{medio:'video',autoplay:'si'});ajustarDegradePortada(b);b.contenido.titulo='Lotes en El Bolsón, Río Negro'});
   edit('foto-texto',b=>{
     b.variante='foto-izquierda';
     Object.assign(b.opciones,{varianteManual:true,photoSize:50,enlaceLotes:'no',efectoFoto:'hover',efectoEntrada:'titulos',efectoDuracion:700});
@@ -472,30 +486,62 @@ function instalarInteracciones(root, project, lots) {
       .sel .card .acts [data-action="consult"] {grid-column:1/-1;min-height:50px;font-weight:700;font-size:19px}
       .sel .card .acts .reservation-note {grid-column:1/-1;font:inherit;font-size:14px;
         line-height:1.4;margin:0 0 4px;color:inherit}
-      /* Ficha del lote según la maqueta final (con la regla de estados). */
-      .sel[data-estados=regla] .card :is(.lot-name,.lot-area) {font-size:18px;font-weight:600}
-      @media (min-width:901px) {
-        .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card {width:min(480px,calc(100% - var(--list-width) - 130px))}
-        .sel[data-estados=regla] .card .acts [data-action="consult"] {font-size:16px!important}
+      /* Caja y jerarquía aprobadas para las fichas del plano fotográfico. */
+      .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card.show {
+        --sheet-pad:32px;--sheet-height:469px;--sheet-secondary:50px;
+        box-sizing:border-box;height:min(var(--sheet-height),calc(100% - 72px));max-height:none;
+        width:min(480px,calc(100% - var(--list-width,0px) - 130px));padding:var(--sheet-pad);
+        border:1px solid rgba(255,255,255,.12);border-radius:18px;
+        background:rgba(14,19,17,.55);box-shadow:none;backdrop-filter:blur(26px) saturate(1.1);
+        color:var(--ink);font:400 15px/1.4 Inter,system-ui,sans-serif;overflow:auto
       }
-      @media (max-width:900px) {
-        .sel[data-estados=regla] .card :is(.lot-name,.lot-area) {font-size:17px}
-        .sel[data-estados=regla] .card .sale-metrics {gap:6px!important}
-        .sel[data-estados=regla] .card .sale-price {letter-spacing:-.045em!important}
+      .sel[data-estados=regla] .card.show .top {row-gap:14px;padding-bottom:24px;border-bottom:1px solid #ffffff24}
+      .sel[data-estados=regla] .card.show .top .lot-name,
+      .sel[data-estados=regla] .card.show .top .lot-area {font-size:clamp(17px,1.25vw,18px);font-weight:600}
+      .sel[data-estados=regla] .card.show .top .st[data-available],
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) .top .st {
+        color:#34d17f;font-size:clamp(22px,1.67vw,24px);font-weight:600;letter-spacing:-.025em;
+        text-transform:uppercase;background:transparent;border:0;padding:0
       }
-      .sel[data-estados=regla] .card .sale-metrics {justify-content:flex-start;flex-wrap:nowrap;white-space:nowrap;gap:12px;margin:16px 0 8px;padding-top:20px;
-        border-top:1px solid rgba(255,255,255,.18)}
-      .sel[data-estados=regla] .card .sale-price {font-size:36px;font-weight:600;letter-spacing:-.01em}
-      .sel[data-estados=regla] .card .sale-unit {font-size:15px;font-weight:400}
-      .sel[data-estados=regla] .card .card-finance {margin:0 0 16px;font-size:15px;font-weight:400;line-height:1.4}
-      .sel[data-estados=regla] .card .acts [data-action="consult"] {min-height:56px;justify-content:center;text-align:center;
-        font-size:15.6px;font-weight:600}
-      .sel[data-estados=regla] .card .acts [data-action="consult"] > :not(span) {display:none}
-      .sel[data-estados=regla] .card .acts .btn:not([data-action="consult"]) {font-size:15px;font-weight:600}
-      .sel[data-estados=regla] .card:has([data-action="available"]):not([hidden]) {display:flex;flex-direction:column}
-      .sel[data-estados=regla] .card:has([data-action="available"]) .acts {margin-top:auto}
-      .sel[data-estados=regla] .card .acts [data-action="available"] {min-height:56px;justify-content:center;border:0;
-        background:var(--pal-accion,var(--accent));color:var(--pal-textoAccion,var(--accent-ink));font-size:15.6px;font-weight:600}
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) .top .st {color:#dc403c}
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) .st i {display:none}
+      .sel[data-estados=regla] .card.show .sale-metrics {
+        justify-content:space-between;flex-wrap:wrap;gap:8px;margin:24px 0 8px;padding:0;border:0
+      }
+      .sel[data-estados=regla] .card.show .sale-price {
+        font-size:36px;font-weight:600;letter-spacing:-.035em;font-variant-numeric:tabular-nums
+      }
+      .sel[data-estados=regla] .card.show .sale-unit {font-size:15px;font-weight:400}
+      .sel[data-estados=regla] .card.show .card-finance {margin:0 0 28px;font-size:15px;font-weight:400;line-height:1.4}
+      .sel[data-estados=regla] .card.show .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+      .sel[data-estados=regla] .card.show .acts .btn {
+        min-width:0;min-height:48px;height:var(--sheet-secondary,50px);justify-content:center;
+        padding:0 16px;border-radius:10px;font:600 15px/1.2 Inter,system-ui,sans-serif;letter-spacing:0
+      }
+      .sel[data-estados=regla] .card.show .acts .btn.go {
+        min-height:56px;height:56px;grid-column:1/-1;font-size:clamp(15px,4vw,16px);
+        background:var(--pal-accion,var(--accent));border-color:var(--pal-accion,var(--accent));color:var(--pal-textoAccion,var(--accent-ink))
+      }
+      .sel[data-estados=regla] .card.show .acts [data-action="consult"] > :not(span) {display:none}
+      .sel[data-estados=regla] .card.show .acts .btn:not(.go) {background:transparent;color:#ecedee;border:1px solid #ecedee99}
+      .sel[data-estados=regla] .card.show .acts .btn:not(.go):hover {background:rgba(255,255,255,.1)}
+      .sel[data-estados=regla] .card.show .acts [data-action="compare"] {display:none}
+      .sel[data-estados=regla] .card.show .acts:not(:has([data-action="brochure"])) .btn:not([data-action]) {grid-column:1/-1}
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) {display:flex;flex-direction:column}
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) .acts {margin-top:auto;padding-bottom:calc(var(--sheet-secondary,50px) + 12px)}
+      @media(max-width:900px) {
+        .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card.show {
+          --sheet-pad:18px;--sheet-height:450px;--sheet-secondary:48px;
+          width:calc(100% - 24px);height:var(--sheet-height);max-height:none
+        }
+        .sel[data-estados=regla].photo-plan:is(:fullscreen,.tour-expanded):not([data-list-only=true]) .card.show {
+          max-height:calc(100% - var(--selector-clear,24px))
+        }
+      }
+      @media(max-width:365px) {
+        .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card.show {--sheet-pad:12px;--sheet-height:474px}
+        .sel[data-estados=regla] .card.show .acts .btn {padding-inline:6px}
+      }
       .sel[data-estados=regla] .card .solo-lectores {position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
         clip-path:inset(50%);white-space:nowrap}
       @media (max-width:900px) {
@@ -517,7 +563,6 @@ function instalarInteracciones(root, project, lots) {
     }
     new MutationObserver(showRelevantFilters).observe(chips, {childList:true});
     showRelevantFilters();
-    const cardHeights = {};
     function improveSelection() {
       const action = card?.querySelector('[data-action="consult"]');
       const top = card?.querySelector('.top');
@@ -541,13 +586,6 @@ function instalarInteracciones(root, project, lots) {
       surface.textContent = area;
       surface.setAttribute('aria-label','Superficie: ' + area);
       top.append(surface);
-      // Decisión de Mariano para Terrazas: la ficha no cambia de tamaño entre un lote disponible y uno vendido.
-      // Se guarda el alto de la ficha disponible en cada ancho y la del vendido lo iguala; la acción queda abajo.
-      if (rule) {
-        const key = innerWidth <= 900 ? 'movil' : 'ancha';
-        if (sold) card.style.minHeight = (cardHeights[key] || (key === 'movil' ? 388 : 413)) + 'px';
-        else { card.style.minHeight = ''; requestAnimationFrame(() => { if (!card.hidden && !card.querySelector('[data-action="available"]')) cardHeights[key] = card.offsetHeight; }); }
-      }
       if (sold) { facts.remove(); return; }
       const metrics = document.createElement('div');
       metrics.className = 'sale-metrics';
@@ -668,7 +706,10 @@ export function presentarRecorridoTerrazas(doc, frame=null, root=null) {
     {
       const W = doc.defaultView;
       const initialStation = 'detalle-0323';
-      const requestedLot = new URL(frame?.src || doc.location.href, doc.location.href).searchParams.has('lote');
+      const entry = new URL(frame?.src || doc.location.href, doc.location.href).searchParams;
+      const parentEntry = frame && new URL(frame.ownerDocument.location.href).searchParams;
+      const requestedView = entry.has('lote') || ['detalle','vista','revision'].some(key => entry.has(key) || parentEntry?.has(key));
+      let entered = false;
       const css = doc.createElement('style');
       css.textContent = `
         .rg-tour .paso-visual {
@@ -757,28 +798,13 @@ export function presentarRecorridoTerrazas(doc, frame=null, root=null) {
         tour.append(button);
         }
 
-        if (requestedLot || !Array.from(selector.options).some(option => option.value === initialStation)) return;
-        selector.value = initialStation;
-        selector.dispatchEvent(new W.Event('change', {bubbles:true}));
-        // En el encuadre de entrada se ven ambas calles y la cordillera hacia el este.
-        const status = tour.querySelector('[data-panorama-state]');
-        if (!status) return;
-        const aim = () => {
-          if (selector.value !== initialStation || status.dataset.panoramaState === 'error') { ready.disconnect(); return; }
-          if (status.dataset.panoramaState !== 'ready') return;
-          const canvas = tour.querySelector('.rg-stage canvas');
-          const bearing = Number(tour.querySelector('.rg-compass')?.textContent.match(/(\d+)°/)?.[1]);
-          if (!canvas || !Number.isFinite(bearing)) return;
-          ready.disconnect();
-          const degrees = ((94 - bearing + 540) % 360) - 180;
-          canvas.dispatchEvent(new W.CustomEvent('mw-inline-turn', {detail:{delta: -degrees * Math.PI / 180 / .005}}));
-          canvas.dispatchEvent(new W.KeyboardEvent('keydown', {key:'ArrowUp',bubbles:true}));
-          canvas.dispatchEvent(new W.KeyboardEvent('keydown', {key:'ArrowUp',bubbles:true}));
-        };
-        const ready = new W.MutationObserver(aim);
-        ready.observe(status, {attributes:true, attributeFilter:['data-panorama-state']});
-        aim();
-        tour.addEventListener('close', () => {ready.disconnect();nativeState?.disconnect()}, {once:true});
+        tour.addEventListener('close', () => nativeState?.disconnect(), {once:true});
+        if (entered || requestedView || !Array.from(selector.options).some(option => option.value === initialStation)) return;
+        entered = true;
+        if (selector.value !== initialStation) {
+          selector.value = initialStation;
+          selector.dispatchEvent(new W.Event('change', {bubbles:true}));
+        }
       }
       const arrival = new W.MutationObserver(mountEntry);
       arrival.observe(doc.body, {childList:true});

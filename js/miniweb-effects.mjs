@@ -113,6 +113,19 @@ export function mountVisualResources(scope,active,{app,editing=false,project={}}
  let style=scope.getRootNode().querySelector('style[data-visual-resources]');if(!style){style=doc.createElement('style');style.dataset.visualResources='';style.textContent=css;scope.getRootNode().append(style)}
  const cleanup=(fn)=>undo.push(fn),animate=(node,frames,o,delay=0)=>{if(!node||reduce.matches||mobile.matches&&o.efectoMovil!=='si')return;const a=node.animate(frames,{duration:clamp(Number(o.efectoDuracion)||900,200,2000),delay,easing:'cubic-bezier(.23,1,.32,1)',fill:'none'});animations.push(a)},cls=(n,c)=>{n.classList.add(c);cleanup(()=>n.classList.remove(c))};
  const observe=(node,fn)=>{let seen=false;const io=new win.IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&!seen){seen=true;fn();io.disconnect()}},{threshold:.08});io.observe(node);observers.push(io)};
+ if(project.slug==='terrazas-del-piltri' && app.hasAttribute('data-composicion-terrazas')){
+  const pauseHover=()=>app.removeAttribute('data-editorial-pointer');
+  app.addEventListener('pointermove',event=>{
+   if(event.pointerType==='mouse' && !event.buttons && (event.movementX || event.movementY)){
+    app.setAttribute('data-editorial-pointer','');
+   }
+  },{passive:true,signal});
+  app.addEventListener('wheel',pauseHover,{passive:true,signal});
+  win.addEventListener('scroll',pauseHover,{passive:true,signal});
+  const nav=app.querySelector('.project-nav');
+  if(nav)scrolls.push(()=>nav.toggleAttribute('data-editorial-compact',win.scrollY>160));
+  cleanup(()=>{pauseHover();nav?.removeAttribute('data-editorial-compact')});
+ }
  for(const {b,node} of active){
   const o=b.opciones||{},motion=()=>!reduce.matches&&(!mobile.matches||o.efectoMovil==='si'),duration=clamp(Number(o.efectoDuracion)||900,200,2000),strength=clamp(Number(o.efectoIntensidad)||35,1,100)/100;
   if(['titulos','mascara','subir','cifras'].includes(o.efectoEntrada))observe(node,async()=>{if(o.efectoEntrada==='titulos')await doc.fonts?.ready;if(signal.aborted||!node.isConnected||!motion())return;let targets=[];if(o.efectoEntrada==='titulos'){node.querySelectorAll(b.tipo==='intro'?':scope>p,.intro-copy p,h2':'h1,h2,blockquote').forEach(h=>{const original=[...h.childNodes],text=h.textContent.trim(),width=Math.max(1,h.getBoundingClientRect().width),font=win.getComputedStyle(h),canvas=doc.createElement('canvas'),ctx=canvas.getContext('2d');if(!ctx||h.querySelector('br')){targets.push(h);return}ctx.font=font.font||[font.fontStyle,font.fontWeight,font.fontSize,font.fontFamily].join(' ');const lines=[];let line='';for(const word of text.split(/\s+/)){if(line&&ctx.measureText(line+' '+word).width>width){lines.push(line);line=word}else line+=(line?' ':'')+word}if(line)lines.push(line);h.replaceChildren(...lines.map(line=>{const span=doc.createElement('span');span.style.display='block';span.textContent=line;return span}));targets.push(...h.children);let restored=false;const restore=()=>{if(restored)return;restored=true;h.replaceChildren(...original)};cleanup(restore);win.addEventListener('resize',restore,{once:true,signal})})}else targets=[...node.querySelectorAll(o.efectoEntrada==='mascara'?'figure,.media-figure,.scene-image,:scope>img':o.efectoEntrada==='cifras'?'.cifras .shell>div,.block-specs>div':['galeria','asi-se-vive'].includes(b.tipo)?'.photo-grid>figure,.rhythm-track>figure':':scope>header,:scope>div,:scope>figure')].filter(t=>t.getClientRects().length);targets.forEach((t,i)=>animate(t,o.efectoEntrada==='mascara'?[{clipPath:'inset(100% 0 0 0)'},{clipPath:'inset(0 0 0 0)'}]:[{opacity:0,transform:`translateY(${18+strength*20}px)`},{opacity:1,transform:'none'}],o,Math.min(i*90,600)))});

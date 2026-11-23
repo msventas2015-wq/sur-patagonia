@@ -273,17 +273,21 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
 }
 /* Estados del plano según las reglas de las miniwebs (opción estadosPlano='regla' del bloque Explorador). Sin la opción, cada proyecto conserva sus colores. */
 .sel[data-estados=regla] .lot[data-state=disponible]:not(.nov){fill:#3FA66A;fill-opacity:.42}
+.sel[data-estados=regla] .lot[data-state=disponible]:not(.nov):where(:not(.on,.cmp,.from-list)){stroke:#eaf7ef}
 .sel[data-estados=regla] .lot[data-state=disponible]:not(.nov):is(:hover,:focus-visible){fill-opacity:.62}
 .sel[data-estados=regla] .lot[data-state=disponible]:not(.nov):is(.on,.cmp){fill-opacity:.72}
-.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov),.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov):hover{fill:#14181A;fill-opacity:.45;stroke:#fff;stroke-opacity:.35;stroke-dasharray:none}
+.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov),.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov):hover{fill:#14181a;fill-opacity:.45;stroke:#fff;stroke-opacity:.35;stroke-dasharray:none}
 .sel[data-estados=regla] .lot[data-state=vendido]:is(.on,.cmp){fill-opacity:.6;stroke-opacity:1}
 .state-legend{position:absolute;left:16px;bottom:16px;z-index:1;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;max-width:calc(100% - 32px);box-sizing:border-box;padding:10px 16px;border-radius:10px;font:400 15px/1.2 var(--body,Inter,Arial,sans-serif);color:#f4f3ef;pointer-events:none}
 .state-legend span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .state-legend i{width:12px;height:12px;border-radius:2px;flex:none}
 .state-legend b{font-weight:600}
 .state-legend .sold{font-weight:600;letter-spacing:.03em}
-.sel[data-estados=regla] .lot[data-state].from-list:not(.nov){stroke:#fff;stroke-width:3;stroke-opacity:1;filter:drop-shadow(0 0 2px #14181a)}
-.sel[data-estados=regla] .row.from-map{background:var(--panel2);box-shadow:inset 0 0 0 1px var(--c)}
+.sel[data-estados=regla] .lot[data-state].from-list:not(.nov){stroke:#fff;stroke-width:4;stroke-opacity:1;transition:none;filter:drop-shadow(0 0 2px #18211d)}
+.sel[data-estados=regla] .row.from-map{background:var(--panel2)}
+.lot-hover{position:absolute;z-index:8;pointer-events:none;max-width:calc(100% - 8px);padding:10px 14px;border-radius:12px;color:var(--ink);background:rgba(14,19,17,.55);backdrop-filter:blur(26px) saturate(1.1);line-height:1.35}
+.lot-hover b{display:block;font-size:15px;font-weight:600}
+.lot-hover span{font-size:13px;color:var(--soft)}
 .row [data-lot-status]{font-weight:inherit}
 .sel[data-estados=regla] .row :is([data-lot-status=disponible],[data-lot-status=vendido]),
 .sel[data-estados=regla] .card:has([data-action=available]) .st{font-weight:700;text-transform:uppercase;color:var(--c)}
@@ -297,14 +301,54 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
 
 /* Regla de las miniwebs en pantallas anchas: filtros dentro de la lista y plano sin botones encima. */
 .sel[data-list-filters] .head :is(.chips,.zone-filters){display:none}
-.sel[data-list-filters] .side header{flex-wrap:wrap;gap:10px}
+.sel[data-list-filters] .side header{flex-wrap:wrap;gap:12px;padding:14px 16px 16px}
 .sel[data-list-filters] .side header .count{order:0;flex:1 1 calc(100% - 60px)}
-.sel[data-list-filters] .side header :is(.list-close,.list-hide){order:1}
-.sel[data-list-filters] .side header select{order:2;margin-left:0;flex:1 1 calc(50% - 5px);min-width:0;height:40px}
-.sel[data-list-filters] .side header .order{order:3;flex:1 1 100%}
+.sel[data-list-filters] .side header :is(.list-close,.list-hide){order:1;margin-bottom:2px}
+.sel[data-list-filters] .side header select{
+ order:2;margin:0;min-width:0;max-width:none;height:44px;appearance:none;
+ padding:0 32px 0 11px;border:1px solid #ecedee66;color:var(--ink);font-size:15px;font-weight:400;
+ background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 6 5 5 5-5' fill='none' stroke='%23ecedee' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center / 14px 14px
+}
+.sel[data-list-filters] .f-state{flex:1 1 175px}
+.sel[data-list-filters] .f-zone{flex:1 1 159px}
+.sel[data-list-filters] .side header .order{order:3;flex:1 1 100%;font-size:13px}
+.sel[data-list-filters] .side header option{color:#12181a}
+@media(forced-colors:active){.sel[data-list-filters] .side header select{appearance:auto;background-image:none}}
 /* Esconder la lista en pantallas anchas: el plano ocupa todo el ancho y muestra la foto entera. */
 .list-hide{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;border:1px solid color-mix(in srgb,currentColor 40%,transparent);background:transparent;color:inherit;cursor:pointer}
 .list-hide:hover,.list-show:hover{background:#ffffff14}
 .list-hide[hidden],.list-show[hidden]{display:none}
 .list-show{position:absolute;right:clamp(16px,3vw,44px);top:clamp(16px,2.6vw,36px);z-index:6;display:inline-flex;align-items:center;min-height:48px;padding:0 16px;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer}
+.sel[data-list-filters] .list-show{gap:10px;color:var(--ink);background:rgba(14,19,17,.55);backdrop-filter:blur(26px) saturate(1.1);border:1px solid #ffffff1f;box-shadow:none}
+.sel[data-list-filters] .list-show::before{content:"";width:7px;height:7px;border:solid currentColor;border-width:0 0 1.5px 1.5px;transform:rotate(45deg)}
 @media(min-width:901px){.sel[data-list-panel-hidden]{--list-width:0px!important}.sel[data-list-panel-hidden] :is(.side,.list-backdrop,.list-tab){display:none!important}}
+/* Fila de la lista según la maqueta final (regla de estados): dos renglones, sin la zona, estado en color y precio más grande. */
+.sel[data-estados=regla] .side{font-family:Inter,system-ui,sans-serif;font-weight:400}
+.sel[data-estados=regla] .row{grid-template-columns:auto minmax(0,1fr) auto;column-gap:10px;min-height:62px;padding:10px 12px}
+.sel[data-estados=regla] .row .n{height:40px;font-weight:600;font-size:15px}
+.sel[data-estados=regla] .row .t b{font-size:15px;font-weight:600}
+.sel[data-estados=regla] .row .zone-tag{display:none}
+.sel[data-estados=regla] .row .t>span:last-child{font-size:13px;font-weight:400;white-space:nowrap}
+.sel[data-estados=regla] .row [data-lot-status]{font-size:14px;white-space:nowrap}
+.sel[data-estados=regla] .row:not([aria-current=true]) [data-lot-status=disponible]{color:#7fd6a0}
+.sel[data-estados=regla] .row:not([aria-current=true]) [data-lot-status=vendido]{color:#ef9492}
+.sel[data-estados=regla] .row[aria-current=true] [data-lot-status=disponible]{color:#176a40}
+.sel[data-estados=regla] .row[aria-current=true] [data-lot-status=vendido]{color:#9e302d}
+.sel[data-estados=regla] .row:has([data-lot-status=disponible]) .n{box-shadow:inset 3px 0 0 #24A860}
+.sel[data-estados=regla] .row:has([data-lot-status=vendido]) .n{box-shadow:inset 3px 0 0 #DC403C}
+.sel[data-estados=regla] .row .p{font-size:16px;font-weight:700;white-space:nowrap}
+.sel[data-estados=regla] .row .p span{font-size:13px;font-weight:400}
+@media(max-width:900px){
+ .sel[data-list-filters] .side header .list-hide{order:2;flex:none;margin:-4px calc(100% - 40px) 0 0}
+ .sel[data-list-filters] .list-tab{font-size:15px}
+ .sel[data-list-filters] .side header :is(.f-state,.f-zone){order:3}
+ .sel[data-list-filters] .side header .order{order:4}
+ .sel[data-estados=regla] .row .n{width:40px;min-width:40px;font-size:17px}
+ .sel[data-estados=regla] .row .t>span:last-child{white-space:normal}
+}
+/* Los rótulos conservan su tamaño de lectura al acercar el plano. */
+.sel[data-estados=regla] .lot-number[data-caption]{font-family:Inter,system-ui,sans-serif;color:white;fill:white;stroke:none}
+.plan-caption{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;white-space:nowrap;line-height:1}
+.sel[data-estados=regla] .lot-number[data-caption=metros]{font-weight:400;letter-spacing:0;opacity:.92}
+.plan-caption small{font-size:66.6667%;margin-left:1px}
+.sel[data-estados=regla] .lot-number[data-caption=vendido]{font-weight:600;opacity:.8;letter-spacing:.03em;text-transform:uppercase}

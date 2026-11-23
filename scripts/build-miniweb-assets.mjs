@@ -3,10 +3,10 @@ import { dirname } from "node:path";
 import { createHash } from "node:crypto";
 
 const m = JSON.parse(await readFile("worker/miniweb-public-assets.json", "utf8"));
-if (m.version !== 1 || m.assets.length !== 723 || m.runtime.length !== 28)
+if (m.version !== 1 || m.assets.length !== 772 || m.runtime.length !== 28)
   throw Error("manifest_invalid");
 const all = [...m.assets, ...m.runtime];
-if (new Set(all.map(f => f.path)).size !== 751) throw Error("duplicate_path");
+if (new Set(all.map(f => f.path)).size !== 800) throw Error("duplicate_path");
 
 for (const f of all) {
   if (typeof f.path !== "string" || f.path.startsWith("/") ||
