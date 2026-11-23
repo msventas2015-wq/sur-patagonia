@@ -1,6 +1,21 @@
 const CACHE_PREFIX = 'sur-patagonia-admin-';
 const CACHE_NAME = CACHE_PREFIX + 'v11';
 
+// Los módulos del creador pueden cambiar sin que cambie la URL de sus imports.
+const MINIWEB_MODULES = new Set([
+  '/js/ficha-lote-recorrido.mjs',
+  '/js/miniweb-360.mjs',
+  '/js/miniweb-blocks.mjs',
+  '/js/miniweb-design.mjs',
+  '/js/miniweb-selector.mjs',
+  '/js/miniweb.mjs',
+  '/js/recorrido-escena.mjs',
+  '/js/recorrido-medios.mjs',
+  '/js/recorrido-paseo.mjs',
+  '/js/recorrido-visor-medios.mjs',
+  '/js/terrazas-comercial.mjs',
+]);
+
 const STATIC_ASSETS = [
   '/assets/admin-icon-192.png',
   '/assets/admin-icon-512.png',
@@ -55,6 +70,19 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(req).catch(() => caches.match(req))
     );
+    return;
+  }
+
+  // Revalidar incluso las URL con un sello de versión anterior. Conservar
+  // la última respuesta válida para cuando el administrador esté sin conexión.
+  if (url.origin === self.location.origin && MINIWEB_MODULES.has(url.pathname)) {
+    event.respondWith(fetch(req, { cache: 'no-cache' }).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(req, copy)));
+      }
+      return response;
+    }).catch(async () => (await caches.match(req)) || Response.error()));
     return;
   }
 
