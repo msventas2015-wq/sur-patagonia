@@ -192,7 +192,7 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
 .list-close{display:none}.selector-touch-hint{position:absolute;z-index:6;left:50%;top:132px;translate:-50% 0;width:max-content;max-width:calc(100% - 32px);padding:10px 14px;border-radius:8px;background:var(--panel);color:var(--ink);font-size:14px;pointer-events:none;text-align:center}
 .sel:fullscreen,.sel.tour-expanded{position:fixed;inset:0;z-index:2147483646;width:100vw;height:100dvh!important;max-height:none;min-height:0;margin:0;border-radius:0}
 @media(max-width:900px){
- :host([data-compact=true]:not([data-list-only=true])){height:var(--selector-height)!important;min-height:0!important;max-height:none!important}
+ :host([data-compact=true]:not([data-list-only=true])){height:max(var(--selector-height),var(--selector-needed,0px))!important;min-height:0!important;max-height:none!important}
  .sel:not([data-list-only=true]){display:block;height:100%;min-height:0;scroll-margin-top:96px}
  .sel:not([data-list-only=true]) .map{position:absolute;inset:0;width:100%;height:100%;min-height:0;touch-action:pan-y}
  .sel:is(:fullscreen,.tour-expanded) .map{touch-action:none}
@@ -259,3 +259,38 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
  .photo-plan .card .acts{display:flex;flex-wrap:wrap;gap:6px}
  .photo-plan .card .acts .btn{flex:1 1 auto;min-height:44px}
 }
+
+/* Ficha comercial de la miniweb. El nombre y la superficie tienen sus propios renglones en teléfono. */
+@media(max-width:700px){
+ .sel.photo-plan:not([data-list-only=true]) .card:has(.lot-name){
+  --lot-card-width:calc(100% - 24px);--lot-card-padding:18px;
+  inset:auto 12px 12px;width:var(--lot-card-width);max-width:none;box-sizing:border-box;
+ }
+ .sel .card.show .top:has(.lot-name) .lot-name{grid-column:1/-1;grid-row:2;white-space:normal;overflow-wrap:normal}
+ .sel .card.show .top:has(.lot-name) .lot-area{grid-column:1/-1;grid-row:3;justify-self:start}
+ .sel .card.show .top:has(.lot-name) .lot-zone{grid-column:1/-1;grid-row:4}
+ .sel .card.show:has(.lot-name) .sale-price{white-space:nowrap}
+}
+/* Estados del plano según las reglas de las miniwebs (opción estadosPlano='regla' del bloque Explorador). Sin la opción, cada proyecto conserva sus colores. */
+.sel[data-estados=regla] .lot[data-state=disponible]:not(.nov){fill:#3FA66A;fill-opacity:.42}
+.sel[data-estados=regla] .lot[data-state=disponible]:not(.nov):is(:hover,:focus-visible){fill-opacity:.62}
+.sel[data-estados=regla] .lot[data-state=disponible]:not(.nov):is(.on,.cmp){fill-opacity:.72}
+.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov),.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov):hover{fill:#14181A;fill-opacity:.45;stroke:#fff;stroke-opacity:.35;stroke-dasharray:none}
+.sel[data-estados=regla] .lot[data-state=vendido]:is(.on,.cmp){fill-opacity:.6;stroke-opacity:1}
+.state-legend{position:absolute;left:16px;bottom:16px;z-index:1;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;max-width:calc(100% - 32px);box-sizing:border-box;padding:10px 16px;border-radius:10px;font:400 15px/1.2 var(--body,Inter,Arial,sans-serif);color:#f4f3ef;pointer-events:none}
+.state-legend span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.state-legend i{width:12px;height:12px;border-radius:2px;flex:none}
+.state-legend b{font-weight:600}
+.state-legend .sold{font-weight:600;letter-spacing:.03em}
+.sel[data-estados=regla] .lot[data-state].from-list:not(.nov){stroke:#fff;stroke-width:3;stroke-opacity:1;filter:drop-shadow(0 0 2px #14181a)}
+.sel[data-estados=regla] .row.from-map{background:var(--panel2);box-shadow:inset 0 0 0 1px var(--c)}
+.row [data-lot-status]{font-weight:inherit}
+.sel[data-estados=regla] .row :is([data-lot-status=disponible],[data-lot-status=vendido]),
+.sel[data-estados=regla] .card:has([data-action=available]) .st{font-weight:700;text-transform:uppercase;color:var(--c)}
+.sel[data-estados=regla] .row[aria-current=true] [data-lot-status]{color:inherit}
+.sel[data-estados=regla] .card [data-action=available]{grid-column:1/-1}
+.sel[data-estados=regla] .zone-ring[data-availability=vendido] foreignObject div{border-color:#f4f3ef!important}
+.sel[data-estados=regla] .card .acts .btn.go{background:var(--pal-accion,var(--accent));color:var(--pal-textoAccion,var(--accent-ink));justify-content:center}
+.sel[data-estados=regla] .card.show .top .st[data-available]{color:#3fa66a}
+/* Leyenda de estados en pantallas angostas: va por encima de la fila de zoom y «Ver lista», y se retira mientras hay una ficha o una comparación abierta. */
+@media(max-width:900px){.state-legend{left:14px;bottom:calc(24px + 54px + 10px);max-width:calc(100% - 28px)}.sel:has(.card.show,.tray.show) .state-legend,.sel.mobile-list-open .state-legend{display:none}}

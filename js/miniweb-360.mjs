@@ -320,6 +320,8 @@ body{position:fixed!important;top:${-origin.y}px!important;left:${-origin.x}px!i
  };
  doc.addEventListener('keydown',exitWithEscape,{signal});
  doc.addEventListener('recorrido-toque-fondo',()=>{if(exploring&&usePhoto())leave();},{signal});
+ // La ficha de un lote vendido pide ver los disponibles: se sale del panorama y se avisa al selector de la misma miniweb.
+ doc.addEventListener('recorrido-ver-disponibles',()=>{if(exploring)leave();stage.dispatchEvent(new CustomEvent('mw-ver-disponibles',{bubbles:true,composed:true}));},{signal});
  stage.addEventListener('miniweb-tour-collapse',leave,{signal});
  bar.addEventListener('keydown',exitWithEscape,{signal});
  media.addEventListener('change',sync,{signal});

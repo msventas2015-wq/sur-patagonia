@@ -31,6 +31,11 @@ export function mediaURL(value, {local = false, origin = globalThis.location?.or
   } catch { return ''; }
 }
 
+export function projectBrochureURL(value,options) {
+  const url=mediaURL(value,options);
+  return url && /\.pdf$/i.test(new URL(url).pathname) ? url : '';
+}
+
 export function mediaList(config, lotId = '', {local = false} = {}) {
   const lot = object(config?.lotes?.[lotId]);
   const record = lotId ? object(lot.recorrido) : object(config?.recorrido);
@@ -407,7 +412,7 @@ export async function readPublishedMedia(slug,{visitorTour=false}={}) {
   const draftReview = visitorTour && terrazasTourQA(slug);
   const withFinancing = visitorTour && slug === 'terrazas-del-piltri';
   const project = supabase.from(draftReview ? 'proyectos' : 'proyectos_publicos_v1')
-    .select(withFinancing ? 'id,tema,financiacion' : 'id,tema').eq('slug',slug);
+    .select(['id','tema',...(visitorTour?['brochure_url']:[]),...(withFinancing?['financiacion']:[])].join(',')).eq('slug',slug);
   const result = await (draftReview ? project.eq('id',TERRAZAS_QA_ID).in('estado',['activo','borrador']) : project.eq('estado','activo')).maybeSingle();
   if (result.error) throw Error('No se pudieron consultar los medios del proyecto.');
   if (!result.data) return null;
@@ -418,7 +423,7 @@ export async function readPublishedMedia(slug,{visitorTour=false}={}) {
   // Lectura tolerante por elemento en mediaList: un archivo roto no oculta otros lotes.
   const {data:lots,error} = await leerInventarioCompleto(supabase,id,'id,numero,superficie_m2,precio_usd,estado,tipo_lote,frente_agua,notas');
   if (error) throw Error('No se pudieron leer las fichas públicas de los lotes.');
-  return {config,financing:result.data.financiacion,projectId:id,lots,lotIds:new Set(lots.map(l => l.id))};
+  return {config,brochureUrl:result.data.brochure_url,financing:result.data.financiacion,projectId:id,lots,lotIds:new Set(lots.map(l => l.id))};
 }
 
 function localDB() {

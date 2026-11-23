@@ -1,3 +1,5 @@
+import {rotularLotesTerrazas} from './ficha-lote-recorrido.mjs';
+
 const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-actions{display:flex!important;justify-content:center;align-items:center;margin:24px auto 0;gap:0}
     .miniweb[data-propuesta] .hero .hero-actions>:not(.primary){display:none!important}
     .miniweb[data-propuesta] .hero .hero-actions a.primary{
@@ -98,7 +100,7 @@ const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-actions{display
     @media(max-width:700px){
       .miniweb.sale[data-propuesta] #lotes.selector-aprobado>.approved-selector-host:not([data-list-only=true]){
         --selector-height:clamp(440px,145vw,580px)!important;
-        height:var(--selector-height)!important;min-height:0!important
+        height:max(var(--selector-height),var(--selector-needed,0px))!important;min-height:0!important
       }
     }`;
 
@@ -113,10 +115,90 @@ const captions=[
       'El desarrollo y las viviendas de su entorno.',
       'El terreno, el bosque y el perfil de los cerros.'
     ];
+// Composición aprobada por Mariano (referencia del 23-nov-2026). Se aplica UNA vez, desde el creador, sobre los
+// bloques guardados del proyecto. Deja la marca recursos.cierreTerrazas='bloques'; después de eso, lo que se edite
+// en el creador manda y esta función no vuelve a tocarlo. No lee ni cambia inventario, precios ni datos del proyecto.
+export const COMPOSICION_TERRAZAS='2026-11-23';
+export const composicionTerrazasAplicada=config=>config?.recursos?.cierreTerrazas==='bloques';
+const ALBUMES_COMARCA=[
+  ['Lagos y ríos',['c61ee28dead7c964','2980d1b50a912370','ac82dae29207022f','e2b9f604078ff8e5']],
+  ['Montaña y nieve',['0be483c6d44d4d87','7b61fccdd4f0862d','5cc979b726b0eb41','0414b5cd3bd2d56e']],
+  ['Pesca y aire libre',['a24a7211062faa15','2243e07b50dd79cf','bc5f75c516ca4648','45fd2312e0d4a358']],
+  ['Bosque y fauna',['c318e4049325a195','e74a90a5fd1108a7','874a44205e1c833e']],
+  ['Caminos y pueblos',['3c96aa7b32c90f79','2b1ef1c260b986b6','a0da53d3615df1df']],
+  ['Sabores de la Comarca',['65d310a82343603a','d35c0164bb2fa940','9b4057fb27d52781']]
+];
+const TEXTO_PROYECTO=[
+  'Terrazas del Piltriquitrón es un desarrollo residencial de 80 lotes ubicado sobre la calle Islas Malvinas, en el área céntrica de El Bolsón. A pocas cuadras de la avenida San Martín y de la Plaza Pagano, el barrio ofrece lotes con vista directa al cerro Piltriquitrón.',
+  'La urbanización incluye la instalación subterránea de las redes de servicios (luz, gas, agua, cloacas y fibra óptica). El barrio cuenta con un código de edificación que ordena su crecimiento. Cada lote admite hasta dos unidades, para vivienda permanente, residencia familiar o inversión.',
+  'Las obras se encuentran en marcha, con un avance aproximado del 70 %. El proyecto ofrece planes de financiación.'
+].join('\n\n');
+// La foto de «El proyecto» se busca por su clave dentro de las fotos del propio proyecto: cada entorno guarda sus medios en otra dirección.
+// Es la misma fotografía con dos nombres: el del banco del proyecto en QA y en producción, y el del respaldo local.
+const FOTO_PROYECTO=['1794711682075-xb77j4wkq4i','167e03b4495662fce04b1a82'];
+export function aplicarComposicionTerrazas(original, project, contextPhotos=[]) {
+  if(project?.slug!=='terrazas-del-piltri' || original?.estilo!=='inmersivo' || composicionTerrazasAplicada(original))return {config:original,aplicada:false,faltantes:[]};
+  const config=configuracionTerrazas(original,project),faltantes=[];
+  const section=type=>config.bloques.find(b=>b.tipo===type && (type!=='panoramica360' || b.variante==='recorrido'));
+  if(!section('experiencias'))config.bloques.push({id:'experiencias-comarca',tipo:'experiencias',variante:'albumes',activo:true,fuente:'editorial',contenido:{},opciones:{}});
+  const order=['portada','foto-texto','cifras','financiacion','servicios','panoramica360','explorador','galeria','experiencias','ubicacion','contacto','comercializacion'];
+  for(const type of order)if(!section(type))faltantes.push('bloque '+type);
+  const active=order.map(section).filter(Boolean),inactive=config.bloques.filter(b=>!active.includes(b));
+  for(const b of active){
+    b.activo=true;b.opciones={...b.opciones};b.contenido={...b.contenido};
+    if(!['portada','comercializacion'].includes(b.tipo))Object.assign(b.opciones,{tituloSeccion:44,espacioArriba:136,espacioAbajo:136,espacioArribaMovil:40,espacioAbajoMovil:40});
+  }
+  // En estas uniones, cada bloque aporta la mitad del espacio entre piezas del mismo tema.
+  for(const [first,second] of [['cifras','financiacion'],['financiacion','servicios']]){
+    if(!section(first)||!section(second))continue;
+    Object.assign(section(first).opciones,{espacioAbajo:24,espacioAbajoMovil:16});
+    Object.assign(section(second).opciones,{espacioArriba:24,espacioArribaMovil:16});
+  }
+  for(const b of inactive)b.activo=false;
+  const last=active.find(b=>b.tipo==='comercializacion');
+  config.bloques=[...active.filter(b=>b!==last),...inactive,...(last?[last]:[])];
+  config.controlBloques=1;config.medio='video';config.videoActivo=true;
+  const edit=(type,change)=>{const b=section(type);if(b)change(b)};
+  edit('portada',b=>{Object.assign(b.opciones,{medio:'video',autoplay:'si'});b.contenido.titulo='Lotes · El Bolsón, Río Negro'});
+  edit('foto-texto',b=>{
+    b.variante='foto-izquierda';
+    Object.assign(b.opciones,{varianteManual:true,photoSize:50,enlaceLotes:'no',efectoFoto:'hover',efectoEntrada:'titulos',efectoDuracion:700});
+    Object.assign(b.contenido,{titulo:'El proyecto:',texto:TEXTO_PROYECTO,alt:'Vista aérea del loteo y de la cordillera en El Bolsón',rotulo:''});
+    const bank=[...(project.fotos||[]),...(project.media_bank||[]).map(item=>item?.url)].filter(url=>typeof url==='string');
+    const photo=FOTO_PROYECTO.map(key=>bank.find(url=>url.includes(key))).find(Boolean);
+    if(photo)b.contenido.imagen=photo;else faltantes.push('foto de «El proyecto» ('+FOTO_PROYECTO.join(' o ')+') en las fotos del proyecto');
+  });
+  edit('servicios',b=>{b.contenido={titulo:'Servicios',serviciosPropios:'Luz, Agua, Gas, Cloaca, Internet (fibra óptica)'};b.variante='fichas';b.opciones.varianteManual=true});
+  edit('cifras',b=>{b.contenido.titulo='Precio y forma de pago';b.opciones.cifras=['precio','superficies'];b.opciones.grupoOferta='si'});
+  edit('financiacion',b=>{
+    b.contenido.titulo='Financiación';
+    // Pares editoriales aprobados sólo para la oferta con la que se aprobaron. Con otro texto de financiación no se escribe ningún importe.
+    if(project.financiacion==='Entrega de USD 28.000 y saldo de USD 12.000 en 8 cuotas fijas de USD 1.500.')Object.assign(b.contenido,{planValor1:'USD 28.000',planEtiqueta1:'Entrega inicial',planValor2:'USD 1.500',planEtiqueta2:'Por cuota, en 8 cuotas fijas',planValor3:'USD 12.000',planEtiqueta3:'Saldo financiado'});
+    else faltantes.push('plan de pagos en cifras (el texto de financiación del proyecto no coincide con el aprobado)');
+  });
+  edit('panoramica360',b=>{b.contenido.titulo='Inicie el recorrido virtual';b.contenido.texto=''});
+  edit('explorador',b=>{b.contenido.titulo='Elija su lote';b.opciones.estadosPlano='regla'});
+  edit('galeria',b=>{b.contenido.titulo='El loteo';b.variante='album';Object.assign(b.opciones,{varianteManual:true,efectoFoto:'hover',efectoDuracion:700})});
+  edit('experiencias',b=>{
+    const bank=new Map(contextPhotos.map(photo=>[photo.id,photo])),photos=[];
+    for(const [experiencia,ids] of ALBUMES_COMARCA)for(const id of ids){const photo=bank.get('contexto-'+id);if(photo)photos.push({url:photo.url,alt:photo.nombre,pie:photo.nombre,experiencia});else faltantes.push('foto de «'+experiencia+'» ('+id+')')}
+    b.contenido={titulo:'Vivir en la Comarca',fotos:photos};
+    Object.assign(b.opciones,{varianteManual:true,efectoFoto:'hover',efectoDuracion:700,cantidadFotos:photos.length});
+  });
+  // Cierre: primero «Dónde queda» con el mapa apaisado y debajo la consulta en tarjeta. Dos bloques independientes.
+  const mapa=section('ubicacion'),contacto=section('contacto');
+  if(mapa){mapa.variante='mapa';Object.assign(mapa.opciones,{varianteManual:true,formatoMapa:'apaisado'});mapa.contenido.titulo='Dónde queda';mapa.contenido.texto=mapa.contenido.texto||[project.ciudad,project.provincia].filter(Boolean).join(', ')}
+  if(contacto)Object.assign(contacto.opciones,{formatoConsulta:'tarjeta',mapaContacto:'no'});
+  if(mapa&&contacto&&config.bloques.indexOf(mapa)>config.bloques.indexOf(contacto)){config.bloques.splice(config.bloques.indexOf(mapa),1);config.bloques.splice(config.bloques.indexOf(contacto),0,mapa)}
+  config.recursos={...config.recursos,cierreTerrazas:'bloques',composicionTerrazas:COMPOSICION_TERRAZAS};
+  return {config,aplicada:true,faltantes};
+}
+
 // Presentación inicial de los bloques existentes. Los títulos y fotos editados
 // en el creador tienen preferencia sobre los valores editoriales iniciales.
 export function configuracionTerrazas(original, project) {
   const config=structuredClone(original);
+  const composicionAprobada=config.recursos?.cierreTerrazas==='bloques';
   const byId=new Map((config.bloques || []).map(block=>[block.id,block]));
   const block=id=>byId.get(id);
   const title=(id,value,previous='')=>{
@@ -130,7 +212,7 @@ export function configuracionTerrazas(original, project) {
   if(cifras && !cifras.opciones.cifras)cifras.opciones.cifras=['precio','superficies','total'];
   title('bloque-58e67cf3','Recorra el terreno en 360°','RECORRIDO INMERSIVO');
   const recorrido=block('bloque-58e67cf3');
-  if(recorrido)recorrido.contenido.texto ||= 'El loteo está cerca del Arroyo Negro y tiene vistas a la cordillera.';
+  if(recorrido && !composicionAprobada)recorrido.contenido.texto ||= 'El loteo está cerca del Arroyo Negro y tiene vistas a la cordillera.';
   title('explorador-1','Elija su lote');
   const selector=block('explorador-1');
   if(selector)selector.contenido.texto ||= 'Elija un lote en el plano o en la lista para ver su precio y superficie.';
@@ -153,7 +235,7 @@ export function configuracionTerrazas(original, project) {
   title('contacto-1','Consulte a Sur Patagonian');
   // La disposición nueva adelanta sólo las cifras que estaban después del recorrido.
   const blocks=config.bloques;
-  if(cifras && recorrido && blocks.indexOf(cifras)>blocks.indexOf(recorrido)){
+  if(!composicionAprobada && cifras && recorrido && blocks.indexOf(cifras)>blocks.indexOf(recorrido)){
     blocks.splice(blocks.indexOf(cifras),1);
     blocks.splice(blocks.indexOf(recorrido),0,cifras);
   }
@@ -176,7 +258,7 @@ export function configuracionTerrazas(original, project) {
       section('portada')?.querySelectorAll('.scroll,[data-scroll-cue]').forEach(cue=>cue.remove());
       const strip=section('cifras'),groups=strip?.querySelectorAll('.shell>div');
       const finance=section('financiacion');
-      if(groups?.length===3 && groups[0].querySelector('span')?.textContent.includes('precio') && groups[2].querySelector('span')?.textContent.includes('total')){
+      if(!strip?.hasAttribute('data-oferta') && groups?.length===3 && groups[0].querySelector('span')?.textContent.includes('precio') && groups[2].querySelector('span')?.textContent.includes('total')){
 
       if(Number(project.precio_desde)===Number(project.precio_hasta))groups[0].querySelector('span').textContent='por lote';
       groups[1].querySelector('span').textContent='Superficie de los lotes';
@@ -189,7 +271,7 @@ export function configuracionTerrazas(original, project) {
       groups[2].append(paymentLink);
       }
       }
-      if(finance?.querySelector('.finance-options') && project.financiacion?.trim()==='Entrega de USD 28.000 y saldo de USD 12.000 en 8 cuotas fijas de USD 1.500.' && Number(project.precio_desde)===40000 && Number(project.precio_hasta)===40000){
+      if(!finance?.querySelector('.finance-plan') && !finance?.hasAttribute('data-oferta') && finance?.querySelector('.finance-options') && project.financiacion?.trim()==='Entrega de USD 28.000 y saldo de USD 12.000 en 8 cuotas fijas de USD 1.500.' && Number(project.precio_desde)===40000 && Number(project.precio_hasta)===40000){
       const payments=document.createElement('dl');payments.className='pagos';
       for(const [title,value] of [['Entrega inicial','USD 28.000'],['8 cuotas fijas de','USD 1.500']]){
         const group=document.createElement('div'),label=document.createElement('dt'),amount=document.createElement('dd');
@@ -201,7 +283,7 @@ export function configuracionTerrazas(original, project) {
       summary.textContent='USD 40.000 por lote · Saldo financiado USD 12.000';
       finance.querySelector('.finance-options').replaceWith(payments,summary);
       }
-      instalarInteracciones(root,project,lots);
+      instalarInteracciones(root,project,rotularLotesTerrazas(project.slug,lots));
       // The public renderer uses a shadow root. Direct these new links to that tree.
       app.addEventListener('click',event=>{
         const anchor=event.target.closest('a[href^="#"]');
@@ -325,12 +407,14 @@ function instalarInteracciones(root, project, lots) {
   function startDraft(lot, goal) {
     activeLot = lot;
     const saved = drafts.get(lot.id);
+    const nombre = inquiry.hasAttribute('data-consulta-tarjeta')
+      ? String(lot.numero ?? '').replace(/^(Manzana [^·]+?)\s*·\s*(Lote .+)$/i,'$2 · $1') : lot.numero;
     formHeading.textContent = goal === 'reserva' ? 'Coordine su reserva' : 'Consulte por este lote';
     element('contactLotLabel').hidden = false;
-    element('contactLotNumber').value = lot.numero;
+    element('contactLotNumber').value = nombre;
     message.value = saved ?? (goal === 'reserva'
-      ? 'Quisiera coordinar la reserva de ' + lot.numero + ' de ' + project.nombre + '.'
-      : 'Quisiera información sobre ' + lot.numero + ' de ' + project.nombre + '.');
+      ? 'Quisiera coordinar la reserva de ' + nombre + ' de ' + project.nombre + '.'
+      : 'Quisiera información sobre ' + nombre + ' de ' + project.nombre + '.');
     check.checked = message.value.split('\n').includes(visitLine);
     showInquiryHeading();
   }
@@ -386,7 +470,7 @@ function instalarInteracciones(root, project, lots) {
       .sel .card .acts .reservation-note {grid-column:1/-1;font:inherit;font-size:14px;
         line-height:1.4;margin:0 0 4px;color:inherit}
       @media (max-width:900px) {
-        .sel.photo-plan:not([data-list-only=true]) .card.show {max-height:calc(100% - 24px)}
+        .sel.photo-plan:not([data-list-only=true]) .card.show {max-height:calc(100% - var(--selector-clear,24px))}
         .sel.photo-plan .card.show .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
       }
       @media (max-width:365px) {
@@ -411,17 +495,22 @@ function instalarInteracciones(root, project, lots) {
       const identity = top.querySelector('h3').parentElement;
       const name = document.createElement('h3');
       name.className = 'lot-name';
-      name.textContent = [identity.querySelector('h3').textContent, identity.querySelector('.big').textContent].join(' · ');
+      const rule = selector.querySelector('.sel')?.dataset.estados === 'regla';
+      const block = identity.querySelector('h3').textContent, lotName = identity.querySelector('.big').textContent;
+      name.textContent = (rule ? [lotName, block] : [block, lotName]).join(' · ');
       const zone = identity.querySelector('.zone-tag');
       if (zone) { zone.classList.add('lot-zone'); top.append(zone); }
       identity.replaceWith(name);
       const facts = card.querySelector('.kv');
-      const [price, area, unit] = [...facts.querySelectorAll('dd')].map(value => value.textContent);
+      const sold = !!card.querySelector('[data-action="available"]');
+      const values = [...facts.querySelectorAll('dd')].map(value => value.textContent);
+      const [price, area, unit] = sold ? ['', values[0], ''] : values;
       const surface = document.createElement('strong');
       surface.className = 'lot-area';
       surface.textContent = area;
       surface.setAttribute('aria-label','Superficie: ' + area);
       top.append(surface);
+      if (sold) { facts.remove(); return; }
       const metrics = document.createElement('div');
       metrics.className = 'sale-metrics';
       const amount = document.createElement('strong'), perMetre = document.createElement('span');
@@ -475,8 +564,9 @@ function instalarInteracciones(root, project, lots) {
   form.setAttribute('aria-labelledby',formHeading.id);
   form.prepend(element('contactLotLabel'));
   const phone=form.elements.telefono,email=form.elements.email;
-  phone.required=true;email.required=false;
-  email.closest('label').firstChild.textContent='Correo electrónico (opcional)';
+  // El correo es obligatorio en todo formulario de consulta (regla 11 de las miniwebs, orden de Mariano): es la base del registro.
+  phone.required=true;email.required=true;
+  email.closest('label').firstChild.textContent='Correo electrónico';
   const visit = document.createElement('label');
   visit.className = 'visit-option';
   const check = document.createElement('input');
@@ -581,7 +671,10 @@ export function presentarRecorridoTerrazas(doc, frame=null, root=null) {
         const tour = doc.querySelector('.rg-tour');
         const selector = tour?.querySelector('footer select');
         const nativeNext = tour?.querySelector('footer [data-next]');
-        if (!selector || !nativeNext || tour.querySelector('.paso-visual')) return;
+        if (!selector || !nativeNext || tour.hasAttribute('data-entrada-presentada')) return;
+        tour.setAttribute('data-entrada-presentada','');
+        let nativeState;
+        if (!tour.hasAttribute('data-resumen-embebido')) {
         const button = doc.createElement('button');
         button.type = 'button';
         button.className = 'paso-visual';
@@ -617,10 +710,11 @@ export function presentarRecorridoTerrazas(doc, frame=null, root=null) {
         hostStage.append(mobileButton);
         }
         const sync = () => {button.disabled=nativeNext.disabled;if(mobileButton)mobileButton.disabled=button.disabled};
-        const nativeState = new W.MutationObserver(sync);
+        nativeState = new W.MutationObserver(sync);
         nativeState.observe(nativeNext, {attributes: true, attributeFilter: ['disabled']});
         sync();
         tour.append(button);
+        }
 
         if (requestedLot || !Array.from(selector.options).some(option => option.value === initialStation)) return;
         selector.value = initialStation;
@@ -643,7 +737,7 @@ export function presentarRecorridoTerrazas(doc, frame=null, root=null) {
         const ready = new W.MutationObserver(aim);
         ready.observe(status, {attributes:true, attributeFilter:['data-panorama-state']});
         aim();
-        tour.addEventListener('close', () => {ready.disconnect();nativeState.disconnect()}, {once:true});
+        tour.addEventListener('close', () => {ready.disconnect();nativeState?.disconnect()}, {once:true});
       }
       const arrival = new W.MutationObserver(mountEntry);
       arrival.observe(doc.body, {childList:true});

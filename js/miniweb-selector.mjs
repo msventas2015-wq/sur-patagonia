@@ -4,7 +4,7 @@ import {paletteTokens} from './miniweb-palettes.mjs';
 import {bridgeInlineWheel} from './miniweb-360.mjs?v=20261117-cierre-venta1';
 import {unitPrice,unitPriceText} from './lote-precio.mjs';
 import {projectTourUrl} from './recorrido-enlaces.mjs';
-import {mediaList} from './recorrido-medios.mjs';
+import {mediaList,projectBrochureURL} from './recorrido-medios.mjs';
 
 const NS='http://www.w3.org/2000/svg';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -48,6 +48,7 @@ export function selectorZoneRows(lots,shapeFor,config={},options){
 const zoneFingerprint=config=>JSON.stringify([config.recursos?.zonasVenta,Object.entries(config.lotes||{}).filter(([,card])=>card?.zonaVenta).map(([id,card])=>[id,card.zonaVenta])]);
 export function selectorVisible(rows,state='',block='',order='numero'){
  const visible=rows.filter(r=>!r.unavailable&&(!state||(Object.hasOwn(LOT_STATES,r.lot.estado)?r.lot.estado:'sin')===state)&&(!block||r.block===block));
+ if(order==='disponibles')return visible.sort((a,b)=>Number(b.lot.estado==='disponible')-Number(a.lot.estado==='disponible')||collator.compare(a.label,b.label)||collator.compare(a.block,b.block));
  const value=row=>order==='superficie'?(has(row.lot.superficie_m2)?-Number(row.lot.superficie_m2):Infinity):order==='metro'?(unitPrice(row.lot)??Infinity):has(row.lot.precio_usd)?Number(row.lot.precio_usd):Infinity;
  const priceOrder=['precio','metro'].includes(order),group=row=>row.lot.estado==='vendido'?2:Number.isFinite(value(row))?0:1;
  return order==='numero'?visible:visible.sort((a,b)=>(priceOrder?group(a)-group(b):0)||(value(a)-value(b))||collator.compare(a.block,b.block)||collator.compare(a.label,b.label));
@@ -154,18 +155,35 @@ export function selectorMapSource(url,{hasPhoto=true,hasGeometry=false,safeUrl}=
 
 // Screen-space labels keep a readable size while the SVG camera moves. A label
 // is shown only when its full text and outline fit inside its own lot.
-export function selectorLotLabel(row,{worldHeight=600,view=[0,0,843,600],width=1000,height=650}={}){
+export function selectorLotLabel(row,{worldHeight=600,view=[0,0,843,600],width=1000,height=650,caption=''}={}){
  if(!row.points||row.unavailable||row.hidden||!width||!height)return null;
- const points=row.points.map(([u,v])=>[u*843,v*worldHeight]),anchor=salesZoneInterior(points),sx=width/view[2],sy=height/view[3];
+ const points=row.points.map(([u,v])=>[u*843,v*worldHeight]),sx=width/view[2],sy=height/view[3];
+ const vertices=points.filter(([x,y],i)=>i===0||x!==points[0][0]||y!==points[0][1]);
+ const anchor=caption?vertices.reduce(([x,y],[u,v])=>[x+u/vertices.length,y+v/vertices.length],[0,0]):salesZoneInterior(points);
  const screen=points.map(([x,y])=>[(x-anchor[0])*sx,(y-anchor[1])*sy]);
- const fits=(text,size)=>{
-  const halfWidth=[...text].length*size*.36+4+(row.zone&&['vendido','reservado'].includes(row.lot?.estado)?12:0),halfHeight=size*.4+3;
-  const inside=([x,y])=>{let yes=false,a=screen.at(-1);for(const b of screen){if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])yes=!yes;a=b;}return yes};
+ const fits=(text,size,polygon=screen)=>{
+  const halfWidth=caption ? [...text].length*size*.33+1 : [...text].length*size*.36+4+(row.zone&&['vendido','reservado'].includes(row.lot?.estado)?12:0);
+  const halfHeight=size*.4+(caption?1:3);
+  const inside=([x,y])=>{let yes=false,a=polygon.at(-1);for(const b of polygon){if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])yes=!yes;a=b;}return yes};
   const corners=[[-halfWidth,-halfHeight],[halfWidth,-halfHeight],[halfWidth,halfHeight],[-halfWidth,halfHeight]];
   // Corners alone are insufficient for concave lots: no boundary may enter the text box.
   const enters=(a,b)=>{let lo=0,hi=1;for(const [origin,delta,min,max]of [[a[0],b[0]-a[0],-halfWidth,halfWidth],[a[1],b[1]-a[1],-halfHeight,halfHeight]]){if(!delta){if(origin<=min||origin>=max)return false;continue;}const x=(min-origin)/delta,y=(max-origin)/delta;lo=Math.max(lo,Math.min(x,y));hi=Math.min(hi,Math.max(x,y));}return hi>lo&&hi>0&&lo<1};
-  return corners.every(inside)&&!screen.some((a,i)=>enters(a,screen[(i+1)%screen.length]));
+  return corners.every(inside)&&!polygon.some((a,i)=>enters(a,polygon[(i+1)%polygon.length]));
  };
+ if(caption){
+  const sizes=[16,14,12,10,8];
+  const layout=(size,angle)=>({text:caption,x:anchor[0],y:anchor[1],scale:view[2]/width,size,angle});
+  const horizontal=sizes.find(px=>fits(caption,px));
+  if(horizontal)return layout(horizontal,0);
+  // En parcelas angostas, orientar la palabra en la dirección del lado largo.
+  const edges=screen.map(([x,y],i)=>[x-screen[(i+1)%screen.length][0],y-screen[(i+1)%screen.length][1]]);
+  const [dx,dy]=edges.reduce((a,b)=>Math.hypot(...a)>Math.hypot(...b)?a:b);
+  const angle=(Math.atan2(dy,dx)*180/Math.PI+270)%180-90;
+  const radians=angle*Math.PI/180,cos=Math.cos(radians),sin=Math.sin(radians);
+  const rotated=screen.map(([x,y])=>[x*cos+y*sin,y*cos-x*sin]);
+  const size=sizes.find(px=>fits(caption,px,rotated));
+  return size?layout(size,angle):null;
+ }
  const size=16,label=String(row.label||'').trim();if(!label||!fits(label,size))return null;
  const block=String(row.manzana??row.lot?.manzana??row.block??'').trim(),full=block?'M'+block+' · '+label:label;
  const text=block&&fits(full,size)?full:label,scale=view[2]/width;
@@ -175,7 +193,7 @@ export function selectorLotLabel(row,{worldHeight=600,view=[0,0,843,600],width=1
 // Presentation only: IDs, inventory, geometry, consultation and media are supplied
 // by the existing miniweb. No database client, alternate inventory or GPS model.
 export function mountSelector(host,{project,config,lots,shapeFor,mapUrl,safeUrl,onSelect,onConsult,onTour,onPanoramas,mapHasPhoto=true,allowPins=true,initialPlanBounds}){
- const states=salesZones(config).zonas.length?LOT_STATES:originalStates,stateOf=lot=>states[lot.estado]||states.sin;
+ const states=salesZones(config).zonas.length?LOT_STATES:originalStates,ruleColors={disponible:'#3FA66A',vendido:'#f4f3ef'},stateOf=lot=>{const base=states[lot.estado]||states.sin;return section.dataset.estados==='regla'&&ruleColors[lot.estado]?{...base,color:ruleColors[lot.estado]}:base};
  const root=host.attachShadow({mode:'open'}),lifecycle=new AbortController(),{signal}=lifecycle;
  let resolveReady;const whenReady=new Promise(resolve=>{resolveReady=resolve});
  const referenceProject=['alamos','aldea-los-huemules'].includes(project.slug);
@@ -225,8 +243,47 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  }
  const limitToPhoto=()=>mapHasPhoto&&!rasterExtent;
  let rows=projectRows(config),byId=new Map(rows.filter(r=>!r.unavailable).map(r=>[r.id,r]));const shapes=new Map(),lotLabels=new Map();let zoneSignature=zoneFingerprint(config),zoneLayers=[],zoneMarkers=[];
+ // Estados del plano según las reglas de las miniwebs: opción estadosPlano del bloque Explorador. Sin la opción, el selector conserva sus colores.
+ const soldRule=lot=>section.dataset.estados==='regla'&&lot?.estado==='vendido';
+ function paintStateRule(cfg){
+  const on=cfg.bloques?.find(b=>b.tipo==='explorador')?.opciones?.estadosPlano==='regla';let legend=section.querySelector('.state-legend');
+  if(!on){delete section.dataset.estados;legend?.remove();return}
+  section.dataset.estados='regla';const count=value=>rows.filter(r=>!r.unavailable&&r.lot.estado===value).length;
+  if(!legend){legend=document.createElement('div');legend.className='glass state-legend';section.append(legend)}
+  legend.innerHTML=`<span><i style="background:#3FA66A"></i><b>${count('disponible')}</b> disponibles</span><span><i style="background:#14181A;outline:1px solid #ffffff66"></i><b>${count('vendido')}</b> <span class="sold">VENDIDOS</span></span>`+(rows.some(r=>r.unavailable)?'<span><i style="outline:1px solid #ffffffcc"></i>No comercializado</span>':'');
+ }
+ paintStateRule(config);
+ let outlinedShape=null;
+ function outlineFromRow(target){
+  const row=target?.closest?.('[data-select]');
+  const shape=section.dataset.estados==='regla' && row && list.contains(row) ? shapes.get(row.dataset.select) : null;
+  if(shape===outlinedShape)return;
+  outlinedShape?.classList.remove('from-list');
+  shape?.classList.add('from-list');
+  outlinedShape=shape;
+ }
+ list.addEventListener('pointerover',event=>{if(event.pointerType!=='touch')outlineFromRow(event.target)},{signal});
+ list.addEventListener('pointerleave',()=>outlineFromRow(list.getRootNode().activeElement),{signal});
+ list.addEventListener('focusin',event=>outlineFromRow(event.target),{signal});
+ list.addEventListener('focusout',event=>outlineFromRow(event.relatedTarget),{signal});
+ let highlightedRow=null;
+ function highlightFromShape(target){
+  const id=target?.closest?.('.lot')?.dataset.lotId;
+  const row=id && section.dataset.estados==='regla' ? list.querySelector('[data-select="'+CSS.escape(id)+'"]') : null;
+  if(row===highlightedRow)return;
+  highlightedRow?.classList.remove('from-map');
+  row?.classList.add('from-map');
+  highlightedRow=row;
+ }
+ map.addEventListener('pointerover',event=>{if(event.pointerType!=='touch')highlightFromShape(event.target)},{signal});
+ map.addEventListener('pointerleave',()=>highlightFromShape(map.getRootNode().activeElement),{signal});
+ map.addEventListener('focusin',event=>highlightFromShape(event.target),{signal});
+ map.addEventListener('focusout',event=>highlightFromShape(event.relatedTarget),{signal});
+ // Pedido desde el recorrido 360 de la misma miniweb: mostrar la lista filtrada en disponibles.
+ host.getRootNode().addEventListener('mw-ver-disponibles',()=>{state='disponible';block='';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;paint();host.scrollIntoView({block:'start',behavior:'smooth'});(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});},{signal});
  let currentConfig=config,selected=null,comparison=[],state='',block='',order='numero',worldHeight=600,photoWidth=843,box=[0,0,843,600],view=[...box],frame=0,ready=false,disposed=false,listCollapsed=false,initialWidth=843,mobileListOpen=false,bodyOverflow=null;
  const compact=()=>window.innerWidth<=900;
+ const fullPhoto=()=>mapHasPhoto&&section.hasAttribute('data-list-panel-hidden');
  const fullscreen=()=>root.fullscreenElement===section||!!section.matches?.(':fullscreen')||section.classList.contains('tour-expanded');
  let viewportInset=0;
  function viewportHeight(){
@@ -235,7 +292,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   host.toggleAttribute('data-two-columns',desktopZonePlan());
   if(desktopZonePlan() && host.clientWidth>380){
    // A tall, narrow crop cannot contain both ends of the cadastral plan.
-   const photoHeightAtColumnWidth=(host.clientWidth-380)*worldHeight/843;
+   const photoHeightAtColumnWidth=(host.clientWidth-(fullPhoto()?0:380))*worldHeight/843;
    height=Math.min(height,photoHeightAtColumnWidth);
   }
   host.dataset.compact=String(compact());
@@ -244,7 +301,9 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   paintListState();
  }
  viewportHeight();window.addEventListener('resize',viewportHeight,{signal});window.visualViewport?.addEventListener('resize',viewportHeight,{signal});
- const label=row=>row.inventoryLabel||[row.groupLabel||(row.block?'Manzana '+row.block:''),'Lote '+row.label].filter(Boolean).join(' · ');
+ const label=row=>section.dataset.estados==='regla' && row.manzana
+  ? 'Lote '+row.label+' · Manzana '+row.manzana
+  : row.inventoryLabel||[row.groupLabel||(row.block?'Manzana '+row.block:''),'Lote '+row.label].filter(Boolean).join(' · ');
  const immersiveZones=()=>currentConfig.estilo==='inmersivo'&&!['alamos','aldea-los-huemules'].includes(project.slug);
  const zoneTag=row=>row.zone?`<span class="zone-tag"><i style="background:${salesZoneColor(row.zone,paletteTokens(currentConfig.paleta).texto)}"></i>${escape(row.zone.nombre)}</span>`:'';
  const create=(tag,attrs={})=>{const node=document.createElementNS(NS,tag);for(const [key,value]of Object.entries(attrs))node.setAttribute(key,value);return node};
@@ -282,6 +341,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
    (bounds.top+bounds.bottom)/2-height*(area.top+area.bottom)/(2*rect.height),width,height];
  }
  function resetTarget(){
+  if(fullPhoto())return photoFrame();
   if(mobileZonePlan())return mobileFrame(selectorVisible(rows,state,block),0,true);
   return desktopZonePlan()?desktopFrame(selectorVisible(rows,state,block)):[...box];
  }
@@ -295,7 +355,15 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   return [(x0+x1)/2-w/2+(right-left)/width*w/2,(y0+y1)/2-h/2+(bottom-top)/height*h/2,w,h];
  }
  const mapRatio=()=>{const rect=map.getBoundingClientRect();return rect.width&&rect.height?rect.width/rect.height:box[2]/box[3]};
+ function photoFrame(target){
+  const photo=image.getBBox(),ratio=mapRatio();
+  const maxWidth=Math.max(photo.width,photo.height*ratio);
+  const width=target?Math.max(maxWidth/32,Math.min(maxWidth,target[2])):maxWidth,height=width/ratio;
+  const origin=(start,length,span,requested)=>requested==null||span>=length?start+(length-span)/2:Math.max(start,Math.min(start+length-span,requested));
+  return [origin(photo.x,photo.width,width,target?.[0]),origin(photo.y,photo.height,height,target?.[1]),width,height];
+ }
  const constrain=target=>{
+  if(fullPhoto())return photoFrame(target);
   if(!mobileZonePlan())return (limitToPhoto()?selectorConstrainView:selectorConstrainPlanView)(target,{worldHeight,ratio:mapRatio()});
   // The photo can be wider than the phone. Its borders must not prevent the
   // chosen lot from moving into the visible area above the sheet.
@@ -305,7 +373,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  };
  const home=()=>{if(!limitToPhoto())return selectorPlanHome({worldHeight,ratio:mapRatio()});const [x0,y0,x1,y1]=boundsOf(rows);return selectorCoverView({worldHeight,ratio:mapRatio(),center:[(x0+x1)/2/843,(y0+y1)/2/worldHeight]})};
  const setView=()=>{view=constrain(view);map.setAttribute('viewBox',view.join(' '));syncMapRings(map);paintZoneLabels();paintLotLabels()};
- const startView=()=>{box=home();const rect=map.getBoundingClientRect(),bounds=!rasterExtent&&initialPlanBounds?.({width:rect.width,height:rect.height,imageWidth:photoWidth,imageHeight:worldHeight*photoWidth/843});view=mobileZonePlan()?resetTarget():desktopZonePlan()?constrain(resetTarget()):bounds?constrain(fit([{points:[[bounds.left,bounds.top],[bounds.right,bounds.bottom]]}])):[...box];initialWidth=view[2];setView()};
+ const startView=()=>{if(fullPhoto()){cancelAnimationFrame(frame);box=photoFrame();view=[...box];initialWidth=view[2];setView();return}box=home();const rect=map.getBoundingClientRect(),bounds=!rasterExtent&&initialPlanBounds?.({width:rect.width,height:rect.height,imageWidth:photoWidth,imageHeight:worldHeight*photoWidth/843});view=mobileZonePlan()?resetTarget():desktopZonePlan()?constrain(resetTarget()):bounds?constrain(fit([{points:[[bounds.left,bounds.top],[bounds.right,bounds.bottom]]}])):[...box];initialWidth=view[2];setView()};
  function fly(target){
   target=constrain(target);cancelAnimationFrame(frame);if(matchMedia('(prefers-reduced-motion: reduce)').matches){view=[...target];setView();return}
   const from=[...view],start=performance.now();const step=now=>{if(disposed)return;const t=Math.min(1,(now-start)/650),eased=1-(1-t)**4;view=from.map((v,i)=>v+(target[i]-v)*eased);setView();if(t<1)frame=requestAnimationFrame(step)};frame=requestAnimationFrame(step);
@@ -320,7 +388,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   fly(resetTarget());
  }
  function zoom(factor,anchor=[.5,.5]){
-  const max=mobileZonePlan()?initialWidth:(limitToPhoto()?selectorCoverView:selectorPlanHome)({worldHeight,ratio:mapRatio()})[2],w=Math.max(max/32,Math.min(max,view[2]*factor)),h=w/mapRatio();
+  const max=fullPhoto()?photoFrame()[2]:mobileZonePlan()?initialWidth:(limitToPhoto()?selectorCoverView:selectorPlanHome)({worldHeight,ratio:mapRatio()})[2],w=Math.max(max/32,Math.min(max,view[2]*factor)),h=w/mapRatio();
   if(mobileZonePlan()&&w===max&&factor>1){fly(resetTarget());return}
   if(factor>1){fly([843/2-w/2,worldHeight/2-h/2,w,h]);return}
   fly([view[0]+(view[2]-w)*anchor[0],view[1]+(view[3]-h)*anchor[1],w,h]);
@@ -333,6 +401,12 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   tab.setAttribute('aria-expanded',String(open||!side.hidden));q('.list-close').hidden=!open;
   section.classList.toggle('mobile-list-open',open);for(const panel of [card,tray]){panel.inert=open;if(open)panel.setAttribute('aria-hidden','true');else panel.removeAttribute('aria-hidden')}
   const panel=comparison.length?tray:card;section.style.setProperty('--mobile-overlay-height',small&&!onlyList&&!open&&!panel.hidden?panel.offsetHeight+'px':'0px');
+  // Con la regla de las miniwebs, en pantallas angostas la ficha abierta no puede tapar ni los filtros ni el zoom: si no entran, el selector crece lo justo.
+  {const head=q('.head'),active=small&&!onlyList&&!open&&!panel.hidden,clear=active?Math.ceil(head.getBoundingClientRect().bottom-section.getBoundingClientRect().top+14+54+24+12):0,needed=section.dataset.estados==='regla'&&active?clear+Math.max(panel.offsetHeight,panel.scrollHeight+2)+'px':'0px';
+   // Espacio que la ficha no puede ocupar (filtros y zoom): si el selector no llega a crecer, la ficha se desplaza por dentro en vez de taparlos.
+   section.style.setProperty('--selector-clear',clear?clear+'px':'24px');const changed=host.style.getPropertyValue('--selector-needed')!==needed;for(const target of [host,host.parentElement])target?.style.setProperty('--selector-needed',needed);
+   // La ficha se mide con su contenido completo; al cambiar el alto del selector se vuelve a ubicar el zoom una vez.
+   if(changed)requestAnimationFrame(()=>{if(!disposed)paintListState()})}
   const full=q('[data-fullscreen]');full.setAttribute('aria-label',fullscreen()?'Salir de pantalla completa':'Pantalla completa');full.setAttribute('title',fullscreen()?'Salir de pantalla completa':'Pantalla completa');full.setAttribute('aria-pressed',String(fullscreen()));full.innerHTML=svgIcon(fullscreen()?'M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5':'M8 8 3 3m0 5V3h5M16 8l5-5m-5 0h5v5M8 16l-5 5m0-5v5h5m8-5 5 5m0-5v5h-5');
  }
  function exitFullscreen(){
@@ -356,7 +430,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   const title=document.createElement('span');title.textContent=data.rotulo;title.className='zone-filter-label glass';filter.replaceChildren(title);
   for(const zone of [null,...active]){const button=document.createElement('button');button.type='button';button.className='chip glass';button.dataset.zone=zone?.id||'';button.setAttribute('aria-pressed',String(block===(zone?.id||'')));
    if(zone){const dot=document.createElement('i');dot.style.background=publicSalesZoneColor(zone,paletteTokens(currentConfig.paleta).texto);button.append(dot);}
-   button.append(document.createTextNode(zone?zone.nombre+(zone.estado==='a_la_venta'?'':' ('+SALES_ZONE_STATES[zone.estado]+')'):'Todas'));filter.append(button);
+   button.append(document.createTextNode(zone?zone.nombre+(zone.estado==='a_la_venta'?'':' ('+(section.dataset.estados==='regla'&&zone.estado==='suspendida'?'No comercializado':SALES_ZONE_STATES[zone.estado])+')'):'Todas'));filter.append(button);
   }
  }
  function rebuildZoneLayers(){
@@ -370,9 +444,16 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  function paintLotLabels(){
   const rect=map.getBoundingClientRect(),visible=new Set(selectorVisible(rows,state,block).map(r=>r.id));
   for(const row of rows){const text=lotLabels.get(row.id);if(!text)continue;
-   const layout=visible.has(row.id)||comparison.includes(row.id)?selectorLotLabel(row,{worldHeight,view,width:rect.width,height:rect.height}):null;
+   const caption=section.dataset.estados==='regla' ? (soldRule(row.lot)?'VENDIDO':row.lot.estado==='disponible'&&has(row.lot.superficie_m2)?area(row.lot.superficie_m2):'') : '';
+   const layout=visible.has(row.id)||comparison.includes(row.id)?selectorLotLabel(row,{worldHeight,view,width:rect.width,height:rect.height,caption}):null;
+   if(row.zone && !caption){text.style.display='none';continue}
+   text.style.fontSize=(layout?.size||16)+'px';
    text.style.display=layout?'':'none';if(!layout)continue;
-   text.textContent=layout.text;text.setAttribute('transform',`translate(${layout.x} ${layout.y}) scale(${layout.scale})`);
+   text.textContent=layout.text;text.setAttribute('transform',`translate(${layout.x} ${layout.y}) scale(${layout.scale}) rotate(${layout.angle||0})`);
+  }
+  for(const ring of zoneMarkers){
+   const label=lotLabels.get(ring.dataset.lotState);
+   ring.style.opacity=label&&label.style.display!=='none'?'0':'';
   }
  }
  function paintMap(){
@@ -389,16 +470,16 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   const lot=row.lot,sale=stateOf(lot),tour=projectTourUrl(project,currentConfig,lot.id),external=safeUrl(currentConfig.lotes?.[lot.id]?.tour360),panoramas=mediaList(currentConfig,lot.id).some(m=>m.tipo==='panorama');
   const consult=selectorCanConsult(lot)?`<button type="button" class="btn go" data-action="consult"><span>${lot.avisoZonaProximamente?'Avisarme cuando salga a la venta':'Consultar este lote'}</span>${svgIcon('M4 12h16m-6-6 6 6-6 6')}</button>`:'<button type="button" class="btn go" disabled aria-disabled="true">Lote vendido</button>';
   card.innerHTML=`<div class="top"><div><h3>${escape(row.groupLabel||(row.block?'Manzana '+row.block:'Lote individual'))}</h3>${zoneTag(row)}<p class="big">Lote ${escape(row.label)}</p></div><span class="st" style="--c:${sale.color}"><i></i>${sale.text}</span><button type="button" class="x" data-action="close" aria-label="Cerrar ficha">${closeIcon}</button></div>
-  <dl class="kv"><div><dt>Precio</dt><dd>${escape(usd(lot.precio_usd))}</dd></div><div><dt>Superficie</dt><dd>${escape(area(lot.superficie_m2))}</dd></div><div><dt>Valor del m²</dt><dd>${escape(unitUsd(lot))}</dd></div></dl>
-  <div class="acts">${consult}${tour?`<a class="btn" href="${escape(tour)}">${svgIcon('M3 12c3 3 15 3 18 0M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18')}360°</a>`:external||panoramas?`<button type="button" class="btn" data-action="360">360°</button>`:''}<button type="button" class="btn" data-action="compare" aria-pressed="${comparison.includes(row.id)}">Comparar</button></div>`;
+  <dl class="kv">${soldRule(lot)?'':`<div><dt>Precio</dt><dd>${escape(usd(lot.precio_usd))}</dd></div>`}<div><dt>Superficie</dt><dd>${escape(area(lot.superficie_m2))}</dd></div>${soldRule(lot)?'':`<div><dt>Valor del m²</dt><dd>${escape(unitUsd(lot))}</dd></div>`}</dl>
+  <div class="acts">${soldRule(lot)?'<button type="button" class="btn go" data-action="available">Ver lotes disponibles</button>':consult+(tour?`<a class="btn" href="${escape(tour)}">${svgIcon('M3 12c3 3 15 3 18 0M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18')}360°</a>`:external||panoramas?`<button type="button" class="btn" data-action="360">360°</button>`:'')+`<button type="button" class="btn" data-action="compare" aria-pressed="${comparison.includes(row.id)}">Comparar</button>`+(section.dataset.estados==='regla'&&lot.estado==='disponible'&&projectBrochureURL(project?.brochure_url)?'<button type="button" class="btn" data-action="brochure">Brochure del proyecto</button>':'')}</div>`;
  }
  function paintTray(){
   const pair=comparison.map(id=>byId.get(id)).filter(Boolean),active=pair.length>0;tray.hidden=!active;tray.classList.toggle('show',active);section.classList.toggle('has-compare',active);tray.tabIndex=-1;
   if(!active){tray.replaceChildren();section.style.removeProperty('--compare-tray-height');return}
   const header=`<header class="compare-head"><strong>Comparar lotes</strong><button type="button" class="x" data-clear-compare aria-label="Salir de la comparación">${closeIcon}</button></header>`;
-  if(pair.length===1){const row=pair[0];tray.innerHTML=header+`<div class="compare-wait"><div><h3>${escape(label(row))}</h3>${zoneTag(row)}<p>${escape(usd(row.lot.precio_usd))} · ${escape(area(row.lot.superficie_m2))}</p></div><p class="compare-prompt" role="status">Elija otro lote para comparar</p></div>`}
+  if(pair.length===1){const row=pair[0];tray.innerHTML=header+`<div class="compare-wait"><div><h3>${escape(label(row))}</h3>${zoneTag(row)}<p>${soldRule(row.lot)?'':escape(usd(row.lot.precio_usd))+' · '}${escape(area(row.lot.superficie_m2))}</p></div><p class="compare-prompt" role="status">Elija otro lote para comparar</p></div>`}
   else{
-   const advantages=comparisonAdvantages(pair[0].lot,pair[1].lot),metrics=[['estado','Estado',row=>stateOf(row.lot).text],['precio','Precio',row=>usd(row.lot.precio_usd)],['superficie','Superficie',row=>area(row.lot.superficie_m2)],['metro','Valor del m²',row=>unitUsd(row.lot)]],benefits={precio:'Menor precio',superficie:'Mayor superficie',metro:'Menor valor del m²'};
+   const advantages=comparisonAdvantages(pair[0].lot,pair[1].lot),metrics=[['estado','Estado',row=>stateOf(row.lot).text],['precio','Precio',row=>soldRule(row.lot)?'—':usd(row.lot.precio_usd)],['superficie','Superficie',row=>area(row.lot.superficie_m2)],['metro','Valor del m²',row=>soldRule(row.lot)?'—':unitUsd(row.lot)]],benefits={precio:'Menor precio',superficie:'Mayor superficie',metro:'Menor valor del m²'};
    tray.innerHTML=header+'<div class="compare-grid">'+pair.map((row,index)=>`<section class="compare-column"><h3>${escape(label(row))}</h3>${zoneTag(row)}<dl>${metrics.map(([key,title,read])=>`<div class="compare-metric ${advantages[key]===index?'favorable':''}"><dt>${title}</dt><dd>${escape(read(row))}${advantages[key]===index?`<small>${benefits[key]}</small>`:''}</dd></div>`).join('')}</dl>${selectorCanConsult(row.lot)?`<button type="button" class="btn go" data-compare-consult="${escape(row.id)}">${row.lot.avisoZonaProximamente?'Avisarme cuando salga a la venta':'Consultar'}</button>`:'<button type="button" class="btn go" disabled aria-disabled="true">Lote vendido</button>'}</section>`).join('')+'</div>';
   }
   section.style.setProperty('--compare-tray-height',(tray.offsetHeight+52)+'px');
@@ -410,12 +491,14 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  function exitComparison(){const first=comparison[0];comparison=[];selected=null;onSelect?.(null);paint();focusListReturn(first)}
  window.addEventListener('keydown',event=>{if(event.key==='Escape'&&comparison.length)exitComparison()},{signal});
  function paint(){
+  outlineFromRow(null);
+  highlightFromShape(null);
   zoneControls();
   const visible=selectorVisible(rows,state,block,order),base=rows.filter(r=>!r.unavailable&&(!block||r.block===block));
   const counts=lotCounts(base.map(r=>r.lot));
-  q('.chips').innerHTML=[['','Todos'],...['disponible','reservado','vendido','proximamente',...(counts.states.sin&&salesZones(currentConfig).zonas.length?['sin']:[])].map(key=>[key,states[key].text])].map(([key,text])=>`<button type="button" class="chip" data-state="${key}" aria-pressed="${state===key}" ${key?`style="--c:${states[key].color}"`:''}>${key?'<i></i>':''}${text}<b>${key?counts.states[key]:counts.total}</b></button>`).join('')+'<span class="leg"><i></i>'+ 'No a la venta'+'</span>';
+  q('.chips').innerHTML=[['','Todos'],...['disponible','reservado','vendido','proximamente',...(counts.states.sin&&salesZones(currentConfig).zonas.length?['sin']:[])].map(key=>[key,states[key].text])].map(([key,text])=>`<button type="button" class="chip" data-state="${key}" aria-pressed="${state===key}" ${key?`style="--c:${stateOf({estado:key}).color}"`:''}>${key?'<i></i>':''}${text}<b>${key?counts.states[key]:counts.total}</b></button>`).join('')+'<span class="leg"><i></i>'+ (section.dataset.estados==='regla'?'No comercializado':'No a la venta')+'</span>';
   q('.count').innerHTML=`<b>${visible.length}</b> ${visible.length===1?'lote':'lotes'}`;
-  list.innerHTML=visible.map(row=>{const sale=stateOf(row.lot);return `<button type="button" class="row" data-select="${escape(row.id)}" aria-current="${row.id===selected}" aria-pressed="${comparison.includes(row.id)}" style="--c:${sale.color}"><span class="n">${escape(row.label)}</span><span class="t"><b>${escape(label(row))}</b>${zoneTag(row)}<span>${row.zone&&immersiveZones()?' · ':''}${escape(area(row.lot.superficie_m2))} · ${sale.text}</span></span><span class="p">${escape(usd(row.lot.precio_usd))}<span>${escape(unitLabel(row.lot))}</span></span></button>`}).join('')||'<p class="empty" role="status">No hay lotes con estos filtros.</p>';
+  list.innerHTML=visible.map(row=>{const sale=stateOf(row.lot);return `<button type="button" class="row" data-select="${escape(row.id)}" aria-current="${row.id===selected}" aria-pressed="${comparison.includes(row.id)}" style="--c:${sale.color}"><span class="n">${escape(row.label)}</span><span class="t"><b>${escape(label(row))}</b>${zoneTag(row)}<span>${row.zone&&immersiveZones()?' · ':''}${escape(area(row.lot.superficie_m2))} · <strong data-lot-status="${escape(row.lot.estado)}">${escape(sale.text)}</strong></span></span><span class="p">${soldRule(row.lot)?'':escape(usd(row.lot.precio_usd))+`<span>${escape(unitLabel(row.lot))}</span>`}</span></button>`}).join('')||'<p class="empty" role="status">No hay lotes con estos filtros.</p>';
   paintMap();paintLotLabels();paintCard();paintTray();paintListState();
  }
  function focusSelection(row,fromList=false){
@@ -499,8 +582,10 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   if(button.dataset.compareConsult){const row=byId.get(button.dataset.compareConsult);if(selectorCanConsult(row?.lot))onConsult?.(row.id);return}
   const action=button.dataset.action;if(!action)return;
   if(action==='close'){const id=selected;selected=null;onSelect?.(null);paint();focusListReturn(id);return}
+  if(action==='available'){state='disponible';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;paint();(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});return}
   if(!selected||!byId.has(selected))return;
   if(action==='consult'&&selectorCanConsult(byId.get(selected)?.lot))onConsult?.(selected);
+  if(action==='brochure'){const url=projectBrochureURL(project?.brochure_url);if(url)window.open(url,'_blank','noopener,noreferrer');return}
   if(action==='360'){const lot=byId.get(selected).lot;if(safeUrl(currentConfig.lotes?.[lot.id]?.tour360))onTour?.(lot.id);else onPanoramas?.(lot.id)}
   if(action==='compare'){const base=byId.get(selected);comparison=[selected];selected=null;onSelect?.(null);paint();focusSelection(base);tray.focus({preventScroll:true})}
  },{signal});
@@ -518,8 +603,9 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
    shape.setAttribute('class','lot'+(row.unavailable?' nov':''));shape.dataset.state=states[row.lot.estado]?row.lot.estado:'sin';shape.setAttribute('vector-effect','non-scaling-stroke');shape.style.setProperty('--c',row.zone&&!row.unavailable&&salesZones(currentConfig).colorPor==='zona'?salesZoneColor(row.zone,paletteTokens(currentConfig.paleta).texto):stateOf(row.lot).color);
    if(row.zone){shape.dataset.zoneId=row.zone.id;paintSalesZone(shape,currentConfig,row.lot,project,map);if(!row.unavailable&&zoneSettings.colorPor==='zona')shape.dataset.zoneFill='true';}shape.setAttribute('aria-label',label(row)+', '+stateOf(row.lot).text);
    if(!row.unavailable){shape.setAttribute('tabindex','0');shape.setAttribute('role','button');shape.addEventListener('click',()=>{if(!suppressClick)pick(row.id)},{signal});shape.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();pick(row.id)}},{signal})}else{shape.setAttribute('aria-disabled','true');shape.setAttribute('role','img')}
+   shape.dataset.lotId=row.id;
    shapes.set(row.id,shape);map.append(shape);
-   if(row.points&&!row.unavailable&&!row.zone){const text=create('text',{class:'lot-number','text-anchor':'middle','dominant-baseline':'central','aria-hidden':'true','pointer-events':'none'});lotLabels.set(row.id,text);map.append(text);}
+   if(row.points&&!row.unavailable&&(!row.zone||section.dataset.estados==='regla')){const text=create('text',{class:'lot-number','text-anchor':'middle','dominant-baseline':'central','aria-hidden':'true','pointer-events':'none'});lotLabels.set(row.id,text);map.append(text);}
 
   }
   startView();rebuildZoneLayers();paintMap();paintLotLabels();ready=true;
@@ -617,14 +703,34 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  const unbridgeWheel=bridgeInlineWheel(map,section,{fullscreen,onHorizontal:delta=>{cancelAnimationFrame(frame);const rect=map.getBoundingClientRect();view[0]+=delta/rect.width*view[2];setView()},onZoom:(delta,event)=>{if(!delta)return;const rect=map.getBoundingClientRect();zoom(delta>0?1.2:.83,[(event.clientX-rect.left)/rect.width,(event.clientY-rect.top)/rect.height])}});lifecycle.signal.addEventListener('abort',unbridgeWheel,{once:true});
  map.addEventListener('wheel',e=>{if(!fullscreen()&&!e.ctrlKey&&!e.metaKey)return;e.preventDefault();const rect=map.getBoundingClientRect(),delta=Math.abs(e.deltaY)>=Math.abs(e.deltaX)?e.deltaY:e.deltaX;if(!delta)return;zoom(delta>0?1.2:.83,[(e.clientX-rect.left)/rect.width,(e.clientY-rect.top)/rect.height])},{signal,passive:false});
  map.addEventListener('keydown',e=>{if(e.target!==map)return;const delta={ArrowLeft:[-.1,0],ArrowRight:[.1,0],ArrowUp:[0,-.1],ArrowDown:[0,.1]}[e.key];if(delta){e.preventDefault();fly([view[0]+delta[0]*view[2],view[1]+delta[1]*view[3],view[2],view[3]])}else if(['+','=','-','Home'].includes(e.key)){e.preventDefault();e.key==='Home'?showWholePlan():zoom(e.key==='-'?1.6:.6)}},{signal});
- let lastSize='';const resize=new ResizeObserver(()=>{const rect=map.getBoundingClientRect(),size=[rect.width,rect.height].join(':');if(!rect.width||!rect.height||size===lastSize)return;lastSize=size;if(ready){startView();if(block){view=constrain(fit(rows.filter(r=>!r.unavailable&&r.block===block)));setView()}const row=byId.get(selected||comparison[0]);if(row)focusSelection(row);}});resize.observe(map);
+ // Si otra capa retoca la ficha después (importes, financiación), el alto necesario se vuelve a calcular.
+ let panelSize='';const panelHead=q('.head'),panelCheck=()=>{const size=[card.offsetHeight,tray.offsetHeight,Math.round(panelHead.getBoundingClientRect().bottom-section.getBoundingClientRect().top)].join(':');if(disposed||size===panelSize)return;panelSize=size;if(compact())paintListState()},panelResize=new ResizeObserver(panelCheck);for(const target of [card,tray,panelHead,q('.side')])panelResize.observe(target);
+ for(const type of ['transitionend','animationend'])section.addEventListener(type,panelCheck,{signal:lifecycle.signal});
+ let lastSize='';const resize=new ResizeObserver(()=>{const rect=map.getBoundingClientRect(),size=[rect.width,rect.height].join(':');if(!rect.width||!rect.height||size===lastSize)return;lastSize=size;if(ready){startView();if(fullPhoto())return;if(block){view=constrain(fit(rows.filter(r=>!r.unavailable&&r.block===block)));setView()}const row=byId.get(selected||comparison[0]);if(row)focusSelection(row);}});resize.observe(map);
+ const panelObserver=new MutationObserver(()=>{viewportHeight();if(ready){cancelAnimationFrame(frame);startView()}});
+ panelObserver.observe(section,{attributes:true,attributeFilter:['data-list-panel-hidden']});
+ signal.addEventListener('abort',()=>panelObserver.disconnect(),{once:true});
  function update(next,selection){
   const signature=zoneFingerprint(next),zoneChanged=signature!==zoneSignature;currentConfig=next;host.dataset.t=selectorTone(next);
   if(zoneChanged){zoneSignature=signature;rows=projectRows(next);byId=new Map(rows.filter(r=>!r.unavailable).map(r=>[r.id,r]));comparison=comparison.filter(id=>byId.has(id));if(selected&&!byId.has(selected)){selected=null;onSelect?.(null);}if(ready)buildMap();}
+  const ruleBefore=section.dataset.estados;paintStateRule(next);const ruleChanged=ruleBefore!==section.dataset.estados;if(ruleChanged&&!zoneChanged&&ready)buildMap();
   const id=comparison.length||selection==null?null:String(selection);
-  if(id!==selected||zoneChanged){selected=byId.has(id)?id:null;paint();if(ready&&mobileZonePlan()&&selected)focusSelection(byId.get(selected));}else{paintCard();paintTray();paintListState();}
+  if(id!==selected||zoneChanged||ruleChanged){selected=byId.has(id)?id:null;paint();if(ready&&mobileZonePlan()&&selected)focusSelection(byId.get(selected));}else{paintCard();paintTray();paintListState();}
  }
 
+ // Llegada desde el recorrido abierto por separado: /proyecto?estado=disponible#lotes muestra la lista ya filtrada (sólo con la regla de estados activa).
+ if(section.dataset.estados==='regla'&&new URLSearchParams(location.search).get('estado')==='disponible'){
+  state='disponible';if(compact())mobileListOpen=true;
+  // Sólo para esta llegada explícita: el ancla #lotes vive dentro del shadow DOM y no posiciona sola. Se lleva la vista y el foco cuando el selector está listo.
+  // El plano se carga recién cuando el selector entra en pantalla, así que no se espera a que esté listo: se reintenta mientras la página termina de armarse y se abandona en cuanto la persona se mueve.
+  let moved=false,focused=null;const stop=()=>{moved=true};
+  for(const type of ['wheel','touchstart','keydown','pointerdown'])window.addEventListener(type,stop,{once:true,passive:true,signal});
+  // El foco se da una sola vez. Si después la persona lo llevó a otro lado, se deja de insistir también con el desplazamiento.
+  const arrive=()=>{if(disposed||moved)return;if(focused&&root.activeElement!==focused){moved=true;return}host.scrollIntoView({block:'start'});if(!focused){focused=list.querySelector('.row')||q('.order');focused?.focus({preventScroll:true})}};
+  requestAnimationFrame(arrive);for(const delay of [600,1500,3000,5000])setTimeout(arrive,delay);
+  window.addEventListener('load',()=>setTimeout(arrive,100),{once:true,signal});
+  whenReady.then(ok=>{if(ok!==false)requestAnimationFrame(arrive)});
+ }
  update(config,null);paint();
- return {update,whenReady,setViewportInset(inset){viewportInset=Math.max(0,Number(inset)||0);viewportHeight()},destroy(){disposed=true;resolveReady(false);if(fullscreen())exitFullscreen();lifecycle.abort();cancelAnimationFrame(frame);resize.disconnect();probe.onload=probe.onerror=null;host.parentElement?.style.removeProperty('--selector-height');root.replaceChildren()}};
+ return {update,whenReady,setViewportInset(inset){viewportInset=Math.max(0,Number(inset)||0);viewportHeight()},destroy(){disposed=true;resolveReady(false);if(fullscreen())exitFullscreen();lifecycle.abort();cancelAnimationFrame(frame);resize.disconnect();panelResize.disconnect();host.parentElement?.style.removeProperty('--selector-needed');probe.onload=probe.onerror=null;host.parentElement?.style.removeProperty('--selector-height');root.replaceChildren()}};
 }
