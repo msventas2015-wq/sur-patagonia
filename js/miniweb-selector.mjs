@@ -212,7 +212,8 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  <div class="head"><div class="chips glass" role="group" aria-label="Filtrar por disponibilidad"></div><label class="mz glass">Manzana<select aria-label="Manzana"><option value="">Todas</option></select></label><div class="zone-filters" hidden aria-label="Filtrar por zonas"></div></div>
  <div class="zoom glass" role="group" aria-label="Zoom del plano"><button type="button" data-zoom="in" aria-label="Acercar">${svgIcon('M12 5v14M5 12h14')}</button><button type="button" data-zoom="out" aria-label="Alejar">${svgIcon('M5 12h14')}</button><button type="button" data-zoom="all" aria-label="Ver todo el plano" title="Ver todo">${svgIcon('M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6')}</button><button type="button" data-fullscreen aria-label="Pantalla completa" title="Pantalla completa">${svgIcon('M8 8 3 3m0 5V3h5M16 8l5-5m-5 0h5v5M8 16l-5 5m0-5v5h5m8-5 5 5m0-5v5h-5')}</button></div>
  <button type="button" class="list-tab glass" data-list-open aria-controls="selector-list" aria-expanded="false" hidden></button>
- <aside id="selector-list" class="side glass" aria-label="Lista de lotes"><header><span class="count" role="status"></span><select class="order" aria-label="Ordenar lotes"><option value="numero">Por número</option><option value="precio">Menor precio</option><option value="superficie">Mayor superficie</option><option value="metro">Menor USD/m²</option></select><button type="button" class="list-close x" data-list-close aria-label="Cerrar lista">${closeIcon}</button></header><div class="list"></div></aside>
+ <button type="button" class="list-show glass" data-list-show aria-controls="selector-list" hidden></button>
+ <aside id="selector-list" class="side glass" aria-label="Lista de lotes"><header><span class="count" role="status"></span><select class="f-state" aria-label="Filtrar por estado" hidden></select><select class="f-zone" aria-label="Filtrar por zona" hidden></select><select class="order" aria-label="Ordenar lotes"><option value="numero">Por número</option><option value="precio">Menor precio</option><option value="superficie">Mayor superficie</option><option value="metro">Menor USD/m²</option></select><button type="button" class="list-hide" data-list-hide aria-label="Esconder la lista" title="Esconder la lista" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button><button type="button" class="list-close x" data-list-close aria-label="Cerrar lista">${closeIcon}</button></header><div class="list"></div></aside>
  <article class="card glass" aria-label="Ficha del lote" hidden></article><aside class="tray glass" aria-label="Comparación de dos lotes" hidden></aside>`;
  if(photoPlan)section.querySelector('.shade').remove();
  if(photoPlan){
@@ -248,9 +249,8 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  function paintStateRule(cfg){
   const on=cfg.bloques?.find(b=>b.tipo==='explorador')?.opciones?.estadosPlano==='regla';let legend=section.querySelector('.state-legend');
   if(!on){delete section.dataset.estados;legend?.remove();return}
-  section.dataset.estados='regla';const count=value=>rows.filter(r=>!r.unavailable&&r.lot.estado===value).length;
-  if(!legend){legend=document.createElement('div');legend.className='glass state-legend';section.append(legend)}
-  legend.innerHTML=`<span><i style="background:#3FA66A"></i><b>${count('disponible')}</b> disponibles</span><span><i style="background:#14181A;outline:1px solid #ffffff66"></i><b>${count('vendido')}</b> <span class="sold">VENDIDOS</span></span>`+(rows.some(r=>r.unavailable)?'<span><i style="outline:1px solid #ffffffcc"></i>No comercializado</span>':'');
+  // La maqueta final no lleva leyenda sobre el plano: la disponibilidad ya se lee en los filtros de la lista, las filas, las fichas y los propios lotes.
+  section.dataset.estados='regla';legend?.remove();
  }
  paintStateRule(config);
  let outlinedShape=null;
@@ -317,13 +317,17 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  function mobileFrame(items,preferredWidth=0,overview=false){
   const rect=map.getBoundingClientRect(),bounds=rowBounds(items,worldHeight);
   if(!bounds||!rect.width||!rect.height)return [...box];
-  const top=Math.max(0,q('.head').getBoundingClientRect().bottom-rect.top)+12;
+  const headerBottom=Math.max(0,q('.head').getBoundingClientRect().bottom-rect.top);
   // The initial overview belongs to the whole map, even when an incoming
   // lot link has already opened its sheet before the raster is ready.
   const sheetHeight=overview?(parseFloat(section.style.getPropertyValue('--mobile-overlay-height'))||0):0;
-  const bottom=Math.min(rect.height,q('.zoom').getBoundingClientRect().top-rect.top+sheetHeight)-12;
-  const scale=Math.max((bounds.right-bounds.left)/Math.max(1,rect.width-32),
+  const controlsTop=Math.min(rect.height,q('.zoom').getBoundingClientRect().top-rect.top+sheetHeight);
+  const inset=Math.min(12,Math.max(0,controlsTop-headerBottom)/4);
+  const top=headerBottom+inset,bottom=controlsTop-inset;
+  const fitScale=Math.max((bounds.right-bounds.left)/Math.max(1,rect.width-32),
    (bounds.bottom-bounds.top)/Math.max(1,bottom-top),preferredWidth/rect.width);
+  // Centre the lot using the zoom the map can actually display, even with a tall sheet.
+  const scale=overview?fitScale:Math.min(fitScale,Math.max(843,initialWidth)/rect.width);
   const width=rect.width*scale,height=rect.height*scale;
   return [(bounds.left+bounds.right-width)/2,(bounds.top+bounds.bottom)/2-scale*(top+bottom)/2,width,height];
  }
@@ -393,7 +397,25 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   if(factor>1){fly([843/2-w/2,worldHeight/2-h/2,w,h]);return}
   fly([view[0]+(view[2]-w)*anchor[0],view[1]+(view[3]-h)*anchor[1],w,h]);
  }
+ // Con la regla, los filtros van dentro de la lista, como desplegables, y el plano queda limpio (también en teléfono).
+ // Se arman a partir de los mismos filtros de siempre: un filtro que no filtra no se muestra.
+ function paintListFilters(){
+  const fs=q('.f-state'),fz=q('.f-zone'),on=section.dataset.estados==='regla'&&section.dataset.listOnly!=='true';
+  // Con la regla, la lista también se puede ordenar con los disponibles primero, sin sacar ningún lote.
+  {const sort=q('.order'),has=sort.querySelector('[value=disponibles]');if(section.dataset.estados==='regla'&&!has)sort.querySelector('[value=numero]').after(new Option('Disponibles primero','disponibles'));else if(section.dataset.estados!=='regla'&&has){has.remove();if(order==='disponibles'){order='numero';sort.value='numero'}}}
+  section.toggleAttribute('data-list-filters',on);
+  // En pantallas anchas la lista se puede esconder: el plano pasa a mostrar la foto cenital entera. En teléfono manda «Ver lista».
+  {const wide=on&&!compact();if(!wide)section.removeAttribute('data-list-panel-hidden');const hiddenList=wide&&section.hasAttribute('data-list-panel-hidden');q('.list-hide').hidden=!wide;const show=q('.list-show');show.hidden=!hiddenList;show.textContent='Ver lista ('+selectorVisible(rows,state,block).length+')'}
+  if(!on){fs.hidden=fz.hidden=true;return}
+  const fill=(select,options,value)=>{const key=JSON.stringify(options);if(select.dataset.options!==key){select.dataset.options=key;select.replaceChildren(...options.map(([v,t])=>new Option(t,v)))}if(select.value!==value)select.value=value;select.hidden=options.length<3};
+  const text=node=>[...node.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim();
+  const chips=[...q('.chips').querySelectorAll('[data-state]')].filter(c=>c.dataset.state&&Number(c.querySelector('b')?.textContent)>0);
+  fill(fs,chips.length>=2?[['','Todos los estados'],...chips.map(c=>[c.dataset.state,text(c)])]:[],chips.some(c=>c.dataset.state===state)?state:'');
+  const zones=[...section.querySelectorAll('.zone-filters [data-zone]')].filter(b=>b.dataset.zone&&!/\(/.test(b.textContent));
+  fill(fz,zones.length>=2?[['','Todas las zonas'],...zones.map(b=>[b.dataset.zone,text(b)])]:[],zones.some(b=>b.dataset.zone===block)?block:'');
+ }
  function paintListState(){
+  paintListFilters();
   const small=compact(),onlyList=section.dataset.listOnly==='true',side=q('.side'),tab=q('.list-tab'),open=small&&!onlyList&&mobileListOpen;
   if(!selected||comparison.length||desktopZonePlan())listCollapsed=false;
   side.hidden=onlyList?false:small?!open:listCollapsed;side.inert=side.hidden;tab.hidden=onlyList||(!small&&!listCollapsed)||open;
@@ -494,17 +516,21 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   outlineFromRow(null);
   highlightFromShape(null);
   zoneControls();
-  const visible=selectorVisible(rows,state,block,order),base=rows.filter(r=>!r.unavailable&&(!block||r.block===block));
+  const visible=selectorVisible(rows,state,block,order);
+  // Con la regla de las miniwebs la lista se ordena por número de lote, que es como se nombra cada lote.
+  if(section.dataset.estados==='regla'&&order==='numero')visible.sort((a,b)=>collator.compare(a.label,b.label)||collator.compare(a.block,b.block));
+  const base=rows.filter(r=>!r.unavailable&&(!block||r.block===block));
   const counts=lotCounts(base.map(r=>r.lot));
   q('.chips').innerHTML=[['','Todos'],...['disponible','reservado','vendido','proximamente',...(counts.states.sin&&salesZones(currentConfig).zonas.length?['sin']:[])].map(key=>[key,states[key].text])].map(([key,text])=>`<button type="button" class="chip" data-state="${key}" aria-pressed="${state===key}" ${key?`style="--c:${stateOf({estado:key}).color}"`:''}>${key?'<i></i>':''}${text}<b>${key?counts.states[key]:counts.total}</b></button>`).join('')+'<span class="leg"><i></i>'+ (section.dataset.estados==='regla'?'No comercializado':'No a la venta')+'</span>';
   q('.count').innerHTML=`<b>${visible.length}</b> ${visible.length===1?'lote':'lotes'}`;
   list.innerHTML=visible.map(row=>{const sale=stateOf(row.lot);return `<button type="button" class="row" data-select="${escape(row.id)}" aria-current="${row.id===selected}" aria-pressed="${comparison.includes(row.id)}" style="--c:${sale.color}"><span class="n">${escape(row.label)}</span><span class="t"><b>${escape(label(row))}</b>${zoneTag(row)}<span>${row.zone&&immersiveZones()?' · ':''}${escape(area(row.lot.superficie_m2))} · <strong data-lot-status="${escape(row.lot.estado)}">${escape(sale.text)}</strong></span></span><span class="p">${soldRule(row.lot)?'':escape(usd(row.lot.precio_usd))+`<span>${escape(unitLabel(row.lot))}</span>`}</span></button>`}).join('')||'<p class="empty" role="status">No hay lotes con estos filtros.</p>';
   paintMap();paintLotLabels();paintCard();paintTray();paintListState();
  }
- function focusSelection(row,fromList=false){
+ function focusSelection(row,fromList=false,immediate=false){
   if(!ready)return;
   if(mobileZonePlan() && !comparison.length && row){
-   fly(mobileFrame([row],Math.min(view[2],initialWidth)));
+   const target=mobileFrame([row],Math.min(view[2],initialWidth));
+   if(immediate){cancelAnimationFrame(frame);view=target;setView()}else fly(target);
    return;
   }
   const readRect=element=>{
@@ -563,10 +589,14 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  for(const name of chooseBlocks)blockSelect.add(new Option('Manzana '+name,name));
  blockSelect.addEventListener('change',()=>{block=blockSelect.value;selected=null;onSelect?.(null);paint();if(ready)fly(block?fit(rows.filter(r=>!r.unavailable&&r.block===block)):resetTarget())},{signal});
  q('.order').addEventListener('change',e=>{order=e.target.value;paint()},{signal});
+ q('.f-state').addEventListener('change',e=>{state=e.target.value;if(selected&&!selectorVisible(rows,state,block).some(r=>r.id===selected)){selected=null;onSelect?.(null)}paint()},{signal});
+ q('.f-zone').addEventListener('change',e=>{block=e.target.value;selected=null;onSelect?.(null);paint()},{signal});
  let suppressClick=false;
  section.addEventListener('click',e=>{
   const button=e.target.closest('button');if(!button)return;
   if(button.hasAttribute('data-fullscreen')){toggleFullscreen();return}
+  if(button.hasAttribute('data-list-hide')){section.setAttribute('data-list-panel-hidden','');paintListState();q('.list-show').focus({preventScroll:true});return}
+  if(button.hasAttribute('data-list-show')){section.removeAttribute('data-list-panel-hidden');paintListState();q('.list-hide').focus({preventScroll:true});return}
   if(button.hasAttribute('data-list-close')){mobileListOpen=false;paintListState();q('.list-tab').focus({preventScroll:true});return}
   if(button.hasAttribute('data-list-open')){listCollapsed=false;mobileListOpen=compact();paintListState();const active=[...list.querySelectorAll('.row')].find(n=>n.dataset.select===selected);(active||q('.order')).focus({preventScroll:true});return}
   if(button.hasAttribute('data-state')){state=button.dataset.state;if(selected&&!selectorVisible(rows,state,block).some(r=>r.id===selected)){selected=null;onSelect?.(null)}paint();q('.chips').querySelector(`[data-state="${state}"]`)?.focus({preventScroll:true});return}
@@ -625,7 +655,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   // Read its styled height before measuring the toolbar and framing the map.
   if(compact())paintListState();else if(desktopZonePlan())viewportHeight();
   buildMap();reveal();
-  if(mobileZonePlan()&&selected)focusSelection(byId.get(selected));
+  if(mobileZonePlan()&&selected)focusSelection(byId.get(selected),false,true);
  };
  const unavailable=text=>{
   if(disposed)return;
@@ -706,7 +736,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  // Si otra capa retoca la ficha después (importes, financiación), el alto necesario se vuelve a calcular.
  let panelSize='';const panelHead=q('.head'),panelCheck=()=>{const size=[card.offsetHeight,tray.offsetHeight,Math.round(panelHead.getBoundingClientRect().bottom-section.getBoundingClientRect().top)].join(':');if(disposed||size===panelSize)return;panelSize=size;if(compact())paintListState()},panelResize=new ResizeObserver(panelCheck);for(const target of [card,tray,panelHead,q('.side')])panelResize.observe(target);
  for(const type of ['transitionend','animationend'])section.addEventListener(type,panelCheck,{signal:lifecycle.signal});
- let lastSize='';const resize=new ResizeObserver(()=>{const rect=map.getBoundingClientRect(),size=[rect.width,rect.height].join(':');if(!rect.width||!rect.height||size===lastSize)return;lastSize=size;if(ready){startView();if(fullPhoto())return;if(block){view=constrain(fit(rows.filter(r=>!r.unavailable&&r.block===block)));setView()}const row=byId.get(selected||comparison[0]);if(row)focusSelection(row);}});resize.observe(map);
+ let lastSize='';const resize=new ResizeObserver(()=>{const rect=map.getBoundingClientRect(),size=[rect.width,rect.height].join(':');if(!rect.width||!rect.height||size===lastSize)return;lastSize=size;if(ready){startView();if(fullPhoto())return;if(block){view=constrain(fit(rows.filter(r=>!r.unavailable&&r.block===block)));setView()}const row=byId.get(selected||comparison[0]);if(row)focusSelection(row,false,true);}});resize.observe(map);
  const panelObserver=new MutationObserver(()=>{viewportHeight();if(ready){cancelAnimationFrame(frame);startView()}});
  panelObserver.observe(section,{attributes:true,attributeFilter:['data-list-panel-hidden']});
  signal.addEventListener('abort',()=>panelObserver.disconnect(),{once:true});

@@ -118,8 +118,11 @@ const captions=[
 // Composición aprobada por Mariano (referencia del 23-nov-2026). Se aplica UNA vez, desde el creador, sobre los
 // bloques guardados del proyecto. Deja la marca recursos.cierreTerrazas='bloques'; después de eso, lo que se edite
 // en el creador manda y esta función no vuelve a tocarlo. No lee ni cambia inventario, precios ni datos del proyecto.
-export const COMPOSICION_TERRAZAS='2026-11-23';
+// Referencia visual: la maqueta final aprobada por Mariano (docs/maquetas/terrazas-miniweb-claude.html, sin parámetros).
+export const COMPOSICION_TERRAZAS='2026-11-23-maqueta';
 export const composicionTerrazasAplicada=config=>config?.recursos?.cierreTerrazas==='bloques';
+// Al día: ya tiene esta misma referencia. Una composición aplicada con una referencia anterior se puede actualizar desde el creador.
+export const composicionTerrazasAlDia=config=>composicionTerrazasAplicada(config)&&config.recursos.composicionTerrazas===COMPOSICION_TERRAZAS;
 const ALBUMES_COMARCA=[
   ['Lagos y ríos',['c61ee28dead7c964','2980d1b50a912370','ac82dae29207022f','e2b9f604078ff8e5']],
   ['Montaña y nieve',['0be483c6d44d4d87','7b61fccdd4f0862d','5cc979b726b0eb41','0414b5cd3bd2d56e']],
@@ -137,7 +140,7 @@ const TEXTO_PROYECTO=[
 // Es la misma fotografía con dos nombres: el del banco del proyecto en QA y en producción, y el del respaldo local.
 const FOTO_PROYECTO=['1794711682075-xb77j4wkq4i','167e03b4495662fce04b1a82'];
 export function aplicarComposicionTerrazas(original, project, contextPhotos=[]) {
-  if(project?.slug!=='terrazas-del-piltri' || original?.estilo!=='inmersivo' || composicionTerrazasAplicada(original))return {config:original,aplicada:false,faltantes:[]};
+  if(project?.slug!=='terrazas-del-piltri' || original?.estilo!=='inmersivo' || composicionTerrazasAlDia(original))return {config:original,aplicada:false,faltantes:[]};
   const config=configuracionTerrazas(original,project),faltantes=[];
   const section=type=>config.bloques.find(b=>b.tipo===type && (type!=='panoramica360' || b.variante==='recorrido'));
   if(!section('experiencias'))config.bloques.push({id:'experiencias-comarca',tipo:'experiencias',variante:'albumes',activo:true,fuente:'editorial',contenido:{},opciones:{}});
@@ -159,7 +162,7 @@ export function aplicarComposicionTerrazas(original, project, contextPhotos=[]) 
   config.bloques=[...active.filter(b=>b!==last),...inactive,...(last?[last]:[])];
   config.controlBloques=1;config.medio='video';config.videoActivo=true;
   const edit=(type,change)=>{const b=section(type);if(b)change(b)};
-  edit('portada',b=>{Object.assign(b.opciones,{medio:'video',autoplay:'si'});b.contenido.titulo='Lotes · El Bolsón, Río Negro'});
+  edit('portada',b=>{Object.assign(b.opciones,{medio:'video',autoplay:'si'});b.contenido.titulo='Lotes en El Bolsón, Río Negro'});
   edit('foto-texto',b=>{
     b.variante='foto-izquierda';
     Object.assign(b.opciones,{varianteManual:true,photoSize:50,enlaceLotes:'no',efectoFoto:'hover',efectoEntrada:'titulos',efectoDuracion:700});
@@ -168,17 +171,17 @@ export function aplicarComposicionTerrazas(original, project, contextPhotos=[]) 
     const photo=FOTO_PROYECTO.map(key=>bank.find(url=>url.includes(key))).find(Boolean);
     if(photo)b.contenido.imagen=photo;else faltantes.push('foto de «El proyecto» ('+FOTO_PROYECTO.join(' o ')+') en las fotos del proyecto');
   });
-  edit('servicios',b=>{b.contenido={titulo:'Servicios',serviciosPropios:'Luz, Agua, Gas, Cloaca, Internet (fibra óptica)'};b.variante='fichas';b.opciones.varianteManual=true});
-  edit('cifras',b=>{b.contenido.titulo='Precio y forma de pago';b.opciones.cifras=['precio','superficies'];b.opciones.grupoOferta='si'});
+  edit('servicios',b=>{b.contenido={titulo:'Servicios',serviciosPropios:'Luz, Agua, Gas, Cloacas, Fibra óptica'};b.variante='fichas';b.opciones.varianteManual=true});
+  edit('cifras',b=>{b.contenido.titulo='Precio y forma de pago';Object.assign(b.contenido,{rotulo_precio:'Precio',rotulo_superficies:'Superficie de los lotes'});b.opciones.cifras=['precio','superficies'];b.opciones.grupoOferta='si'});
   edit('financiacion',b=>{
     b.contenido.titulo='Financiación';
     // Pares editoriales aprobados sólo para la oferta con la que se aprobaron. Con otro texto de financiación no se escribe ningún importe.
-    if(project.financiacion==='Entrega de USD 28.000 y saldo de USD 12.000 en 8 cuotas fijas de USD 1.500.')Object.assign(b.contenido,{planValor1:'USD 28.000',planEtiqueta1:'Entrega inicial',planValor2:'USD 1.500',planEtiqueta2:'Por cuota, en 8 cuotas fijas',planValor3:'USD 12.000',planEtiqueta3:'Saldo financiado'});
+    if(project.financiacion==='Entrega de USD 28.000 y saldo de USD 12.000 en 8 cuotas fijas de USD 1.500.')Object.assign(b.contenido,{planValor1:'USD 28.000',planEtiqueta1:'Entrega inicial',planValor2:'USD 1.500',planEtiqueta2:'8 cuotas fijas de',planValor3:'USD 12.000',planEtiqueta3:'Saldo financiado'});
     else faltantes.push('plan de pagos en cifras (el texto de financiación del proyecto no coincide con el aprobado)');
   });
-  edit('panoramica360',b=>{b.contenido.titulo='Inicie el recorrido virtual';b.contenido.texto=''});
+  edit('panoramica360',b=>{b.contenido.titulo='Recorra el terreno en 360°';b.contenido.texto=''});
   edit('explorador',b=>{b.contenido.titulo='Elija su lote';b.opciones.estadosPlano='regla'});
-  edit('galeria',b=>{b.contenido.titulo='El loteo';b.variante='album';Object.assign(b.opciones,{varianteManual:true,efectoFoto:'hover',efectoDuracion:700})});
+  edit('galeria',b=>{b.contenido.titulo='“El loteo”';b.variante='album';Object.assign(b.opciones,{varianteManual:true,efectoFoto:'hover',efectoDuracion:700})});
   edit('experiencias',b=>{
     const bank=new Map(contextPhotos.map(photo=>[photo.id,photo])),photos=[];
     for(const [experiencia,ids] of ALBUMES_COMARCA)for(const id of ids){const photo=bank.get('contexto-'+id);if(photo)photos.push({url:photo.url,alt:photo.nombre,pie:photo.nombre,experiencia});else faltantes.push('foto de «'+experiencia+'» ('+id+')')}
@@ -469,6 +472,32 @@ function instalarInteracciones(root, project, lots) {
       .sel .card .acts [data-action="consult"] {grid-column:1/-1;min-height:50px;font-weight:700;font-size:19px}
       .sel .card .acts .reservation-note {grid-column:1/-1;font:inherit;font-size:14px;
         line-height:1.4;margin:0 0 4px;color:inherit}
+      /* Ficha del lote según la maqueta final (con la regla de estados). */
+      .sel[data-estados=regla] .card :is(.lot-name,.lot-area) {font-size:18px;font-weight:600}
+      @media (min-width:901px) {
+        .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card {width:min(480px,calc(100% - var(--list-width) - 130px))}
+        .sel[data-estados=regla] .card .acts [data-action="consult"] {font-size:16px!important}
+      }
+      @media (max-width:900px) {
+        .sel[data-estados=regla] .card :is(.lot-name,.lot-area) {font-size:17px}
+        .sel[data-estados=regla] .card .sale-metrics {gap:6px!important}
+        .sel[data-estados=regla] .card .sale-price {letter-spacing:-.045em!important}
+      }
+      .sel[data-estados=regla] .card .sale-metrics {justify-content:flex-start;flex-wrap:nowrap;white-space:nowrap;gap:12px;margin:16px 0 8px;padding-top:20px;
+        border-top:1px solid rgba(255,255,255,.18)}
+      .sel[data-estados=regla] .card .sale-price {font-size:36px;font-weight:600;letter-spacing:-.01em}
+      .sel[data-estados=regla] .card .sale-unit {font-size:15px;font-weight:400}
+      .sel[data-estados=regla] .card .card-finance {margin:0 0 16px;font-size:15px;font-weight:400;line-height:1.4}
+      .sel[data-estados=regla] .card .acts [data-action="consult"] {min-height:56px;justify-content:center;text-align:center;
+        font-size:15.6px;font-weight:600}
+      .sel[data-estados=regla] .card .acts [data-action="consult"] > :not(span) {display:none}
+      .sel[data-estados=regla] .card .acts .btn:not([data-action="consult"]) {font-size:15px;font-weight:600}
+      .sel[data-estados=regla] .card:has([data-action="available"]):not([hidden]) {display:flex;flex-direction:column}
+      .sel[data-estados=regla] .card:has([data-action="available"]) .acts {margin-top:auto}
+      .sel[data-estados=regla] .card .acts [data-action="available"] {min-height:56px;justify-content:center;border:0;
+        background:var(--pal-accion,var(--accent));color:var(--pal-textoAccion,var(--accent-ink));font-size:15.6px;font-weight:600}
+      .sel[data-estados=regla] .card .solo-lectores {position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+        clip-path:inset(50%);white-space:nowrap}
       @media (max-width:900px) {
         .sel.photo-plan:not([data-list-only=true]) .card.show {max-height:calc(100% - var(--selector-clear,24px))}
         .sel.photo-plan .card.show .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -488,6 +517,7 @@ function instalarInteracciones(root, project, lots) {
     }
     new MutationObserver(showRelevantFilters).observe(chips, {childList:true});
     showRelevantFilters();
+    const cardHeights = {};
     function improveSelection() {
       const action = card?.querySelector('[data-action="consult"]');
       const top = card?.querySelector('.top');
@@ -499,7 +529,8 @@ function instalarInteracciones(root, project, lots) {
       const block = identity.querySelector('h3').textContent, lotName = identity.querySelector('.big').textContent;
       name.textContent = (rule ? [lotName, block] : [block, lotName]).join(' · ');
       const zone = identity.querySelector('.zone-tag');
-      if (zone) { zone.classList.add('lot-zone'); top.append(zone); }
+      // Maqueta final: bajo la regla, la ficha no repite la zona (ya está en la lista y en el plano).
+      if (zone) { if (rule) zone.remove(); else { zone.classList.add('lot-zone'); top.append(zone); } }
       identity.replaceWith(name);
       const facts = card.querySelector('.kv');
       const sold = !!card.querySelector('[data-action="available"]');
@@ -510,6 +541,13 @@ function instalarInteracciones(root, project, lots) {
       surface.textContent = area;
       surface.setAttribute('aria-label','Superficie: ' + area);
       top.append(surface);
+      // Decisión de Mariano para Terrazas: la ficha no cambia de tamaño entre un lote disponible y uno vendido.
+      // Se guarda el alto de la ficha disponible en cada ancho y la del vendido lo iguala; la acción queda abajo.
+      if (rule) {
+        const key = innerWidth <= 900 ? 'movil' : 'ancha';
+        if (sold) card.style.minHeight = (cardHeights[key] || (key === 'movil' ? 388 : 413)) + 'px';
+        else { card.style.minHeight = ''; requestAnimationFrame(() => { if (!card.hidden && !card.querySelector('[data-action="available"]')) cardHeights[key] = card.offsetHeight; }); }
+      }
       if (sold) { facts.remove(); return; }
       const metrics = document.createElement('div');
       metrics.className = 'sale-metrics';
@@ -530,8 +568,11 @@ function instalarInteracciones(root, project, lots) {
       action.setAttribute('aria-describedby', note.id);
       const financing = document.createElement('p');
       financing.className = 'card-finance';
-      financing.textContent = 'Con financiación';
-      action.after(financing,note);
+      // Maqueta final: la forma de pago va en una línea, arriba del botón; la aclaración queda sólo para lectores de pantalla.
+      const plan = rule && /Entrega de (USD \d[\d.]*\d) y saldo de USD [\d.]+ en (\d+) cuotas fijas de (USD \d[\d.]*\d)/.exec(project?.financiacion || '');
+      financing.textContent = plan ? 'Entrega ' + plan[1] + ' + ' + plan[2] + ' cuotas de ' + plan[3] : 'Con financiación';
+      if (rule) { note.classList.add('solo-lectores'); metrics.after(financing); action.after(note); }
+      else action.after(financing,note);
     }
     if (card) {
       new MutationObserver(improveSelection).observe(card, {childList:true});
