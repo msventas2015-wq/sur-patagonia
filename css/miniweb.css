@@ -1146,8 +1146,9 @@ main{padding-top:var(--toolbar)}.hero{position:relative;min-height:760px;height:
     & .text h2 {margin:0 0 24px!important;font-size:var(--titulo-editorial)!important;line-height:1.08!important}
     & .text p {max-width:none!important;margin:0!important;font-size:19px!important;line-height:1.6!important}
     & .text p+p {margin-top:1.6em!important}
-    /* Maqueta final: la foto toma el alto del texto, con un mínimo; no una proporción fija. */
-    & > figure {grid-column:1;grid-row:1;align-self:stretch;position:relative;margin:0!important;width:100%!important;height:auto!important;min-height:clamp(256px,27vw,390px)!important;aspect-ratio:auto!important}
+    /* La foto parte de 4:3 y acompaña al texto si éste necesita una fila más alta. */
+    & > figure {grid-column:1;grid-row:1;align-self:stretch;position:relative;margin:0!important;width:100%!important;height:auto!important;min-height:0!important;aspect-ratio:auto!important}
+    & > figure::before {content:"";display:block;padding-top:75%}
     & > figure img {position:absolute;inset:0;width:100%!important;height:100%!important;object-fit:cover}
   }
   & .block-stream > :is([data-oferta=cifras],[data-block-type=panoramica360],[data-block-type=galeria])[data-space-bottom=custom] {padding-bottom:0!important}
@@ -1158,9 +1159,11 @@ main{padding-top:var(--toolbar)}.hero{position:relative;min-height:760px;height:
     padding-inline:0!important;
     & :is(.album-side,.experience-gallery)>header h2 {margin:0!important;font-size:var(--titulo-editorial)!important;line-height:1.08!important}
   }
-  & .album-gallery {padding-inline:0!important;grid-template-columns:minmax(0,66fr) minmax(0,34fr);gap:0!important}
-  & .album-main .experience-frame {aspect-ratio:auto;height:clamp(400px,64vh,700px)}
-  & .album-side {padding-inline:clamp(24px,3.4vw,60px)}
+  & .album-gallery {padding-inline:0!important;grid-template-columns:minmax(0,1fr) clamp(420px,34vw,540px);gap:0!important}
+  & .album-main .experience-frame {aspect-ratio:auto;height:clamp(500px,64vh,660px)}
+  & .album-side {padding:32px clamp(32px,3.4vw,56px)}
+  & .album-side > header {margin:0!important}
+  & [data-block-type=experiencias] .experience-gallery > header {margin-bottom:48px!important}
   & .album-thumb .experience-frame {aspect-ratio:4/3}
   & .album-thumbs {gap:8px}
   & .album-gallery :is(.album-count,.album-open) {font-family:var(--letra-datos)!important}
@@ -1199,10 +1202,16 @@ main{padding-top:var(--toolbar)}.hero{position:relative;min-height:760px;height:
     & .block-stream > [data-oferta=servicios] header h2 {font:400 32px/1.08 var(--letra-titulo)!important}
     & .block-stream > [data-oferta=servicios] .service-cards>ul {gap:35px 0!important;padding:37px 0 17px!important}
     & .block-stream > [data-oferta=servicios] .service-cards li {gap:20px!important}
-    & .album-gallery {grid-template-columns:minmax(0,1fr);gap:24px!important}
-    & .album-main .experience-frame {height:auto;aspect-ratio:16/10}
-    & .album-side {padding-inline:var(--gutter)}
-    & .album-thumbs {display:flex;overflow-x:auto}
+    & [data-block-type=experiencias] .experience-gallery > header {margin-bottom:20px!important}
+  }
+  @media(max-width:999px) {
+    & .album-gallery {grid-template-columns:minmax(0,1fr);grid-template-areas:"titulo" "foto" "miniaturas" "pie";gap:0!important}
+    & .album-side {display:contents}
+    & .album-side > header {grid-area:titulo;padding:0 var(--gutter) 20px}
+    & .album-main {grid-area:foto}
+    & .album-main .experience-frame {height:auto;aspect-ratio:4/3}
+    & .album-thumbs {grid-area:miniaturas;display:flex;overflow-x:auto;margin:14px var(--gutter) 0;padding:2px}
+    & .album-foot {grid-area:pie;margin:14px var(--gutter) 0}
     & .album-thumb {flex:0 0 76px}
   }
 }
