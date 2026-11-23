@@ -5,10 +5,14 @@ import {unitPriceLabel,unitPriceText} from './lote-precio.mjs';
 import {appendLotReturnLinks,lotReturnUrl,hideLotInquiry,findPublicLot,lotLinkId} from './recorrido-enlaces.mjs?v=20261120-terrazas';
 import {blockName,estados,paintLot,tourZones,tourZoneLegend} from './recorrido-estilo.mjs?v=20261114-anillo7b';
 import {simulatedSales,simulateLotStates} from './recorrido-terrazas-qa.mjs?v=20261116-ficha';
-import {lotTitle} from './ficha-lote-recorrido.mjs';
+import {lotTitle,rotularLotesTerrazas} from './ficha-lote-recorrido.mjs';
 import {gps,meters} from './recorrido-geografia.mjs';
+import {previewWindow} from './recorrido-paseo.mjs';
 import {mountPanorama,openMediaViewer} from './recorrido-visor-medios.mjs?v=20261116-ubicar';
-import {mediaList,mediaURL} from './recorrido-medios.mjs?v=20261114-media1';
+import {mediaList,mediaURL,projectBrochureURL} from './recorrido-medios.mjs?v=20261114-media1';
+// Regla de las miniwebs (opción estadosPlano del Explorador): primero el lote, después la manzana.
+const lotFirstName=(config,name)=>{const match=config?.bloques?.find(block=>block.tipo==='explorador')?.opciones?.estadosPlano==='regla'&&String(name??'').match(/^(Manzana [^·]+?)\s*·\s*(Lote .+)$/i);return match?match[2]+' · '+match[1]:name};
+
 export const numberIn=(v,min,max)=>Number.isFinite(v)&&v>=min&&v<=max;
 export const cameraParameters=c=>({heading:c.heading??0,height:c.height??60});
 export const cameraNeedsAdjustment=c=>c.adjustment!=='confirmed'&&(c.heading==null||c.height==null||!!c.headingEstimated||!!c.heightEstimated);
@@ -201,11 +205,12 @@ function ringTouchesPanel(entity,bounds){
   const dy=Math.max(bounds[1]-y,0,y-bounds[3]);
   return dx*dx+dy*dy <= (entity.d/2+3)**2;
 }
-export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,slug,projectSlug=slug,lotId,preview=false,calibration=null,reviewMedia=[],reviewStart,detailStart,initialFlight}={}) {
+export function openScene(scene,{local=false,config,lots=[],financing,brochureUrl,returnUrl,slug,projectSlug=slug,lotId,preview=false,calibration=null,reviewMedia=[],reviewStart,detailStart,initialFlight}={}) {
   const issue=sceneIssue(scene,{local});if(issue)throw Error(issue);
   const autoEmbedded=window.parent!==window && new URLSearchParams(location.search).get('miniweb-auto')==='1';
   scene={...scene,cameras:scene.cameras.filter(c=>gps(c.point)).map(c=>({...c,...cameraParameters(c)}))};
   // Los contornos guardan geometría; los datos publicados se resuelven por identidad.
+  lots=rotularLotesTerrazas(projectSlug,lots);
   const simulating=simulatedSales(projectSlug);
   if (simulating) lots=simulateLotStates(lots);
   const zones=tourZones(config,projectSlug,lots);
@@ -225,6 +230,11 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
   const interactive=f=>f.kind==='poi'||(f.kind==='lot'&&isListedLot(linked.get(f.id)));
   const requested=targetLot&&scene.features.find(f=>linked.get(f.id)?.id===targetLot.id&&interactive(f));
   const dialog=node('dialog',null,'rg-tour');dialog.setAttribute('aria-label','Recorrido de '+scene.name);
+  const commercialStates=config?.bloques?.some(b=>b.tipo==='explorador' && b.opciones?.estadosPlano==='regla');
+  dialog.toggleAttribute('data-regla-estados',Boolean(commercialStates));
+  const embeddedOverview=window.parent!==window && new URLSearchParams(location.search).get('integrado')==='1'
+    && commercialStates;
+  dialog.toggleAttribute('data-resumen-embebido',embeddedOverview);
   dialog.innerHTML=`
     <div class="rg-stage rm-stage"></div>
     <header class="rg-identity"><div><small></small><h2></h2></div></header>
@@ -279,6 +289,11 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
   for(const f of scene.features){
     const lot=linked.get(f.id);
     if(f.kind==='lot' && isListedLot(lot))counts[Object.hasOwn(counts,lot.estado)?lot.estado:'sin']++;
+  }
+  if(embeddedOverview){
+    const n=zones?.counts.states.disponible ?? counts.disponible;
+    q('.rg-identity').append(node('strong',n+(n===1?' lote disponible':' lotes disponibles'),'rg-available-summary'));
+    q('[data-layers]').textContent='Ocultar lotes';
   }
   if(zones?.settings.colorPor==='zona'){
     key.setAttribute('role','group');
@@ -437,8 +452,17 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
     }
   }
   places.add(new Option('Elegí un lote o lugar',''));
-  scene.features.filter(interactive).forEach(f=>places.add(new Option(f.name,f.id)));
+  scene.features.filter(interactive).forEach(f=>places.add(new Option(lotFirstName(config,f.name),f.id)));
   let index=0,clean=()=>{},timer,playing=false,selected=null,blue=false,hover=null,frame=0;
+  const previews=previewWindow();
+  let navigation=0, intended=0, activeCamera;
+  function walkDirectory(camera) {
+    if (calibration || camera?.skyMask || !camera?.paseo) return '';
+    return /^\/assets\/(?:[\w-]+\/)+$/.test(camera.paseo) ? camera.paseo : '';
+  }
+  function neighborPreviews(i) {
+    return [i,i+1,i-1].map(n=>walkDirectory(scene.cameras[n])).filter(Boolean).map(p=>p+'vista.webp');
+  }
   function stop(){clearTimeout(timer);playing=false;q('[data-play]').textContent='Reproducir';}
   function paintSelection(){
     for(const el of stage.querySelectorAll('[data-geo-id]')) {
@@ -485,10 +509,14 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
       }
       const badge=node('small',estados[lot.estado]||'Sin información','rg-availability');badge.dataset.state=lot.estado||'';
       const mobile = photoMode();
+      // Regla de estados de las miniwebs (opción estadosPlano del Explorador): un lote vendido no muestra importes ni vistas 360.
+      const stateRule = commercialStates;
+      const soldRule = stateRule && lot.estado==='vendido';
+      if (stateRule && ['disponible','vendido'].includes(lot.estado)) card.dataset.fichaRegla=''; else delete card.dataset.fichaRegla;
       const desktopSale = slug === 'terrazas-del-piltri' && !mobile && matchMedia('(min-width: 761px)').matches;
       const heading=node('div',null,'rg-card-heading'),name=node('h3');
-      const lines=f.name.split(/\s+(?=·\s+Lote\b)/i);
-      if(mobile){name.className='rg-lot-identity';name.textContent=f.name;heading.append(badge);}
+      const lines=String(lotFirstName(config,f.name)).split(/\s+(?=·\s+(?:Lote|Manzana)\b)/i);
+      if(mobile){name.className='rg-lot-identity';name.textContent=lotFirstName(config,f.name);heading.append(badge);}
       else {for(const line of lines)name.append(node('span',line));heading.append(name,badge);}
       body.append(heading);
       const measures=node('div',null,'rg-measures');
@@ -506,12 +534,12 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
         measures.append(column);
       }
       if(measures.childElementCount)body.append(measures);
-      if (mobile) {
+      if (mobile && !soldRule) {
         const facts=node('dl',null,'rg-lot-facts');
         const unit=unitPriceText(lot);
         const rows=[
-          ['Precio',lot.precio_usd==null?'A consultar':'USD '+Number(lot.precio_usd).toLocaleString('es-AR')],
-          ['Precio por m²',unit==='—'?'':'USD '+unit],
+          ['Precio',soldRule?'':lot.precio_usd==null?'A consultar':'USD '+Number(lot.precio_usd).toLocaleString('es-AR')],
+          ['Precio por m²',soldRule||unit==='—'?'':'USD '+unit],
           ['Etapa',phase ? (/^etapa\s/i.test(String(phase))?String(phase):'Etapa '+String(phase).padStart(2,'0')) : ''],
           ['Zona',zones?.get(lot)?.zone?.nombre],
           ['Tipo de lote',lot.tipo_lote], ['Financiación del proyecto',financing],
@@ -535,19 +563,19 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
           q('[data-closemap]').focus({preventScroll:true});
         }
       };
-      if (!mobile) body.append(locate);
+      if (!mobile && !soldRule) body.append(locate);
       if (!photoMode()) locateLot(f);
       for(const [kind,label] of [['foto','Fotos del lote'],['panorama','Vista 360°']]){
-        const group=items.filter(m=>m.tipo===kind);if(!group.length)continue;
+        const group=items.filter(m=>m.tipo===kind);if(!group.length||(soldRule&&(mobile||kind==='panorama')))continue;
         const open=node('button',label);open.onclick=()=>openMediaViewer(group,{title:f.name,context:'recorrido'});body.append(open);
       }
       const external=mediaURL(config.lotes?.[lot.id]?.tour360);
-      if(external){const a=node('a','Vista externa');a.href=external;a.target='_blank';a.rel='noopener';body.append(a);}
+      if(external&&!soldRule){const a=node('a','Vista externa');a.href=external;a.target='_blank';a.rel='noopener';body.append(a);}
       if (!mobile) {
         const details=node('details');details.append(node('summary','Información del lote'));
-        for(const value of [lot.precio_usd==null?'Precio a consultar':'USD '+Number(lot.precio_usd).toLocaleString('es-AR'),lot.precio_usd==null?'':unitPriceLabel+' · '+unitPriceText(lot),lot.tipo_lote,lot.frente_agua?'Frente al agua':'',lot.notas])if(value)details.append(node('p',value));
-        if(slug)appendLotReturnLinks(body,slug,lotLinkId(config,lot.id),lot,{includeInquiry:!desktopSale});
-        body.append(details);if(phase)body.append(node('p','Datos de la ficha del lote. Etapa según el plano.','rg-card-source'));
+        for(const value of [soldRule?'':lot.precio_usd==null?'Precio a consultar':'USD '+Number(lot.precio_usd).toLocaleString('es-AR'),soldRule||lot.precio_usd==null?'':unitPriceLabel+' · '+unitPriceText(lot),lot.tipo_lote,lot.frente_agua?'Frente al agua':'',lot.notas])if(value)details.append(node('p',value));
+        if(slug&&!soldRule)appendLotReturnLinks(body,slug,lotLinkId(config,lot.id),lot,{includeInquiry:!desktopSale});
+        if(details.childElementCount>1)body.append(details);if(phase)body.append(node('p','Datos de la ficha del lote. Etapa según el plano.','rg-card-source'));
       }
       if ((mobile || desktopSale) && slug && !hideLotInquiry(slug,lot)) {
         const nav=node('nav',null,desktopSale?'rg-desktop-inquiry':'');
@@ -566,7 +594,24 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
         }
         body.insertBefore(nav,desktopSale?locate:null);
       }
-      if(mobile)body.append(locate);
+      if(stateRule && lot.estado==='disponible'){
+        const url=projectBrochureURL(brochureUrl,{local});
+        if(url){
+          const brochure=node('a','Brochure del proyecto');
+          brochure.href=url;brochure.target='_blank';brochure.rel='noopener noreferrer';
+          body.append(brochure);
+        }
+      }
+      if(mobile&&!soldRule)body.append(locate);
+      if (soldRule) {
+        // Única acción de un vendido: salir del panorama y mostrar la lista de disponibles. La miniweb escucha el aviso.
+        const nav=node('nav',null,mobile?'':'rg-desktop-inquiry');nav.setAttribute('aria-label','Acciones del lote');
+        const available=node('button','Ver lotes disponibles','rg-lot-inquiry');available.type='button';
+        // Embebido: la miniweb que lo contiene recibe el aviso. Abierto solo: vuelve a la miniweb por su dirección pública, con el selector en disponibles.
+        available.onclick=()=>{card.hidden=true;stage.dispatchEvent(new Event('recorrido-toque-fondo',{bubbles:true}));stage.dispatchEvent(new Event('recorrido-ver-disponibles',{bubbles:true}));if(window.parent===window&&slug)location.assign('/'+encodeURIComponent(slug)+'?estado=disponible#lotes');};
+        nav.append(available);
+        if(measures.isConnected)measures.after(nav);else body.append(nav);
+      }
       if (simulating) for (const link of body.querySelectorAll('nav a')) {
         const url=new URL(link.href);url.searchParams.set('simulacion','estados');link.href=url.href;
       }
@@ -602,9 +647,46 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
     if(hover){hover=null;paintSelection();}
     q('.rg-tip').hidden=true;stage.classList.remove('rg-pointing');
   }
-  function show(i,focusFeature){
+  async function show(i,focusFeature){
     if(i<0 || i>=viewCount)return;
-    cancelAnimationFrame(frame);clearHover();clean();q('.rg-world-title').hidden=true;stage.replaceChildren();
+    intended=i;
+    const ticket=++navigation, camera=scene.cameras[i], directory=walkDirectory(camera);
+    const status=q('[role=status]');
+    let prepared;
+    if (directory || (walkDirectory(activeCamera) && camera && i!==index)) {
+      const url=directory ? directory+'vista.webp' : camera.url;
+      selector.value=camera.id;
+      // La vista actual sigue aceptando giro y zoom durante la descarga.
+      previews.retain([...neighborPreviews(index),url]);
+      if (!activeCamera) {
+        status.dataset.panoramaState='loading';
+        status.textContent='Cargando panorámica…';
+      } else {
+        status.textContent='Preparando la próxima vista. Podés seguir girando.';
+        dialog.dispatchEvent(new Event('recorrido-estacion-pendiente'));
+      }
+      try {
+        try { prepared=await previews.get(url,'high'); }
+        catch (error) {
+          if (ticket!==navigation || url===camera.url) throw error;
+          prepared=await previews.get(camera.url,'high');
+        }
+      } catch {
+        if (ticket===navigation) {
+          intended=index; selector.value=activeCamera?.id || camera.id;
+          status.dataset.panoramaState='error';
+          status.textContent='No se pudo abrir la próxima vista. Volvé a elegirla para reintentar.';
+          dialog.dispatchEvent(new Event('recorrido-estacion-fallida'));
+        }
+        return;
+      }
+      if (ticket!==navigation || !dialog.open) return;
+    }
+    const reuse=directory && clean.setStation ? clean : null;
+    cancelAnimationFrame(frame);clearHover();if(!reuse)clean();q('.rg-world-title').hidden=true;stage.replaceChildren();
+    activeCamera=camera;
+    const neighbors=neighborPreviews(i);
+    previews.retain(neighbors);
     const candidate=candidates[i-scene.cameras.length];
     dialog.classList.toggle('rg-reviewing',Boolean(candidate));
     if(candidate){
@@ -670,7 +752,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
         if (isListedLot(lot)) {
           const {number} = ringIdentity(lot);
           if (number) {
-            mobileRing = svg('g',{class:'rg-mobile-number','aria-hidden':'true'});
+            mobileRing = svg('g',{class:'rg-mobile-number','aria-hidden':'true','data-availability':lot.estado});
             const circle = svg('circle',{r:9});
             circle.style.stroke = (LOT_STATES[lot.estado] || LOT_STATES.sin).color;
             const text = svg('text',{'text-anchor':'middle',y:3.5});
@@ -932,7 +1014,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
       }
     };
     function hit(x,y){
-      if(overlay.style.visibility==='hidden')return null;
+      if(overlay.style.visibility==='hidden' || stage.dataset.paseo==='avance')return null;
       const rect=stage.getBoundingClientRect(),point=new DOMPoint(x-rect.left,y-rect.top);
       const onTree=foreground?.occludes(point);
       for(let j=entities.length-1;j>=0;j--){
@@ -1019,7 +1101,8 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
       clean.lookAt(azimuth,elevation,Math.max(.3,extent*1.8));
       return true;
     };
-    const status=q('[role=status]'),skyError='No se pudo abrir este cielo. Se muestra el original.';
+    const skyError='No se pudo abrir este cielo. Se muestra el original.';
+    if(directory){viewMedia.paseo=directory;viewMedia.pose=opticalPose;}
     clean=mountPanorama(stage,viewMedia,status,draw,mask?{
       mask,heading:cam.heading,
       onChange:active=>{
@@ -1028,18 +1111,21 @@ export function openScene(scene,{local=false,config,lots=[],financing,returnUrl,
         else if(!active&&status.textContent==='Hora azul activada.')status.textContent='Cielo original.';
       },
       onError:()=>{blue=false;skyState(false);status.textContent=skyError;}
-    }:null,{focusOnReady:!autoEmbedded});
+    }:null,{focusOnReady:!autoEmbedded,prepared,reuse,keepDirection:!focusFeature});
+    if (directory && !navigator.connection?.saveData) {
+      for (const url of neighbors.slice(1)) previews.get(url).catch(()=>{});
+    }
     if(mask && blue)clean.setSky?.(true);
     paintSelection();
     if(playing){clearTimeout(timer);timer=setTimeout(()=>i+1<scene.cameras.length?show(i+1):stop(),5500);}
   }
   selector.onchange=()=>{stop();select(selector.value);};places.onchange=()=>select(places.value);
-  q('[data-prev]').onclick=()=>{stop();show(index-1);};q('[data-next]').onclick=()=>{stop();show(index+1);};
-  q('[data-layers]').onclick=e=>{const on=e.currentTarget.getAttribute('aria-pressed')!=='true';e.currentTarget.setAttribute('aria-pressed',String(on));stage.querySelector('.rg-overlay').style.visibility=on?'visible':'hidden';clearHover();if(!on)q('.rg-world-title').hidden=true;else clean.redraw?.();};
+  q('[data-prev]').onclick=()=>{stop();show(intended-1);};q('[data-next]').onclick=()=>{stop();show(intended+1);};
+  q('[data-layers]').onclick=e=>{const on=e.currentTarget.getAttribute('aria-pressed')!=='true';e.currentTarget.setAttribute('aria-pressed',String(on));if(embeddedOverview)e.currentTarget.textContent=on?'Ocultar lotes':'Mostrar lotes';const overlay=stage.querySelector('.rg-overlay');if(overlay)overlay.style.visibility=on?'visible':'hidden';clearHover();if(!on)q('.rg-world-title').hidden=true;else clean.redraw?.();};
  q('[data-map]').onclick=()=>{atlasReturn=null;mapOpen(atlas.hidden);};
  q('[data-closemap]').onclick=()=>{mapOpen(false);(atlasReturn?.isConnected?atlasReturn:q('[data-map]')).focus({preventScroll:true});atlasReturn=null;};
   q('[data-play]').onclick=()=>{if(playing){stop();return;}playing=true;q('[data-play]').textContent='Pausar';show(index===scene.cameras.length-1?0:index);};
-  q('[data-close]').onclick=()=>{if(calibration){endCalibration(false);return;}dialog.close();if(returnUrl){const id=linked.get(selected?.id)?.id;window.top.location.href=id&&slug?lotReturnUrl(slug,lotLinkId(config,id)):returnUrl;}};dialog.addEventListener('cancel',event=>{if(calibration){event.preventDefault();endCalibration(false);}});dialog.addEventListener('close',()=>{cancelAnimationFrame(frame);stop();clean();dialog.remove();},{once:true});
+  q('[data-close]').onclick=()=>{if(calibration){endCalibration(false);return;}dialog.close();if(returnUrl){const id=linked.get(selected?.id)?.id;window.top.location.href=id&&slug?lotReturnUrl(slug,lotLinkId(config,id)):returnUrl;}};dialog.addEventListener('cancel',event=>{if(calibration){event.preventDefault();endCalibration(false);}});dialog.addEventListener('close',()=>{navigation++;previews.retain([]);cancelAnimationFrame(frame);stop();clean();dialog.remove();},{once:true});
   document.body.append(dialog);
   if(autoEmbedded)dialog.open=true;
   else dialog.showModal();

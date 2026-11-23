@@ -1,3 +1,5 @@
+import {arrivalPose, walkRenderer, walkShader} from './recorrido-paseo.mjs';
+
 // Visor de medios propios. No registra visitas ni modifica la cámara del recorrido.
 export function openMediaViewer(items, {title = 'Imágenes del proyecto', onClose, start = 0, context = 'admin'} = {}) {
   if (!items?.length) return null;
@@ -82,7 +84,16 @@ export function upgradePanoramaTexture(gl,url,base,onReady,onFailure){
  return release;
 }
 
-export function mountPanorama(stage, media, status, onView, sky, {focusOnReady=true}={}) {
+export function mountPanorama(stage, media, status, onView, sky, {focusOnReady=true, prepared, reuse, keepDirection=true}={}) {
+  if (reuse?.setStation && prepared) {
+    try {
+      reuse.setStation(media,prepared,onView,keepDirection);
+      return reuse;
+    } catch {
+      reuse();
+      stage.querySelectorAll(':scope > canvas,:scope > .rm-pan-tools').forEach(el=>el.remove());
+    }
+  }
   function setPanoramaState(state, message) {
     status.dataset.panoramaState = state;
     status.textContent = message;
@@ -92,7 +103,8 @@ export function mountPanorama(stage, media, status, onView, sky, {focusOnReady=t
   const gl = canvas.getContext('webgl', {alpha: false, antialias: false});
   if (!gl) { setPanoramaState('error', 'Este dispositivo no pudo abrir el visor 360°. Puede volver al recorrido.'); return () => {}; }
   let inlineTurn,inlineZoom;
-  let disposed = false, observer, program, texture, buffer, shaders = [], image = new Image(), cancelDetail;
+  let disposed = false, observer, program, texture, buffer, shaders = [], image = prepared || new Image(), cancelDetail;
+  let walk, travelFrame = 0, moving = false, finishMovement;
   let yaw = (Number(media.orientacion) || 0) * Math.PI / 180, pitch = (Number(media.pitch)||0)*Math.PI/180, fov = media.fov || .8, drag, pinch=0;const pointers=new Map();
   stage.append(canvas); setPanoramaState('loading', 'Cargando panorámica…');
   let drawSky, skyPending, skyLoaded = false, skyRequested = false;
@@ -102,13 +114,14 @@ export function mountPanorama(stage, media, status, onView, sky, {focusOnReady=t
     disposed = true; image.onload = image.onerror = null;cancelDetail?.(); observer?.disconnect();
     canvas.onpointerdown = canvas.onpointermove = canvas.onpointerup = canvas.onpointercancel = canvas.onkeydown = canvas.onwheel = null;
     skyTextures.forEach(t => gl.deleteTexture(t));
-    gl.deleteTexture(texture); gl.deleteBuffer(buffer); gl.deleteProgram(program); shaders.forEach(s => gl.deleteShader(s));
+    cancelAnimationFrame(travelFrame);
+    delete stage.dataset.paseo;
+    if (walk) walk.dispose(); else gl.deleteTexture(texture);
+    gl.deleteBuffer(buffer); gl.deleteProgram(program); shaders.forEach(s => gl.deleteShader(s));
     gl.getExtension('WEBGL_lose_context')?.loseContext();
   };
   canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();if(!disposed)setPanoramaState('error','El dispositivo interrumpió la vista 360°. Cierre y vuelva a abrir la panorámica.');});
-  image.crossOrigin = 'anonymous';
-  image.onerror = () => { if (!disposed) setPanoramaState('error', 'No se pudo cargar la panorámica. Revise el archivo o el permiso de acceso a la imagen.'); };
-  image.onload = () => {
+  function initialize() {
     if (disposed) return;
     if (Math.abs(image.naturalWidth / image.naturalHeight - 2) > .02) { setPanoramaState('error', 'La imagen no es una panorámica esférica 2:1.'); return; }
     try {
@@ -123,13 +136,15 @@ export function mountPanorama(stage, media, status, onView, sky, {focusOnReady=t
         varying vec2 v;
         uniform sampler2D photo, ridge, night, horizon;
         uniform float yaw,pitch,fov,aspect,blue,heading;
+        ${media.paseo ? walkShader : ''}
         void main(){
           vec3 d=normalize(vec3(v.x*aspect*fov,v.y*fov,1.));
           d=vec3(d.x,d.y*cos(pitch)+d.z*sin(pitch),-d.y*sin(pitch)+d.z*cos(pitch));
           float az=atan(d.x,d.z)+yaw;
           float el=asin(clamp(d.y,-1.,1.));
           vec2 uv=vec2(fract(az/6.2831853+.5),.5-el/3.14159265);
-          vec3 col=texture2D(photo,uv).rgb;
+          vec3 col=${media.paseo ? 'walkColor(vec3(sin(az)*cos(el),sin(el),cos(az)*cos(el)),uv)' : 'texture2D(photo,uv).rgb'};
+          ${media.paseo ? '' : `
           if(blue>.5){
             float k=texture2D(ridge,uv).r;
             float lon=fract((az+heading)/6.2831853+.5);
@@ -142,6 +157,7 @@ export function mountPanorama(stage, media, status, onView, sky, {focusOnReady=t
             low=mix(low,texture2D(horizon,vec2(max(0.,.04+lon*.96-.96),hy)).rgb,smoothstep(.92,1.,lon));
             col=mix(col*vec3(.84,.88,.97),mix(low,upper,smoothstep(.15,.45,el)),k);
           }
+          `}
           gl_FragColor=vec4(col,1.);
         }`));
       gl.linkProgram(program); if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw Error('program');
@@ -162,14 +178,19 @@ export function mountPanorama(stage, media, status, onView, sky, {focusOnReady=t
       const draw = () => {
         if (disposed) return;
         const dpr = Math.min(devicePixelRatio || 1, 2);
-        canvas.width = Math.max(1, Math.round(stage.clientWidth * dpr)); canvas.height = Math.max(1, Math.round(stage.clientHeight * dpr));
+        const width = Math.max(1, Math.round(stage.clientWidth * dpr)), height = Math.max(1, Math.round(stage.clientHeight * dpr));
+        if (canvas.width!==width || canvas.height!==height) {canvas.width=width; canvas.height=height;}
         gl.viewport(0, 0, canvas.width, canvas.height);
         Object.entries({yaw,pitch,fov,aspect:canvas.width/canvas.height}).forEach(([k,v]) => gl.uniform1f(uniforms[k],v));
         gl.drawArrays(gl.TRIANGLES, 0, 6);
-        onView?.({yaw,pitch,fov,width:stage.clientWidth,height:stage.clientHeight});
+        if (!moving) {
+          walk?.detail({yaw,pitch,fov,aspect:width/height});
+          onView?.({yaw,pitch,fov,width:stage.clientWidth,height:stage.clientHeight});
+        }
       };
       cleanup.redraw = draw;
       cleanup.lookAt = (azimuth, elevation, field) => {
+        finishMovement?.();
         yaw = azimuth;
         pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, elevation));
         fov = Math.max(.25, Math.min(1.4, field));
@@ -248,17 +269,68 @@ export function mountPanorama(stage, media, status, onView, sky, {focusOnReady=t
       const tools = document.createElement('div'); tools.className = 'rm-pan-tools';
       tools.innerHTML = '<button type="button" aria-label="Girar a la izquierda">←</button><button type="button" aria-label="Girar a la derecha">→</button><button type="button" aria-label="Acercar panorámica">+</button><button type="button" aria-label="Alejar panorámica">−</button><button type="button">Restablecer vista</button>';
       [...tools.children].forEach((b,i) => b.onclick = () => { if (i<2) turn(i ? .2 : -.2,0); else if (i<4) { fov=Math.max(.25,Math.min(1.4,fov+(i===2?-.12:.12)));draw(); } else {yaw=(Number(media.orientacion)||0)*Math.PI/180;pitch=(Number(media.pitch)||0)*Math.PI/180;fov=media.fov || .8;draw();} });
+      if (media.paseo) {
+        walk=walkRenderer(gl,program,texture,media.paseo,draw);
+        const finish = () => {
+          cancelAnimationFrame(travelFrame);
+          if (!moving) return;
+          moving=false; walk.endTravel(); delete stage.dataset.paseo;
+          stage.querySelector('.rg-overlay')?.removeAttribute('opacity');
+          draw();
+        };
+        finishMovement=finish;
+        cleanup.setStation = (next,preview,nextView,preserve) => {
+          finish();
+          const start=arrivalPose(media.pose,next.pose,{yaw,pitch,fov});
+          const end=preserve ? start : {yaw:next.orientacion*Math.PI/180,pitch:next.pitch*Math.PI/180,fov:next.fov};
+          const angle=Math.atan2(Math.sin(end.yaw-start.yaw),Math.cos(end.yaw-start.yaw));
+          walk.move(preview,next.paseo,media.pose,next.pose);
+          media=next; onView=nextView; drag=null; pointers.clear(); pinch=0;
+          stage.append(canvas,tools);
+          setPanoramaState('ready','Arrastre o use las flechas para explorar los 360°.');
+          yaw=end.yaw; pitch=end.pitch; fov=end.fov;
+          if (matchMedia('(prefers-reduced-motion: reduce)').matches) {walk.endTravel();draw();return;}
+          const began=performance.now();
+          moving=true; stage.dataset.paseo='avance';
+          stage.querySelector('.rg-overlay')?.setAttribute('opacity','0');
+          function step(now) {
+            if (disposed || !moving) return;
+            const fraction=Math.min(1,(now-began)/620);
+            const t=fraction*fraction*(3-2*fraction);
+            yaw=start.yaw+angle*t; pitch=start.pitch+(end.pitch-start.pitch)*t; fov=start.fov+(end.fov-start.fov)*t;
+            walk.progress(t);
+            if (fraction===1) {finish();return;}
+            draw(); travelFrame=requestAnimationFrame(step);
+          }
+          step(began);
+        };
+        // Un gesto interrumpe el viaje y devuelve el control de inmediato.
+        for (const event of ['pointerdown','wheel','keydown']) canvas.addEventListener(event,finish,{capture:true});
+        tools.addEventListener('click',finish,{capture:true});
+      }
       stage.append(tools); observer = new ResizeObserver(draw); observer.observe(stage); draw();
       setPanoramaState('ready', 'Arrastre o use las flechas para explorar los 360°.');
       if(focusOnReady)canvas.focus({preventScroll:true});
       // Only new uploads have an explicit optimized 8k URL. Existing projects
       // keep their original loading path. Swap the texture, never the camera.
-      if(media.alta&&media.alta!==media.url){
+      if(!walk&&media.alta&&media.alta!==media.url){
         cancelDetail=upgradePanoramaTexture(gl,media.alta,texture,next=>{texture=next;draw()},()=>{status.textContent='La vista 4k sigue disponible. No se pudo cargar la versión de mayor detalle.'});
       }
     } catch { setPanoramaState('error', 'No se pudo abrir el visor 360°. Puede elegir otro medio o volver al recorrido.'); }
-  };
+  }
   cleanup.setSky = enabled => { skyRequested=enabled; drawSky?.(); };
-  image.src = media.url;
+  if (prepared) {
+    initialize();
+    if (media.paseo && status.dataset.panoramaState==='error') {
+      cleanup(); canvas.remove();
+      return mountPanorama(stage,{...media,paseo:null},status,onView,sky,{focusOnReady,prepared});
+    }
+  }
+  else {
+    image.crossOrigin = 'anonymous';
+    image.onerror = () => { if (!disposed) setPanoramaState('error', 'No se pudo cargar la panorámica. Revise el archivo o el permiso de acceso a la imagen.'); };
+    image.onload = initialize;
+    image.src = media.url;
+  }
   return cleanup;
 }

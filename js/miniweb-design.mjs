@@ -76,16 +76,17 @@ export function mountImmersiveMotion(scope,{app,compare=false,editing=false,nati
  const style=app?.dataset.style;
  if(!['inmersivo','estudio-vivo','relato','recorrido'].includes(style)||compare||editing)return ()=>{};
  const depth=style!=='recorrido';
+ const editorial=app.hasAttribute('data-composicion-terrazas');
  const reduced=matchMedia('(prefers-reduced-motion: reduce)'),fine=matchMedia('(hover:hover) and (pointer:fine)'),desktop=matchMedia('(min-width:900px)'),controller=new AbortController(),{signal}=controller;
  const hero=scope.querySelector('.hero'),nav=app.querySelector('.nav'),explorer=scope.querySelector('[data-block-type="explorador"]'),images=[],pairs=[],aerials=[];
  let frame=0,lastY=window.scrollY,lastTime=0,target=lastY,smoothing=false,down=0;
  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),motion=()=>!reduced.matches&&desktop.matches;
  const remember=(node,property,value)=>{if(!node)return;const old=node.style.getPropertyValue(property);node.style.setProperty(property,value);return ()=>old?node.style.setProperty(property,old):node.style.removeProperty(property)};
  const restores=[],focusTargets=new Map();
- if(hero&&depth){const medium=hero.querySelector(style==='relato'?'.cover-photo img':style==='estudio-vivo'?'.hero-media>img':'.hero-media');if(medium){medium.dataset.immersiveMedium='';images.push({node:medium,section:hero,hero:true})}}
+ if(hero&&depth&&!editorial){const medium=hero.querySelector(style==='relato'?'.cover-photo img':style==='estudio-vivo'?'.hero-media>img':'.hero-media');if(medium){medium.dataset.immersiveMedium='';images.push({node:medium,section:hero,hero:true})}}
  if(style==='inmersivo')scope.querySelectorAll('.par').forEach(section=>{const figures=[...section.querySelectorAll(':scope>figure')];if(figures.length===2)pairs.push({section,figures})});
  // Transform only the image inside its own clipping frame. Captions remain still.
- if(depth)scope.querySelectorAll('.proyecto>figure img').forEach(node=>{if(node.dataset.photoFrame==='completa')return;node.dataset.immersiveMedium='';const section=node.closest('.proyecto');restores.push(remember(node.parentElement,'overflow','hidden'));images.push({node,section})});
+ if(depth&&!editorial)scope.querySelectorAll('.proyecto>figure img').forEach(node=>{if(node.dataset.photoFrame==='completa')return;node.dataset.immersiveMedium='';const section=node.closest('.proyecto');restores.push(remember(node.parentElement,'overflow','hidden'));images.push({node,section})});
  if(depth)scope.querySelectorAll('.immersive-aerial').forEach(section=>{const image=section.querySelector('img');if(image)aerials.push({section,image})});
  function reset(){images.forEach(({node})=>{node.style.removeProperty('--immersive-y');node.style.removeProperty('--immersive-scale')});pairs.forEach(({figures})=>figures.forEach(n=>n.style.removeProperty('translate')));aerials.forEach(({section,image})=>{image.style.removeProperty('--aerial-scale');delete section.dataset.aerialMotion});if(nav)delete nav.dataset.immersiveHeader}
  function paint(now){
@@ -109,7 +110,7 @@ export function mountImmersiveMotion(scope,{app,compare=false,editing=false,nati
   event.preventDefault();target=next;smoothing=true;schedule()
  }
  // With native wheel input, paint only reads the page position for visual effects.
- if(depth && !nativeWheel)window.addEventListener('wheel',wheel,{passive:false,signal});
+ if(depth && !nativeWheel && !editorial)window.addEventListener('wheel',wheel,{passive:false,signal});
  window.addEventListener('scroll',schedule,{passive:true,signal});window.addEventListener('resize',schedule,{passive:true,signal});
  window.addEventListener('pointerdown',cancel,{passive:true,signal});window.addEventListener('touchstart',cancel,{passive:true,signal});window.addEventListener('keydown',cancel,{signal});
  // An anchor or focus uses native scrolling. Cancel wheel inertia before it can fight it.
@@ -131,8 +132,18 @@ export function applyBlockLayout(node,block){
   const value=o[key],valid=!['portada','comercializacion'].includes(block.tipo)&&value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
   if(valid){node.dataset[attr]='custom';node.style.setProperty(variable,Math.max(0,Math.min(320,Number(value)))+'px')}else{delete node.dataset[attr];node.style.removeProperty(variable)}
  }
+ if(block.tipo==='ubicacion'){
+  if(block.variante==='mapa' && ['apaisado','cuadrado'].includes(o.formatoMapa))node.dataset.formatoMapa=o.formatoMapa;
+  else delete node.dataset.formatoMapa;
+ }
+ if(block.tipo==='contacto')node.toggleAttribute('data-consulta-tarjeta',o.formatoConsulta==='tarjeta');
+ if(block.tipo==='explorador')node.toggleAttribute('data-regla-estados',o.estadosPlano==='regla');
  if(['left','center','right'].includes(o.textAlign))node.querySelectorAll('h1,h2,h3,p,blockquote').forEach(n=>n.style.textAlign=o.textAlign);
  if(Number.isFinite(Number(o.textSize))&&Number(o.textSize)>0)node.querySelectorAll('h2,blockquote').forEach(n=>n.style.fontSize=`clamp(24px,${Math.max(24,Math.min(100,Number(o.textSize)))/14.4}vw,${Math.max(24,Math.min(100,Number(o.textSize)))}px)`);
+ // Título de sección por adopción del bloque: sólo escritorio y sólo títulos propios de la sección (la regla vive en miniweb.css). Ausente conserva el estilo.
+ // Se marca el bloque y no el título: los encabezados del selector y del recorrido pueden montarse después de este paso.
+ {const size=Number(o.tituloSeccion),valid=!['portada','comercializacion','capitulos','perspectivas','escenas'].includes(block.tipo)&&Number.isFinite(size)&&size>0;
+  if(valid){node.dataset.tituloSeccion='';node.style.setProperty('--titulo-seccion',Math.max(24,Math.min(100,size))+'px')}else{delete node.dataset.tituloSeccion;node.style.removeProperty('--titulo-seccion')}}
  if(block.tipo==='foto-texto'&&o.photoSize&&block.variante!=='apilada'){const v=Math.max(30,Math.min(70,Number(o.photoSize)||50));node.style.setProperty('--block-photo-share',v+'%');node.classList.add('custom-photo-share');node.style.gridTemplateColumns=block.variante==='foto-izquierda'?v+'fr '+(100-v)+'fr':(100-v)+'fr '+v+'fr'}
  for(const [key,values]of Object.entries({ancho:['estilo','completo','contenido','dos-tercios','mitad'],formato:['natural','pantalla','16-9','4-3','1-1','9-16'],alineacion:['izquierda','centro','derecha'],ajuste:['cubrir','contener']}))node.dataset[key]=values.includes(o[key])?o[key]:values[0];
 }
@@ -140,6 +151,8 @@ export function blockLayoutControls(block){
  if(['comercializacion','portada'].includes(block.tipo))return '';
  const o=block.opciones||{},control=(key,label,values)=>`<label>${label}<select aria-label="${label}" data-block-option="${key}">${values.map(([v,t])=>`<option value="${v}" ${o[key]===v?'selected':''}>${t}</option>`).join('')}</select></label>`;
  let html=control('ancho','Ancho',[['estilo','Propio del estilo'],['completo','A todo el ancho'],['contenido','Con márgenes'],['dos-tercios','Dos tercios'],['mitad','Media página']])+control('alineacion','Posición',[['izquierda','Izquierda'],['centro','Centro'],['derecha','Derecha']]);
+ if(block.tipo==='ubicacion' && block.variante==='mapa')html+=control('formatoMapa','Formato del mapa',[['','Propio del estilo'],['apaisado','Apaisado'],['cuadrado','Cuadrado']]);
+ if(block.tipo==='contacto')html+=control('formatoConsulta','Presentación de la consulta',[['','Propia del estilo'],['tarjeta','Tarjeta centrada']]);
  if(['imagen','video','foto-frase','panoramica360'].includes(block.tipo))html+=control('formato','Formato',[['natural','Proporción original'],['pantalla','Pantalla completa'],['16-9','Apaisado 16:9'],['4-3','Apaisado 4:3'],['1-1','Cuadrado'],['9-16','Vertical 9:16']]);
  if(['imagen','foto-frase'].includes(block.tipo)||(block.tipo==='video'&&/\.(mp4|webm|mov)(?:[?#]|$)/i.test(block.contenido?.video||block.medio||'')))html+=control('ajuste','Encuadre',[['cubrir','Llenar el espacio'],['contener','Mostrar completo']]);
  return `<details class="block-format"><summary>Formato y posición</summary>${html}</details>`;
@@ -179,7 +192,7 @@ function compositionContent(tipo,project){
  if(tipo==='intro')return {texto:text,imagen:photos[0]?.url||project.foto_portada||''};
  if(tipo==='foto-texto')return {titulo:project.tagline||'',texto:text,imagen:photos[0]?.url||project.foto_portada||''};
  if(tipo==='foto-frase')return {titulo:project.tagline||'',imagen:project.foto_atmosfera||project.foto_portada||''};
- if(['par-fotos','perspectivas','capitulos','escenas','galeria','asi-se-vive'].includes(tipo))return {fotos:photos};
+ if(['par-fotos','perspectivas','capitulos','escenas','galeria','asi-se-vive','experiencias'].includes(tipo))return {fotos:photos};
  return {};
 }
 // Initial photographs are assigned once per role. User content always wins below.
@@ -205,7 +218,7 @@ export function estudioGalleryPhotos(block,blocks,project={}){
   const c=b.contenido||{};
   if(b.tipo==='ubicacion'&&b.variante==='texto')continue;
   if(b.tipo==='perspectivas'&&(!(c.fotos||[]).length||(c.fotos||[]).slice(0,3).length<3||(c.fotos||[]).slice(0,3).some(f=>!String(f.titulo||'').trim())))continue;
-  const urls=b.tipo==='portada'?[c.imagen||project.foto_portada]:['intro','foto-frase','foto-texto','ubicacion','imagen','foto-frase-lateral'].includes(b.tipo)?[c.imagen||(b.tipo==='foto-frase'?project.foto_atmosfera:'')]:['perspectivas','par-fotos','galeria','asi-se-vive'].includes(b.tipo)?(c.fotos||[]).slice(0,Number(b.opciones?.cantidadFotos)||3).map(f=>typeof f==='string'?f:f.url):[];
+  const urls=b.tipo==='portada'?[c.imagen||project.foto_portada]:['intro','foto-frase','foto-texto','ubicacion','imagen','foto-frase-lateral'].includes(b.tipo)?[c.imagen||(b.tipo==='foto-frase'?project.foto_atmosfera:'')]:['perspectivas','par-fotos','galeria','asi-se-vive','experiencias'].includes(b.tipo)?(c.fotos||[]).slice(0,Number(b.opciones?.cantidadFotos)||3).map(f=>typeof f==='string'?f:f.url):[];
   urls.filter(Boolean).forEach(url=>used.add(key(url)));
  }
  const candidates=[...(block.contenido?.fotos||[]),...(compositionContent('galeria',project).fotos||[])],photos=[];
@@ -269,7 +282,7 @@ export function previewStyleChange({config,style,project={},lots=[],onConfirm}){
  const candidate=prepareStyleConfig(config,style,project),name=DESIGN_STYLES.find(s=>s.id===style).name;
  const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Vista previa de '+name);
  dialog.style='position:fixed;inset:0;margin:0;width:100vw;max-width:none;height:100svh;max-height:none;padding:0;border:0;background:#0d1014;color:#eef0f2;font:14px/1.5 Inter,Arial,sans-serif';
- dialog.innerHTML=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:16px 24px;border-bottom:1px solid #ffffff26"><strong style="margin-right:auto">Vista previa · ${e(name)}</strong><div role="group" aria-label="Ancho de la vista previa"><button type="button" data-preview-width="1440" aria-pressed="true">1440 px</button><button type="button" data-preview-width="390" aria-pressed="false">390 px</button></div><button type="button" data-style-cancel>Cancelar</button><button type="button" data-style-confirm disabled>Confirmar ${e(name)}</button><p role="status" style="width:100%;margin:0" data-preview-status>Preparando la página completa. Sus cambios actuales se conservan.</p></div><div data-style-viewport style="overflow:auto;height:calc(100% - 118px);display:flex;justify-content:center;padding:12px;box-sizing:border-box"><div data-style-frame-wrap><iframe title="Página completa · ${e(name)}" allowfullscreen allow="fullscreen 'self'" src="/admin/miniweb-editor.html?v=20261117-cierre-venta1" style="display:block;border:0;transform-origin:top left;background:#fff"></iframe></div></div>`;
+ dialog.innerHTML=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:16px 24px;border-bottom:1px solid #ffffff26"><strong style="margin-right:auto">Vista previa · ${e(name)}</strong><div role="group" aria-label="Ancho de la vista previa"><button type="button" data-preview-width="1440" aria-pressed="true">1440 px</button><button type="button" data-preview-width="390" aria-pressed="false">390 px</button></div><button type="button" data-style-cancel>Cancelar</button><button type="button" data-style-confirm disabled>Confirmar ${e(name)}</button><p role="status" style="width:100%;margin:0" data-preview-status>Preparando la página completa. Sus cambios actuales se conservan.</p></div><div data-style-viewport style="overflow:auto;height:calc(100% - 118px);display:flex;justify-content:center;padding:12px;box-sizing:border-box"><div data-style-frame-wrap><iframe title="Página completa · ${e(name)}" allowfullscreen allow="fullscreen 'self'" src="/admin/miniweb-editor.html?canvas=1&v=20261117-cierre-venta1" style="display:block;border:0;transform-origin:top left;background:#fff"></iframe></div></div>`;
  dialog.querySelectorAll('button').forEach(b=>b.style='min-height:44px;padding:10px 16px;border:1px solid #ffffff42;border-radius:6px;background:#14171b;color:#eef0f2;font:inherit;cursor:pointer');
  const frame=dialog.querySelector('iframe'),viewport=dialog.querySelector('[data-style-viewport]'),wrap=dialog.querySelector('[data-style-frame-wrap]'),confirm=dialog.querySelector('[data-style-confirm]'),status=dialog.querySelector('[data-preview-status]');
  dialog.style.display='flex';dialog.style.flexDirection='column';dialog.style.overflow='hidden';
@@ -325,7 +338,7 @@ export function mountReferenceExperience(scope,{app,editing=false}={}){
   wrapped.push(()=>{title.textContent=text;title.removeAttribute('aria-label')});
  }
  const expanding=style==='estudio-vivo'?[...scope.querySelectorAll('.hero-media,.scene-viewport,.lugar-hero')]:[];
- const photographs=style==='inmersivo'?[...scope.querySelectorAll('.par>figure,.proyecto>figure,.lugar-duo>figure')]:style==='relato'?[...scope.querySelectorAll('.par>figure,.photo-grid>figure')]:[];
+ const photographs=style==='inmersivo'&&!app.hasAttribute('data-composicion-terrazas')?[...scope.querySelectorAll('.par>figure,.proyecto>figure,.lugar-duo>figure')]:style==='relato'?[...scope.querySelectorAll('.par>figure,.photo-grid>figure')]:[];
  const reveals=style==='inmersivo'?scope.querySelectorAll('.proyecto>figure,.lugar-duo>figure'):style==='relato'?scope.querySelectorAll('.par>.grande,.proyecto>figure,.intro>small'):style==='estudio-vivo'?scope.querySelectorAll('.perspective-block,.proyecto>figure'):[];
  const observer=new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;observer.unobserve(entry.target);if(reduced.matches)continue;const frames=style==='relato'?[{opacity:0,clipPath:'inset(0 0 85% 0)'},{clipPath:'inset(0)'}]:style==='estudio-vivo'?[{opacity:0,clipPath:'inset(8% 12% round 24px)'},{clipPath:'inset(0 round 24px)'}]:[{clipPath:'inset(8% 4%)',opacity:.75},{clipPath:'inset(0)',opacity:1}];animations.push(entry.target.animate(frames,{duration:1200,easing}))}},{threshold:.15});reveals.forEach(n=>observer.observe(n));
  if(style==='estudio-vivo')scope.addEventListener('click',event=>{if(!event.target.closest('[data-perspective-go]')||reduced.matches)return;const picture=event.target.closest('.perspective-block')?.querySelector('[data-perspective-panel]:not([hidden]) img');if(picture)animations.push(picture.animate([{clipPath:'inset(0 100% 0 0)',transform:'scale(1.04)'},{clipPath:'inset(0)',transform:'scale(1)'}],{duration:650,easing}))},{signal});
