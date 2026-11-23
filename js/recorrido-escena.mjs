@@ -1,6 +1,7 @@
 import {isTerrainDetail,terrainCamera,terrainLayer} from './recorrido-detalle-terreno.mjs?v=20261116-bordes1';
 import {ringIdentity,alignRingRows,placeRings,syncMapRings} from './zonas-anillos.mjs?v=20261114-anillo7b';
 import {LOT_STATES,isListedLot} from './zonas-venta.mjs?v=20261116-oferta360';
+import {contrast,paletteTokens} from './miniweb-palettes.mjs';
 import {unitPriceLabel,unitPriceText} from './lote-precio.mjs';
 import {appendLotReturnLinks,lotReturnUrl,hideLotInquiry,findPublicLot,lotLinkId} from './recorrido-enlaces.mjs?v=20261120-terrazas';
 import {blockName,estados,paintLot,tourZones,tourZoneLegend} from './recorrido-estilo.mjs?v=20261114-anillo7b';
@@ -235,6 +236,15 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
   const embeddedOverview=window.parent!==window && new URLSearchParams(location.search).get('integrado')==='1'
     && commercialStates;
   dialog.toggleAttribute('data-resumen-embebido',embeddedOverview);
+  const terrazasCard = commercialStates && slug === 'terrazas-del-piltri';
+  if (terrazasCard) {
+    const palette = paletteTokens(config.paleta);
+    dialog.dataset.terrazasComercial = '';
+    dialog.style.setProperty('--rg-action', palette.accion);
+    const text = contrast(palette.accion, palette.textoAccion) >= 4.5 ? palette.textoAccion
+      : contrast(palette.accion, '#ffffff') >= 4.5 ? '#ffffff' : '#000000';
+    dialog.style.setProperty('--rg-action-text', text);
+  }
   dialog.innerHTML=`
     <div class="rg-stage rm-stage"></div>
     <header class="rg-identity"><div><small></small><h2></h2></div></header>
@@ -398,7 +408,11 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     .filter(([key,name])=>!scene.features.some(f=>f.kind==='poi'&&(f.name===name || (key==='office'&&isOffice(f)))))
     .map(([key,name,lon,lat,height])=>({id:'terrazas-ref-'+key,name,kind:'poi',points:[[lon,lat]],height,
       marker:key==='office'?'office-bolson':undefined})) : [];
-  scene.cameras.forEach((cam,index)=>selector.add(new Option(itineraryTitle(cam,index),cam.id)));
+  scene.cameras.forEach((cam,index)=>{
+    const name = itineraryTitle(cam,index);
+    const label = terrazasCard && embeddedOverview ? name.replace(/\s*·\s*\d+\/\d+\s*$/, '') : name;
+    selector.add(new Option(label,cam.id));
+  });
   const candidates=projectSlug==='terrazas-del-piltri' && !calibration ? reviewMedia : [];
   const viewCount=scene.cameras.length+candidates.length;
   if(candidates.length){
@@ -481,9 +495,84 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
   function locateLot(feature) {
     const plan={...scene,raster:null,cameras:[],features:scene.features.filter(f=>f.kind==='lot')};
     mapView(locator.querySelector('.rg-map'),plan,{local,linked,zones,landOnly:true,active:feature.id});
-    locator.querySelector('small').textContent=feature.name;locator.hidden=false;
+    locator.querySelector('small').textContent=lotFirstName(config,feature.name);locator.hidden=false;
   }
   function closeCard(){locator.hidden=true;selected=null;places.value='';card.hidden=true;paintSelection();if(!atlas.hidden)updateMap();}
+  function locateSelectedLot(f, locate) {
+    if (photoMode()) {
+      if (aimAtLot(f)) {
+        card.hidden = true;
+        stage.querySelector('canvas')?.focus({preventScroll:true});
+      }
+    } else {
+      atlasReturn = locate;
+      mapOpen(true,f);
+      q('[data-closemap]').focus({preventScroll:true});
+    }
+  }
+  function showAvailableLots() {
+    card.hidden = true;
+    stage.dispatchEvent(new Event('recorrido-toque-fondo', {bubbles:true}));
+    stage.dispatchEvent(new Event('recorrido-ver-disponibles', {bubbles:true}));
+    if (window.parent === window && slug) location.assign('/'+encodeURIComponent(slug)+'?estado=disponible#lotes');
+  }
+
+  function renderTerrazasCard(feature, lot, close, body) {
+    card.dataset.fichaRegla = '';
+    close.replaceChildren(strokeIcon('M6 6l12 12M18 6L6 18'));
+    const heading = node('div', null, 'rg-card-heading');
+    const badge = node('small', estados[lot.estado], 'rg-availability');
+    badge.dataset.state = lot.estado;
+    heading.append(close, badge);
+    const identity = node('div', null, 'rg-measures');
+    identity.append(node('h3', lotFirstName(config, feature.name)));
+    if (lot.superficie_m2 != null) identity.append(node('strong', Number(lot.superficie_m2).toLocaleString('es-AR')+' m²', 'rg-area'));
+    body.append(heading, identity);
+    const nav = node('nav', null, 'rg-card-actions');
+    nav.setAttribute('aria-label', 'Acciones del lote');
+    if (lot.estado === 'vendido') {
+      const available = node('button', 'Ver lotes disponibles', 'rg-lot-inquiry');
+      available.type = 'button';
+      available.onclick = showAvailableLots;
+      nav.append(available);
+    } else {
+      const amount = lot.precio_usd == null ? 'A consultar' : 'USD '+Number(lot.precio_usd).toLocaleString('es-AR');
+      const price = node('p', amount, 'rg-proposed-price');
+      const unit = unitPriceText(lot);
+      if (unit !== '—') price.append(node('span', 'USD '+unit+' / m²'));
+      body.append(price);
+      if (financing) {
+        const plan = financing.match(/^Entrega de (USD [\d.]+) y saldo de USD [\d.]+ en (\d+) cuotas fijas de (USD [\d.]+)\.$/);
+        body.append(node('p', plan ? 'Entrega '+plan[1]+' + '+plan[2]+' cuotas de '+plan[3] : financing, 'card-finance'));
+      }
+      const reserve = node('a', 'QUIERO RESERVAR ESTE LOTE', 'rg-lot-inquiry');
+      reserve.href = lotReturnUrl(slug, lotLinkId(config, lot.id), true);
+      reserve.target = '_top';
+      if (simulating) {
+        const url = new URL(reserve.href);
+        url.searchParams.set('simulacion','estados');
+        reserve.href = url.href;
+      }
+      nav.append(reserve);
+      const secondary = node('div', null, 'rg-card-secondary');
+      const locate = node('button', 'Plano', 'rg-locate');
+      locate.type = 'button';
+      locate.append(strokeIcon('M4 12h15m-6-6 6 6-6 6'));
+      locate.onclick = () => locateSelectedLot(feature, locate);
+      secondary.append(locate);
+      const url = projectBrochureURL(brochureUrl,{local});
+      if (url) {
+        const brochure = node('a', 'Brochure');
+        brochure.href = url;
+        brochure.target = '_blank';
+        brochure.rel = 'noopener noreferrer';
+        secondary.append(brochure);
+      }
+      nav.append(secondary);
+    }
+    body.append(nav);
+    if (!photoMode()) locateLot(feature);
+  }
   function detail(f){
     stop();selected=f;locator.hidden=true;card.replaceChildren();card.hidden=false;places.value=f.id;paintSelection();
     const close=node('button','×','rg-card-x');close.type='button';close.setAttribute('aria-label','Cerrar ficha');close.onclick=closeCard;
@@ -491,7 +580,14 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     const body=node('div',null,'rg-card-body');card.append(close,body);
     card.classList.toggle('rg-lot-card',f.kind==='lot');
     if(f.kind==='lot'){
-      const lot=linked.get(f.id),items=mediaList(config,lot.id,{local});
+      const lot=linked.get(f.id);
+      if (terrazasCard && ['disponible','vendido'].includes(lot.estado)) {
+        renderTerrazasCard(f, lot, close, body);
+        if(!atlas.hidden)updateMap();
+        clean.redraw?.();
+        return;
+      }
+      const items=mediaList(config,lot.id,{local});
       const cover=items.find(m=>m.tipo==='foto')||items.find(m=>m.miniatura);
       const block=blockName(f), sector=mediaURL(scene.sectorPhoto,{local});
       const imageUrl=cover?.miniatura || cover?.url || sector;
@@ -551,18 +647,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
       const locate = node('button',mobile ? 'Ubicar en el mapa 360' : 'Ubicar en el plano','rg-locate');
       locate.type = 'button';
       locate.append(photoMode() ? strokeIcon('M4 12h15m-6-6 6 6-6 6') : node('span','↗'));
-      locate.onclick = () => {
-        if (photoMode()) {
-          if (aimAtLot(f)) {
-            card.hidden = true;
-            stage.querySelector('canvas')?.focus({preventScroll:true});
-          }
-        } else {
-          atlasReturn = locate;
-          mapOpen(true,f);
-          q('[data-closemap]').focus({preventScroll:true});
-        }
-      };
+      locate.onclick = () => locateSelectedLot(f, locate);
       if (!mobile && !soldRule) body.append(locate);
       if (!photoMode()) locateLot(f);
       for(const [kind,label] of [['foto','Fotos del lote'],['panorama','Vista 360°']]){
@@ -608,7 +693,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
         const nav=node('nav',null,mobile?'':'rg-desktop-inquiry');nav.setAttribute('aria-label','Acciones del lote');
         const available=node('button','Ver lotes disponibles','rg-lot-inquiry');available.type='button';
         // Embebido: la miniweb que lo contiene recibe el aviso. Abierto solo: vuelve a la miniweb por su dirección pública, con el selector en disponibles.
-        available.onclick=()=>{card.hidden=true;stage.dispatchEvent(new Event('recorrido-toque-fondo',{bubbles:true}));stage.dispatchEvent(new Event('recorrido-ver-disponibles',{bubbles:true}));if(window.parent===window&&slug)location.assign('/'+encodeURIComponent(slug)+'?estado=disponible#lotes');};
+        available.onclick = showAvailableLots;
         nav.append(available);
         if(measures.isConnected)measures.after(nav);else body.append(nav);
       }
@@ -1038,7 +1123,8 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
         if(!f){clearHover();return;}
         if(f!==hover){hover=f;paintSelection();}
         const tip=q('.rg-tip'),area=linked.get(f.id)?.superficie_m2;
-        tip.textContent=f.name+(estados[linked.get(f.id)?.estado]?' · '+estados[linked.get(f.id).estado]:'')+(area!=null?' · '+Number(area).toLocaleString('es-AR')+' m²':'');
+        const title=terrazasCard && f.kind==='lot' ? lotFirstName(config,f.name) : f.name;
+        tip.textContent=title+(estados[linked.get(f.id)?.estado]?' · '+estados[linked.get(f.id).estado]:'')+(area!=null?' · '+Number(area).toLocaleString('es-AR')+' m²':'');
         tip.hidden=false;tip.style.left=Math.max(4,Math.min(e.clientX+16,dialog.clientWidth-tip.offsetWidth-8))+'px';
         tip.style.top=Math.max(4,Math.min(e.clientY+16,dialog.clientHeight-tip.offsetHeight-8))+'px';stage.classList.add('rg-pointing');
       });

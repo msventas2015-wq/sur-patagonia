@@ -155,7 +155,7 @@ export function selectorMapSource(url,{hasPhoto=true,hasGeometry=false,safeUrl}=
 
 // Screen-space labels keep a readable size while the SVG camera moves. A label
 // is shown only when its full text and outline fit inside its own lot.
-export function selectorLotLabel(row,{worldHeight=600,view=[0,0,843,600],width=1000,height=650,caption=''}={}){
+export function selectorLotLabel(row,{worldHeight=600,view=[0,0,843,600],width=1000,height=650,caption='',captionSize}={}){
  if(!row.points||row.unavailable||row.hidden||!width||!height)return null;
  const points=row.points.map(([u,v])=>[u*843,v*worldHeight]),sx=width/view[2],sy=height/view[3];
  const vertices=points.filter(([x,y],i)=>i===0||x!==points[0][0]||y!==points[0][1]);
@@ -171,7 +171,7 @@ export function selectorLotLabel(row,{worldHeight=600,view=[0,0,843,600],width=1
   return corners.every(inside)&&!polygon.some((a,i)=>enters(a,polygon[(i+1)%polygon.length]));
  };
  if(caption){
-  const sizes=[16,14,12,10,8];
+  const sizes=captionSize?[captionSize]:[16,14,12,10,8];
   const layout=(size,angle)=>({text:caption,x:anchor[0],y:anchor[1],scale:view[2]/width,size,angle});
   const horizontal=sizes.find(px=>fits(caption,px));
   if(horizontal)return layout(horizontal,0);
@@ -267,20 +267,38 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  list.addEventListener('focusin',event=>outlineFromRow(event.target),{signal});
  list.addEventListener('focusout',event=>outlineFromRow(event.relatedTarget),{signal});
  let highlightedRow=null;
+ const hoverLabel=document.createElement('div');
+ hoverLabel.className='lot-hover';hoverLabel.hidden=true;hoverLabel.setAttribute('aria-hidden','true');
+ hoverLabel.append(document.createElement('b'),document.createElement('span'));section.append(hoverLabel);
  function highlightFromShape(target){
   const id=target?.closest?.('.lot')?.dataset.lotId;
-  const row=id && section.dataset.estados==='regla' ? list.querySelector('[data-select="'+CSS.escape(id)+'"]') : null;
+  const row=id && section.dataset.estados==='regla' && !card.classList.contains('show') ? list.querySelector('[data-select="'+CSS.escape(id)+'"]') : null;
   if(row===highlightedRow)return;
   highlightedRow?.classList.remove('from-map');
   row?.classList.add('from-map');
   highlightedRow=row;
+  hoverLabel.hidden=true;
+  if(row){
+   const box=list.getBoundingClientRect(),bounds=row.getBoundingClientRect();
+   if(box.height && bounds.top<box.top)list.scrollTop+=bounds.top-box.top-8;
+   else if(box.height && bounds.bottom>box.bottom)list.scrollTop+=bounds.bottom-box.bottom+8;
+   hoverLabel.firstChild.textContent=row.querySelector('.t b').textContent;
+   hoverLabel.lastChild.textContent=[row.querySelector('.t > span:last-child')?.textContent,row.querySelector('.p > span')?.textContent].filter(Boolean).join(' · ');
+  }
  }
  map.addEventListener('pointerover',event=>{if(event.pointerType!=='touch')highlightFromShape(event.target)},{signal});
- map.addEventListener('pointerleave',()=>highlightFromShape(map.getRootNode().activeElement),{signal});
+ map.addEventListener('pointermove',event=>{
+  if(event.pointerType!=='mouse'||!highlightedRow||map.classList.contains('drag')){hoverLabel.hidden=true;return}
+  const box=section.getBoundingClientRect();hoverLabel.hidden=false;
+  const left=event.clientX-box.left-hoverLabel.offsetWidth/2,top=event.clientY-box.top-hoverLabel.offsetHeight-14;
+  hoverLabel.style.left=Math.max(4,Math.min(left,box.width-hoverLabel.offsetWidth-4))+'px';
+  hoverLabel.style.top=(top>=4?top:event.clientY-box.top+14)+'px';
+ },{signal});
+ map.addEventListener('pointerleave',()=>{highlightFromShape(map.getRootNode().activeElement);hoverLabel.hidden=true},{signal});
  map.addEventListener('focusin',event=>highlightFromShape(event.target),{signal});
  map.addEventListener('focusout',event=>highlightFromShape(event.relatedTarget),{signal});
  // Pedido desde el recorrido 360 de la misma miniweb: mostrar la lista filtrada en disponibles.
- host.getRootNode().addEventListener('mw-ver-disponibles',()=>{state='disponible';block='';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;paint();host.scrollIntoView({block:'start',behavior:'smooth'});(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});},{signal});
+ host.getRootNode().addEventListener('mw-ver-disponibles',()=>{state='disponible';block='';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;section.removeAttribute('data-list-panel-hidden');paint();host.scrollIntoView({block:'start',behavior:'smooth'});(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});},{signal});
  let currentConfig=config,selected=null,comparison=[],state='',block='',order='numero',worldHeight=600,photoWidth=843,box=[0,0,843,600],view=[...box],frame=0,ready=false,disposed=false,listCollapsed=false,initialWidth=843,mobileListOpen=false,bodyOverflow=null;
  const compact=()=>window.innerWidth<=900;
  const fullPhoto=()=>mapHasPhoto&&section.hasAttribute('data-list-panel-hidden');
@@ -317,7 +335,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  function mobileFrame(items,preferredWidth=0,overview=false){
   const rect=map.getBoundingClientRect(),bounds=rowBounds(items,worldHeight);
   if(!bounds||!rect.width||!rect.height)return [...box];
-  const headerBottom=Math.max(0,q('.head').getBoundingClientRect().bottom-rect.top);
+  const headerBottom=section.hasAttribute('data-list-filters')?0:Math.max(0,q('.head').getBoundingClientRect().bottom-rect.top);
   // The initial overview belongs to the whole map, even when an incoming
   // lot link has already opened its sheet before the raster is ready.
   const sheetHeight=overview?(parseFloat(section.style.getPropertyValue('--mobile-overlay-height'))||0):0;
@@ -404,8 +422,12 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   // Con la regla, la lista también se puede ordenar con los disponibles primero, sin sacar ningún lote.
   {const sort=q('.order'),has=sort.querySelector('[value=disponibles]');if(section.dataset.estados==='regla'&&!has)sort.querySelector('[value=numero]').after(new Option('Disponibles primero','disponibles'));else if(section.dataset.estados!=='regla'&&has){has.remove();if(order==='disponibles'){order='numero';sort.value='numero'}}}
   section.toggleAttribute('data-list-filters',on);
-  // En pantallas anchas la lista se puede esconder: el plano pasa a mostrar la foto cenital entera. En teléfono manda «Ver lista».
-  {const wide=on&&!compact();if(!wide)section.removeAttribute('data-list-panel-hidden');const hiddenList=wide&&section.hasAttribute('data-list-panel-hidden');q('.list-hide').hidden=!wide;const show=q('.list-show');show.hidden=!hiddenList;show.textContent='Ver lista ('+selectorVisible(rows,state,block).length+')'}
+  // La cruz cierra el panel táctil. La flecha además pliega la lista y muestra la foto entera.
+  if(!on)section.removeAttribute('data-list-panel-hidden');
+  q('.list-hide').hidden=!on;
+  const show=q('.list-show'),count=selectorVisible(rows,state,block).length;
+  show.hidden=!on||!section.hasAttribute('data-list-panel-hidden');
+  show.textContent='Ver lista · '+count+(count===1?' lote':' lotes');
   if(!on){fs.hidden=fz.hidden=true;return}
   const fill=(select,options,value)=>{const key=JSON.stringify(options);if(select.dataset.options!==key){select.dataset.options=key;select.replaceChildren(...options.map(([v,t])=>new Option(t,v)))}if(select.value!==value)select.value=value;select.hidden=options.length<3};
   const text=node=>[...node.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim();
@@ -465,17 +487,35 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  }
  function paintLotLabels(){
   const rect=map.getBoundingClientRect(),visible=new Set(selectorVisible(rows,state,block).map(r=>r.id));
+  // Maqueta final (regla de estados): sobre el plano van sólo los metros del lote disponible o «Vendido» en chico.
+  // Con el plano lejos (lotes a menos de 28 px entre sí) no se escribe nada: el color alcanza; al acercar aparecen.
+  const rule=section.dataset.estados==='regla';let far=false,tight=false;
+  if(rule&&rect.width&&rect.height){
+   const centers=rows.filter(r=>r.points&&!r.unavailable).map(r=>{const n=r.points.length;return [(r.points.reduce((a,[u])=>a+u,0)/n*843-view[0])*rect.width/view[2],(r.points.reduce((a,[,v])=>a+v,0)/n*worldHeight-view[1])*rect.height/view[3]]});
+   if(centers.length>1){const nearest=centers.map((a,i)=>Math.min(...centers.map((b,j)=>i===j?Infinity:Math.hypot(a[0]-b[0],a[1]-b[1])))).sort((a,b)=>a-b),quartile=nearest[Math.floor(nearest.length*.25)];far=quartile<28;tight=quartile<50}
+  }
   for(const row of rows){const text=lotLabels.get(row.id);if(!text)continue;
-   const caption=section.dataset.estados==='regla' ? (soldRule(row.lot)?'VENDIDO':row.lot.estado==='disponible'&&has(row.lot.superficie_m2)?area(row.lot.superficie_m2):'') : '';
-   const layout=visible.has(row.id)||comparison.includes(row.id)?selectorLotLabel(row,{worldHeight,view,width:rect.width,height:rect.height,caption}):null;
-   if(row.zone && !caption){text.style.display='none';continue}
+   const sold=soldRule(row.lot);
+   const caption=rule ? (far?'':sold?'VENDIDO':row.lot.estado==='disponible'&&has(row.lot.superficie_m2)?area(row.lot.superficie_m2):'') : '';
+   if(rule){if(soldRule(row.lot))text.dataset.caption='vendido';else text.dataset.caption='metros'}
+   if((rule||row.zone) && !caption){text.style.display='none';continue}
+   const captionSize=sold?8.5:tight?10.5:12;
+   const layout=visible.has(row.id)||comparison.includes(row.id)?selectorLotLabel(row,{worldHeight,view,width:rect.width,height:rect.height,caption,captionSize}):null;
    text.style.fontSize=(layout?.size||16)+'px';
    text.style.display=layout?'':'none';if(!layout)continue;
-   text.textContent=layout.text;text.setAttribute('transform',`translate(${layout.x} ${layout.y}) scale(${layout.scale}) rotate(${layout.angle||0})`);
+   if(text.dataset.captionText!==layout.text){
+    text.dataset.captionText=layout.text;
+    const content=rule?text.querySelector('.plan-caption'):text;
+    if(rule&&!sold){
+     const unit=document.createElement('small');unit.textContent='m²';
+     content.replaceChildren(document.createTextNode(number(row.lot.superficie_m2)),unit);
+    }else content.textContent=layout.text;
+   }
+   text.setAttribute('transform',`translate(${layout.x} ${layout.y}) scale(${layout.scale}) rotate(${layout.angle||0})`);
   }
   for(const ring of zoneMarkers){
    const label=lotLabels.get(ring.dataset.lotState);
-   ring.style.opacity=label&&label.style.display!=='none'?'0':'';
+   ring.style.opacity=rule||(label&&label.style.display!=='none')?'0':'';
   }
  }
  function paintMap(){
@@ -523,7 +563,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   const counts=lotCounts(base.map(r=>r.lot));
   q('.chips').innerHTML=[['','Todos'],...['disponible','reservado','vendido','proximamente',...(counts.states.sin&&salesZones(currentConfig).zonas.length?['sin']:[])].map(key=>[key,states[key].text])].map(([key,text])=>`<button type="button" class="chip" data-state="${key}" aria-pressed="${state===key}" ${key?`style="--c:${stateOf({estado:key}).color}"`:''}>${key?'<i></i>':''}${text}<b>${key?counts.states[key]:counts.total}</b></button>`).join('')+'<span class="leg"><i></i>'+ (section.dataset.estados==='regla'?'No comercializado':'No a la venta')+'</span>';
   q('.count').innerHTML=`<b>${visible.length}</b> ${visible.length===1?'lote':'lotes'}`;
-  list.innerHTML=visible.map(row=>{const sale=stateOf(row.lot);return `<button type="button" class="row" data-select="${escape(row.id)}" aria-current="${row.id===selected}" aria-pressed="${comparison.includes(row.id)}" style="--c:${sale.color}"><span class="n">${escape(row.label)}</span><span class="t"><b>${escape(label(row))}</b>${zoneTag(row)}<span>${row.zone&&immersiveZones()?' · ':''}${escape(area(row.lot.superficie_m2))} · <strong data-lot-status="${escape(row.lot.estado)}">${escape(sale.text)}</strong></span></span><span class="p">${soldRule(row.lot)?'':escape(usd(row.lot.precio_usd))+`<span>${escape(unitLabel(row.lot))}</span>`}</span></button>`}).join('')||'<p class="empty" role="status">No hay lotes con estos filtros.</p>';
+  list.innerHTML=visible.map(row=>{const sale=stateOf(row.lot);return `<button type="button" class="row" data-select="${escape(row.id)}" aria-current="${row.id===selected}" aria-pressed="${comparison.includes(row.id)}" style="--c:${sale.color}"><span class="n">${escape(row.label)}</span><span class="t"><b>${escape(label(row))}</b>${zoneTag(row)}<span>${row.zone&&immersiveZones()&&section.dataset.estados!=='regla'?' · ':''}${escape(area(row.lot.superficie_m2))} · <strong data-lot-status="${escape(row.lot.estado)}">${escape(sale.text)}</strong></span></span><span class="p">${soldRule(row.lot)?'':escape(usd(row.lot.precio_usd))+`<span>${escape(unitLabel(row.lot))}</span>`}</span></button>`}).join('')||'<p class="empty" role="status">No hay lotes con estos filtros.</p>';
   paintMap();paintLotLabels();paintCard();paintTray();paintListState();
  }
  function focusSelection(row,fromList=false,immediate=false){
@@ -571,7 +611,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   if(next.some((v,i)=>Math.abs(v-view[i])>1e-7))fly(next);
  }
  function pick(id,fromList=false){
-  const row=byId.get(id);if(!row)return;cancelAnimationFrame(frame);listCollapsed=false;if(compact()){mobileListOpen=false;if(!fullscreen()&&section.dataset.listOnly!=='true')section.scrollIntoView({block:'start',behavior:'instant'}); }
+  const row=byId.get(id);if(!row)return;cancelAnimationFrame(frame);listCollapsed=false;if(compact()){mobileListOpen=false;section.removeAttribute('data-list-panel-hidden');if(!fullscreen()&&section.dataset.listOnly!=='true')section.scrollIntoView({block:'start',behavior:'instant'}); }
   if(comparison.length){if(row.id!==comparison[0])comparison=[comparison[0],row.id];selected=null;onSelect?.(null)}else{selected=row.id;onSelect?.(row.id)}paint();
   if(ready)focusSelection(row,fromList);
   if(q('.side').hidden){
@@ -595,10 +635,10 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  section.addEventListener('click',e=>{
   const button=e.target.closest('button');if(!button)return;
   if(button.hasAttribute('data-fullscreen')){toggleFullscreen();return}
-  if(button.hasAttribute('data-list-hide')){section.setAttribute('data-list-panel-hidden','');paintListState();q('.list-show').focus({preventScroll:true});return}
-  if(button.hasAttribute('data-list-show')){section.removeAttribute('data-list-panel-hidden');paintListState();q('.list-hide').focus({preventScroll:true});return}
+  if(button.hasAttribute('data-list-hide')){mobileListOpen=false;section.setAttribute('data-list-panel-hidden','');paintListState();q('.list-show').focus({preventScroll:true});return}
+  if(button.hasAttribute('data-list-show')){mobileListOpen=compact();section.removeAttribute('data-list-panel-hidden');paintListState();q('.list-hide').focus({preventScroll:true});return}
   if(button.hasAttribute('data-list-close')){mobileListOpen=false;paintListState();q('.list-tab').focus({preventScroll:true});return}
-  if(button.hasAttribute('data-list-open')){listCollapsed=false;mobileListOpen=compact();paintListState();const active=[...list.querySelectorAll('.row')].find(n=>n.dataset.select===selected);(active||q('.order')).focus({preventScroll:true});return}
+  if(button.hasAttribute('data-list-open')){listCollapsed=false;mobileListOpen=compact();section.removeAttribute('data-list-panel-hidden');paintListState();const active=[...list.querySelectorAll('.row')].find(n=>n.dataset.select===selected);(active||q('.order')).focus({preventScroll:true});return}
   if(button.hasAttribute('data-state')){state=button.dataset.state;if(selected&&!selectorVisible(rows,state,block).some(r=>r.id===selected)){selected=null;onSelect?.(null)}paint();q('.chips').querySelector(`[data-state="${state}"]`)?.focus({preventScroll:true});return}
   if(button.hasAttribute('data-zone')){
    block=button.dataset.zone;selected=null;onSelect?.(null);paint();
@@ -612,7 +652,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   if(button.dataset.compareConsult){const row=byId.get(button.dataset.compareConsult);if(selectorCanConsult(row?.lot))onConsult?.(row.id);return}
   const action=button.dataset.action;if(!action)return;
   if(action==='close'){const id=selected;selected=null;onSelect?.(null);paint();focusListReturn(id);return}
-  if(action==='available'){state='disponible';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;paint();(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});return}
+  if(action==='available'){state='disponible';block='';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;section.removeAttribute('data-list-panel-hidden');paint();(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});return}
   if(!selected||!byId.has(selected))return;
   if(action==='consult'&&selectorCanConsult(byId.get(selected)?.lot))onConsult?.(selected);
   if(action==='brochure'){const url=projectBrochureURL(project?.brochure_url);if(url)window.open(url,'_blank','noopener,noreferrer');return}
@@ -635,7 +675,15 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
    if(!row.unavailable){shape.setAttribute('tabindex','0');shape.setAttribute('role','button');shape.addEventListener('click',()=>{if(!suppressClick)pick(row.id)},{signal});shape.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();pick(row.id)}},{signal})}else{shape.setAttribute('aria-disabled','true');shape.setAttribute('role','img')}
    shape.dataset.lotId=row.id;
    shapes.set(row.id,shape);map.append(shape);
-   if(row.points&&!row.unavailable&&(!row.zone||section.dataset.estados==='regla')){const text=create('text',{class:'lot-number','text-anchor':'middle','dominant-baseline':'central','aria-hidden':'true','pointer-events':'none'});lotLabels.set(row.id,text);map.append(text);}
+   if(row.points&&!row.unavailable&&(!row.zone||section.dataset.estados==='regla')){
+    const rule=section.dataset.estados==='regla';
+    const text=create(rule?'g':'text',{class:'lot-number','text-anchor':'middle','dominant-baseline':'central','aria-hidden':'true','pointer-events':'none'});
+    if(rule){
+     const box=create('foreignObject',{x:-50,y:-16,width:100,height:32});
+     const content=document.createElement('span');content.className='plan-caption';box.append(content);text.append(box);
+    }
+    lotLabels.set(row.id,text);map.append(text);
+   }
 
   }
   startView();rebuildZoneLayers();paintMap();paintLotLabels();ready=true;
@@ -737,13 +785,14 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  let panelSize='';const panelHead=q('.head'),panelCheck=()=>{const size=[card.offsetHeight,tray.offsetHeight,Math.round(panelHead.getBoundingClientRect().bottom-section.getBoundingClientRect().top)].join(':');if(disposed||size===panelSize)return;panelSize=size;if(compact())paintListState()},panelResize=new ResizeObserver(panelCheck);for(const target of [card,tray,panelHead,q('.side')])panelResize.observe(target);
  for(const type of ['transitionend','animationend'])section.addEventListener(type,panelCheck,{signal:lifecycle.signal});
  let lastSize='';const resize=new ResizeObserver(()=>{const rect=map.getBoundingClientRect(),size=[rect.width,rect.height].join(':');if(!rect.width||!rect.height||size===lastSize)return;lastSize=size;if(ready){startView();if(fullPhoto())return;if(block){view=constrain(fit(rows.filter(r=>!r.unavailable&&r.block===block)));setView()}const row=byId.get(selected||comparison[0]);if(row)focusSelection(row,false,true);}});resize.observe(map);
- const panelObserver=new MutationObserver(()=>{viewportHeight();if(ready){cancelAnimationFrame(frame);startView()}});
+ const panelObserver=new MutationObserver(()=>{viewportHeight();if(ready&&(!compact()||fullPhoto())){cancelAnimationFrame(frame);startView()}});
  panelObserver.observe(section,{attributes:true,attributeFilter:['data-list-panel-hidden']});
  signal.addEventListener('abort',()=>panelObserver.disconnect(),{once:true});
  function update(next,selection){
   const signature=zoneFingerprint(next),zoneChanged=signature!==zoneSignature;currentConfig=next;host.dataset.t=selectorTone(next);
-  if(zoneChanged){zoneSignature=signature;rows=projectRows(next);byId=new Map(rows.filter(r=>!r.unavailable).map(r=>[r.id,r]));comparison=comparison.filter(id=>byId.has(id));if(selected&&!byId.has(selected)){selected=null;onSelect?.(null);}if(ready)buildMap();}
-  const ruleBefore=section.dataset.estados;paintStateRule(next);const ruleChanged=ruleBefore!==section.dataset.estados;if(ruleChanged&&!zoneChanged&&ready)buildMap();
+  if(zoneChanged){zoneSignature=signature;rows=projectRows(next);byId=new Map(rows.filter(r=>!r.unavailable).map(r=>[r.id,r]));comparison=comparison.filter(id=>byId.has(id));if(selected&&!byId.has(selected)){selected=null;onSelect?.(null);}}
+  const ruleBefore=section.dataset.estados;paintStateRule(next);const ruleChanged=ruleBefore!==section.dataset.estados;
+  if((zoneChanged||ruleChanged)&&ready)buildMap();
   const id=comparison.length||selection==null?null:String(selection);
   if(id!==selected||zoneChanged||ruleChanged){selected=byId.has(id)?id:null;paint();if(ready&&mobileZonePlan()&&selected)focusSelection(byId.get(selected));}else{paintCard();paintTray();paintListState();}
  }
