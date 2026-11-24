@@ -4,7 +4,19 @@ const rad = Math.PI / 180;
 let source;
 let maskNumber = 0;
 
+export function validTerrainContours(contours) {
+  if (!Array.isArray(contours) || contours.length>128) return false;
+  let count=0;
+  return contours.every(polygon=>{
+    if (!Array.isArray(polygon) || polygon.length<3 || polygon.length>512) return false;
+    count+=polygon.length;
+    return count<=8192 && polygon.every(p=>Array.isArray(p) && p.length===2 &&
+      Number.isFinite(p[0]) && p[0]>=0 && p[0]<=width && Number.isFinite(p[1]) && p[1]>=0 && p[1]<=height);
+  });
+}
+
 export function isTerrainDetail(slug, camera) {
+  if (camera.stationType) return camera.stationType==='ground';
   return slug === 'terrazas-del-piltri' && /^detalle-032[3-9]$/.test(camera.id);
 }
 
@@ -54,7 +66,7 @@ function contourPath(points, camera, screen, width, height) {
   return 'M'+clipped.map(([x,y])=>x.toFixed(1)+' '+y.toFixed(1)).join('L')+'Z';
 }
 
-export function terrainLayer(overlay, station, svg, redraw) {
+export function terrainLayer(overlay, station, svg, redraw, savedContours) {
   const id = 'rg-terrain-mask-'+(++maskNumber);
   const mask = svg('mask',{id,maskUnits:'userSpaceOnUse',x:0,y:0});
   const field = svg('rect',{x:0,y:0,fill:'white'});
@@ -71,14 +83,21 @@ export function terrainLayer(overlay, station, svg, redraw) {
     }
     silhouette.setAttribute('d',contours.map(points=>contourPath(points,camera,screen,width,height)).join(''));
   }
-  source ??= fetch(new URL('../assets/recorridos/terrazas-revision/oclusiones-detalle.json?v=20261116-bordes1',import.meta.url))
+  if (savedContours!==undefined) {
+    if(validTerrainContours(savedContours)){
+      contours=savedContours.map(directions);
+      overlay.dataset.terrainMask='ready';
+    }else overlay.dataset.terrainMask='unavailable';
+  } else {
+    source ??= fetch(new URL('../assets/recorridos/terrazas-revision/oclusiones-detalle.json?v=20261116-bordes1',import.meta.url))
     .then(response=>{if (!response.ok) throw Error('Máscara de terreno');return response.json();})
     .catch(error=>{source=undefined;throw error;});
-  source.then(data=>{
-    if (!overlay.isConnected) return;
-    contours = data[station.slice(-4)].map(directions);
-    redraw();
-    overlay.dataset.terrainMask = 'ready';
-  }).catch(()=>{overlay.dataset.terrainMask = 'unavailable';});
+    source.then(data=>{
+      if (!overlay.isConnected) return;
+      contours = data[station.slice(-4)].map(directions);
+      redraw();
+      overlay.dataset.terrainMask = 'ready';
+    }).catch(()=>{overlay.dataset.terrainMask = 'unavailable';});
+  }
   return {ground,update,occludes:point=>contours.length>0 && silhouette.isPointInFill(point)};
 }

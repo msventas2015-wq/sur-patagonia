@@ -2,6 +2,49 @@ import {MINIWEB_PALETTES,applyMiniwebPalette,paletteTokens} from './miniweb-pale
 
 export const COVER_MEDIA = {foto:'Foto', video:'Video', panoramica360:'Panorámica 360°', recorrido:'Explorador 360°'};
 
+export const LOT_PLAN_KEY = {
+ disponible:{label:'Disponible',color:'#3fa66a'},
+ vendido:{label:'Vendido',color:'#14181a'},
+ no_a_la_venta:{label:'No comercializado',color:'#ffffff'},
+ seleccionado:{label:'Seleccionado',color:'#69aad8'},
+ reservado:{label:'Reservado',color:'#ffa63d'},
+ proximamente:{label:'Próximamente',color:'#6fb1ff'},
+ sin:{label:'Sin informar',color:'#c9ccca'}
+};
+
+export function usesLotPlanKey(config) {
+ return config?.bloques?.find(block=>block.tipo==='explorador')?.opciones?.estadosPlano==='regla';
+}
+
+export function lotPlanKeyEntries(rows, showSelection=true) {
+ const present=new Set(rows.map(row=>Object.hasOwn(LOT_PLAN_KEY,row.lot.estado)?row.lot.estado:'sin'));
+ return Object.entries(LOT_PLAN_KEY).filter(([key])=>key==='seleccionado'?showSelection:
+  ['disponible','vendido','no_a_la_venta'].includes(key)||present.has(key));
+}
+
+// La elección por dispositivo se guarda en el bloque; ningún proyecto cambia
+// de video a foto por una excepción de presentación.
+export function coverMedium(config, {mobile=false}={}) {
+ const options=config?.bloques?.find(block=>block.tipo==='portada')?.opciones||{};
+ return mobile&&['foto','video'].includes(options.medioMovil)
+  ?options.medioMovil:options.medio||config?.medio||'foto';
+}
+
+export function coverName(config, identityName, previousName=identityName) {
+ const name=config?.bloques?.find(block=>block.tipo==='portada')?.contenido?.nombreVisible;
+ return typeof name==='string' ? name.trim() || identityName : previousName;
+}
+
+// El creador puede simular un teléfono sin cambiar el dispositivo del visitante.
+export function mobileTourViewport(width, coarse, previewDevice='') {
+ return Number(width)>0 && Number(width)<=760 && (Boolean(coarse)||previewDevice==='mobile');
+}
+
+export function commercialPresentation(config) {
+ const choice=config?.recursos?.presentacionLotes;
+ return config?.estilo==='inmersivo'&&(choice==='comercial'||choice==null&&config?.recursos?.cierreTerrazas==='bloques');
+}
+
 export const DESIGN_STYLES=[
  {id:'inmersivo',name:'Inmersivo',selector:'inmersivo',title:'Explore el desarrollo',description:'Portada cinematográfica, paisaje a pantalla completa y pausas fotográficas.'},
  {id:'estudio-vivo',name:'Estudio',selector:'inmersivo',title:'Conozca cada posibilidad',description:'Fotografía de producto, perspectivas elegibles y datos junto a la decisión.'},

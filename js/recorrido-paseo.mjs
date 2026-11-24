@@ -2,6 +2,25 @@ import {meters} from './recorrido-geografia.mjs';
 
 const rad = Math.PI / 180;
 const faces = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
+export const walkFiles = ['vista', ...faces];
+const projectBank = 'https://wajkfydxutptcvvfwrvq.supabase.co';
+
+export function walkAssets(value, {projectId, bank=projectBank, local=false, origin=globalThis.location?.origin}={}) {
+  if (typeof value === 'string' && /^\/assets\/(?:[\w-]+\/)+$/.test(value)) {
+    return Object.fromEntries(walkFiles.map(key=>[key,value+key+'.webp']));
+  }
+  if (!value || typeof value!=='object' || !projectId) return null;
+  const prefix='/storage/v1/object/public/imagenes/proyectos/'+projectId+'/recorrido/web/';
+  for (const key of walkFiles) {
+    if (typeof value[key]!=='string') return null;
+    let url;
+    try { url=new URL(value[key]); } catch { return null; }
+    if (local && url.protocol==='blob:' && url.origin===origin) continue;
+    if (url.origin!==bank || url.username || url.password || url.search || url.hash ||
+        !url.pathname.startsWith(prefix) || !/^[\w-]+\.(webp|jpg|png)$/.test(url.pathname.slice(prefix.length))) return null;
+  }
+  return value;
+}
 
 function loadImage(url, priority) {
   const image = new Image();
@@ -152,7 +171,7 @@ export function walkRenderer(gl, program, base, directory, redraw) {
     const index = wanted.find(i => !ready.has(i) && !failed.has(i));
     if (activeRequest || index === undefined) return;
     const version = generation;
-    const request = loadImage(directory+faces[index]+'.webp','low');
+    const request = loadImage(typeof directory==='string' ? directory+faces[index]+'.webp' : directory[faces[index]],'low');
     activeRequest = request;
     try {
       const image = await request.ready;

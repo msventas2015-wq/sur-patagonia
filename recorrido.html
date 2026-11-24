@@ -2,9 +2,9 @@
 <html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;650;700&amp;family=Montserrat:wght@400;500;600;700;800;900&amp;display=swap"><title>Recorridos 360° · Sur Patagonian</title><link rel="stylesheet" href="./css/recorrido-constructor.css?v=20261120-terrazas"><link rel="stylesheet" href="./css/recorrido-medios.css"></head>
 <body class="rg-home"><header><small>Sur Patagonian</small><h1>Recorridos de loteos</h1></header><main><p role="status">Abriendo recorrido…</p><form hidden><label>Nombre del proyecto<input name="nombre" required maxlength="100" autocomplete="off"></label><button>Abrir editor</button></form><div id="actions"></div></main>
 <script type="module">
-import {openScene} from './js/recorrido-escena.mjs?v=20261120-terrazas';
+import {openScene} from './js/recorrido-escena.mjs?v=20261124-paseo';
 import {localMediaDraft,isLocalMediaHost,readPublishedMedia} from './js/recorrido-medios.mjs?v=20261118-miniweb';
-const loadEditor=()=>import('./js/recorrido-constructor.mjs?v=20261115-nombre360');
+const loadEditor=()=>import('./js/recorrido-constructor.mjs?v=20261124-paseo');
 const q=s=>document.querySelector(s),status=q('[role=status]'),args=new URLSearchParams(location.search),slug=args.get('proyecto'),local=isLocalMediaHost();
 // Older embedded Terrazas pages predate the explicit viewer layout parameter.
 if(args.get('integrado')==='1' && window.parent!==window && (args.get('interfaz')==='inmersivo'||slug==='terrazas-del-piltri')){
@@ -33,6 +33,14 @@ function openLocalCreator(draft,identity){
  document.body.append(shell);shell.showModal();
 }
 async function main(){
+ const draftRequested=args.get('miniweb-borrador')==='1' && args.get('miniweb-auto')==='1';
+ let previewData=null;
+ if(draftRequested){
+   const detail={slug};
+   window.frameElement?.dispatchEvent(new CustomEvent('miniweb-leer-recorrido',{bubbles:true,detail}));
+   previewData=detail.preview;
+   if(!previewData || previewData.config?.recorrido?.proyectoId!==previewData.projectId)throw Error('Abra el borrador desde el creador de miniwebs.');
+ }
  if(local&&!slug){
    status.textContent='Elegí un proyecto guardado o escribí el nombre de uno nuevo.';const form=q('form');form.hidden=false;
    form.onsubmit=e=>{e.preventDefault();const name=form.elements.nombre.value.trim();if(!name)return;location.search=new URLSearchParams({proyecto:name,editar:'1'});};
@@ -42,7 +50,7 @@ async function main(){
    const {materialsGuide}=await loadEditor();const help=materialsGuide();help.open=false;q('main').after(help);return;
  }
  if(!slug||slug.length>100)throw Error('Elegí un proyecto válido.');
- if(local){
+ if(local&&!previewData){
    const draft=await localMediaDraft('constructor:'+slug);window.addEventListener('pagehide',()=>draft.dispose(),{once:true});
    const identity={id:draft.projectId,slug,nombre:slug,ready:true};q('h1').textContent=slug;status.textContent='Edición local en este navegador.';
    const open=()=>openScene(draft.config.recorrido?.escena,{local:true,config:draft.config});
@@ -50,11 +58,11 @@ async function main(){
    button('Abrir creador de páginas',()=>openLocalCreator(draft,identity));button(draft.config.recorrido?.escena?'Editar recorrido 360°':'Crear recorrido 360°',edit);if(draft.config.recorrido?.escena)button('Ver como visitante',open);const a=document.createElement('a');a.href='./recorrido.html?v=20261117-cierre-venta1';a.textContent='Mis proyectos';q('#actions').append(' · ',a);
    if(args.has('creador'))openLocalCreator(draft,identity);else if(args.has('editar'))await edit();else if(draft.config.recorrido?.escena)open();return;
  }
- const published=await readPublishedMedia(slug,{visitorTour:true}),scene=published?.config.recorrido?.escena;
+ const published=previewData || await readPublishedMedia(slug,{visitorTour:true}),scene=published?.config.recorrido?.escena;
  if(!scene?.enabled)throw Error('Este proyecto todavía no tiene un recorrido habilitado.');
  let reviewMedia=[], reviewStart=args.get('revision'), detailStart=args.get('detalle'), initialFlight=args.get('vista');
  let displayScene=scene;
- if(slug==='terrazas-del-piltri'){
+ if(slug==='terrazas-del-piltri' && !scene.authoredStations){
    try{
      const parentQuery=new URL(window.parent.location.href).searchParams;
      reviewStart ||= parentQuery.get('revision');
@@ -98,8 +106,15 @@ async function main(){
    try{frame=window.frameElement;root=frame?.getRootNode();}catch{}
    presentarRecorridoTerrazas(document,frame,root);
  }
+ const {coverName}=await import('./js/miniweb-design.mjs?v=20261117-cierre-venta1');
+ const visibleName=coverName(published.config,'');
+ if(visibleName)displayScene={...displayScene,name:visibleName,title:visibleName};
  q('h1').textContent=displayScene.name;status.textContent='';
- const show=()=>openScene(displayScene,{...published,reviewMedia,reviewStart,detailStart,initialFlight,returnUrl:'/'+encodeURIComponent(slug),slug,lotId:args.get('lote')});
+ const onLotBrochure=!previewData && window.parent===window ? async lotId=>{
+   const {downloadPublicLotBrochure}=await import('./js/miniweb.mjs?v=20261124-brochure');
+   return downloadPublicLotBrochure(slug,published.projectId,lotId);
+ } : undefined;
+ const show=()=>openScene(displayScene,{...published,onLotBrochure,reviewMedia,reviewStart,detailStart,initialFlight,returnUrl:'/'+encodeURIComponent(slug),slug,lotId:args.get('lote')});
  button('Abrir recorrido',show);show();
 }
 main().catch(e=>status.textContent=e.message);

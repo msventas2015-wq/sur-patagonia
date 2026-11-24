@@ -5,8 +5,9 @@ import {mountImageTracer,imagePlanIssue,imageLots,imagePlanV2} from './recorrido
 import {mountLotStyle,tourZones} from './recorrido-estilo.mjs?v=20261114-anillo7b';
 import {affine,gps,meters,parcelNames,readDXF,convertDXF,dxfProjection,importKML,importGeoJSON,cameraMetadata} from './recorrido-geografia.mjs?v=20261116-bordes';
 import {reconstructDXFLots} from './recorrido-dxf-caras.mjs?v=20261116-plano6';
-import {sceneIssue,mapView,openScene,node,numberIn,cameraParameters,cameraNeedsAdjustment} from './recorrido-escena.mjs?v=20261115-nombre360';
+import {sceneIssue,mapView,openScene,node,numberIn,cameraParameters,cameraNeedsAdjustment} from './recorrido-escena.mjs?v=20261124-paseo';
 import {inspectMediaFile,prepareMediaDerivatives,mediaPreparationLabel,mediaList,mediaURL} from './recorrido-medios.mjs?v=20261114-media1';
+import {walkAssets} from './recorrido-paseo.mjs?v=20261124-paseo';
 
 const requirements=[
  ['Plano del loteo · enviar una de estas dos opciones', 'Preferimos un KML en WGS84. Dibujá cada lote como un polígono simple y cerrado, con el nombre “Manzana 2 · Lote 12”. Podés incluir las calles como líneas y los lugares como puntos.'],
@@ -25,7 +26,7 @@ function guide(){
  return el;
 }
 export {guide as materialsGuide};
-const cleanScene=name=>({version:1,name,features:[],cameras:[],enabled:false});
+const cleanScene=name=>({version:1,name,features:[],cameras:[],enabled:false,authoredStations:true});
 export function applyCameraTable(text,cameras){
  const rows=text.trim().split(/\r?\n/).filter(row=>row.trim());
  if(rows.length<2)throw Error('Pegá la cabecera y al menos una fila de datos.');
@@ -37,7 +38,7 @@ export function applyCameraTable(text,cameras){
    const matches=cameras.filter(c=>c.filename===file || c.name===file || c.name===file.replace(/\.(?:jpe?g|webp|png)$/i,''));
    if(matches.length!==1 || seen.has(matches[0].id))throw Error('Fila '+(i+2)+': el nombre debe identificar una única estación cargada y sin repetir.');
    const [lon,lat,height,heading]=numbers;if(numbers.length!==4||!gps([lon,lat])||!numberIn(height,.1,10000)||!numberIn(heading,0,360))throw Error('Revisá coordenadas, altura y rumbo en la fila '+(i+2)+'.');
-   const c=matches[0];seen.add(c.id);updated.push({...c,point:[lon,lat],height,heading});
+   const c=matches[0];seen.add(c.id);updated.push({...c,point:[lon,lat],height,heading,heightEstimated:false,headingEstimated:false,heightReference:'ground'});
  }
  return [...updated,...cameras.filter(c=>!seen.has(c.id))];
 }
@@ -55,6 +56,7 @@ export function editScene({config,identity,upload,local=false,lots=[],mapImage,o
  if(Number(config.version)>2 || (config.recorrido?.version && config.recorrido.version!==1) || (config.recorrido?.proyectoId && config.recorrido.proyectoId!==identity.id))throw Error('El banco no corresponde a este proyecto o versión.');
  const saved=config.recorrido?.escena;if(saved&&saved.version!==1)throw Error('Esta versión del recorrido requiere otro editor.');
  const scene=saved?structuredClone(saved):cleanScene(identity.nombre||identity.slug);
+ if(!scene.cameras.length)scene.authoredStations=true;
  lots=structuredClone(lots);
  const lotPatches=new Map(),sheetCreates=new Map();let sheetCross;
  scene.name=identity.nombre||scene.name;
@@ -97,6 +99,18 @@ export function editScene({config,identity,upload,local=false,lots=[],mapImage,o
  let landOnly=true;
  let camId=scene.cameras[0]?.id,featureId,mode='',drawing=[],pending,dirty=false,busy=false,zoom=1,center;
  const cam=()=>scene.cameras.find(c=>c.id===camId),feature=()=>scene.features.find(f=>f.id===featureId);
+ const walkPanel=node('details');
+ walkPanel.innerHTML='<summary>Paseo y encuadre de esta estación</summary><label>Tipo de estación<select data-station-type><option value="aerial">Vista aérea</option><option value="ground">A nivel del terreno</option></select></label><div data-walk-ground><button type="button" data-prepare-walk>Preparar avance desde esta panorámica</button><p data-walk-state></p><button type="button" data-draw-terrain>Marcar objetos delante de los lotes</button></div><label>Encuadre al entrar<select data-frame-mode><option value="auto">Hacia los lotes</option><option value="manual">Elegir dirección</option></select></label><div class="rg-pair" data-frame-fields><label>Dirección en la foto (°)<input data-frame-yaw type="number" min="-180" max="180" step="any"></label><label>Inclinación de la mirada (°)<input data-frame-pitch type="number" min="-85" max="85" step="any"></label></div>';
+ q('[data-sky-author]').before(walkPanel);
+ const returnLabel=node('label','Estación de regreso a la vista aérea');
+ returnLabel.append(node('select'));panoramas.append(returnLabel);
+ const returnSelect=returnLabel.querySelector('select');
+ const hasLegacyReturn=identity.slug==='terrazas-del-piltri' && !scene.authoredStations;
+ returnSelect.onchange=()=>{
+   if(returnSelect.value==='original')delete scene.aerialReturnId;
+   else scene.aerialReturnId=returnSelect.value;
+   changed();refresh();
+ };
  const note=text=>{status.textContent=text;loaderRefresh();if(persist&&text&&dialog.isConnected)status.scrollIntoView({block:'nearest'});};
  function changed(){dirty=true;loaderRefresh();if(blockedSceneIssue&&status.textContent===blockedSceneIssue){blockedSceneIssue=sceneIssue(scene,{local});status.textContent=blockedSceneIssue||'La estación está preparada para revisar.';}refreshCameraStatus();}
  function safe(fn){return async e=>{try{await fn(e);}catch(error){note(error.message||'No se pudo completar.');}};}
@@ -136,7 +150,18 @@ export function editScene({config,identity,upload,local=false,lots=[],mapImage,o
    selectOptions(q('[data-cameras]'),scene.cameras.map((c,i)=>[c.id,(i+1)+' · '+c.name+(!gps(c.point)?' · Sin ubicación':cameraNeedsAdjustment(c)?' · Sin ajustar':'')]),camId);
    selectOptions(q('[data-features]'),[['','Elegí un elemento'],...scene.features.map(f=>[f.id,f.name])],featureId||'');
    const c=cam(),f=feature();q('[data-camform]').hidden=!c;q('[data-featureform]').hidden=!f;
+   const returnOptions=hasLegacyReturn?[['original','Regreso original del recorrido']]:[];
+   selectOptions(returnSelect,[...returnOptions,['','Sin estación de regreso'],...scene.cameras.filter(s=>s.stationType!=='ground').map(s=>[s.id,s.name])],scene.aerialReturnId??(hasLegacyReturn?'original':''));
    if(c){
+    q('[data-station-type]').value=c.stationType||'aerial';
+    q('[data-walk-ground]').hidden=c.stationType!=='ground';
+    const prepared=walkAssets(c.paseo,{projectId:identity.id,local});
+    const count=c.terrainContours?.length||0;
+    const walkStatus=prepared?'Avance preparado. ':c.paseo?'Revisá las imágenes del avance. ':'Avance pendiente. ';
+    q('[data-walk-state]').textContent=walkStatus+count+(count===1?' contorno de terreno.':' contornos de terreno.');
+    q('[data-frame-mode]').value=c.start==null?'auto':'manual';
+    q('[data-frame-fields]').hidden=c.start==null;
+    q('[data-frame-yaw]').value=c.start??0;q('[data-frame-pitch]').value=c.startPitch??-20;
     q('[data-sky-state]').textContent=c.skyMask?'Hora azul disponible para esta toma.':'Esta toma usa el cielo original.';
     q('[data-unmask]').hidden=!c.skyMask;
     for(const [k,v] of Object.entries({cname:c.name,lon:c.point?.[0],lat:c.point?.[1],...cameraParameters(c),tilt:c.tilt||0,roll:c.roll||0}))q('[data-'+k+']').value=v??'';
@@ -187,6 +212,37 @@ export function editScene({config,identity,upload,local=false,lots=[],mapImage,o
    field.onchange=safe(e=>{fn(e.target);changed();refresh();});
  }
  edit('[data-cam-marker]',e=>cam().marker=e.value);
+ edit('[data-station-type]',e=>{
+   const c=cam();c.stationType=e.value;
+   if(e.value==='ground' && scene.aerialReturnId===c.id)delete scene.aerialReturnId;
+ });
+ edit('[data-frame-mode]',e=>{
+   const c=cam();
+   if(e.value==='manual'){c.start??=0;c.startPitch??=-20;}
+   else {delete c.start;delete c.startPitch;}
+ });
+ for(const [sel,key,min,max] of [['[data-frame-yaw]','start',-180,180],['[data-frame-pitch]','startPitch',-85,85]]) {
+   q(sel).onchange=safe(e=>{
+     if(!numberIn(e.target.valueAsNumber,min,max)){refresh();throw Error('Elegí un ángulo entre '+min+' y '+max+' grados.');}
+     cam()[key]=e.target.valueAsNumber;changed();refresh();
+   });
+ }
+ click('[data-prepare-walk]',()=>exclusive(async()=>{
+   const c=cam();
+   if(c.heightEstimated || !numberIn(c.height,.1,10000))throw Error('Confirmá la altura sobre el plano antes de preparar el avance.');
+   if(c.skyMask)throw Error('Esta estación usa hora azul. Quitá su máscara de cielo para preparar el avance.');
+   const {prepareWalkImages,storeWalkFiles}=await import('./recorrido-paseo-editor.mjs?v=20261124-paseo');
+   note('Preparando la panorámica para el avance…');
+   try {
+     const files=await storeWalkFiles(prepareWalkImages(c,note),store);
+     if(!walkAssets(files,{projectId:identity.id,local}))throw Error('El banco devolvió medios que no corresponden a este proyecto.');
+     c.paseo=files;changed();refresh();note('Avance preparado. Aplicá los cambios y guardá el proyecto.');
+   } catch(error){throw Error('No se completó el avance. Podés reintentar. '+error.message);}
+ }));
+ click('[data-draw-terrain]',async()=>{
+   const c=cam(),{editTerrainContours}=await import('./recorrido-paseo-editor.mjs?v=20261124-paseo');
+   editTerrainContours(c,contours=>{c.terrainContours=contours;changed();refresh();});
+ });
  edit('[data-poi-kind]',e=>{feature().marker=e.value;if(e.value==='office-bolson')feature().name='Oficina Sur Patagonian';});
  click('[data-adjust-camera]',()=>{const current=cam();if(!current||!gps(current.point))throw Error('Ubicá la estación en el plano antes de ajustarla.');openScene({...scene,cameras:[{...current,...cameraParameters(current)}]},{local,projectSlug:identity.slug,config:draftConfig(),lots,preview:true,calibration:{cameraId:current.id,onApply:values=>{Object.assign(current,values);changed();refresh();note('Ajuste confirmado en el borrador. Guardá el proyecto para conservarlo.');}}});});
  click('[data-sector-remove]',()=>{delete scene.sectorPhoto;changed();refresh();});
@@ -213,12 +269,16 @@ export function editScene({config,identity,upload,local=false,lots=[],mapImage,o
  click('[data-draw-ridge]',()=>markHorizon(cam(),file=>exclusive(()=>saveMask(cam(),file))));
  edit('[data-cname]',e=>cam().name=e.value.trim()||'Estación');
  for(const [key,i] of [['lon',0],['lat',1]])edit('[data-'+key+']',e=>{const c=cam();c.point||=[null,null];c.point[i]=e.value===''?null:e.valueAsNumber;});
- for(const key of ['heading','height','tilt','roll'])edit('[data-'+key+']',e=>cam()[key]=e.value===''?null:e.valueAsNumber);
+ for(const key of ['heading','height','tilt','roll'])edit('[data-'+key+']',e=>{
+   const c=cam();c[key]=e.value===''?null:e.valueAsNumber;
+   if(key==='height' && numberIn(c.height,.1,10000)){c.heightEstimated=false;c.heightReference='ground';}
+   if(key==='heading' && numberIn(c.heading,0,360))c.headingEstimated=false;
+ });
  edit('[data-fname]',e=>feature().name=e.value.trim()||'Lugar');edit('[data-desc]',e=>feature().description=e.value.trim());edit('[data-fheight]',e=>feature().height=Number(e.value)||0);
  for(const [key,i] of [['plon',0],['plat',1]])q('[data-'+key+']').onchange=safe(e=>{const f=feature(),point=[...f.points[0]];point[i]=e.target.valueAsNumber;if(!gps(point)){refresh();throw Error('Revisá las coordenadas del lugar.');}f.points=[point];changed();refresh();});
  edit('[data-bind]',e=>{if(e.value && bindings.get(e.value)&&bindings.get(e.value)!==featureId){refresh();throw Error('El lote ya está vinculado a otro contorno.');}for(const [id,v] of bindings)if(v===featureId)bindings.set(id,'');if(e.value)bindings.set(e.value,featureId);});
  for(const [sel,delta] of [['[data-earlier]',-1],['[data-later]',1]])click(sel,()=>{const i=scene.cameras.indexOf(cam()),j=i+delta;if(j<0||j>=scene.cameras.length)return;[scene.cameras[i],scene.cameras[j]]=[scene.cameras[j],scene.cameras[i]];changed();refresh();});
- click('[data-delcam]',()=>{scene.cameras=scene.cameras.filter(c=>c.id!==camId);camId=scene.cameras[0]?.id;changed();cancelPick();refresh();});
+ click('[data-delcam]',()=>{if(scene.aerialReturnId===camId)delete scene.aerialReturnId;scene.cameras=scene.cameras.filter(c=>c.id!==camId);camId=scene.cameras[0]?.id;changed();cancelPick();refresh();});
  click('[data-delf]',()=>{if(persist&&feature()?.dxfReconstructed){if([...bindings.values()].includes(featureId))throw Error('Este lote tiene ficha. Revisá su vínculo desde Lotes antes de apartarlo.');scene.dxfDiscarded||=[];scene.dxfDiscarded.push({...feature(),dxfDiscardReason:'Apartado durante la revisión'});}scene.features=scene.features.filter(f=>f.id!==featureId);for(const [k,v] of bindings)if(v===featureId)bindings.set(k,'');featureId='';changed();cancelPick();refresh();});
  click('[data-lot-apply]',()=>{
    const changes=parcelNames(q('[data-lot-table]').value,scene.features);
