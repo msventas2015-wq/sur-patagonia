@@ -4,7 +4,8 @@ import {paletteTokens} from './miniweb-palettes.mjs';
 import {bridgeInlineWheel} from './miniweb-360.mjs?v=20261117-cierre-venta1';
 import {unitPrice,unitPriceText} from './lote-precio.mjs';
 import {projectTourUrl} from './recorrido-enlaces.mjs';
-import {mediaList,projectBrochureURL} from './recorrido-medios.mjs';
+import {mediaList} from './recorrido-medios.mjs';
+import {usesLotPlanKey,lotPlanKeyEntries} from './miniweb-design.mjs?v=20261117-cierre-venta1';
 
 const NS='http://www.w3.org/2000/svg';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19,6 +20,8 @@ const collator=new Intl.Collator('es',{numeric:true,sensitivity:'base'});
 const originalStates={...LOT_STATES,disponible:{text:'Disponible',color:'#34d17f'},reservado:{text:'Reservado',color:'#ffa63d'},vendido:{text:'Vendido',color:'#ff6a6f'}};
 const svgIcon=path=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
 const closeIcon=svgIcon('m6 6 12 12M6 18 18 6');
+const brochureContent=svgIcon('M12 3v12m-5-5 5 5 5-5M5 20h14')+'<span>Brochure</span>';
+const resetBrochureButton=button=>{button.innerHTML=brochureContent;button.setAttribute('aria-label','Descargar brochure')};
 
 export function selectorEnabled(config,project={},mapUrl=project.mapa_activo===false?'':project.mapa_imagen_url){
  return project.slug!=='aldea-los-huemules'&&['estudio-vivo','relato','manifiesto','recorrido','inmersivo'].includes(config.estilo);
@@ -155,15 +158,15 @@ export function selectorMapSource(url,{hasPhoto=true,hasGeometry=false,safeUrl}=
 
 // Screen-space labels keep a readable size while the SVG camera moves. A label
 // is shown only when its full text and outline fit inside its own lot.
-export function selectorLotLabel(row,{worldHeight=600,view=[0,0,843,600],width=1000,height=650,caption='',captionSize}={}){
+export function selectorLotLabel(row,{worldHeight=600,view=[0,0,843,600],width=1000,height=650,caption='',captionSize,captionBox}={}){
  if(!row.points||row.unavailable||row.hidden||!width||!height)return null;
  const points=row.points.map(([u,v])=>[u*843,v*worldHeight]),sx=width/view[2],sy=height/view[3];
  const vertices=points.filter(([x,y],i)=>i===0||x!==points[0][0]||y!==points[0][1]);
  const anchor=caption?vertices.reduce(([x,y],[u,v])=>[x+u/vertices.length,y+v/vertices.length],[0,0]):salesZoneInterior(points);
  const screen=points.map(([x,y])=>[(x-anchor[0])*sx,(y-anchor[1])*sy]);
  const fits=(text,size,polygon=screen)=>{
-  const halfWidth=caption ? [...text].length*size*.33+1 : [...text].length*size*.36+4+(row.zone&&['vendido','reservado'].includes(row.lot?.estado)?12:0);
-  const halfHeight=size*.4+(caption?1:3);
+  const halfWidth=captionBox ? captionBox.width/2 : caption ? [...text].length*size*.33+1 : [...text].length*size*.36+4+(row.zone&&['vendido','reservado'].includes(row.lot?.estado)?12:0);
+  const halfHeight=captionBox ? captionBox.height/2 : size*.4+(caption?1:3);
   const inside=([x,y])=>{let yes=false,a=polygon.at(-1);for(const b of polygon){if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])yes=!yes;a=b;}return yes};
   const corners=[[-halfWidth,-halfHeight],[halfWidth,-halfHeight],[halfWidth,halfHeight],[-halfWidth,halfHeight]];
   // Corners alone are insufficient for concave lots: no boundary may enter the text box.
@@ -192,7 +195,7 @@ export function selectorLotLabel(row,{worldHeight=600,view=[0,0,843,600],width=1
 
 // Presentation only: IDs, inventory, geometry, consultation and media are supplied
 // by the existing miniweb. No database client, alternate inventory or GPS model.
-export function mountSelector(host,{project,config,lots,shapeFor,mapUrl,safeUrl,onSelect,onConsult,onTour,onPanoramas,mapHasPhoto=true,allowPins=true,initialPlanBounds}){
+export function mountSelector(host,{project,config,lots,shapeFor,mapUrl,safeUrl,onSelect,onConsult,onTour,onPanoramas,onBrochure,mapHasPhoto=true,allowPins=true,initialPlanBounds}){
  const states=salesZones(config).zonas.length?LOT_STATES:originalStates,ruleColors={disponible:'#3FA66A',vendido:'#f4f3ef'},stateOf=lot=>{const base=states[lot.estado]||states.sin;return section.dataset.estados==='regla'&&ruleColors[lot.estado]?{...base,color:ruleColors[lot.estado]}:base};
  const root=host.attachShadow({mode:'open'}),lifecycle=new AbortController(),{signal}=lifecycle;
  let resolveReady;const whenReady=new Promise(resolve=>{resolveReady=resolve});
@@ -223,7 +226,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   backdrop.setAttribute('aria-hidden','true');
   section.prepend(backdrop);
  }
- root.append(section);
+ const layout=document.createElement('div');layout.className='selector-layout';layout.append(section);root.append(layout);
  const q=selector=>section.querySelector(selector),map=q('.map'),list=q('.list'),card=q('.card'),tray=q('.tray'),blockSelect=q('.mz select');
  // A georeferenced photo can cover only part of the linked DXF. Keep both in
  // a common plane so choosing a lot outside the photo never changes its location.
@@ -247,10 +250,19 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  // Estados del plano según las reglas de las miniwebs: opción estadosPlano del bloque Explorador. Sin la opción, el selector conserva sus colores.
  const soldRule=lot=>section.dataset.estados==='regla'&&lot?.estado==='vendido';
  function paintStateRule(cfg){
-  const on=cfg.bloques?.find(b=>b.tipo==='explorador')?.opciones?.estadosPlano==='regla';let legend=section.querySelector('.state-legend');
-  if(!on){delete section.dataset.estados;legend?.remove();return}
-  // La maqueta final no lleva leyenda sobre el plano: la disponibilidad ya se lee en los filtros de la lista, las filas, las fichas y los propios lotes.
-  section.dataset.estados='regla';legend?.remove();
+  let legend=layout.querySelector('.state-legend');
+  if(!usesLotPlanKey(cfg)){delete section.dataset.estados;legend?.remove();return}
+  section.dataset.estados='regla';
+  const entries=lotPlanKeyEntries(rows,false), signature=entries.map(([key])=>key).join(' ');
+  if(legend?.dataset.keys===signature)return;
+  if(!legend){legend=document.createElement('div');legend.className='state-legend';legend.setAttribute('role','group');legend.setAttribute('aria-label','Referencia del plano');layout.append(legend)}
+  legend.dataset.keys=signature;
+  legend.replaceChildren(...entries.map(([key,{label,color}])=>{
+   layout.style.setProperty('--plan-'+key,color);
+   const item=document.createElement('span'),swatch=document.createElement('i');
+   swatch.setAttribute('aria-hidden','true');swatch.dataset.state=key;swatch.style.setProperty('--swatch',color);
+   item.append(swatch,label);return item;
+  }));
  }
  paintStateRule(config);
  let outlinedShape=null;
@@ -302,7 +314,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  let currentConfig=config,selected=null,comparison=[],state='',block='',order='numero',worldHeight=600,photoWidth=843,box=[0,0,843,600],view=[...box],frame=0,ready=false,disposed=false,listCollapsed=false,initialWidth=843,mobileListOpen=false,bodyOverflow=null;
  const compact=()=>window.innerWidth<=900;
  const fullPhoto=()=>mapHasPhoto&&section.hasAttribute('data-list-panel-hidden');
- const fullscreen=()=>root.fullscreenElement===section||!!section.matches?.(':fullscreen')||section.classList.contains('tour-expanded');
+ const fullscreen=()=>root.fullscreenElement===layout||!!layout.matches?.(':fullscreen')||layout.classList.contains('tour-expanded');
  let viewportInset=0;
  function viewportHeight(){
   const vh=window.visualViewport?.height||window.innerHeight;
@@ -446,7 +458,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   section.classList.toggle('mobile-list-open',open);for(const panel of [card,tray]){panel.inert=open;if(open)panel.setAttribute('aria-hidden','true');else panel.removeAttribute('aria-hidden')}
   const panel=comparison.length?tray:card;section.style.setProperty('--mobile-overlay-height',small&&!onlyList&&!open&&!panel.hidden?panel.offsetHeight+'px':'0px');
   // Con la regla de las miniwebs, en pantallas angostas la ficha abierta no puede tapar ni los filtros ni el zoom: si no entran, el selector crece lo justo.
-  {const head=q('.head'),active=small&&!onlyList&&!open&&!panel.hidden,clear=active?Math.ceil(head.getBoundingClientRect().bottom-section.getBoundingClientRect().top+14+54+24+12):0,needed=section.dataset.estados==='regla'&&active?clear+Math.max(panel.offsetHeight,panel.scrollHeight+2)+'px':'0px';
+  {const head=q('.head'),active=small&&!onlyList&&!open&&!panel.hidden,clear=active?Math.ceil(head.getBoundingClientRect().bottom-section.getBoundingClientRect().top+14+54+24+12):0,needed=section.dataset.estados==='regla'&&active?clear+Math.max(panel.offsetHeight,panel.scrollHeight+2)+(layout.querySelector('.state-legend')?.offsetHeight||0)+'px':'0px';
    // Espacio que la ficha no puede ocupar (filtros y zoom): si el selector no llega a crecer, la ficha se desplaza por dentro en vez de taparlos.
    section.style.setProperty('--selector-clear',clear?clear+'px':'24px');const changed=host.style.getPropertyValue('--selector-needed')!==needed;for(const target of [host,host.parentElement])target?.style.setProperty('--selector-needed',needed);
    // La ficha se mide con su contenido completo; al cambiar el alto del selector se vuelve a ubicar el zoom una vez.
@@ -454,17 +466,17 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   const full=q('[data-fullscreen]');full.setAttribute('aria-label',fullscreen()?'Salir de pantalla completa':'Pantalla completa');full.setAttribute('title',fullscreen()?'Salir de pantalla completa':'Pantalla completa');full.setAttribute('aria-pressed',String(fullscreen()));full.innerHTML=svgIcon(fullscreen()?'M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5':'M8 8 3 3m0 5V3h5M16 8l5-5m-5 0h5v5M8 16l-5 5m0-5v5h5m8-5 5 5m0-5v5h-5');
  }
  function exitFullscreen(){
-  if(root.fullscreenElement===section||section.matches?.(':fullscreen'))document.exitFullscreen?.().catch(()=>{});
-  section.classList.remove('tour-expanded');if(bodyOverflow!==null){document.body.style.overflow=bodyOverflow;bodyOverflow=null;}viewportHeight();
+  if(root.fullscreenElement===layout||layout.matches?.(':fullscreen'))document.exitFullscreen?.().catch(()=>{});
+  layout.classList.remove('tour-expanded');if(bodyOverflow!==null){document.body.style.overflow=bodyOverflow;bodyOverflow=null;}viewportHeight();
  }
  async function toggleFullscreen(){
   if(fullscreen()){exitFullscreen();return;}if(section.dataset.listOnly==='true')return;
-  try{if(!section.requestFullscreen)throw Error('fallback');await section.requestFullscreen();}
-  catch{bodyOverflow=document.body.style.overflow||'';document.body.style.overflow='hidden';section.classList.add('tour-expanded');}
+  try{if(!layout.requestFullscreen)throw Error('fallback');await layout.requestFullscreen();}
+  catch{bodyOverflow=document.body.style.overflow||'';document.body.style.overflow='hidden';layout.classList.add('tour-expanded');}
   viewportHeight();if(ready){startView();if(selected)focusSelection(byId.get(selected));}
  }
  document.addEventListener?.('fullscreenchange',()=>{viewportHeight();if(ready){startView();const row=byId.get(selected||comparison[0]);if(row)focusSelection(row);}},{signal});
- window.addEventListener('keydown',event=>{if(event.key==='Escape'&&section.classList.contains('tour-expanded'))exitFullscreen()},{signal});
+ window.addEventListener('keydown',event=>{if(event.key==='Escape'&&layout.classList.contains('tour-expanded'))exitFullscreen()},{signal});
  function zoneControls(){
   const data=salesZones(currentConfig),enabled=!!data.zonas.length,filter=q('.zone-filters');
   filter.hidden=!enabled;q('.mz').hidden=enabled;
@@ -533,7 +545,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   const consult=selectorCanConsult(lot)?`<button type="button" class="btn go" data-action="consult"><span>${lot.avisoZonaProximamente?'Avisarme cuando salga a la venta':'Consultar este lote'}</span>${svgIcon('M4 12h16m-6-6 6 6-6 6')}</button>`:'<button type="button" class="btn go" disabled aria-disabled="true">Lote vendido</button>';
   card.innerHTML=`<div class="top"><div><h3>${escape(row.groupLabel||(row.block?'Manzana '+row.block:'Lote individual'))}</h3>${zoneTag(row)}<p class="big">Lote ${escape(row.label)}</p></div><span class="st" style="--c:${sale.color}"><i></i>${sale.text}</span><button type="button" class="x" data-action="close" aria-label="Cerrar ficha">${closeIcon}</button></div>
   <dl class="kv">${soldRule(lot)?'':`<div><dt>Precio</dt><dd>${escape(usd(lot.precio_usd))}</dd></div>`}<div><dt>Superficie</dt><dd>${escape(area(lot.superficie_m2))}</dd></div>${soldRule(lot)?'':`<div><dt>Valor del m²</dt><dd>${escape(unitUsd(lot))}</dd></div>`}</dl>
-  <div class="acts">${soldRule(lot)?'<button type="button" class="btn go" data-action="available">Ver lotes disponibles</button>':consult+(tour?`<a class="btn" href="${escape(tour)}">${svgIcon('M3 12c3 3 15 3 18 0M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18')}360°</a>`:external||panoramas?`<button type="button" class="btn" data-action="360">360°</button>`:'')+`<button type="button" class="btn" data-action="compare" aria-pressed="${comparison.includes(row.id)}">Comparar</button>`+(section.dataset.estados==='regla'&&lot.estado==='disponible'&&projectBrochureURL(project?.brochure_url)?'<button type="button" class="btn" data-action="brochure">Brochure del proyecto</button>':'')}</div>`;
+  <div class="acts">${soldRule(lot)?'<button type="button" class="btn go" data-action="available">Ver lotes disponibles</button>':consult+(tour?`<a class="btn" data-project-lot-tour href="${escape(tour)}">${svgIcon('M3 12c3 3 15 3 18 0M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18')}360°</a>`:external||panoramas?`<button type="button" class="btn" data-action="360">360°</button>`:'')+`<button type="button" class="btn" data-action="compare" aria-pressed="${comparison.includes(row.id)}">Comparar</button>`+(currentConfig.bloques?.find(b=>b.tipo==='explorador')?.opciones?.mostrarBrochure!=='no'&&lot.estado==='disponible'&&onBrochure?'<button type="button" class="btn" data-action="brochure" aria-label="Descargar brochure">'+brochureContent+'</button>':'')}</div>`;
  }
  function paintTray(){
   const pair=comparison.map(id=>byId.get(id)).filter(Boolean),active=pair.length>0;tray.hidden=!active;tray.classList.toggle('show',active);section.classList.toggle('has-compare',active);tray.tabIndex=-1;
@@ -655,7 +667,15 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   if(action==='available'){state='disponible';block='';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;section.removeAttribute('data-list-panel-hidden');paint();(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});return}
   if(!selected||!byId.has(selected))return;
   if(action==='consult'&&selectorCanConsult(byId.get(selected)?.lot))onConsult?.(selected);
-  if(action==='brochure'){const url=projectBrochureURL(project?.brochure_url);if(url)window.open(url,'_blank','noopener,noreferrer');return}
+  if(action==='brochure'){
+   const lotId=selected;
+   if(onBrochure&&!button.disabled){
+    button.disabled=true;button.setAttribute('aria-busy','true');button.setAttribute('aria-label','Generando brochure');button.textContent='Generando…';
+    Promise.resolve().then(()=>onBrochure(lotId)).then(result=>{if(result===false)throw Error('brochure_failed');resetBrochureButton(button)}).catch(()=>{button.textContent='Reintentar';button.setAttribute('aria-label','Reintentar descarga')})
+     .finally(()=>{button.disabled=false;button.removeAttribute('aria-busy')});
+   }
+   return;
+  }
   if(action==='360'){const lot=byId.get(selected).lot;if(safeUrl(currentConfig.lotes?.[lot.id]?.tour360))onTour?.(lot.id);else onPanoramas?.(lot.id)}
   if(action==='compare'){const base=byId.get(selected);comparison=[selected];selected=null;onSelect?.(null);paint();focusSelection(base);tray.focus({preventScroll:true})}
  },{signal});
@@ -671,7 +691,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   if(rasterExtent||whiteMap)section.dataset.mapWhite='true';else delete section.dataset.mapWhite;
   for(const row of rows){if(!row.points&&!row.pin)continue;const attrs=row.points?{points:row.points.map(([u,v])=>[u*843,v*worldHeight].join(',')).join(' ')}:{cx:row.pin[0]*843,cy:row.pin[1]*worldHeight,r:5};const shape=create(row.points?'polygon':'circle',attrs);
    shape.setAttribute('class','lot'+(row.unavailable?' nov':''));shape.dataset.state=states[row.lot.estado]?row.lot.estado:'sin';shape.setAttribute('vector-effect','non-scaling-stroke');shape.style.setProperty('--c',row.zone&&!row.unavailable&&salesZones(currentConfig).colorPor==='zona'?salesZoneColor(row.zone,paletteTokens(currentConfig.paleta).texto):stateOf(row.lot).color);
-   if(row.zone){shape.dataset.zoneId=row.zone.id;paintSalesZone(shape,currentConfig,row.lot,project,map);if(!row.unavailable&&zoneSettings.colorPor==='zona')shape.dataset.zoneFill='true';}shape.setAttribute('aria-label',label(row)+', '+stateOf(row.lot).text);
+   if(row.zone){shape.dataset.zoneId=row.zone.id;paintSalesZone(shape,currentConfig,row.lot,project,map);if(!row.unavailable&&zoneSettings.colorPor==='zona')shape.dataset.zoneFill='true';}shape.setAttribute('aria-label',label(row)+', '+(row.unavailable&&section.dataset.estados==='regla'?'No comercializado':stateOf(row.lot).text));
    if(!row.unavailable){shape.setAttribute('tabindex','0');shape.setAttribute('role','button');shape.addEventListener('click',()=>{if(!suppressClick)pick(row.id)},{signal});shape.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();pick(row.id)}},{signal})}else{shape.setAttribute('aria-disabled','true');shape.setAttribute('role','img')}
    shape.dataset.lotId=row.id;
    shapes.set(row.id,shape);map.append(shape);

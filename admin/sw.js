@@ -3,14 +3,20 @@ const CACHE_NAME = CACHE_PREFIX + 'v11';
 
 // Los módulos del creador pueden cambiar sin que cambie la URL de sus imports.
 const MINIWEB_MODULES = new Set([
+  '/js/brochure-proyecto.mjs',
   '/js/ficha-lote-recorrido.mjs',
   '/js/miniweb-360.mjs',
   '/js/miniweb-blocks.mjs',
   '/js/miniweb-design.mjs',
+  '/js/miniweb-editor.mjs',
+  '/js/miniweb-effects.mjs',
   '/js/miniweb-selector.mjs',
   '/js/miniweb.mjs',
+  '/js/recorrido-constructor.mjs',
+  '/js/recorrido-detalle-terreno.mjs',
   '/js/recorrido-escena.mjs',
   '/js/recorrido-medios.mjs',
+  '/js/recorrido-paseo-editor.mjs',
   '/js/recorrido-paseo.mjs',
   '/js/recorrido-visor-medios.mjs',
   '/js/terrazas-comercial.mjs',

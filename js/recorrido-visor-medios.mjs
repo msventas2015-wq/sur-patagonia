@@ -1,4 +1,4 @@
-import {arrivalPose, walkRenderer, walkShader} from './recorrido-paseo.mjs';
+import {arrivalPose, walkRenderer, walkShader} from './recorrido-paseo.mjs?v=20261124-paseo';
 
 // Visor de medios propios. No registra visitas ni modifica la cámara del recorrido.
 export function openMediaViewer(items, {title = 'Imágenes del proyecto', onClose, start = 0, context = 'admin'} = {}) {

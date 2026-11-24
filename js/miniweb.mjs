@@ -2,7 +2,7 @@ import {validarConsulta,errorConsulta} from './consulta-miniweb.mjs';
 import {syncMapRings} from './zonas-anillos.mjs?v=20261114-anillo7b';
 import {lotCounts,zoneCountText,salesZones,lotSalesZone,salesZoneInventory,salesZoneAppearance,salesZoneColor,publicSalesZoneColor,paintSalesZone,buildSalesZoneLayers,SALES_ZONE_STATES} from './zonas-venta.mjs?v=20261114-anillo7b';
 import {interactiveSectionCopy,applyInteractiveHeadingStyle,bridgeInlineWheel} from './miniweb-360.mjs?v=20261117-cierre-venta1';
-import {mountSelector,selectorEnabled} from './miniweb-selector.mjs?v=20261117-cierre-venta1';
+import {mountSelector,selectorEnabled,selectorRows} from './miniweb-selector.mjs?v=20261117-cierre-venta1';
 import {lotTitle} from './ficha-lote-recorrido.mjs';
 import {simulatedSales,simulateLotStates} from './recorrido-terrazas-qa.mjs?v=20261116-ficha';
 import {lotFacts} from './lote-precio.mjs';
@@ -12,8 +12,8 @@ import {availabilityColor,projectAvailability,estados,paintLot} from './recorrid
 import {mediaList} from './recorrido-medios.mjs?v=20261118-miniweb';
 import {openMediaViewer} from './recorrido-visor-medios.mjs?v=20261114-media1';
 import {applyMiniwebBackground} from './miniweb-background.mjs?v=20261113-estudio9';
-import {COVER_MEDIA,DESIGN_STYLES,applyMiniwebPalette,mountDesignChooser,youtubeEmbed} from './miniweb-design.mjs?v=20261117-cierre-venta1';
-import {normalizeBlocks,mountBlocks} from './miniweb-blocks.mjs?v=20261117-cierre-venta1';
+import {COVER_MEDIA,coverMedium,commercialPresentation,DESIGN_STYLES,applyMiniwebPalette,mountDesignChooser,youtubeEmbed,usesLotPlanKey} from './miniweb-design.mjs?v=20261117-cierre-venta1';
+import {normalizeBlocks,mountBlocks,developmentServices} from './miniweb-blocks.mjs?v=20261117-cierre-venta1';
 import {rotularLotesTerrazas} from './ficha-lote-recorrido.mjs';
 let youtubeAPI,youtubeSerial=0;
 function loadYouTubeAPI(){
@@ -161,7 +161,77 @@ export function syncEstudioStylesheet(root,enabled){
  const sheet=root.ownerDocument.createElement('link');sheet.rel='stylesheet';sheet.href='/css/miniweb-estudio.css?v=20261113-estudio9';sheet.dataset.miniwebEstudio='';root.append(sheet);return sheet;
 }
 
-export async function mountMiniweb(host,{project:p,lots:input=[],compare=false,editing=false,uploadMedia,demo=false,onContact,onPdf,onConfigChange,visualEditor=false,soloSelector=false,publicPage=false,config:override}={}){
+async function miniwebLotMap(p,config,sourceLots,lots) {
+ const configuredMap=safeUrl(p.mapa_imagen_url);
+ const scene=config.recorrido?.escena;
+ const originalPlan=isAlamosReferenceProject(p) && Object.values(config.lotes||{}).some(card=>card.recorrido?.plano?.id==='alamos');
+ const activeVector=p.slug!=='aldea-los-huemules'&&!originalPlan&&scene?.planoActivo==='vectorial';
+ const legacyPhoto='/assets/miniweb-alamos/mapa.webp';
+ const legacyRaster=isReferencePreviewHost() && scene?.raster?.url && safeUrl(scene.raster.url)===new URL(legacyPhoto,location.origin).href;
+ let sceneMap,parcelPlan,imageMap;
+ if(originalPlan||legacyRaster){
+  const {alamosPlan,alamosCenital}=await import('./recorrido-alamos-fichas.mjs?v=20261117-cierre-venta1');
+  const raster=scene?.raster?.url&&!legacyRaster?scene.raster:alamosCenital;
+  if(originalPlan){
+   parcelPlan=await alamosPlan();
+   const features=parcelPlan.parcels.map(parcel=>({...parcel,id:parcel.key,kind:'lot'}));
+   sceneMap=tourMapGeometry({raster,features});
+  }else sceneMap=tourMapGeometry({...scene,raster});
+ }else if(scene?.imagePlan&&(p.slug==='aldea-los-huemules'||scene.planoActivo!=='vectorial')){
+  const {imagePlanMap}=await import('./miniweb-image-plan.mjs?v=20261113-imageplan1');
+  imageMap=imagePlanMap(scene.imagePlan,safeUrl);
+  sceneMap=imageMap||tourMapGeometry(scene);
+ }else sceneMap=tourMapGeometry(scene,activeVector?{lotIds:sourceLots.map(l=>config.lotes[l.id]?.elementoRecorrido).filter(Boolean)}:{});
+ function shapeFor(lot){
+  const card=config.lotes[lot.id];
+  if(imageMap)return sceneMap.shapes.get(card?.elementoImagen);
+  if(!originalPlan)return sceneMap?.shapes.get(card?.elementoRecorrido);
+  const binding=card?.recorrido?.plano;
+  return binding?.version===parcelPlan.version?sceneMap.shapes.get(binding.lote):null;
+ }
+ const positionedImage=!activeVector&&!!configuredMap && lots.some(l=>l.mapa_x!=null && l.mapa_y!=null && Number.isFinite(Number(l.mapa_x)) && Number.isFinite(Number(l.mapa_y)));
+ const mapUrl=sceneMap?.base||(activeVector?'':configuredMap);
+ const hasMapPhoto=sceneMap?sceneMap.hasPhoto:positionedImage;
+ return {sceneMap,originalPlan,activeVector,shapeFor,mapUrl,hasMapPhoto,positionedImage};
+}
+
+function lotBrochureRequest(project,config,inventory,map,lotId) {
+ const {activeVector,shapeFor,mapUrl,hasMapPhoto,sceneMap}=map;
+ const rows=selectorRows(inventory,shapeFor,{allowPins:!activeVector});
+ const selected=rows.find(row=>row.id===lotId && row.lot.estado==='disponible');
+ if(!selected)return null;
+ const serviceBlock=config.bloques.find(block=>block.tipo==='servicios' && block.activo!==false);
+ const services=developmentServices(serviceBlock,project).map(value=>serviceLabels[value]||value);
+ const plan={rows,stateRule:usesLotPlanKey(config),image:hasMapPhoto?mapUrl:'',width:sceneMap?.width,height:sceneMap?.height};
+ return {lotId,services,plan,label:'Lote '+selected.label+(selected.block?' · Manzana '+selected.block:'')};
+}
+
+// El recorrido independiente obtiene los datos públicos al pedir la descarga.
+export async function downloadPublicLotBrochure(slug,projectId,lotId) {
+ const [{supabase,getRef},{leerInventarioCompleto},{projectSaleInventory},{createBrochureGenerator}]=await Promise.all([
+  import('./config.js?v=20261118-miniweb'),import('./lotes-inventario.mjs?v=20261117-publico'),
+  import('./zonas-venta.mjs?v=20261115-inventario'),import('./brochure-proyecto.mjs?v=20261123-compartido')
+ ]);
+ const fields='id,slug,nombre,tema,ciudad,provincia,descripcion,cantidad_lotes,sup_min_m2,sup_max_m2,servicios,financiacion,foto_portada,fotos,mapa_imagen_url,contacto_nombre,contacto_whatsapp,contacto_email';
+ const {data:project,error}=await supabase.from('proyectos_publicos_v1').select(fields).eq('id',projectId).eq('slug',slug).eq('estado','activo').maybeSingle();
+ if(error||!project)return false;
+ const stored=parseTheme(project.tema).miniweb;
+ if(!stored||stored.activa===false||stored.recorrido?.proyectoId!==projectId)return false;
+ const block=stored.bloques?.find(b=>b.tipo==='panoramica360' && b.variante==='recorrido' && b.activo!==false);
+ if(!block||block.opciones?.mostrarBrochure==='no')return false;
+ const result=await leerInventarioCompleto(supabase,projectId,'id,numero,superficie_m2,precio_usd,estado,mapa_x,mapa_y');
+ if(result.error)return false;
+ const source=rotularLotesTerrazas(slug,result.data);
+ const inventory=projectSaleInventory(project,source);
+ if(!inventory.lots.some(lot=>lot.id===lotId && lot.estado==='disponible'))return false;
+ const config=normalizeMiniweb(stored);
+ const map=await miniwebLotMap(project,config,source,inventory.lots);
+ const request=lotBrochureRequest(project,config,salesZoneInventory(config,source,project),map,lotId);
+ if(!request)return false;
+ return createBrochureGenerator(()=>({project:{...project,cantidad_lotes:inventory.total},config,lots:inventory.lots,gallery:project.fotos||[],reference:getRef()}))(request);
+}
+
+export async function mountMiniweb(host,{project:p,lots:input=[],compare=false,editing=false,uploadMedia,demo=false,onContact,onPdf,onConfigChange,visualEditor=false,soloSelector=false,publicPage=false,previewDevice='',config:override}={}){
  // Terrazas: los lotes se muestran con su número comercial; el identificador de cada lote no cambia.
  input=rotularLotesTerrazas(p?.slug,input);
  const lifecycle=new AbortController();const {signal}=lifecycle;
@@ -216,43 +286,22 @@ export async function mountMiniweb(host,{project:p,lots:input=[],compare=false,e
   const opacity = Number.isFinite(style?.opacity) ? Math.max(0,Math.min(90,style.opacity))/100 : .35;
   return `--availability-color:${color};--availability-opacity:${opacity}`;
  }
- const photo=safeUrl(p.foto_portada),photos=(p.fotos||[]).map(safeUrl).filter(Boolean);const videoUrl=safeUrl(p.video_url),configuredMap=safeUrl(p.mapa_imagen_url),planUrl=safeUrl(p.masterplan_url);
+ const photo=safeUrl(p.foto_portada),photos=(p.fotos||[]).map(safeUrl).filter(Boolean);const videoUrl=safeUrl(p.video_url),planUrl=safeUrl(p.masterplan_url);
  const scene=config.recorrido?.escena;
- const originalPlan=isAlamosReferenceProject(p) && Object.values(config.lotes||{}).some(card=>card.recorrido?.plano?.id==='alamos');
- const activeVector=p.slug!=='aldea-los-huemules'&&!originalPlan&&scene?.planoActivo==='vectorial';
+ const lotMap=await miniwebLotMap(p,config,sourceLots,lots);
+ const {originalPlan,activeVector,sceneMap,shapeFor,mapUrl,positionedImage,hasMapPhoto}=lotMap;
  if(activeVector)app.dataset.activePlan='vectorial';
- const legacyPhoto='/assets/miniweb-alamos/mapa.webp';
- const legacyRaster=isReferencePreviewHost() && scene?.raster?.url && safeUrl(scene.raster.url)===new URL(legacyPhoto,location.origin).href;
- let sceneMap,parcelPlan,imageMap;
- if(originalPlan||legacyRaster){
-  const {alamosPlan,alamosCenital}=await import('./recorrido-alamos-fichas.mjs?v=20261117-cierre-venta1');
-  const raster=scene?.raster?.url&&!legacyRaster?scene.raster:alamosCenital;
-  if(originalPlan){
-   parcelPlan=await alamosPlan();
-   const features=parcelPlan.parcels.map(parcel=>({...parcel,id:parcel.key,kind:'lot'}));
-   sceneMap=tourMapGeometry({raster,features});
-  }else sceneMap=tourMapGeometry({...scene,raster});
- }else if(scene?.imagePlan&&(p.slug==='aldea-los-huemules'||scene.planoActivo!=='vectorial')){
-  const {imagePlanMap}=await import('./miniweb-image-plan.mjs?v=20261113-imageplan1');
-  imageMap=imagePlanMap(scene.imagePlan,safeUrl);
-  sceneMap=imageMap||tourMapGeometry(scene);
- }else sceneMap=tourMapGeometry(scene,activeVector?{lotIds:sourceLots.map(l=>config.lotes[l.id]?.elementoRecorrido).filter(Boolean)}:{});
  const isParcelPlan=!!sceneMap;
  const mobileParcelMap=()=>isParcelPlan && matchMedia('(max-width:700px)').matches;
  let parcelFitScale=1;
  const zoomLimit=()=>activeVector?Math.max(32,parcelFitScale*16):Math.max(mobileParcelMap()?8:4,parcelFitScale*2);
- const mapUrl=sceneMap?.base||(activeVector?'':configuredMap);
- function shapeFor(lot){
-  const card=config.lotes[lot.id];
-  if(imageMap)return sceneMap.shapes.get(card?.elementoImagen);
-  if(!originalPlan)return sceneMap?.shapes.get(card?.elementoRecorrido);
-  const binding=card?.recorrido?.plano;
-  return binding?.version===parcelPlan.version?sceneMap.shapes.get(binding.lote):null;
+ function downloadLotBrochure(lotId) {
+  if(!onPdf)return false;
+  const request=lotBrochureRequest(p,config,[...lots,...unavailableLots],lotMap,lotId);
+  return request ? onPdf(request) : false;
  }
  const linkedPlan=isParcelPlan && [...lots,...unavailableLots].some(shapeFor);
- const positionedImage=!activeVector&&!!configuredMap && lots.some(l=>l.mapa_x!=null && l.mapa_y!=null && Number.isFinite(Number(l.mapa_x)) && Number.isFinite(Number(l.mapa_y)));
  const hasMap=isParcelPlan?linkedPlan:positionedImage;
- const hasMapPhoto=sceneMap?sceneMap.hasPhoto:positionedImage;
  const parcelKey={lines:new Map(),fills:new Map()};
  function drawParcels(visible){
   parcelKey.lines.clear();
@@ -539,7 +588,7 @@ export async function mountMiniweb(host,{project:p,lots:input=[],compare=false,e
    approvedSelector=mountSelector(approvedHost,{project:p,config,lots:sourceLots,shapeFor,mapUrl,mapHasPhoto:hasMapPhoto,allowPins:!activeVector,initialPlanBounds:activeVector?size=>{const layout=vectorViewportLayout({...size,bounds:hasMapPhoto?{left:0,top:0,right:1,bottom:1}:sceneMap.bounds});return layout?(hasMapPhoto?vectorPhotoInitialBounds(sceneMap.shapes,layout):vectorInitialBounds(sceneMap.shapes,layout)):null}:null,safeUrl,onSelect:id=>{
     if(!id && chosenLotId)updateConsultAddress(null);
     chosenLotId=id;selected=id;paint();
-   },onConsult:openConsult,onTour:id=>forward('tour',id),onPanoramas:id=>forward('lotPanos',id)});
+   },onConsult:openConsult,onBrochure:onPdf?downloadLotBrochure:null,onTour:id=>forward('tour',id),onPanoramas:id=>forward('lotPanos',id)});
   }
   approvedSelector.update(config,chosenLotId);
  }
@@ -560,10 +609,11 @@ export async function mountMiniweb(host,{project:p,lots:input=[],compare=false,e
  const heroFrame=()=>host.querySelector('[data-hero-youtube]');
  const heroCrop=()=>style==='inmersivo'&&config.bloques.find(b=>b.tipo==='portada')?.opciones.encuadreVideo==='cine'?1.34:1;
  const compactCoverVideo=matchMedia('(max-width:700px)');
- const coverVideoOnDemand=()=>compactCoverVideo.matches&&['estudio-vivo','relato'].includes(style);
- compactCoverVideo.addEventListener('change',()=>{if(['estudio-vivo','relato'].includes(style))applyMedia()},{signal});
+ const coverVideoOnDemand=()=>compactCoverVideo.matches&&['estudio-vivo','relato'].includes(style)&&config.bloques.find(b=>b.tipo==='portada')?.opciones.medioMovil!=='video';
+ compactCoverVideo.addEventListener('change',()=>{blockComposition?.refreshHero();applyMedia()},{signal});
  const clearYouTube=()=>{youtubePlayer?.destroy?.();youtubePlayer=null;heroFrame()?.remove();q('slot[name=hero-youtube]')?.remove()};
- async function applyMedia(play=false){if(selectorOnly)return;const crop=heroCrop();const v=$('heroVideo');v.style.scale=crop===1?'':String(crop);const source=blockComposition?blockComposition.heroVideo():videoUrl,wanted=(blockComposition?.heroMode()||media)==='video'&&videoEnabled&&source&&!$('inicio').hidden,active=wanted&&(play||config.bloques.find(b=>b.tipo==='portada')?.opciones.autoplay!=='no');$('pauseHero').hidden=true;v.hidden=!active;const hero=$('inicio');
+ async function applyMedia(play=false){if(selectorOnly)return;const crop=heroCrop();const v=$('heroVideo');v.style.scale=crop===1?'':String(crop);const source=blockComposition?blockComposition.heroVideo():videoUrl,wanted=coverMedium(config,{mobile:compactCoverVideo.matches})==='video'&&(videoEnabled||(compactCoverVideo.matches&&config.bloques.find(b=>b.tipo==='portada')?.opciones.medioMovil==='video'))&&source&&!$('inicio').hidden,active=wanted&&(play||config.bloques.find(b=>b.tipo==='portada')?.opciones.autoplay!=='no');$('pauseHero').hidden=true;v.hidden=!active;const hero=$('inicio');
+  hero.dataset.coverMedium=coverMedium(config,{mobile:compactCoverVideo.matches});
   const poster=hero.querySelector('.hero-media>img')?.getAttribute('src');
   if(poster){if(v.getAttribute('poster')!==poster)v.setAttribute('poster',poster)}else v.removeAttribute('poster');
   const quiet=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -749,11 +799,13 @@ export async function mountMiniweb(host,{project:p,lots:input=[],compare=false,e
   const contacto=config.bloques?.find(b=>b.tipo==='contacto' && b.activo!==false);
   return contacto?.opciones?.formatoConsulta==='tarjeta'?'':`Quisiera información sobre ${localName}.`;
  }
- let lastLotMessage='';blockComposition=mountBlocks({app,root,config,hasMap,hasMapPhoto,hasGeometry:isParcelPlan,hasUnavailableLots:unavailableLots.length>0&&selectorEnabled(config,p,mapUrl),parcelKey,project:isParcelPlan?{...p,mapa_imagen_url:mapUrl}:p,lots,compare,editing,visualEditor,uploadMedia,safeUrl,serviceLabels,onTourLot:selectTourLot,getSelected:()=>contactSelection(lots.find(l=>l.id===selected)),onSelection:l=>{contactLot=l||null;const value=l?`Quisiera información sobre ${lotPhrase(l)} de ${localName}.`:mensajeGeneral();if(!$('contactMessage').value||$('contactMessage').value===lastLotMessage)$('contactMessage').value=value;lastLotMessage=value;$('contactLotNumber').value=l?lotFieldShown(l):'';},onChange:()=>{applyConfig();applyMedia();onConfigChange?.(structuredClone(config))}});
+ let lastLotMessage='';blockComposition=mountBlocks({app,root,config,hasMap,hasMapPhoto,hasGeometry:isParcelPlan,hasUnavailableLots:unavailableLots.length>0&&selectorEnabled(config,p,mapUrl),parcelKey,project:isParcelPlan?{...p,mapa_imagen_url:mapUrl}:p,lots,tourLots:sourceLots,compare,editing,visualEditor,previewDevice,uploadMedia,safeUrl,serviceLabels,onBrochure:onPdf?downloadLotBrochure:null,onTourLot:selectTourLot,getSelected:()=>contactSelection(lots.find(l=>l.id===selected)),onSelection:l=>{contactLot=l||null;const value=l?`Quisiera información sobre ${lotPhrase(l)} de ${localName}.`:mensajeGeneral();if(!$('contactMessage').value||$('contactMessage').value===lastLotMessage)$('contactMessage').value=value;lastLotMessage=value;$('contactLotNumber').value=l?lotFieldShown(l):'';},onChange:()=>{applyConfig();applyMedia();onConfigChange?.(structuredClone(config))}});
  if(manzanaSelect.options.length>1){
   const control=document.createElement('label');control.className='manzana-control';control.hidden=p.slug!=='aldea-los-huemules'&&salesZones(config).zonas.length>0;control.append('Manzana',manzanaSelect);
   q('.lotes-head').append(control);
  }
+ const commercial=commercialPresentation(config)?await import('./terrazas-comercial.mjs'):null;
+ app.dataset.presentacion=commercial?'comercial':'estilo';
  let destroyed=false;
  const destroy=()=>{if(destroyed)return;destroyed=true;previewSizer?.disconnect();lifecycle.abort();mapObserver.disconnect();$('heroVideo')?.pause();clearYouTube();clearTimeout(timer);approvedSelector?.destroy();blockComposition?.destroy();root.replaceChildren()};
  try{
@@ -764,6 +816,7 @@ export async function mountMiniweb(host,{project:p,lots:input=[],compare=false,e
  await applyMedia();
  await Promise.all([fontsReady,editing||selectorOnly?Promise.resolve():heroReady(q('.hero'),signal)]);
  if(signal.aborted)throw new Error('Presentación cancelada.');
+ commercial?.presentarComercial(root,{...p,tema:{...parseTheme(p.tema),miniweb:config}},sourceLots,{signal});
  app.style.removeProperty('visibility');
  if (returningLot) {
   if (consultLink) openConsult(returningLot.id,{fromLink:true});

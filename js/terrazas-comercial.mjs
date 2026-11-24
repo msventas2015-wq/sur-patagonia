@@ -1,16 +1,6 @@
 import {rotularLotesTerrazas} from './ficha-lote-recorrido.mjs';
 
-const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-actions{display:flex!important;justify-content:center;align-items:center;margin:24px auto 0;gap:0}
-    .miniweb[data-propuesta] .hero .hero-actions>:not(.primary){display:none!important}
-    .miniweb[data-propuesta] .hero .hero-actions a.primary{
-      display:inline-flex!important;align-items:center;justify-content:center;gap:18px;min-height:46px;
-      font:600 16px/1.25 var(--sans);text-transform:none;letter-spacing:0;
-      color:var(--ink)!important;background:var(--bg)!important;
-      padding:10px 20px;border:0;border-radius:2px;box-sizing:border-box;text-shadow:none
-    }
-    .miniweb[data-propuesta] .hero .hero-actions a.primary::after{content:'↓';font:400 19px/1 var(--sans);margin:0}
-    .miniweb[data-propuesta] .hero .hero-actions a.primary:hover{filter:brightness(.93)}
-    .miniweb[data-propuesta] .hero .hero-copy .hero-phrase{font:500 clamp(16px,1.5vw,21px)/1.45 var(--sans);max-width:40ch;text-wrap:balance;margin:16px auto 0}
+const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-phrase{font:500 clamp(16px,1.5vw,21px)/1.45 var(--sans);max-width:40ch;text-wrap:balance;margin:16px auto 0}
     .miniweb[data-propuesta] .hero .hero-copy{text-shadow:0 1px 9px #12201dc7}
     .miniweb[data-propuesta] .hero .hero-media::after{background:linear-gradient(180deg,#101a1b50,transparent 25%,#0c181a40 53%,#0b171936)}
     .miniweb[data-propuesta] .cifras .shell{display:grid;grid-template-columns:1.12fr 1.05fr .86fr;gap:0;align-items:start}
@@ -32,7 +22,6 @@ const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-actions{display
     .miniweb[data-propuesta] .location-map{width:100%;min-height:300px;border:0}
     .miniweb[data-propuesta] :is(.enlace-financiacion,.hero-actions .primary):focus-visible{outline:2px solid currentColor;outline-offset:4px}
     @media(max-width:700px){
-      .miniweb[data-propuesta] .hero .hero-copy .hero-actions{margin-top:20px}
       .miniweb[data-propuesta] .cifras .shell{grid-template-columns:1.22fr 1fr;gap:20px 0}
       .miniweb[data-propuesta] .cifras .shell>div{padding:0 0 0 16px}
       .miniweb[data-propuesta] .cifras .shell>div:first-child{grid-column:1/-1;border-bottom:1px solid var(--line);padding-bottom:12px}
@@ -45,8 +34,6 @@ const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-actions{display
 
     #inicio .hero-copy .hero-phrase{color:#fff}
     #fotos-terrazas>figure:nth-child(n+4){display:none!important}
-    #inicio .hero-actions a.primary{pointer-events:auto}
-    @media(min-width:701px){.miniweb[data-propuesta] #inicio .hero-copy .hero-actions{display:none!important}}
     @media(min-width:701px) and (max-width:800px){.miniweb.sale[data-propuesta] .nav-links>a[href="#lotes"]{display:inline-flex!important;align-items:center;min-height:44px}}
     #inicio[data-video-cover=pending] .hero-media>img{visibility:visible}
 
@@ -214,6 +201,7 @@ export function aplicarComposicionTerrazas(original, project, contextPhotos=[]) 
 // Presentación inicial de los bloques existentes. Los títulos y fotos editados
 // en el creador tienen preferencia sobre los valores editoriales iniciales.
 export function configuracionTerrazas(original, project) {
+  if(original?.recursos?.presentacionLotes)return structuredClone(original);
   const config=structuredClone(original);
   const composicionAprobada=config.recursos?.cierreTerrazas==='bloques';
   const byId=new Map((config.bloques || []).map(block=>[block.id,block]));
@@ -223,8 +211,6 @@ export function configuracionTerrazas(original, project) {
     if(b && (b.contenido.titulo || '')===previous)b.contenido.titulo=value;
   };
   title('portada-1','Lotes en El Bolsón, Río Negro');
-  const portada=block('portada-1');
-  if(portada)portada.contenido.botonPrincipal ||= 'Ver lotes disponibles';
   const cifras=block('cifras-1');
   if(cifras && !cifras.opciones.cifras)cifras.opciones.cifras=['precio','superficies','total'];
   title('bloque-58e67cf3','Recorra el terreno en 360°','RECORRIDO INMERSIVO');
@@ -258,8 +244,10 @@ export function configuracionTerrazas(original, project) {
   }
   return config;
 }
-    export function presentarTerrazas(root,project,lots){
-      const app=root.querySelector('.miniweb');app.dataset.propuesta='';
+    export function presentarComercial(root,project,lots,{signal}={}){
+      const app=root.querySelector('.miniweb');
+      if(!app||app.dataset.presentacion==='estilo'||app.hasAttribute('data-comercial-montada'))return;
+      app.dataset.comercialMontada='';app.dataset.propuesta='';
       const style=document.createElement('style');
       style.textContent=estilos;root.append(style);
       const section=type=>app.querySelector('[data-block-type="'+type+'"]');
@@ -300,7 +288,7 @@ export function configuracionTerrazas(original, project) {
       summary.textContent='USD 40.000 por lote · Saldo financiado USD 12.000';
       finance.querySelector('.finance-options').replaceWith(payments,summary);
       }
-      instalarInteracciones(root,project,rotularLotesTerrazas(project.slug,lots));
+      instalarInteracciones(root,project,rotularLotesTerrazas(project.slug,lots),{signal});
       // The public renderer uses a shadow root. Direct these new links to that tree.
       app.addEventListener('click',event=>{
         const anchor=event.target.closest('a[href^="#"]');
@@ -309,7 +297,196 @@ export function configuracionTerrazas(original, project) {
         if(target){event.preventDefault();target.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})}
       });
     }
-function instalarInteracciones(root, project, lots) {
+export const presentarTerrazas=presentarComercial;
+function presentarFichaSelector(root,project,{signal,sheet,onConsult}={}){
+  const observe=(callback,target,options)=>{const observer=new MutationObserver(callback);observer.observe(target,options);signal?.addEventListener('abort',()=>observer.disconnect(),{once:true});return observer};
+  const selector = root.querySelector('.approved-selector-host')?.shadowRoot;
+  if (selector) {
+    const card = selector.querySelector('.card');
+    const selectorHost = selector.host;
+    const syncSheet = () => selectorHost.toggleAttribute('data-detail-open', Boolean(sheet?.open));
+    if(sheet)observe(syncSheet,sheet,{attributes:true,attributeFilter:['open']});
+    syncSheet();
+    const selectorStyle = document.createElement('style');
+    selectorStyle.textContent = `
+      :host([data-detail-open]) .sel .card.show {visibility:hidden!important;pointer-events:none}
+      .sel .chips [hidden] {display:none!important}
+      .sel .card.show .top {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px}
+      .sel .card.show .top .x {position:static;grid-column:1;grid-row:1;justify-self:start;width:44px;height:44px}
+      .sel .card .top .st {grid-column:2;grid-row:1;justify-self:end}
+      .sel .card .st[data-available]{background:none;border:0;padding:0;color:#34d17f;font-size:20px;font-weight:800;letter-spacing:-.025em;text-transform:uppercase}
+      .sel .card .st[data-available] i{display:none}
+      .sel .card .acts .card-finance{grid-column:1/-1;margin:0;font-size:16px;font-weight:650}
+      .sel .card .top .lot-name {grid-column:1;grid-row:2;min-width:0;margin:0;
+        font-size:16px;font-weight:600;line-height:1.24;letter-spacing:-.02em}
+      .sel .card .top .lot-area {grid-column:2;grid-row:2;text-align:right;
+        font-size:16px;font-weight:600;line-height:1.24;white-space:nowrap}
+      .sel .card .top .lot-zone {grid-column:1/-1;grid-row:3;width:max-content;margin:0}
+      .sel .card .sale-metrics {display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+        flex-wrap:wrap;margin:14px 0 8px}
+      .sel .card .sale-price {font-size:clamp(32px,3vw,40px);font-weight:750;letter-spacing:-.035em}
+      .sel .card .sale-unit {font-size:14px}
+      .sel .card .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));min-width:0}
+      .sel .card .acts [data-action="consult"] {grid-column:1/-1;min-height:50px;font-weight:700;font-size:19px}
+      .sel .card .acts .reservation-note {grid-column:1/-1;font:inherit;font-size:14px;
+        line-height:1.4;margin:0 0 4px;color:inherit}
+      /* Caja y jerarquía aprobadas para las fichas del plano fotográfico. */
+      .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card.show {
+        --sheet-pad:32px;--sheet-height:469px;--sheet-secondary:50px;
+        box-sizing:border-box;height:min(var(--sheet-height),calc(100% - 72px));max-height:none;
+        width:min(480px,calc(100% - var(--list-width,0px) - 130px));padding:var(--sheet-pad);
+        border:1px solid rgba(255,255,255,.12);border-radius:18px;
+        background:rgba(14,19,17,.55);box-shadow:none;backdrop-filter:blur(26px) saturate(1.1);
+        color:var(--ink);font:400 15px/1.4 Inter,system-ui,sans-serif;overflow:auto
+      }
+      .sel[data-estados=regla] .card.show .top {row-gap:14px;padding-bottom:24px;border-bottom:1px solid #ffffff24}
+      .sel[data-estados=regla] .card.show .top .lot-name,
+      .sel[data-estados=regla] .card.show .top .lot-area {font-size:clamp(17px,1.25vw,18px);font-weight:600}
+      .sel[data-estados=regla] .card.show .top .st[data-available],
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) .top .st {
+        color:#34d17f;font-size:clamp(22px,1.67vw,24px);font-weight:600;letter-spacing:-.025em;
+        text-transform:uppercase;background:transparent;border:0;padding:0
+      }
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) .top .st {color:#dc403c}
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) .st i {display:none}
+      .sel[data-estados=regla] .card.show .sale-metrics {
+        justify-content:space-between;flex-wrap:wrap;gap:8px;margin:24px 0 8px;padding:0;border:0
+      }
+      .sel[data-estados=regla] .card.show .sale-price {
+        font-size:36px;font-weight:600;letter-spacing:-.035em;font-variant-numeric:tabular-nums
+      }
+      .sel[data-estados=regla] .card.show .sale-unit {font-size:15px;font-weight:400}
+      .sel[data-estados=regla] .card.show .card-finance {margin:0 0 28px;font-size:15px;font-weight:400;line-height:1.4}
+      .sel[data-estados=regla] .card.show .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+      .sel[data-estados=regla] .card.show .acts .btn {
+        min-width:0;min-height:48px;height:var(--sheet-secondary,50px);justify-content:center;
+        padding:0 16px;border-radius:10px;font:600 15px/1.2 Inter,system-ui,sans-serif;letter-spacing:0
+      }
+      .sel[data-estados=regla] .card.show .acts .btn.go {
+        min-height:56px;height:56px;grid-column:1/-1;font-size:clamp(15px,4vw,16px);
+        background:var(--pal-accion,var(--accent));border-color:var(--pal-accion,var(--accent));color:var(--pal-textoAccion,var(--accent-ink))
+      }
+      .sel[data-estados=regla] .card.show .acts [data-action="consult"] > :not(span) {display:none}
+      .sel[data-estados=regla] .card.show .acts .btn:not(.go) {background:transparent;color:#ecedee;border:1px solid #ecedee99}
+      .sel[data-estados=regla] .card.show .acts .btn:not(.go):hover {background:rgba(255,255,255,.1)}
+      .sel[data-estados=regla] .card.show .acts [data-action="compare"] {display:none}
+      .sel[data-estados=regla] .card.show .acts:not(:has([data-action="brochure"])) .btn:not([data-action]) {grid-column:1/-1}
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) {display:flex;flex-direction:column}
+      .sel[data-estados=regla] .card.show:has([data-action="available"]) .acts {margin-top:auto;padding-bottom:calc(var(--sheet-secondary,50px) + 12px)}
+      @media(max-width:900px) {
+        .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card.show {
+          --sheet-pad:18px;--sheet-height:450px;--sheet-secondary:48px;
+          width:calc(100% - 24px);height:var(--sheet-height);max-height:none
+        }
+        .sel[data-estados=regla].photo-plan:is(:fullscreen,.tour-expanded):not([data-list-only=true]) .card.show {
+          max-height:calc(100% - var(--selector-clear,24px))
+        }
+      }
+      @media(max-width:365px) {
+        .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card.show {--sheet-pad:12px;--sheet-height:474px}
+        .sel[data-estados=regla] .card.show .acts .btn {padding-inline:6px}
+      }
+      @media(max-width:700px) {
+        .sel[data-estados=regla] .card.show .top {grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 8px;padding-bottom:16px}
+        .sel[data-estados=regla] .card.show .top .st {grid-column:2/-1}
+        .sel[data-estados=regla] .card.show .top .lot-name {grid-column:1/4;font-size:14px}
+        .sel[data-estados=regla] .card.show .top .lot-area {grid-column:4;font-size:14px}
+        .sel[data-estados=regla] .card.show .top .st[data-available],
+        .sel[data-estados=regla] .card.show:has([data-action="available"]) .top .st {font-size:18px}
+        .sel[data-estados=regla] .card.show .sale-metrics {margin-top:16px}
+        .sel[data-estados=regla] .card.show .sale-price {flex:0 0 auto;font-size:clamp(28px,8vw,32px);line-height:1.2}
+        .sel[data-estados=regla] .card.show .sale-unit {flex:0 0 auto;font-size:13px;white-space:nowrap}
+        .sel[data-estados=regla] .card.show .card-finance {font-size:14px;margin-bottom:20px}
+        .sel[data-estados=regla] .card.show .acts .btn {font-size:14px;padding-inline:8px}
+        .sel[data-estados=regla] .card.show .acts .btn.go {font-size:14px}
+      }
+      .sel[data-estados=regla] .card .solo-lectores {position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+        clip-path:inset(50%);white-space:nowrap}
+      @media (max-width:900px) {
+        .sel.photo-plan:not([data-list-only=true]) .card.show {max-height:calc(100% - var(--selector-clear,24px))}
+        .sel.photo-plan .card.show .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+      }
+      @media (max-width:365px) {
+        .sel.photo-plan .card.show {padding:12px}
+        .sel .card .acts .btn {min-width:0}
+      }
+    `;
+    selector.append(selectorStyle);
+    const chips = selector.querySelector('.chips');
+    function showRelevantFilters() {
+      chips.querySelectorAll('button[data-state]').forEach(button => {
+        const count = Number(button.querySelector('b')?.textContent);
+        button.hidden = Boolean(button.dataset.state) && count === 0;
+      });
+    }
+    observe(showRelevantFilters,chips,{childList:true});
+    showRelevantFilters();
+    function improveSelection() {
+      const action = card?.querySelector('[data-action="consult"]');
+      const top = card?.querySelector('.top');
+      if (!top || top.querySelector('.lot-name')) return;
+      const identity = top.querySelector('h3').parentElement;
+      const name = document.createElement('h3');
+      name.className = 'lot-name';
+      const rule = selector.querySelector('.sel')?.dataset.estados === 'regla';
+      const block = identity.querySelector('h3').textContent, lotName = identity.querySelector('.big').textContent;
+      name.textContent = (rule ? [lotName, block] : [block, lotName]).join(' · ');
+      const zone = identity.querySelector('.zone-tag');
+      // Maqueta final: bajo la regla, la ficha no repite la zona (ya está en la lista y en el plano).
+      if (zone) { if (rule) zone.remove(); else { zone.classList.add('lot-zone'); top.append(zone); } }
+      identity.replaceWith(name);
+      const facts = card.querySelector('.kv');
+      const sold = !!card.querySelector('[data-action="available"]');
+      const values = [...facts.querySelectorAll('dd')].map(value => value.textContent);
+      const [price, area, unit] = sold ? ['', values[0], ''] : values;
+      const surface = document.createElement('strong');
+      surface.className = 'lot-area';
+      surface.textContent = area;
+      surface.setAttribute('aria-label','Superficie: ' + area);
+      top.append(surface);
+      if (sold) { facts.remove(); return; }
+      const metrics = document.createElement('div');
+      metrics.className = 'sale-metrics';
+      const amount = document.createElement('strong'), perMetre = document.createElement('span');
+      amount.className = 'sale-price'; amount.textContent = price;
+      amount.setAttribute('aria-label','Precio del lote: ' + price);
+      perMetre.className = 'sale-unit'; perMetre.textContent = unit && unit !== '—' ? unit + ' / m²' : '';
+      metrics.append(amount, perMetre); facts.replaceWith(metrics);
+      if (!action || card.querySelector('.st')?.textContent.trim() !== 'Disponible') return;
+      const availability = card.querySelector('.st');
+      availability.dataset.available='';
+      action.dataset.propuesta = 'reserva';
+      action.querySelector('span').textContent = 'QUIERO RESERVAR ESTE LOTE';
+      const note = document.createElement('p');
+      note.className = 'reservation-note';
+      note.id = 'selector-reservation-note';
+      note.textContent = 'Se abre una consulta con Sur Patagonian para coordinar la reserva.';
+      action.setAttribute('aria-describedby', note.id);
+      const financing = document.createElement('p');
+      financing.className = 'card-finance';
+      // Maqueta final: la forma de pago va en una línea, arriba del botón; la aclaración queda sólo para lectores de pantalla.
+      const plan = rule && /Entrega de (USD \d[\d.]*\d) y saldo de USD [\d.]+ en (\d+) cuotas fijas de (USD \d[\d.]*\d)/.exec(project?.financiacion || '');
+      financing.textContent = plan ? 'Entrega ' + plan[1] + ' + ' + plan[2] + ' cuotas de ' + plan[3] : 'Con financiación';
+      if (rule) { note.classList.add('solo-lectores'); metrics.after(financing); action.after(note); }
+      else action.after(financing,note);
+    }
+    if (card) {
+      observe(improveSelection,card,{childList:true});
+      improveSelection();
+    }
+    selector.addEventListener('click', event => {
+      const action = event.target.closest('[data-action="consult"], [data-compare-consult]');
+      if (!action) return;
+      // El selector nativo fija el ID público antes de enfocar el formulario.
+      setTimeout(() => {
+        onConsult?.(action.dataset.propuesta);
+      }, 0);
+    }, true);
+  }
+}
+
+function instalarInteracciones(root, project, lots, {signal}={}) {
+  const observe=(callback,target,options)=>{const observer=new MutationObserver(callback);observer.observe(target,options);signal?.addEventListener('abort',()=>observer.disconnect(),{once:true});return observer};
   const element = id => root.getElementById(id);
   const form = element('contactForm');
   const message = element('contactMessage');
@@ -317,7 +494,7 @@ function instalarInteracciones(root, project, lots) {
   const byId = new Map(lots.map(lot => [lot.id, lot]));
   const theme = typeof project.tema === 'string' ? JSON.parse(project.tema) : project.tema;
   const publicIds = new Map(lots.map(lot => [theme?.miniweb?.lotes?.[lot.id]?.idEnlace || lot.id, lot]));
-  if (!inquiry?.querySelector('.contact-side') || !inquiry.querySelector('.contact-invitation h2') || !form)return;
+  const hasInquiry=Boolean(inquiry?.querySelector('.contact-side')&&inquiry.querySelector('.contact-invitation h2')&&form);
   const drafts = new Map();
   let activeLot = null;
   const sheet = root.querySelector('.lot-sheet');
@@ -412,8 +589,9 @@ function instalarInteracciones(root, project, lots) {
     note.textContent = 'Se abre una consulta con Sur Patagonian para coordinar la reserva.';
     action.parentElement.after(note);
   }
-  new MutationObserver(improveSheet).observe(sheet, {childList:true, subtree:true});
+  observe(improveSheet,sheet,{childList:true,subtree:true});
   improveSheet();
+  if(!hasInquiry){presentarFichaSelector(root,project,{signal,sheet});return;}
 
   function showInquiryHeading() {
     const nav = root.querySelector('.project-nav');
@@ -456,177 +634,11 @@ function instalarInteracciones(root, project, lots) {
     form.elements.nombre.focus({preventScroll:true});
   }, true);
 
-  const selector = root.querySelector('.approved-selector-host')?.shadowRoot;
-  if (selector) {
-    const card = selector.querySelector('.card');
-    const selectorHost = selector.host;
-    const syncSheet = () => selectorHost.toggleAttribute('data-detail-open', sheet.open);
-    new MutationObserver(syncSheet).observe(sheet, {attributes:true, attributeFilter:['open']});
-    syncSheet();
-    const selectorStyle = document.createElement('style');
-    selectorStyle.textContent = `
-      :host([data-detail-open]) .sel .card.show {visibility:hidden!important;pointer-events:none}
-      .sel .chips [hidden] {display:none!important}
-      .sel .card.show .top {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px}
-      .sel .card.show .top .x {position:static;grid-column:1;grid-row:1;justify-self:start;width:44px;height:44px}
-      .sel .card .top .st {grid-column:2;grid-row:1;justify-self:end}
-      .sel .card .st[data-available]{background:none;border:0;padding:0;color:#34d17f;font-size:20px;font-weight:800;letter-spacing:-.025em;text-transform:uppercase}
-      .sel .card .st[data-available] i{display:none}
-      .sel .card .acts .card-finance{grid-column:1/-1;margin:0;font-size:16px;font-weight:650}
-      .sel .card .top .lot-name {grid-column:1;grid-row:2;min-width:0;margin:0;
-        font-size:16px;font-weight:600;line-height:1.24;letter-spacing:-.02em}
-      .sel .card .top .lot-area {grid-column:2;grid-row:2;text-align:right;
-        font-size:16px;font-weight:600;line-height:1.24;white-space:nowrap}
-      .sel .card .top .lot-zone {grid-column:1/-1;grid-row:3;width:max-content;margin:0}
-      .sel .card .sale-metrics {display:flex;align-items:baseline;justify-content:space-between;gap:8px;
-        flex-wrap:wrap;margin:14px 0 8px}
-      .sel .card .sale-price {font-size:clamp(32px,3vw,40px);font-weight:750;letter-spacing:-.035em}
-      .sel .card .sale-unit {font-size:14px}
-      .sel .card .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));min-width:0}
-      .sel .card .acts [data-action="consult"] {grid-column:1/-1;min-height:50px;font-weight:700;font-size:19px}
-      .sel .card .acts .reservation-note {grid-column:1/-1;font:inherit;font-size:14px;
-        line-height:1.4;margin:0 0 4px;color:inherit}
-      /* Caja y jerarquía aprobadas para las fichas del plano fotográfico. */
-      .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card.show {
-        --sheet-pad:32px;--sheet-height:469px;--sheet-secondary:50px;
-        box-sizing:border-box;height:min(var(--sheet-height),calc(100% - 72px));max-height:none;
-        width:min(480px,calc(100% - var(--list-width,0px) - 130px));padding:var(--sheet-pad);
-        border:1px solid rgba(255,255,255,.12);border-radius:18px;
-        background:rgba(14,19,17,.55);box-shadow:none;backdrop-filter:blur(26px) saturate(1.1);
-        color:var(--ink);font:400 15px/1.4 Inter,system-ui,sans-serif;overflow:auto
-      }
-      .sel[data-estados=regla] .card.show .top {row-gap:14px;padding-bottom:24px;border-bottom:1px solid #ffffff24}
-      .sel[data-estados=regla] .card.show .top .lot-name,
-      .sel[data-estados=regla] .card.show .top .lot-area {font-size:clamp(17px,1.25vw,18px);font-weight:600}
-      .sel[data-estados=regla] .card.show .top .st[data-available],
-      .sel[data-estados=regla] .card.show:has([data-action="available"]) .top .st {
-        color:#34d17f;font-size:clamp(22px,1.67vw,24px);font-weight:600;letter-spacing:-.025em;
-        text-transform:uppercase;background:transparent;border:0;padding:0
-      }
-      .sel[data-estados=regla] .card.show:has([data-action="available"]) .top .st {color:#dc403c}
-      .sel[data-estados=regla] .card.show:has([data-action="available"]) .st i {display:none}
-      .sel[data-estados=regla] .card.show .sale-metrics {
-        justify-content:space-between;flex-wrap:wrap;gap:8px;margin:24px 0 8px;padding:0;border:0
-      }
-      .sel[data-estados=regla] .card.show .sale-price {
-        font-size:36px;font-weight:600;letter-spacing:-.035em;font-variant-numeric:tabular-nums
-      }
-      .sel[data-estados=regla] .card.show .sale-unit {font-size:15px;font-weight:400}
-      .sel[data-estados=regla] .card.show .card-finance {margin:0 0 28px;font-size:15px;font-weight:400;line-height:1.4}
-      .sel[data-estados=regla] .card.show .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-      .sel[data-estados=regla] .card.show .acts .btn {
-        min-width:0;min-height:48px;height:var(--sheet-secondary,50px);justify-content:center;
-        padding:0 16px;border-radius:10px;font:600 15px/1.2 Inter,system-ui,sans-serif;letter-spacing:0
-      }
-      .sel[data-estados=regla] .card.show .acts .btn.go {
-        min-height:56px;height:56px;grid-column:1/-1;font-size:clamp(15px,4vw,16px);
-        background:var(--pal-accion,var(--accent));border-color:var(--pal-accion,var(--accent));color:var(--pal-textoAccion,var(--accent-ink))
-      }
-      .sel[data-estados=regla] .card.show .acts [data-action="consult"] > :not(span) {display:none}
-      .sel[data-estados=regla] .card.show .acts .btn:not(.go) {background:transparent;color:#ecedee;border:1px solid #ecedee99}
-      .sel[data-estados=regla] .card.show .acts .btn:not(.go):hover {background:rgba(255,255,255,.1)}
-      .sel[data-estados=regla] .card.show .acts [data-action="compare"] {display:none}
-      .sel[data-estados=regla] .card.show .acts:not(:has([data-action="brochure"])) .btn:not([data-action]) {grid-column:1/-1}
-      .sel[data-estados=regla] .card.show:has([data-action="available"]) {display:flex;flex-direction:column}
-      .sel[data-estados=regla] .card.show:has([data-action="available"]) .acts {margin-top:auto;padding-bottom:calc(var(--sheet-secondary,50px) + 12px)}
-      @media(max-width:900px) {
-        .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card.show {
-          --sheet-pad:18px;--sheet-height:450px;--sheet-secondary:48px;
-          width:calc(100% - 24px);height:var(--sheet-height);max-height:none
-        }
-        .sel[data-estados=regla].photo-plan:is(:fullscreen,.tour-expanded):not([data-list-only=true]) .card.show {
-          max-height:calc(100% - var(--selector-clear,24px))
-        }
-      }
-      @media(max-width:365px) {
-        .sel[data-estados=regla].photo-plan:not([data-list-only=true]) .card.show {--sheet-pad:12px;--sheet-height:474px}
-        .sel[data-estados=regla] .card.show .acts .btn {padding-inline:6px}
-      }
-      .sel[data-estados=regla] .card .solo-lectores {position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
-        clip-path:inset(50%);white-space:nowrap}
-      @media (max-width:900px) {
-        .sel.photo-plan:not([data-list-only=true]) .card.show {max-height:calc(100% - var(--selector-clear,24px))}
-        .sel.photo-plan .card.show .acts {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-      }
-      @media (max-width:365px) {
-        .sel.photo-plan .card.show {padding:12px}
-        .sel .card .acts .btn {min-width:0}
-      }
-    `;
-    selector.append(selectorStyle);
-    const chips = selector.querySelector('.chips');
-    function showRelevantFilters() {
-      chips.querySelectorAll('button[data-state]').forEach(button => {
-        const count = Number(button.querySelector('b')?.textContent);
-        button.hidden = Boolean(button.dataset.state) && count === 0;
-      });
-    }
-    new MutationObserver(showRelevantFilters).observe(chips, {childList:true});
-    showRelevantFilters();
-    function improveSelection() {
-      const action = card?.querySelector('[data-action="consult"]');
-      const top = card?.querySelector('.top');
-      if (!top || top.querySelector('.lot-name')) return;
-      const identity = top.querySelector('h3').parentElement;
-      const name = document.createElement('h3');
-      name.className = 'lot-name';
-      const rule = selector.querySelector('.sel')?.dataset.estados === 'regla';
-      const block = identity.querySelector('h3').textContent, lotName = identity.querySelector('.big').textContent;
-      name.textContent = (rule ? [lotName, block] : [block, lotName]).join(' · ');
-      const zone = identity.querySelector('.zone-tag');
-      // Maqueta final: bajo la regla, la ficha no repite la zona (ya está en la lista y en el plano).
-      if (zone) { if (rule) zone.remove(); else { zone.classList.add('lot-zone'); top.append(zone); } }
-      identity.replaceWith(name);
-      const facts = card.querySelector('.kv');
-      const sold = !!card.querySelector('[data-action="available"]');
-      const values = [...facts.querySelectorAll('dd')].map(value => value.textContent);
-      const [price, area, unit] = sold ? ['', values[0], ''] : values;
-      const surface = document.createElement('strong');
-      surface.className = 'lot-area';
-      surface.textContent = area;
-      surface.setAttribute('aria-label','Superficie: ' + area);
-      top.append(surface);
-      if (sold) { facts.remove(); return; }
-      const metrics = document.createElement('div');
-      metrics.className = 'sale-metrics';
-      const amount = document.createElement('strong'), perMetre = document.createElement('span');
-      amount.className = 'sale-price'; amount.textContent = price;
-      amount.setAttribute('aria-label','Precio del lote: ' + price);
-      perMetre.className = 'sale-unit'; perMetre.textContent = unit && unit !== '—' ? unit + ' / m²' : '';
-      metrics.append(amount, perMetre); facts.replaceWith(metrics);
-      if (!action || card.querySelector('.st')?.textContent.trim() !== 'Disponible') return;
-      const availability = card.querySelector('.st');
-      availability.dataset.available='';
-      action.dataset.propuesta = 'reserva';
-      action.querySelector('span').textContent = 'QUIERO RESERVAR ESTE LOTE';
-      const note = document.createElement('p');
-      note.className = 'reservation-note';
-      note.id = 'selector-reservation-note';
-      note.textContent = 'Se abre una consulta con Sur Patagonian para coordinar la reserva.';
-      action.setAttribute('aria-describedby', note.id);
-      const financing = document.createElement('p');
-      financing.className = 'card-finance';
-      // Maqueta final: la forma de pago va en una línea, arriba del botón; la aclaración queda sólo para lectores de pantalla.
-      const plan = rule && /Entrega de (USD \d[\d.]*\d) y saldo de USD [\d.]+ en (\d+) cuotas fijas de (USD \d[\d.]*\d)/.exec(project?.financiacion || '');
-      financing.textContent = plan ? 'Entrega ' + plan[1] + ' + ' + plan[2] + ' cuotas de ' + plan[3] : 'Con financiación';
-      if (rule) { note.classList.add('solo-lectores'); metrics.after(financing); action.after(note); }
-      else action.after(financing,note);
-    }
-    if (card) {
-      new MutationObserver(improveSelection).observe(card, {childList:true});
-      improveSelection();
-    }
-    selector.addEventListener('click', event => {
-      const action = event.target.closest('[data-action="consult"], [data-compare-consult]');
-      if (!action) return;
-      // El selector nativo fija el ID público antes de enfocar el formulario.
-      setTimeout(() => {
-        const id = new URL(location.href).searchParams.get('lote');
-        const lot = publicIds.get(id) || byId.get(id);
-        if (lot) startDraft(lot, action.dataset.propuesta);
-      }, 0);
-    }, true);
-  }
+  presentarFichaSelector(root,project,{signal,sheet,onConsult:goal=>{
+    const id=new URL(location.href).searchParams.get('lote');
+    const lot=publicIds.get(id)||byId.get(id);
+    if(lot)startDraft(lot,goal);
+  }});
 
   // El proyecto recibe la consulta. La visita es una opción del mensaje.
   const panel = inquiry.querySelector('.contact-side');
@@ -742,7 +754,7 @@ export function presentarRecorridoTerrazas(doc, frame=null, root=null) {
         .rg-tour .rg-lot-card .rg-measures .rg-area small{display:inline;color:inherit;font-size:1em}
         .rg-tour .rg-lot-card .rg-proposed-price{color:inherit;font:750 clamp(32px,3vw,40px)/1.1 var(--tour-font);letter-spacing:-.035em;margin:8px 0 12px}
         .rg-tour .rg-lot-card nav .rg-lot-inquiry{display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;min-height:50px;font:700 19px/1.2 var(--tour-font)}
-        html .rg-tour .rg-lot-card nav .rg-lot-inquiry{background:#d64218;color:#fff4ef;border-color:#d64218}
+        html .rg-tour .rg-lot-card nav .rg-lot-inquiry{background:var(--rg-action,#d64218);color:var(--rg-action-text,#fff);border-color:var(--rg-action,#d64218)}
         .rg-tour .rg-lot-card nav .card-finance{font:650 16px/1.4 var(--tour-font);color:inherit;margin:8px 0 4px}
         .rg-tour .rg-lot-card .rg-card-visual{height:clamp(54px,10vh,90px)}
       `;

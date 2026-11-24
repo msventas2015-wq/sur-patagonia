@@ -1,3 +1,4 @@
+import {mobileTourViewport} from './miniweb-design.mjs';
 import {projectTourUrl} from './recorrido-enlaces.mjs';
 
 export function immediateImmersiveTour(config,project,block){
@@ -247,13 +248,13 @@ function mountMobileTourInfo(stage, frame, signal) {
  };
 }
 
-function mountTouchExplorer(stage,frame,fullscreen,signal,tapTour=false){
+function mountTouchExplorer(stage,frame,fullscreen,signal,tapTour=false,previewDevice=''){
  const media=window.matchMedia('(pointer: coarse)');
  const doc=frame.contentDocument,bar=document.createElement('div'),button=document.createElement('button'),hint=document.createElement('span');
  bar.className='tour-touch-bar';button.type='button';bar.append(button,hint);stage.prepend(bar);
  const page=stage.ownerDocument,win=page.defaultView,scrollLock=page.createElement('style');
- const mobile=win.matchMedia('(max-width: 760px) and (pointer: coarse)');
- const usePhoto=()=>tapTour&&mobile.matches;
+ const mobile=win.matchMedia('(max-width: 760px)');
+ const usePhoto=()=>tapTour&&mobileTourViewport(win.innerWidth,media.matches,previewDevice);
  const mobileInfo=tapTour?mountMobileTourInfo(stage,frame,signal):null;
  function syncStations(){
   mobileInfo?.sync(usePhoto()&&!fullscreen());
@@ -290,7 +291,7 @@ body{position:fixed!important;top:${-origin.y}px!important;left:${-origin.x}px!i
  }
  function sync(){
   if(!usePhoto()&&stage.hasAttribute('data-photo-expanded'))exploring=false;
-  const enabled=media.matches&&!fullscreen();
+  const enabled=(media.matches||previewDevice==='mobile')&&!fullscreen();
   if(!enabled)exploring=false;
   bar.hidden=!enabled||(usePhoto()&&exploring);
   stage.toggleAttribute('data-photo-touch',usePhoto());
@@ -327,18 +328,57 @@ body{position:fixed!important;top:${-origin.y}px!important;left:${-origin.x}px!i
  media.addEventListener('change',sync,{signal});
  mobile.addEventListener('change',sync,{signal});
  sync();
- return {sync,syncStations,exploring:()=>exploring,readingPosition:()=>origin||{x:win.scrollX,y:win.scrollY},dispose(){releasePage();frame.inert=false;delete stage.dataset.touchMode;delete stage.dataset.photoTouch;doc.documentElement.removeAttribute('data-photo-touch');doc.documentElement.removeAttribute('data-touch-exploring');mobileInfo?.dispose();bar.remove();}};
+ return {sync,syncStations,enter(){if(stage.dataset.touchMode==='page')toggle()},exploring:()=>exploring,readingPosition:()=>origin||{x:win.scrollX,y:win.scrollY},dispose(){releasePage();frame.inert=false;delete stage.dataset.touchMode;delete stage.dataset.photoTouch;doc.documentElement.removeAttribute('data-photo-touch');doc.documentElement.removeAttribute('data-touch-exploring');mobileInfo?.dispose();bar.remove();}};
 }
 
-function mountInlineTour(entry,mountTourFrame){
+export function bridgeProjectBrochure(target,onBrochure,{signal,projectSlug}={}){
+ if(typeof onBrochure!=='function')return;
+ target.addEventListener('miniweb-brochure',event=>{
+  if(event.detail?.projectSlug!==projectSlug || !event.detail?.lotId)return;
+  event.preventDefault();
+  event.detail.download=Promise.resolve().then(()=>onBrochure(event.detail.lotId));
+ },{signal});
+}
+
+function mountInlineTour(entry,mountTourFrame,onBrochure){
  const {node,url,fallback:photo,alt}=entry,stage=node.querySelector('.tour-embed');
  const lifecycle=new AbortController(),{signal}=lifecycle;let disposed=false,failed=false,ready=false,hooked=false,pendingReady=false,childObserver,stageObserver,unbridge=()=>{};
  const status=document.createElement('p');status.className='auto-360-status';status.setAttribute('role','status');status.textContent='Cargando recorrido 360°…';
  const target=new URL(url,location.origin);target.searchParams.set('integrado','1');target.searchParams.set('miniweb-auto','1');
+ if(entry.previewDevice==='mobile')target.searchParams.set('miniweb-preview','mobile');
+ target.searchParams.set('miniweb-brochure',entry.brochure===false?'off':typeof onBrochure==='function'?'1':'0');
  if(entry.immediate)target.searchParams.set('interfaz','inmersivo');
- let frame,timer;
+ let frame,timer,touchExplorer,pendingLot;
+ function openLot(lotId){
+  if(disposed || failed)return false;
+  if(!ready){pendingLot=lotId;return true}
+  status.remove();
+  const viewer=frame.contentDocument?.querySelector('.rg-tour[open]');
+  if(!viewer)return false;
+  const request=new frame.contentWindow.CustomEvent('miniweb-abrir-lote',{cancelable:true,detail:{lotId}});
+  if(viewer.dispatchEvent(request))return false;
+  touchExplorer?.enter();
+  viewer.querySelector('.rg-card:not([hidden]) .rg-card-x')?.focus({preventScroll:true});
+  return true;
+ }
+ if(entry.previewTour && target.origin===location.origin && target.pathname.replace(/\.html$/, '')==='/recorrido'){
+  target.searchParams.set('miniweb-borrador','1');
+  stage.addEventListener('miniweb-leer-recorrido',event=>{
+   if(event.target!==frame || event.detail?.slug!==target.searchParams.get('proyecto'))return;
+   event.detail.preview=entry.previewTour();
+  },{signal});
+ }
+
  const fail=()=>{if(disposed||failed)return;failed=true;delete stage.dataset.loaded;clearTimeout(timer);childObserver?.disconnect();stageObserver?.disconnect();unbridge();frame?.remove();fallback(stage,photo,alt,'No se pudo cargar el recorrido. Se muestra la imagen de respaldo.')};
- const markReady=()=>{if(disposed||failed||ready)return;if(!hooked){pendingReady=true;return}ready=true;clearTimeout(timer);status.remove();frame.style.visibility='';const expand=stage.querySelector('.tour-expand');if(expand)expand.style.visibility='';stage.dataset.loaded='true'};
+ const markReady=()=>{if(disposed||failed||ready)return;if(!hooked){pendingReady=true;return}ready=true;clearTimeout(timer);status.remove();frame.style.visibility='';const expand=stage.querySelector('.tour-expand');if(expand)expand.style.visibility='';stage.dataset.loaded='true';
+  if(pendingLot){
+   const id=pendingLot;pendingLot=null;
+   if(!openLot(id)){
+    status.textContent='Este lote ya no está vinculado al recorrido.';
+    stage.append(status);
+   }
+  }
+ };
  window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame?.contentWindow)return;if(event.data?.type==='mw-tour-ready')markReady();if(event.data?.type==='mw-tour-error')fail()},{signal});
  frame=mountTourFrame(stage,target);frame.style.visibility='hidden';const expand=stage.querySelector('.tour-expand');if(expand)expand.style.visibility='hidden';stage.append(status);
  frame.addEventListener('error',fail,{signal});
@@ -350,6 +390,7 @@ function mountInlineTour(entry,mountTourFrame){
    const style=doc.createElement('style');style.textContent='#sp-staging-badge{display:none!important}html[data-mw-inline-scroll=page],html[data-mw-inline-scroll=page] body,html[data-mw-inline-scroll=page] .f-root{overscroll-behavior:auto!important}html[data-mw-inline-scroll=page] :is(canvas,.rg-stage,.rg-overlay){touch-action:pan-y!important;overscroll-behavior-y:auto!important}';doc.head.append(style);
    const fullscreen=()=>frame.matches(':fullscreen')||stage.matches(':fullscreen')||stage.classList.contains('tour-expanded');
    const frameLifecycle=new AbortController(),frameSignal=frameLifecycle.signal;
+   if(entry.brochure!==false)bridgeProjectBrochure(doc,onBrochure,{signal:frameSignal,projectSlug:target.searchParams.get('proyecto')});
    doc.addEventListener('click',event=>{
     if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
     const link=event.target.closest?.('a[target="_top"]');
@@ -359,7 +400,7 @@ function mountInlineTour(entry,mountTourFrame){
     const request=new CustomEvent('miniweb-consulta',{detail:{href:destination.href},bubbles:true,composed:true,cancelable:true});
     if(!stage.dispatchEvent(request))event.preventDefault();
    },{signal:frameSignal});
-   const touchExplorer=mountTouchExplorer(stage,frame,fullscreen,frameSignal,entry.immediate&&target.searchParams.get('proyecto')==='terrazas-del-piltri');
+   touchExplorer=mountTouchExplorer(stage,frame,fullscreen,frameSignal,entry.immediate&&entry.tapTour,entry.previewDevice);
    style.textContent+='html[data-touch-exploring][data-mw-inline-scroll=page] :is(canvas,.rg-stage,.rg-overlay){touch-action:none!important}';
    const sync=()=>{doc.documentElement.dataset.mwInlineScroll=fullscreen()?'full':'page';touchExplorer.sync();};sync();stage.addEventListener('fullscreenchange',sync,{signal:frameSignal});
    // In the embedded immersive tour only the modified wheel reaches the zoom bridge.
@@ -394,11 +435,11 @@ function mountInlineTour(entry,mountTourFrame){
   }catch{fail()}
  },{signal});
  timer=setTimeout(()=>{if(!ready)fail()},35000);
- return ()=>{disposed=true;lifecycle.abort();clearTimeout(timer);childObserver?.disconnect();stageObserver?.disconnect();unbridge();frame.remove()};
+ return {openLot,dispose(){disposed=true;lifecycle.abort();clearTimeout(timer);childObserver?.disconnect();stageObserver?.disconnect();unbridge();frame.remove()}};
 }
 
-export function observeAutomatic360(entries,{mountTourFrame,startPanorama,header}){
- const lifecycle=new AbortController(),{signal}=lifecycle,disposals=[],started=new Set();let disposed=false;
+export function observeAutomatic360(entries,{mountTourFrame,startPanorama,header,onBrochure}){
+ const lifecycle=new AbortController(),{signal}=lifecycle,disposals=[],started=new Set(),tours=new Map();let disposed=false;
  const size=()=>{
   let top=0;if(header){const style=getComputedStyle(header);if(['fixed','sticky'].includes(style.position))top=header.getBoundingClientRect().height}
   const height='max(620px, calc(100svh - '+top+'px))';
@@ -416,11 +457,22 @@ export function observeAutomatic360(entries,{mountTourFrame,startPanorama,header
  const start=entry=>{
   if(disposed||started.has(entry.node))return;started.add(entry.node);
   try{
-   if(entry.kind==='recorrido')disposals.push(mountInlineTour(entry,mountTourFrame));
+   if(entry.kind==='recorrido'){
+    const tour=mountInlineTour(entry,mountTourFrame,onBrochure);
+    tours.set(entry,tour);disposals.push(tour.dispose);
+   }
    else if(entry.url){disposals.push(startPanorama(entry.node,entry.url,{automatic:true,fallback:entry.fallback,alt:entry.alt,alta:entry.alta}));const stage=entry.node.querySelector('.panorama-stage');disposals.push(bridgeInlineWheel(stage,stage));}
    else fallback(entry.node.querySelector('.panorama-stage'),entry.fallback,entry.alt,'No se pudo cargar la panorámica. Se muestra la imagen de respaldo.');
   }catch{fallback(entry.node.querySelector('.tour-embed,.panorama-stage'),entry.fallback,entry.alt,'No se pudo cargar la experiencia 360°. Se muestra la imagen de respaldo.')}
  };
+ for(const entry of entries.filter(item=>item.kind==='recorrido')){
+  entry.node.addEventListener('miniweb-ir-al-lote',event=>{
+   const destination=new URL(entry.url,location.origin);
+   if(destination.pathname!=='/recorrido' || event.detail?.slug!==destination.searchParams.get('proyecto'))return;
+   start(entry);
+   if(tours.get(entry)?.openLot(event.detail.lotId))event.preventDefault();
+  },{signal});
+ }
  let observer;if(typeof IntersectionObserver==='function'){
   const byNode=new Map(entries.map(entry=>[entry.node,entry]));observer=new IntersectionObserver(items=>{for(const item of items)if(item.isIntersecting){observer.unobserve(item.target);start(byNode.get(item.target))}},{rootMargin:'800px 0px'});entries.forEach(entry=>entry.immediate?start(entry):observer.observe(entry.node));
  }else entries.forEach(start);

@@ -190,12 +190,12 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
 
 /* One compact map with optional list and sheets; desktop composition is unchanged. */
 .list-close{display:none}.selector-touch-hint{position:absolute;z-index:6;left:50%;top:132px;translate:-50% 0;width:max-content;max-width:calc(100% - 32px);padding:10px 14px;border-radius:8px;background:var(--panel);color:var(--ink);font-size:14px;pointer-events:none;text-align:center}
-.sel:fullscreen,.sel.tour-expanded{position:fixed;inset:0;z-index:2147483646;width:100vw;height:100dvh!important;max-height:none;min-height:0;margin:0;border-radius:0}
+.selector-layout:fullscreen,.selector-layout.tour-expanded{position:fixed;inset:0;z-index:2147483646;width:100vw;height:100dvh!important;max-height:none;min-height:0;margin:0;border-radius:0}
 @media(max-width:900px){
  :host([data-compact=true]:not([data-list-only=true])){height:max(var(--selector-height),var(--selector-needed,0px))!important;min-height:0!important;max-height:none!important}
  .sel:not([data-list-only=true]){display:block;height:100%;min-height:0;scroll-margin-top:96px}
  .sel:not([data-list-only=true]) .map{position:absolute;inset:0;width:100%;height:100%;min-height:0;touch-action:pan-y}
- .sel:is(:fullscreen,.tour-expanded) .map{touch-action:none}
+ .selector-layout:is(:fullscreen,.tour-expanded) .map{touch-action:none}
  .sel:not([data-list-only=true]) .shade{height:100%}
  .head{left:14px;right:14px;top:14px;gap:8px;min-width:0}
  .head>.chips{width:100%;max-width:100%;flex:0 0 100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;flex-wrap:nowrap;padding:4px}
@@ -207,7 +207,7 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
  .sel:not([data-list-only=true]) .zoom{position:absolute;inset:auto auto calc(var(--mobile-overlay-height,0px) + 24px) 14px;translate:none;grid-auto-flow:column;padding:4px;gap:2px;border-radius:12px}
  .zoom button{width:44px;height:44px}
  .sel:not([data-list-only=true]) .list-tab{position:absolute;inset:auto 14px calc(var(--mobile-overlay-height,0px) + 24px) auto;translate:none;width:auto;min-height:52px;max-width:calc(100% - 224px);padding:10px 12px;writing-mode:horizontal-tb;border-radius:12px;font-size:14px;white-space:normal}
- .sel:not([data-list-only=true]) .side{position:absolute;inset:auto 12px 12px;width:auto;height:min(65%,480px);min-height:0;margin:0;z-index:5;border-radius:16px;grid-template-rows:auto minmax(0,1fr)}
+ .sel:not([data-list-only=true]) .side{position:absolute;inset:auto 12px 12px;width:auto;height:min(75%,480px);min-height:0;margin:0;z-index:5;border-radius:16px;grid-template-rows:auto minmax(0,1fr)}
  .side header{padding:10px 12px;gap:8px;flex-wrap:nowrap}.count{font-size:14px}.side header select{min-width:0;max-width:160px;flex:1}
  .list-close{display:grid;width:44px;height:44px;flex:0 0 44px;place-items:center}
  .list{min-height:0;overscroll-behavior-y:contain;grid-auto-rows:max-content}.row{min-height:68px;padding:12px 10px}.row .n{font-size:16px}.row .t b{font-size:14px}.row .t span,.row .p span{font-size:14px}.row .p{font-size:14px;white-space:normal;text-align:right}
@@ -260,29 +260,34 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
  .photo-plan .card .acts .btn{flex:1 1 auto;min-height:44px}
 }
 
-/* Ficha comercial de la miniweb. El nombre y la superficie tienen sus propios renglones en teléfono. */
+/* La ficha conserva nombre y superficie en la misma fila, también en teléfono. */
 @media(max-width:700px){
  .sel.photo-plan:not([data-list-only=true]) .card:has(.lot-name){
   --lot-card-width:calc(100% - 24px);--lot-card-padding:18px;
   inset:auto 12px 12px;width:var(--lot-card-width);max-width:none;box-sizing:border-box;
  }
- .sel .card.show .top:has(.lot-name) .lot-name{grid-column:1/-1;grid-row:2;white-space:normal;overflow-wrap:normal}
- .sel .card.show .top:has(.lot-name) .lot-area{grid-column:1/-1;grid-row:3;justify-self:start}
- .sel .card.show .top:has(.lot-name) .lot-zone{grid-column:1/-1;grid-row:4}
+ .sel .card.show .top:has(.lot-name) .lot-name{grid-column:1;grid-row:2;white-space:normal;overflow-wrap:normal}
+ .sel .card.show .top:has(.lot-name) .lot-area{grid-column:2;grid-row:2;justify-self:end}
+ .sel .card.show .top:has(.lot-name) .lot-zone{grid-column:1/-1;grid-row:3}
  .sel .card.show:has(.lot-name) .sale-price{white-space:nowrap}
 }
+.selector-layout{height:100%}
+.selector-layout:has(> .sel[data-estados=regla]:not([data-list-only=true])){display:grid;grid-template-rows:minmax(0,1fr) auto}
+.sel[data-estados=regla]:not([data-list-only=true]) .chips .leg,.sel[data-list-only=true] + .state-legend,.sel[data-map-pending] + .state-legend{display:none}
+.sel[data-estados=regla]{--plan-fine-line:.7px}
+.sel[data-estados=regla] .lot.nov{fill:none!important;stroke:var(--plan-no_a_la_venta)!important;stroke-opacity:.7!important;stroke-width:var(--plan-fine-line)!important;stroke-dasharray:none!important}
+.sel[data-estados=regla][data-map-white=true] .lot.nov{filter:drop-shadow(0 0 .65px #343c39)}
 /* Estados del plano según las reglas de las miniwebs (opción estadosPlano='regla' del bloque Explorador). Sin la opción, cada proyecto conserva sus colores. */
-.sel[data-estados=regla] .lot[data-state=disponible]:not(.nov){fill:#3FA66A;fill-opacity:.42}
+.sel[data-estados=regla] .lot[data-state=disponible]:not(.nov){fill:var(--plan-disponible);fill-opacity:.42}
 .sel[data-estados=regla] .lot[data-state=disponible]:not(.nov):where(:not(.on,.cmp,.from-list)){stroke:#eaf7ef}
 .sel[data-estados=regla] .lot[data-state=disponible]:not(.nov):is(:hover,:focus-visible){fill-opacity:.62}
 .sel[data-estados=regla] .lot[data-state=disponible]:not(.nov):is(.on,.cmp){fill-opacity:.72}
-.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov),.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov):hover{fill:#14181a;fill-opacity:.45;stroke:#fff;stroke-opacity:.35;stroke-dasharray:none}
+.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov),.sel[data-estados=regla] .lot[data-state=vendido]:not(.nov):hover{fill:var(--plan-vendido);fill-opacity:.45;stroke:#fff;stroke-opacity:.35;stroke-dasharray:none}
 .sel[data-estados=regla] .lot[data-state=vendido]:is(.on,.cmp){fill-opacity:.6;stroke-opacity:1}
-.state-legend{position:absolute;left:16px;bottom:16px;z-index:1;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;max-width:calc(100% - 32px);box-sizing:border-box;padding:10px 16px;border-radius:10px;font:400 15px/1.2 var(--body,Inter,Arial,sans-serif);color:#f4f3ef;pointer-events:none}
-.state-legend span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
-.state-legend i{width:12px;height:12px;border-radius:2px;flex:none}
-.state-legend b{font-weight:600}
-.state-legend .sold{font-weight:600;letter-spacing:.03em}
+.state-legend{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 22px;padding:9px 16px;background:#26302e;color:#f4f3ef;font:500 13px/1.3 var(--body,Inter,Arial,sans-serif)}
+.state-legend span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.state-legend i{width:10px;height:10px;border-radius:2px;background:var(--swatch);border:1px solid rgb(255 255 255 / .36);flex:none}
+.state-legend i[data-state=no_a_la_venta]{background:transparent;border-color:var(--swatch)}
 .sel[data-estados=regla] .lot[data-state].from-list:not(.nov){stroke:#fff;stroke-width:4;stroke-opacity:1;transition:none;filter:drop-shadow(0 0 2px #18211d)}
 .sel[data-estados=regla] .row.from-map{background:var(--panel2)}
 .lot-hover{position:absolute;z-index:8;pointer-events:none;max-width:calc(100% - 8px);padding:10px 14px;border-radius:12px;color:var(--ink);background:rgba(14,19,17,.55);backdrop-filter:blur(26px) saturate(1.1);line-height:1.35}
@@ -296,8 +301,7 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
 .sel[data-estados=regla] .zone-ring[data-availability=vendido] foreignObject div{border-color:#f4f3ef!important}
 .sel[data-estados=regla] .card .acts .btn.go{background:var(--pal-accion,var(--accent));color:var(--pal-textoAccion,var(--accent-ink));justify-content:center}
 .sel[data-estados=regla] .card.show .top .st[data-available]{color:#3fa66a}
-/* Leyenda de estados en pantallas angostas: va por encima de la fila de zoom y «Ver lista», y se retira mientras hay una ficha o una comparación abierta. */
-@media(max-width:900px){.state-legend{left:14px;bottom:calc(24px + 54px + 10px);max-width:calc(100% - 28px)}.sel:has(.card.show,.tray.show) .state-legend,.sel.mobile-list-open .state-legend{display:none}}
+@media(max-width:520px){.state-legend{gap:4px 14px;padding:7px 12px}}
 
 /* Regla de las miniwebs en pantallas anchas: filtros dentro de la lista y plano sin botones encima. */
 .sel[data-list-filters] .head :is(.chips,.zone-filters){display:none}
@@ -339,7 +343,9 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
 .sel[data-estados=regla] .row .p{font-size:16px;font-weight:700;white-space:nowrap}
 .sel[data-estados=regla] .row .p span{font-size:13px;font-weight:400}
 @media(max-width:900px){
- .sel[data-list-filters] .side header .list-hide{order:2;flex:none;margin:-4px calc(100% - 40px) 0 0}
+ .sel[data-list-filters]:not([data-list-only=true]) .side header{gap:8px;padding:12px}
+ .sel[data-list-filters]:not([data-list-only=true]) .side header .list-hide{display:none}
+ .sel[data-list-filters] .side header :is(.f-state,.f-zone){flex:1 1 calc((100% - 8px)/2);font-size:14px}
  .sel[data-list-filters] .list-tab{font-size:15px}
  .sel[data-list-filters] .side header :is(.f-state,.f-zone){order:3}
  .sel[data-list-filters] .side header .order{order:4}

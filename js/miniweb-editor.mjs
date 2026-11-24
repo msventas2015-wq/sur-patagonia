@@ -55,7 +55,7 @@ export function setupMiniwebEditor({uploadImage,uploadRecorrido,getIdentity,getP
   const receive=async e=>{if(e.origin!==location.origin||e.source!==frame.contentWindow||closed)return;const msg=e.data;
    if(msg.type==='mw-ready')frame.contentWindow.postMessage({type:'mw-init',tourEditor:!!(uploadRecorrido&&getIdentity),project:data.proyecto,lots:data.lotes,config:structuredClone(config),proposedStyle},location.origin);
    if(msg.type==='mw-open-tour'&&uploadRecorrido&&getIdentity){
-    try{const {openCreatorTour}=await import('./recorrido-constructor.mjs?v=20261116-separadores');if(!closed)openCreatorTour({frame,config:msg.config,identity:getIdentity(),lots:data.lotes.filter(l=>l.origen_id),upload:uploadRecorrido,mapImage:data.proyecto.mapa_imagen_url});}
+    try{const {openCreatorTour}=await import('./recorrido-constructor.mjs?v=20261124-paseo');if(!closed)openCreatorTour({frame,config:msg.config,identity:getIdentity(),lots:data.lotes.filter(l=>l.origen_id),upload:uploadRecorrido,mapImage:data.proyecto.mapa_imagen_url});}
     catch{frame.contentWindow?.postMessage({type:'mw-tour-result',error:'No se pudo abrir el editor de recorridos.'},location.origin);}
    }
    if(msg.type==='mw-cancel')close();
@@ -149,10 +149,10 @@ export function setupMiniwebEditor({uploadImage,uploadRecorrido,getIdentity,getP
    }catch(e){status.textContent=e.message;}finally{make.disabled=false;}};
   entry.querySelector('[data-inventario]').onclick=()=>document.querySelector('[data-panel=panel-lotes]').click();
   document.querySelector('#panel-mapa').prepend(entry);
-  import('./recorrido-constructor.mjs?v=20261116-separadores').then(({materialsGuide})=>{const g=materialsGuide();g.open=false;entry.append(g);}).catch(()=>{});
+  import('./recorrido-constructor.mjs?v=20261124-paseo').then(({materialsGuide})=>{const g=materialsGuide();g.open=false;entry.append(g);}).catch(()=>{});
   entry.querySelector('button').onclick=async()=>{
    const feedback=entry.querySelector('[role=status]');try{
-    const {editScene}=await import('./recorrido-constructor.mjs?v=20261116-separadores');
+    const {editScene}=await import('./recorrido-constructor.mjs?v=20261124-paseo');
     const id=getIdentity();
     if(!id.ready)throw Error('Esperá a que termine de cargar el proyecto.');
     const data=getProject();

@@ -1,15 +1,16 @@
-import {isTerrainDetail,terrainCamera,terrainLayer} from './recorrido-detalle-terreno.mjs?v=20261116-bordes1';
+import {isTerrainDetail,terrainCamera,terrainLayer,validTerrainContours} from './recorrido-detalle-terreno.mjs?v=20261124-paseo';
 import {ringIdentity,alignRingRows,placeRings,syncMapRings} from './zonas-anillos.mjs?v=20261114-anillo7b';
 import {LOT_STATES,isListedLot} from './zonas-venta.mjs?v=20261116-oferta360';
 import {contrast,paletteTokens} from './miniweb-palettes.mjs';
+import {commercialPresentation,mobileTourViewport} from './miniweb-design.mjs';
 import {unitPriceLabel,unitPriceText} from './lote-precio.mjs';
 import {appendLotReturnLinks,lotReturnUrl,hideLotInquiry,findPublicLot,lotLinkId} from './recorrido-enlaces.mjs?v=20261120-terrazas';
 import {blockName,estados,paintLot,tourZones,tourZoneLegend} from './recorrido-estilo.mjs?v=20261114-anillo7b';
 import {simulatedSales,simulateLotStates} from './recorrido-terrazas-qa.mjs?v=20261116-ficha';
 import {lotTitle,rotularLotesTerrazas} from './ficha-lote-recorrido.mjs';
 import {gps,meters} from './recorrido-geografia.mjs';
-import {previewWindow} from './recorrido-paseo.mjs';
-import {mountPanorama,openMediaViewer} from './recorrido-visor-medios.mjs?v=20261116-ubicar';
+import {previewWindow,walkAssets} from './recorrido-paseo.mjs?v=20261124-paseo';
+import {mountPanorama,openMediaViewer} from './recorrido-visor-medios.mjs?v=20261124-paseo';
 import {mediaList,mediaURL,projectBrochureURL} from './recorrido-medios.mjs?v=20261114-media1';
 // Regla de las miniwebs (opción estadosPlano del Explorador): primero el lote, después la manzana.
 const lotFirstName=(config,name)=>{const match=config?.bloques?.find(block=>block.tipo==='explorador')?.opciones?.estadosPlano==='regla'&&String(name??'').match(/^(Manzana [^·]+?)\s*·\s*(Lote .+)$/i);return match?match[2]+' · '+match[1]:name};
@@ -17,16 +18,20 @@ const lotFirstName=(config,name)=>{const match=config?.bloques?.find(block=>bloc
 export const numberIn=(v,min,max)=>Number.isFinite(v)&&v>=min&&v<=max;
 export const cameraParameters=c=>({heading:c.heading??0,height:c.height??60});
 export const cameraNeedsAdjustment=c=>c.adjustment!=='confirmed'&&(c.heading==null||c.height==null||!!c.headingEstimated||!!c.heightEstimated);
-export function sceneIssue(scene,{local=false}={}) {
+export function sceneIssue(scene,{local=false,calibrating=false}={}) {
   if(scene?.version!==1)return 'Este proyecto todavía no tiene un recorrido disponible.';
   if(!Array.isArray(scene.features)||!Array.isArray(scene.cameras)||scene.features.length>5000||scene.features.some(f=>!['lot','line','poi'].includes(f?.kind)||!Array.isArray(f.points)||f.points.length<({lot:3,line:2,poi:1})[f.kind]||f.points.some(p=>!gps(p))))return 'El plano contiene un elemento sin geometría válida.';
  if(scene.raster&&(!mediaURL(scene.raster.url,{local})||scene.raster.corners?.length!==3||!scene.raster.corners.every(gps)))return 'El croquis necesita tres referencias válidas.';
  if(!scene.features?.length && !scene.raster?.corners)return 'Cargá un plano georreferenciado.';
   if(!scene.cameras?.length)return 'Agregá una panorámica para iniciar el recorrido.';
+  const missingGround=scene.cameras.find(c=>c.stationType==='ground'&&!gps(c.point));
+  if(missingGround&&!calibrating)return 'Ubicá en el plano la estación '+missingGround.name+'.';
   const located=scene.cameras.filter(c=>gps(c.point));
   if(!located.length)return 'Ubicá una estación en el plano para abrir el recorrido.';
   for(const c of located){
     const settings=cameraParameters(c);
+    if(c.stationType==='ground' && !calibrating && (c.height==null || c.heightEstimated))return 'Confirmá la altura sobre el plano de '+c.name+'.';
+    if(c.terrainContours!=null && !validTerrainContours(c.terrainContours))return 'Revisá los contornos del terreno de '+c.name+'.';
     if(!mediaURL(c.url,{local})||!numberIn(settings.heading,0,360)||!numberIn(settings.height,0.1,10000)||!numberIn(c.tilt??0,-45,45)||!numberIn(c.roll??0,-45,45))return 'Revisá la foto y los ajustes de '+c.name+'.';
   }
   return '';
@@ -184,7 +189,7 @@ function blockEdge(members,coordinate,axis=0,far=false) {
   return edge;
 }
 // Measure the clearance in screen pixels, including narrow or oblique parcels.
-function roomForLotNumber(point,outline) {
+function roomForLotNumber(point,outline,clearance=16) {
   if (!outline || outline.length<3) return false;
   const [x,y]=point;
   let inside=false;
@@ -193,7 +198,7 @@ function roomForLotNumber(point,outline) {
     const dx=b[0]-a[0],dy=b[1]-a[1],length2=dx*dx+dy*dy;
     if (length2) {
       const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/length2));
-      if ((x-a[0]-t*dx)**2+(y-a[1]-t*dy)**2<16**2) return false;
+      if ((x-a[0]-t*dx)**2+(y-a[1]-t*dy)**2<clearance**2) return false;
       if ((a[1]>y)!==(b[1]>y) && x<a[0]+dx*(y-a[1])/dy) inside=!inside;
     }
     a=b;
@@ -206,8 +211,8 @@ function ringTouchesPanel(entity,bounds){
   const dy=Math.max(bounds[1]-y,0,y-bounds[3]);
   return dx*dx+dy*dy <= (entity.d/2+3)**2;
 }
-export function openScene(scene,{local=false,config,lots=[],financing,brochureUrl,returnUrl,slug,projectSlug=slug,lotId,preview=false,calibration=null,reviewMedia=[],reviewStart,detailStart,initialFlight}={}) {
-  const issue=sceneIssue(scene,{local});if(issue)throw Error(issue);
+export function openScene(scene,{local=false,config,lots=[],financing,brochureUrl,onLotBrochure,returnUrl,slug,projectSlug=slug,lotId,preview=false,calibration=null,reviewMedia=[],reviewStart,detailStart,initialFlight}={}) {
+  const issue=sceneIssue(scene,{local,calibrating:!!calibration});if(issue)throw Error(issue);
   const autoEmbedded=window.parent!==window && new URLSearchParams(location.search).get('miniweb-auto')==='1';
   scene={...scene,cameras:scene.cameras.filter(c=>gps(c.point)).map(c=>({...c,...cameraParameters(c)}))};
   // Los contornos guardan geometría; los datos publicados se resuelven por identidad.
@@ -227,17 +232,19 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     const lot=linked.get(f.id);
     return {id:f.id,points:f.points,height:f.height,kind:'lot',block:f.block,stage:f.stage,name:lot?lotTitle(lot):'Contorno del plano'};
   })};
-  const targetLot=findPublicLot(config,lots,lotId);
   const interactive=f=>f.kind==='poi'||(f.kind==='lot'&&isListedLot(linked.get(f.id)));
-  const requested=targetLot&&scene.features.find(f=>linked.get(f.id)?.id===targetLot.id&&interactive(f));
+  function linkedFeature(publicId){
+    const lot=findPublicLot(config,lots,publicId);
+    return lot && scene.features.find(f=>linked.get(f.id)?.id===lot.id && interactive(f));
+  }
   const dialog=node('dialog',null,'rg-tour');dialog.setAttribute('aria-label','Recorrido de '+scene.name);
   const commercialStates=config?.bloques?.some(b=>b.tipo==='explorador' && b.opciones?.estadosPlano==='regla');
   dialog.toggleAttribute('data-regla-estados',Boolean(commercialStates));
   const embeddedOverview=window.parent!==window && new URLSearchParams(location.search).get('integrado')==='1'
     && commercialStates;
   dialog.toggleAttribute('data-resumen-embebido',embeddedOverview);
-  const terrazasCard = commercialStates && slug === 'terrazas-del-piltri';
-  if (terrazasCard) {
+  const commercialCard = commercialStates && commercialPresentation(config);
+  if (commercialCard) {
     const palette = paletteTokens(config.paleta);
     dialog.dataset.terrazasComercial = '';
     dialog.style.setProperty('--rg-action', palette.accion);
@@ -305,7 +312,36 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     q('.rg-identity').append(node('strong',n+(n===1?' lote disponible':' lotes disponibles'),'rg-available-summary'));
     q('[data-layers]').textContent='Ocultar lotes';
   }
-  if(zones?.settings.colorPor==='zona'){
+  const inventory=zones?.counts.states || counts;
+  function stateBadges(){
+    const badges=[];
+    for(const [state,count] of Object.entries(inventory)){
+      if(!count && (state==='sin'||state==='proximamente'))continue;
+      const badge=node('span',LOT_STATES[state].text);
+      badge.style.setProperty('--lot-fill',LOT_STATES[state].color);
+      badge.append(node('em',' '+count));
+      badges.push(badge);
+    }
+    const off=lots.some(lot=>{
+      const effective=zones?.get(lot)?.effective || lot;
+      return !effective.zonaOculta && effective.estado==='no_a_la_venta';
+    });
+    if(off){
+      const badge=node('span','No comercializado');
+      badge.dataset.zoneOff='true';
+      badges.push(badge);
+    }
+    return badges;
+  }
+  if(commercialStates && zones?.settings.colorPor==='zona'){
+    key.setAttribute('role','group');
+    key.setAttribute('aria-label','Disponibilidad de los lotes');
+    const availability=node('div',null,'rg-state-key');
+    availability.append(...stateBadges());
+    key.append(node('strong',zones.counts.total+' lotes comercializados'),availability);
+    q('.rg-atlas-head').after(key.cloneNode(true));
+    q('.rg-identity').append(key);
+  }else if(zones?.settings.colorPor==='zona'){
     key.setAttribute('role','group');
     key.setAttribute('aria-label','Zonas y disponibilidad');
     const total=node('strong',zones.counts.total+' lotes');key.append(total);
@@ -338,8 +374,10 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     const file=c.filename?.replace(/\.[^.]+$/,'');
     return !c.name || c.name===file ? 'Vista '+(i+1) : c.name;
   }
-  const terrazasMobile = projectSlug === 'terrazas-del-piltri' && autoEmbedded;
-  const photoMode = () => terrazasMobile && document.documentElement.hasAttribute('data-photo-touch');
+  const previewDevice=autoEmbedded&&new URLSearchParams(location.search).get('miniweb-preview')==='mobile'?'mobile':'';
+  const commercialMobile = (projectSlug === 'terrazas-del-piltri'||commercialPresentation(config)) && autoEmbedded;
+  if(commercialMobile&&previewDevice==='mobile'&&mobileTourViewport(innerWidth,matchMedia('(pointer:coarse)').matches,previewDevice))document.documentElement.setAttribute('data-photo-touch','');
+  const photoMode = () => commercialMobile && document.documentElement.hasAttribute('data-photo-touch');
   // Original drone identifiers keep the itinerary stable if the editor reorders stations.
   const itinerary = [
     ['0251','Vista cenital'],
@@ -390,10 +428,11 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     dialog.append(options);
   }
   let aerialReturn;
-  if(projectSlug==='terrazas-del-piltri' && !calibration) {
+  if((scene.aerialReturnId || projectSlug==='terrazas-del-piltri') && !calibration) {
     const findStation=(flight,name)=>scene.cameras.find((c,i)=>
       [c.filename,c.url,c.name].some(value=>value?.includes('_'+flight+'_D_M4')) || itineraryTitle(c,i)===name);
-    const aerial=findStation('0061','Vista cenital cercana') || findStation('0251','Vista cenital');
+    const aerial=Object.hasOwn(scene,'aerialReturnId') ? scene.cameras.find(c=>c.id===scene.aerialReturnId)
+      : findStation('0061','Vista cenital cercana') || findStation('0251','Vista cenital');
     if(aerial) {
       aerialReturn=node('button',null,'rg-aerial-return');
       aerialReturn.type='button';aerialReturn.hidden=true;
@@ -410,7 +449,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
       marker:key==='office'?'office-bolson':undefined})) : [];
   scene.cameras.forEach((cam,index)=>{
     const name = itineraryTitle(cam,index);
-    const label = terrazasCard && embeddedOverview ? name.replace(/\s*·\s*\d+\/\d+\s*$/, '') : name;
+    const label = commercialCard && embeddedOverview ? name.replace(/\s*·\s*\d+\/\d+\s*$/, '') : name;
     selector.add(new Option(label,cam.id));
   });
   const candidates=projectSlug==='terrazas-del-piltri' && !calibration ? reviewMedia : [];
@@ -421,7 +460,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     selector.append(group);
   }
   let compassNeedle, northLetter;
-  if (terrazasMobile) {
+  if (commercialMobile) {
     const ink='#f5f2e8', paper='#17221f';
     const dial=svg('svg',{class:'rg-north-dial',viewBox:'-6 -8 60 64',role:'img','aria-label':'Brújula de orientación del terreno. La N indica el norte.'});
     dial.append(svg('circle',{cx:24,cy:24,r:16.2,fill:paper,'fill-opacity':.86}));
@@ -444,20 +483,24 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     q('.rg-identity > div:first-child').append(dial);
     const availability = node('div',null,'rg-mobile-availability');
     availability.setAttribute('aria-label','Disponibilidad de los lotes');
-    const inventory = zones?.counts.states || counts;
-    const unavailable = lots.filter(lot=>{
-      const effective = zones?.get(lot)?.effective || lot;
-      return !effective.zonaOculta && effective.estado === 'no_a_la_venta';
-    }).length;
-    const rows = [['disponible','Disponibles'],['reservado','Reservados'],['vendido','Vendidos']];
-    if (inventory.proximamente) rows.push(['proximamente','Próximamente']);
-    if (inventory.sin) rows.push(['sin','Sin informar']);
-    rows.push(['no_a_la_venta','No disponibles']);
-    for (const [state,label] of rows) {
-      const value = state === 'no_a_la_venta' ? unavailable : inventory[state] || 0;
-      const badge = node('span',label+' '+value);
-      badge.style.setProperty('--state-color',LOT_STATES[state].color);
-      availability.append(badge);
+    if(commercialStates && zones?.settings.colorPor==='zona'){
+      availability.dataset.commercialKey='';
+      availability.append(...stateBadges());
+    }else{
+      const unavailable = lots.filter(lot=>{
+        const effective = zones?.get(lot)?.effective || lot;
+        return !effective.zonaOculta && effective.estado === 'no_a_la_venta';
+      }).length;
+      const rows = [['disponible','Disponibles'],['reservado','Reservados'],['vendido','Vendidos']];
+      if (inventory.proximamente) rows.push(['proximamente','Próximamente']);
+      if (inventory.sin) rows.push(['sin','Sin informar']);
+      rows.push(['no_a_la_venta','No disponibles']);
+      for (const [state,label] of rows) {
+        const value = state === 'no_a_la_venta' ? unavailable : inventory[state] || 0;
+        const badge = node('span',label+' '+value);
+        badge.style.setProperty('--state-color',LOT_STATES[state].color);
+        availability.append(badge);
+      }
     }
     q('.rg-identity').append(availability);
     if (!key.querySelector('strong')) {
@@ -472,10 +515,11 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
   let navigation=0, intended=0, activeCamera;
   function walkDirectory(camera) {
     if (calibration || camera?.skyMask || !camera?.paseo) return '';
-    return /^\/assets\/(?:[\w-]+\/)+$/.test(camera.paseo) ? camera.paseo : '';
+    if(camera.stationType==='aerial')return '';
+    return walkAssets(camera.paseo,{projectId:config?.recorrido?.proyectoId,local});
   }
   function neighborPreviews(i) {
-    return [i,i+1,i-1].map(n=>walkDirectory(scene.cameras[n])).filter(Boolean).map(p=>p+'vista.webp');
+    return [i,i+1,i-1].map(n=>walkDirectory(scene.cameras[n])).filter(Boolean).map(p=>p.vista);
   }
   function stop(){clearTimeout(timer);playing=false;q('[data-play]').textContent='Reproducir';}
   function paintSelection(){
@@ -517,7 +561,45 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     if (window.parent === window && slug) location.assign('/'+encodeURIComponent(slug)+'?estado=disponible#lotes');
   }
 
-  function renderTerrazasCard(feature, lot, close, body) {
+  function brochureAction(lot) {
+    const mode=new URLSearchParams(location.search).get('miniweb-brochure');
+    const tourBlock=config?.bloques?.find(block=>block.tipo==='panoramica360' && block.variante==='recorrido' && block.activo!==false);
+    const standalone=typeof onLotBrochure==='function' && commercialStates && window.parent===window;
+    if(standalone && !tourBlock)return null;
+    const hidden=tourBlock?.opciones?.mostrarBrochure==='no';
+    if(lot.estado!=='disponible'||mode==='off'||(standalone||mode===null)&&hidden)return null;
+    const label=control=>{
+      control.replaceChildren(strokeIcon('M12 3v12m-5-5 5 5 5-5M5 20h14'),node('span','Brochure'));
+      control.setAttribute('aria-label','Descargar brochure');return control;
+    };
+    const url=projectBrochureURL(brochureUrl,{local});
+    if(!standalone && url && mode!=='1'){
+      const link=label(node('a'));
+      link.href=url;link.target='_blank';link.rel='noopener noreferrer';return link;
+    }
+    if(!standalone && (mode!=='1'||window.parent===window))return null;
+    const button=label(node('button'));button.type='button';
+    button.onclick=async()=>{
+      if(button.disabled)return;
+      button.disabled=true;button.setAttribute('aria-busy','true');button.setAttribute('aria-label','Generando brochure');button.textContent='Generando…';
+      try{
+        if(standalone){
+          if(await onLotBrochure(lot.id)===false)throw Error('brochure_failed');
+        }else{
+          const detail={projectSlug:slug,lotId:lot.id};
+          const request=new CustomEvent('miniweb-brochure',{detail,cancelable:true});
+          document.dispatchEvent(request);
+          if(!request.defaultPrevented)throw Error('brochure_unavailable');
+          if(await detail.download===false)throw Error('brochure_failed');
+        }
+        label(button);
+      }catch{button.textContent='Reintentar';button.setAttribute('aria-label','Reintentar descarga');}
+      finally{button.disabled=false;button.removeAttribute('aria-busy');}
+    };
+    return button;
+  }
+
+  function renderCommercialCard(feature, lot, close, body) {
     card.dataset.fichaRegla = '';
     close.replaceChildren(strokeIcon('M6 6l12 12M18 6L6 18'));
     const heading = node('div', null, 'rg-card-heading');
@@ -560,14 +642,8 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
       locate.append(strokeIcon('M4 12h15m-6-6 6 6-6 6'));
       locate.onclick = () => locateSelectedLot(feature, locate);
       secondary.append(locate);
-      const url = projectBrochureURL(brochureUrl,{local});
-      if (url) {
-        const brochure = node('a', 'Brochure');
-        brochure.href = url;
-        brochure.target = '_blank';
-        brochure.rel = 'noopener noreferrer';
-        secondary.append(brochure);
-      }
+      const brochure=brochureAction(lot);
+      if(brochure)secondary.append(brochure);
       nav.append(secondary);
     }
     body.append(nav);
@@ -581,8 +657,8 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     card.classList.toggle('rg-lot-card',f.kind==='lot');
     if(f.kind==='lot'){
       const lot=linked.get(f.id);
-      if (terrazasCard && ['disponible','vendido'].includes(lot.estado)) {
-        renderTerrazasCard(f, lot, close, body);
+      if (commercialCard && ['disponible','vendido'].includes(lot.estado)) {
+        renderCommercialCard(f, lot, close, body);
         if(!atlas.hidden)updateMap();
         clean.redraw?.();
         return;
@@ -680,12 +756,8 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
         body.insertBefore(nav,desktopSale?locate:null);
       }
       if(stateRule && lot.estado==='disponible'){
-        const url=projectBrochureURL(brochureUrl,{local});
-        if(url){
-          const brochure=node('a','Brochure del proyecto');
-          brochure.href=url;brochure.target='_blank';brochure.rel='noopener noreferrer';
-          body.append(brochure);
-        }
+        const brochure=brochureAction(lot);
+        if(brochure)body.append(brochure);
       }
       if(mobile&&!soldRule)body.append(locate);
       if (soldRule) {
@@ -739,7 +811,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     const status=q('[role=status]');
     let prepared;
     if (directory || (walkDirectory(activeCamera) && camera && i!==index)) {
-      const url=directory ? directory+'vista.webp' : camera.url;
+      const url=directory ? directory.vista : camera.url;
       selector.value=camera.id;
       // La vista actual sigue aceptando giro y zoom durante la descarga.
       previews.retain([...neighborPreviews(index),url]);
@@ -796,7 +868,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
       return;
     }
     index=i;const cam=scene.cameras[i];selector.value=cam.id;
-    if(aerialReturn)aerialReturn.hidden=!isPanoramic(cam,i);
+    if(aerialReturn)aerialReturn.hidden=scene.aerialReturnId ? cam.id===scene.aerialReturnId : !isPanoramic(cam,i);
     q('[data-prev]').disabled=i===0;q('[data-next]').disabled=i===viewCount-1;
     updateMap();
     const mask=mediaURL(cam.skyMask,{local});
@@ -811,8 +883,9 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     const overlay=svg('svg',{class:'rg-overlay','aria-hidden':'true'});stage.append(overlay);
     const detailTerrain=isTerrainDetail(projectSlug,cam);
     let lastTerrainView;
-    const foreground=detailTerrain ? terrainLayer(overlay,cam.id,svg,()=>{if(lastTerrainView)draw(lastTerrainView);}) : null;
-    const opticalPose=detailTerrain?terrainCamera(cam):cam;
+    const foreground=detailTerrain ? terrainLayer(overlay,cam.id,svg,()=>{if(lastTerrainView)draw(lastTerrainView);},
+      cam.stationType ? cam.terrainContours||[] : undefined) : null;
+    const opticalPose=detailTerrain && !cam.stationType ? terrainCamera(cam):cam;
     const ground=foreground?.ground || overlay;
     const near=.15;
     const portals=scene.cameras.flatMap((destination,i)=>{
@@ -832,7 +905,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
       element.dataset.geoId=f.id;(f.kind==='lot'||f.kind==='line'?ground:overlay).append(element);
       const lot = f.kind==='lot' && linked.get(f.id);
       let mobileRing;
-      if (terrazasMobile && lot) {
+      if (commercialMobile && lot) {
         element.dataset.mobileAvailability = lot.estado || 'sin';
         if (isListedLot(lot)) {
           const {number} = ringIdentity(lot);
@@ -841,8 +914,14 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
             const circle = svg('circle',{r:9});
             circle.style.stroke = (LOT_STATES[lot.estado] || LOT_STATES.sin).color;
             const text = svg('text',{'text-anchor':'middle',y:3.5});
-            text.textContent = number;
-            mobileRing.append(circle,text);
+            if(commercialStates && lot.estado==='vendido'){
+              mobileRing.dataset.caption='vendido';
+              text.textContent='VENDIDO';
+            }else{
+              mobileRing.append(circle);
+              text.textContent=number;
+            }
+            mobileRing.append(text);
           }
         }
       }
@@ -906,7 +985,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
       }
     }
     const rad=Math.PI/180;
-    function projectPlan(){const pose=calibration && detailTerrain ? terrainCamera(cam) : opticalPose;const h=pose.heading*rad,t=(pose.tilt||0)*rad,r=(pose.roll||0)*rad;
+    function projectPlan(){const pose=calibration && detailTerrain && !cam.stationType ? terrainCamera(cam) : opticalPose;const h=pose.heading*rad,t=(pose.tilt||0)*rad,r=(pose.roll||0)*rad;
       function project(p,height,skyPortal=false){
         const [x,z]=meters(pose.point,p);
         const altitude=(height||0)-pose.height;
@@ -962,12 +1041,14 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
         for (const e of numbers) {
           e.mobileRing.classList.toggle('chosen',e===priority);
           const p = e.anchor || e.center;
-          const visible = fov<1.39 && p && p[0]>=9 && p[0]<=width-9 && p[1]>=9 && p[1]<=height-9 &&
-            roomForLotNumber(p,e.outline) && !placed.some(other=>Math.hypot(other[0]-p[0],other[1]-p[1])<19);
+          const soldLabel=e.mobileRing.dataset.caption==='vendido';
+          const radius=soldLabel?25:9.5;
+          const visible = fov<1.39 && p && p[0]>=radius && p[0]<=width-radius && p[1]>=9 && p[1]<=height-9 &&
+            roomForLotNumber(p,e.outline,soldLabel?27:16) && !placed.some(other=>Math.hypot(other.x-p[0],other.y-p[1])<other.radius+radius);
           e.mobileRing.style.visibility = visible ? 'visible' : 'hidden';
           if (visible) {
             e.mobileRing.setAttribute('transform','translate('+p.join(' ')+')');
-            placed.push(p);
+            placed.push({x:p[0],y:p[1],radius});
           }
         }
       }
@@ -1123,7 +1204,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
         if(!f){clearHover();return;}
         if(f!==hover){hover=f;paintSelection();}
         const tip=q('.rg-tip'),area=linked.get(f.id)?.superficie_m2;
-        const title=terrazasCard && f.kind==='lot' ? lotFirstName(config,f.name) : f.name;
+        const title=commercialCard && f.kind==='lot' ? lotFirstName(config,f.name) : f.name;
         tip.textContent=title+(estados[linked.get(f.id)?.estado]?' · '+estados[linked.get(f.id).estado]:'')+(area!=null?' · '+Number(area).toLocaleString('es-AR')+' m²':'');
         tip.hidden=false;tip.style.left=Math.max(4,Math.min(e.clientX+16,dialog.clientWidth-tip.offsetWidth-8))+'px';
         tip.style.top=Math.max(4,Math.min(e.clientY+16,dialog.clientHeight-tip.offsetHeight-8))+'px';stage.classList.add('rg-pointing');
@@ -1142,8 +1223,8 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     const aim=vectors.length && (focusFeature || cam.start==null);
     const yaw=aim?Math.atan2(focus[0],focus[2])/rad:cam.start||0;
     const pitch=aim?Math.max(focusFeature || photoMode()?-85:-45,Math.min(focusFeature?85:-8,Math.atan2(focus[1],Math.hypot(focus[0],focus[2]))/rad)):-20;
-    const viewMedia={url:cam.url,...(cam.alta?{alta:cam.alta}:{}),orientacion:yaw,pitch,fov:terrazasMobile && matchMedia('(max-width:760px) and (pointer:coarse)').matches ? 1.4 : (aim && pitch<=-44?1.23:.8)};
-    if(projectSlug==='terrazas-del-piltri' && cam.id.startsWith('detalle-') && !focusFeature){
+    const viewMedia={url:cam.url,...(cam.alta?{alta:cam.alta}:{}),orientacion:yaw,pitch,fov:commercialMobile && mobileTourViewport(innerWidth,matchMedia('(pointer:coarse)').matches,previewDevice) ? 1.4 : (aim && pitch<=-44?1.23:.8)};
+    if((cam.stationType ? cam.stationType==='ground' && cam.start==null : projectSlug==='terrazas-del-piltri' && cam.id.startsWith('detalle-')) && !focusFeature){
       // Open toward a nearby frontage. The centre of the whole development can be behind a low station.
       const frontages=entities.filter(e=>e.f.kind==='lot' && isListedLot(linked.get(e.f.id))).map(e=>{
         const points=e.positions;
@@ -1159,6 +1240,7 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
         viewMedia.fov=1.4;
       }
     }
+    if(!focusFeature && Number.isFinite(cam.startPitch))viewMedia.pitch=cam.startPitch;
     if(compareIcons && flightId(cam,i)==='0251' && !focusFeature){
       const landmark=entities.find(entity=>entity.f===ridge)?.positions[0];
       if(landmark){
@@ -1216,11 +1298,20 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
   if(autoEmbedded)dialog.open=true;
   else dialog.showModal();
   let station=calibration?Math.max(0,scene.cameras.findIndex(c=>c.id===calibration.cameraId)):0;
-  if(requested){
-    const center=requested.points.reduce((sum,p)=>sum.map((v,i)=>v+p[i]/requested.points.length),[0,0]);
+  function openLinkedLot(feature){
+    const center=feature.points.reduce((sum,p)=>sum.map((v,i)=>v+p[i]/feature.points.length),[0,0]);
     const distances=scene.cameras.map(cam=>Math.hypot(...meters(cam.point,center)));
-    station=distances.indexOf(Math.min(...distances));
+    mapOpen(false);
+    show(distances.indexOf(Math.min(...distances)),feature);
+    detail(feature);
   }
+  if(autoEmbedded)dialog.addEventListener('miniweb-abrir-lote',event=>{
+    const feature=linkedFeature(event.detail?.lotId);
+    if(!feature)return;
+    event.preventDefault();
+    openLinkedLot(feature);
+  });
+  const requested=linkedFeature(lotId);
   if(!requested && detailStart && projectSlug==='terrazas-del-piltri'){
     const detail=scene.cameras.findIndex(c=>c.id==='detalle-'+detailStart);
     if(detail>=0)station=detail;
@@ -1230,8 +1321,10 @@ export function openScene(scene,{local=false,config,lots=[],financing,brochureUr
     if(target>=0)station=target;
   }
   const initialCandidate=candidates.findIndex(m=>m.numero===reviewStart);
-  show(!requested && initialCandidate>=0?scene.cameras.length+initialCandidate:station,requested);
-  if(requested)detail(requested);
-  else if(lotId)q('[role=status]').textContent='Este lote ya no está vinculado al recorrido.';
+  if(requested)openLinkedLot(requested);
+  else {
+    show(initialCandidate>=0?scene.cameras.length+initialCandidate:station);
+    if(lotId)q('[role=status]').textContent='Este lote ya no está vinculado al recorrido.';
+  }
   return dialog;
 }
