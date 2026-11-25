@@ -5,7 +5,7 @@ import {bridgeInlineWheel} from './miniweb-360.mjs?v=20261117-cierre-venta1';
 import {unitPrice,unitPriceText} from './lote-precio.mjs';
 import {projectTourUrl} from './recorrido-enlaces.mjs';
 import {mediaList} from './recorrido-medios.mjs';
-import {usesLotPlanKey,lotPlanKeyEntries} from './miniweb-design.mjs?v=20261117-cierre-venta1';
+import {commercialPresentation,usesLotPlanKey,lotPlanKeyEntries} from './miniweb-design.mjs?v=20261117-cierre-venta1';
 
 const NS='http://www.w3.org/2000/svg';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -209,7 +209,7 @@ export function mountSelector(host,{project,config,lots,shapeFor,mapUrl,safeUrl,
  .sel[data-map-pending]>.map-message{position:absolute;inset:0;margin:auto;display:grid;place-items:center;width:fit-content;height:fit-content;max-width:90%;font:500 16px/1.5 system-ui;color:#f5f4f1;background:#26322e;border-radius:6px;padding:10px 16px}
  .sel[data-list-only=true] .map,.sel[data-list-only=true] .zoom{display:none!important}
  `;root.append(critical)
-css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';root.append(css);
+css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261124-selector-movil';root.append(css);
  const section=document.createElement('section');section.className='sel';section.setAttribute('aria-label','Selector de lotes');section.dataset.mapPending='';section.setAttribute('aria-busy','true');
  section.innerHTML=`<svg class="map" role="group" aria-label="Plano de lotes" tabindex="0"></svg><div class="shade"></div><p class="map-message" role="status">Cargando la imagen del plano…</p>
  <div class="head"><div class="chips glass" role="group" aria-label="Filtrar por disponibilidad"></div><label class="mz glass">Manzana<select aria-label="Manzana"><option value="">Todas</option></select></label><div class="zone-filters" hidden aria-label="Filtrar por zonas"></div></div>
@@ -310,15 +310,22 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  map.addEventListener('focusin',event=>highlightFromShape(event.target),{signal});
  map.addEventListener('focusout',event=>highlightFromShape(event.relatedTarget),{signal});
  // Pedido desde el recorrido 360 de la misma miniweb: mostrar la lista filtrada en disponibles.
- host.getRootNode().addEventListener('mw-ver-disponibles',()=>{state='disponible';block='';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;section.removeAttribute('data-list-panel-hidden');paint();host.scrollIntoView({block:'start',behavior:'smooth'});(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});},{signal});
+ host.getRootNode().addEventListener('mw-ver-disponibles',()=>{if(sheetMode())phoneState='disponible';state='disponible';block='';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;section.removeAttribute('data-list-panel-hidden');paint();host.scrollIntoView({block:'start',behavior:'smooth'});(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});},{signal});
  let currentConfig=config,selected=null,comparison=[],state='',block='',order='numero',worldHeight=600,photoWidth=843,box=[0,0,843,600],view=[...box],frame=0,ready=false,disposed=false,listCollapsed=false,initialWidth=843,mobileListOpen=false,bodyOverflow=null;
  const compact=()=>window.innerWidth<=900;
+ const sheetMode=()=>window.innerWidth<=700 && photoPlan && section.dataset.listOnly!=='true' && commercialPresentation(currentConfig) && usesLotPlanKey(currentConfig);
+ let phoneState=rows.some(row=>!row.unavailable&&row.lot.estado==='disponible')?'disponible':'';
+ const listState=()=>sheetMode()?phoneState:state;
  const fullPhoto=()=>mapHasPhoto&&section.hasAttribute('data-list-panel-hidden');
  const fullscreen=()=>root.fullscreenElement===layout||!!layout.matches?.(':fullscreen')||layout.classList.contains('tour-expanded');
  let viewportInset=0;
  function viewportHeight(){
   const vh=window.visualViewport?.height||window.innerHeight;
   let height=compact()?Math.max(360,vh-(fullscreen()?0:Math.max(112,viewportInset+12))):Math.max(620,Math.min(920,vh));
+  const sheet=sheetMode(),modeChanged=sheet!==section.hasAttribute('data-mobile-sheet'),legend=layout.querySelector('.state-legend');
+  host.toggleAttribute('data-mobile-sheet',sheet);
+  section.toggleAttribute('data-mobile-sheet',sheet);
+  if(legend && legend.parentElement!==(sheet?section:layout))(sheet?section:layout).append(legend);
   host.toggleAttribute('data-two-columns',desktopZonePlan());
   if(desktopZonePlan() && host.clientWidth>380){
    // A tall, narrow crop cannot contain both ends of the cadastral plan.
@@ -328,7 +335,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   host.dataset.compact=String(compact());
   host.style.setProperty('--selector-height',height+'px');
   host.parentElement?.style.setProperty('--selector-height',height+'px');
-  paintListState();
+  if(modeChanged&&ready)paint();else paintListState();
  }
  viewportHeight();window.addEventListener('resize',viewportHeight,{signal});window.visualViewport?.addEventListener('resize',viewportHeight,{signal});
  const label=row=>section.dataset.estados==='regla' && row.manzana
@@ -337,6 +344,8 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  const immersiveZones=()=>currentConfig.estilo==='inmersivo'&&!['alamos','aldea-los-huemules'].includes(project.slug);
  const zoneTag=row=>row.zone?`<span class="zone-tag"><i style="background:${salesZoneColor(row.zone,paletteTokens(currentConfig.paleta).texto)}"></i>${escape(row.zone.nombre)}</span>`:'';
  const create=(tag,attrs={})=>{const node=document.createElementNS(NS,tag);for(const [key,value]of Object.entries(attrs))node.setAttribute(key,value);return node};
+ const selectedMarker=create('g',{class:'phone-selection','aria-hidden':'true','pointer-events':'none'});
+ selectedMarker.append(create('path',{d:'M-15 -24h30v18H4L0 0l-4 -6h-11z'}),create('text',{x:0,y:-15,'text-anchor':'middle','dominant-baseline':'central'}));
  const image=create('image',{x:0,y:0,width:843,height:worldHeight,preserveAspectRatio:'none'});map.append(image);
  const boundsOf=items=>{let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;for(const row of items)for(const [u,v]of row.points||[row.pin].filter(Boolean)){left=Math.min(left,u*843);right=Math.max(right,u*843);top=Math.min(top,v*worldHeight);bottom=Math.max(bottom,v*worldHeight)}return Number.isFinite(left)?[left,top,right,bottom]:[0,0,843,worldHeight]};
  function desktopZonePlan(){
@@ -375,6 +384,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
    (bounds.top+bounds.bottom)/2-height*(area.top+area.bottom)/(2*rect.height),width,height];
  }
  function resetTarget(){
+  if(sheetMode())return selectorCoverView({worldHeight,ratio:mapRatio(),center:[.5,.5]});
   if(fullPhoto())return photoFrame();
   if(mobileZonePlan())return mobileFrame(selectorVisible(rows,state,block),0,true);
   return desktopZonePlan()?desktopFrame(selectorVisible(rows,state,block)):[...box];
@@ -397,6 +407,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   return [origin(photo.x,photo.width,width,target?.[0]),origin(photo.y,photo.height,height,target?.[1]),width,height];
  }
  const constrain=target=>{
+  if(sheetMode())return selectorConstrainView(target,{worldHeight,ratio:mapRatio()});
   if(fullPhoto())return photoFrame(target);
   if(!mobileZonePlan())return (limitToPhoto()?selectorConstrainView:selectorConstrainPlanView)(target,{worldHeight,ratio:mapRatio()});
   // The photo can be wider than the phone. Its borders must not prevent the
@@ -406,7 +417,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   return [clamp(target[0],-width/2,843-width/2),clamp(target[1],-height,worldHeight),width,height];
  };
  const home=()=>{if(!limitToPhoto())return selectorPlanHome({worldHeight,ratio:mapRatio()});const [x0,y0,x1,y1]=boundsOf(rows);return selectorCoverView({worldHeight,ratio:mapRatio(),center:[(x0+x1)/2/843,(y0+y1)/2/worldHeight]})};
- const setView=()=>{view=constrain(view);map.setAttribute('viewBox',view.join(' '));syncMapRings(map);paintZoneLabels();paintLotLabels()};
+ const setView=()=>{view=constrain(view);map.setAttribute('viewBox',view.join(' '));map.toggleAttribute('data-pan',sheetMode()&&(fullscreen()||view[2]<initialWidth*.995));syncMapRings(map);paintZoneLabels();paintLotLabels()};
  const startView=()=>{if(fullPhoto()){cancelAnimationFrame(frame);box=photoFrame();view=[...box];initialWidth=view[2];setView();return}box=home();const rect=map.getBoundingClientRect(),bounds=!rasterExtent&&initialPlanBounds?.({width:rect.width,height:rect.height,imageWidth:photoWidth,imageHeight:worldHeight*photoWidth/843});view=mobileZonePlan()?resetTarget():desktopZonePlan()?constrain(resetTarget()):bounds?constrain(fit([{points:[[bounds.left,bounds.top],[bounds.right,bounds.bottom]]}])):[...box];initialWidth=view[2];setView()};
  function fly(target){
   target=constrain(target);cancelAnimationFrame(frame);if(matchMedia('(prefers-reduced-motion: reduce)').matches){view=[...target];setView();return}
@@ -424,7 +435,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  function zoom(factor,anchor=[.5,.5]){
   const max=fullPhoto()?photoFrame()[2]:mobileZonePlan()?initialWidth:(limitToPhoto()?selectorCoverView:selectorPlanHome)({worldHeight,ratio:mapRatio()})[2],w=Math.max(max/32,Math.min(max,view[2]*factor)),h=w/mapRatio();
   if(mobileZonePlan()&&w===max&&factor>1){fly(resetTarget());return}
-  if(factor>1){fly([843/2-w/2,worldHeight/2-h/2,w,h]);return}
+  if(factor>1&&!sheetMode()){fly([843/2-w/2,worldHeight/2-h/2,w,h]);return}
   fly([view[0]+(view[2]-w)*anchor[0],view[1]+(view[3]-h)*anchor[1],w,h]);
  }
  // Con la regla, los filtros van dentro de la lista, como desplegables, y el plano queda limpio (también en teléfono).
@@ -444,7 +455,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   const fill=(select,options,value)=>{const key=JSON.stringify(options);if(select.dataset.options!==key){select.dataset.options=key;select.replaceChildren(...options.map(([v,t])=>new Option(t,v)))}if(select.value!==value)select.value=value;select.hidden=options.length<3};
   const text=node=>[...node.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim();
   const chips=[...q('.chips').querySelectorAll('[data-state]')].filter(c=>c.dataset.state&&Number(c.querySelector('b')?.textContent)>0);
-  fill(fs,chips.length>=2?[['','Todos los estados'],...chips.map(c=>[c.dataset.state,text(c)])]:[],chips.some(c=>c.dataset.state===state)?state:'');
+  fill(fs,chips.length>=2?[['','Todos los estados'],...chips.map(c=>[c.dataset.state,text(c)])]:[],chips.some(c=>c.dataset.state===listState())?listState():'');
   const zones=[...section.querySelectorAll('.zone-filters [data-zone]')].filter(b=>b.dataset.zone&&!/\(/.test(b.textContent));
   fill(fz,zones.length>=2?[['','Todas las zonas'],...zones.map(b=>[b.dataset.zone,text(b)])]:[],zones.some(b=>b.dataset.zone===block)?block:'');
  }
@@ -452,13 +463,14 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   paintListFilters();
   const small=compact(),onlyList=section.dataset.listOnly==='true',side=q('.side'),tab=q('.list-tab'),open=small&&!onlyList&&mobileListOpen;
   if(!selected||comparison.length||desktopZonePlan())listCollapsed=false;
-  side.hidden=onlyList?false:small?!open:listCollapsed;side.inert=side.hidden;tab.hidden=onlyList||(!small&&!listCollapsed)||open;
-  tab.textContent=(small?'Ver lista':'Lista')+' ('+selectorVisible(rows,state,block).length+')';
+  side.hidden=onlyList?false:small?!open:listCollapsed;side.inert=side.hidden;tab.hidden=onlyList||(!small&&!listCollapsed)||(open&&!sheetMode());
+  const tabCount=sheetMode()?rows.filter(row=>!row.unavailable&&row.lot.estado==='disponible').length:selectorVisible(rows,state,block).length;
+  tab.textContent=sheetMode()&&open?'Ocultar lista':(small?'Ver lista':'Lista')+' ('+tabCount+')';
   tab.setAttribute('aria-expanded',String(open||!side.hidden));q('.list-close').hidden=!open;
   section.classList.toggle('mobile-list-open',open);for(const panel of [card,tray]){panel.inert=open;if(open)panel.setAttribute('aria-hidden','true');else panel.removeAttribute('aria-hidden')}
   const panel=comparison.length?tray:card;section.style.setProperty('--mobile-overlay-height',small&&!onlyList&&!open&&!panel.hidden?panel.offsetHeight+'px':'0px');
   // Con la regla de las miniwebs, en pantallas angostas la ficha abierta no puede tapar ni los filtros ni el zoom: si no entran, el selector crece lo justo.
-  {const head=q('.head'),active=small&&!onlyList&&!open&&!panel.hidden,clear=active?Math.ceil(head.getBoundingClientRect().bottom-section.getBoundingClientRect().top+14+54+24+12):0,needed=section.dataset.estados==='regla'&&active?clear+Math.max(panel.offsetHeight,panel.scrollHeight+2)+(layout.querySelector('.state-legend')?.offsetHeight||0)+'px':'0px';
+  {const head=q('.head'),active=small&&!sheetMode()&&!onlyList&&!open&&!panel.hidden,clear=active?Math.ceil(head.getBoundingClientRect().bottom-section.getBoundingClientRect().top+14+54+24+12):0,needed=section.dataset.estados==='regla'&&active?clear+Math.max(panel.offsetHeight,panel.scrollHeight+2)+(layout.querySelector('.state-legend')?.offsetHeight||0)+'px':'0px';
    // Espacio que la ficha no puede ocupar (filtros y zoom): si el selector no llega a crecer, la ficha se desplaza por dentro en vez de taparlos.
    section.style.setProperty('--selector-clear',clear?clear+'px':'24px');const changed=host.style.getPropertyValue('--selector-needed')!==needed;for(const target of [host,host.parentElement])target?.style.setProperty('--selector-needed',needed);
    // La ficha se mide con su contenido completo; al cambiar el alto del selector se vuelve a ubicar el zoom una vez.
@@ -499,6 +511,18 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  }
  function paintLotLabels(){
   const rect=map.getBoundingClientRect(),visible=new Set(selectorVisible(rows,state,block).map(r=>r.id));
+  if(sheetMode()){
+   const row=byId.get(selected),bounds=row&&rowBounds([row],worldHeight);
+   selectedMarker.style.display=bounds?'':'none';
+   if(bounds){
+    selectedMarker.lastElementChild.textContent=row.label;
+    const x=(bounds.left+bounds.right)/2,y=(bounds.top+bounds.bottom)/2;
+    selectedMarker.setAttribute('transform',`translate(${x} ${y}) scale(${view[2]/(rect.width||1)})`);
+    map.append(selectedMarker);
+   }
+   return;
+  }
+  selectedMarker.style.display='none';
   // Maqueta final (regla de estados): sobre el plano van sólo los metros del lote disponible o «Vendido» en chico.
   // Con el plano lejos (lotes a menos de 28 px entre sí) no se escribe nada: el color alcanza; al acercar aparecen.
   const rule=section.dataset.estados==='regla';let far=false,tight=false;
@@ -532,7 +556,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  }
  function paintMap(){
   const visible=new Set(selectorVisible(rows,state,block).map(r=>r.id));
-  for(const row of rows){const shape=shapes.get(row.id);if(!shape)continue;shape.classList.toggle('off',!row.unavailable&&!visible.has(row.id)&&!comparison.includes(row.id));shape.classList.toggle('on',row.id===selected);shape.classList.toggle('cmp',comparison.includes(row.id));if(!row.unavailable)shape.setAttribute('aria-pressed',String(row.id===selected||comparison.includes(row.id)));}
+  for(const row of rows){const shape=shapes.get(row.id);if(!shape)continue;shape.classList.toggle('off',!sheetMode()&&!row.unavailable&&!visible.has(row.id)&&!comparison.includes(row.id));shape.classList.toggle('on',row.id===selected);shape.classList.toggle('cmp',comparison.includes(row.id));if(!row.unavailable)shape.setAttribute('aria-pressed',String(row.id===selected||comparison.includes(row.id)));}
   // Paint chosen outlines above their neighbours, including shared borders.
   for(const id of comparison.length?comparison:[selected]){const shape=shapes.get(id);if(shape)map.append(shape)}
   for(const text of lotLabels.values())map.append(text);
@@ -568,20 +592,21 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   outlineFromRow(null);
   highlightFromShape(null);
   zoneControls();
-  const visible=selectorVisible(rows,state,block,order);
+  const visible=selectorVisible(rows,listState(),block,order);
   // Con la regla de las miniwebs la lista se ordena por número de lote, que es como se nombra cada lote.
   if(section.dataset.estados==='regla'&&order==='numero')visible.sort((a,b)=>collator.compare(a.label,b.label)||collator.compare(a.block,b.block));
   const base=rows.filter(r=>!r.unavailable&&(!block||r.block===block));
   const counts=lotCounts(base.map(r=>r.lot));
   q('.chips').innerHTML=[['','Todos'],...['disponible','reservado','vendido','proximamente',...(counts.states.sin&&salesZones(currentConfig).zonas.length?['sin']:[])].map(key=>[key,states[key].text])].map(([key,text])=>`<button type="button" class="chip" data-state="${key}" aria-pressed="${state===key}" ${key?`style="--c:${stateOf({estado:key}).color}"`:''}>${key?'<i></i>':''}${text}<b>${key?counts.states[key]:counts.total}</b></button>`).join('')+'<span class="leg"><i></i>'+ (section.dataset.estados==='regla'?'No comercializado':'No a la venta')+'</span>';
   q('.count').innerHTML=`<b>${visible.length}</b> ${visible.length===1?'lote':'lotes'}`;
-  list.innerHTML=visible.map(row=>{const sale=stateOf(row.lot);return `<button type="button" class="row" data-select="${escape(row.id)}" aria-current="${row.id===selected}" aria-pressed="${comparison.includes(row.id)}" style="--c:${sale.color}"><span class="n">${escape(row.label)}</span><span class="t"><b>${escape(label(row))}</b>${zoneTag(row)}<span>${row.zone&&immersiveZones()&&section.dataset.estados!=='regla'?' · ':''}${escape(area(row.lot.superficie_m2))} · <strong data-lot-status="${escape(row.lot.estado)}">${escape(sale.text)}</strong></span></span><span class="p">${soldRule(row.lot)?'':escape(usd(row.lot.precio_usd))+`<span>${escape(unitLabel(row.lot))}</span>`}</span></button>`}).join('')||'<p class="empty" role="status">No hay lotes con estos filtros.</p>';
+  list.innerHTML=visible.map(row=>{const sale=stateOf(row.lot);return `<button type="button" class="row" data-row-state="${escape(row.lot.estado)}" data-select="${escape(row.id)}" aria-current="${row.id===selected}" aria-pressed="${comparison.includes(row.id)}" style="--c:${sale.color}"><span class="n">${escape(row.label)}</span><span class="t"><b>${escape(label(row))}</b>${zoneTag(row)}<span>${row.zone&&immersiveZones()&&section.dataset.estados!=='regla'?' · ':''}${escape(area(row.lot.superficie_m2))} · <strong data-lot-status="${escape(row.lot.estado)}">${escape(sale.text)}</strong></span></span><span class="p">${soldRule(row.lot)?'':escape(usd(row.lot.precio_usd))+`<span>${escape(unitLabel(row.lot))}</span>`}</span></button>`}).join('')||'<p class="empty" role="status">No hay lotes con estos filtros.</p>';
   paintMap();paintLotLabels();paintCard();paintTray();paintListState();
  }
  function focusSelection(row,fromList=false,immediate=false){
   if(!ready)return;
   if(mobileZonePlan() && !comparison.length && row){
-   const target=mobileFrame([row],Math.min(view[2],initialWidth));
+   const bounds=rowBounds([row],worldHeight),width=Math.min(view[2],initialWidth*.6),height=width/mapRatio();
+   const target=sheetMode()&&bounds?[(bounds.left+bounds.right-width)/2,(bounds.top+bounds.bottom-height)/2,width,height]:mobileFrame([row],Math.min(view[2],initialWidth));
    if(immediate){cancelAnimationFrame(frame);view=target;setView()}else fly(target);
    return;
   }
@@ -623,9 +648,23 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   if(next.some((v,i)=>Math.abs(v-view[i])>1e-7))fly(next);
  }
  function pick(id,fromList=false){
-  const row=byId.get(id);if(!row)return;cancelAnimationFrame(frame);listCollapsed=false;if(compact()){mobileListOpen=false;section.removeAttribute('data-list-panel-hidden');if(!fullscreen()&&section.dataset.listOnly!=='true')section.scrollIntoView({block:'start',behavior:'instant'}); }
+  const row=byId.get(id);if(!row)return;cancelAnimationFrame(frame);listCollapsed=false;if(compact()){mobileListOpen=false;section.removeAttribute('data-list-panel-hidden');if(!fullscreen()&&section.dataset.listOnly!=='true'&&!sheetMode())section.scrollIntoView({block:'start',behavior:'instant'}); }
   if(comparison.length){if(row.id!==comparison[0])comparison=[comparison[0],row.id];selected=null;onSelect?.(null)}else{selected=row.id;onSelect?.(row.id)}paint();
   if(ready)focusSelection(row,fromList);
+  if(fromList&&sheetMode()&&!fullscreen()){
+   requestAnimationFrame(()=>{
+    if(disposed||selected!==row.id)return;
+    const nav=host.closest('.miniweb')?.querySelector('.project-nav');
+    const headerHeight=nav?Math.max(0,parseFloat(getComputedStyle(nav).top)||0)+nav.offsetHeight:0;
+    const inset=Math.max(viewportInset,headerHeight)+8;
+    const rect=map.getBoundingClientRect(),bottom=card.getBoundingClientRect().bottom;
+    const screen=window.visualViewport?.height||window.innerHeight;
+    if(rect.top<inset||rect.bottom>screen||(bottom>screen&&bottom-rect.top<=screen-inset)){
+     map.style.scrollMarginTop=inset+'px';
+     map.scrollIntoView({block:'start',behavior:'instant'});
+    }
+   });
+  }
   if(q('.side').hidden){
    if(fromList){const panel=comparison.length?tray:card;panel.tabIndex=-1;panel.focus({preventScroll:true})}
    return;
@@ -641,7 +680,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  for(const name of chooseBlocks)blockSelect.add(new Option('Manzana '+name,name));
  blockSelect.addEventListener('change',()=>{block=blockSelect.value;selected=null;onSelect?.(null);paint();if(ready)fly(block?fit(rows.filter(r=>!r.unavailable&&r.block===block)):resetTarget())},{signal});
  q('.order').addEventListener('change',e=>{order=e.target.value;paint()},{signal});
- q('.f-state').addEventListener('change',e=>{state=e.target.value;if(selected&&!selectorVisible(rows,state,block).some(r=>r.id===selected)){selected=null;onSelect?.(null)}paint()},{signal});
+ q('.f-state').addEventListener('change',e=>{if(sheetMode()){phoneState=e.target.value;paint();return}state=e.target.value;if(selected&&!selectorVisible(rows,state,block).some(r=>r.id===selected)){selected=null;onSelect?.(null)}paint()},{signal});
  q('.f-zone').addEventListener('change',e=>{block=e.target.value;selected=null;onSelect?.(null);paint()},{signal});
  let suppressClick=false;
  section.addEventListener('click',e=>{
@@ -650,6 +689,13 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   if(button.hasAttribute('data-list-hide')){mobileListOpen=false;section.setAttribute('data-list-panel-hidden','');paintListState();q('.list-show').focus({preventScroll:true});return}
   if(button.hasAttribute('data-list-show')){mobileListOpen=compact();section.removeAttribute('data-list-panel-hidden');paintListState();q('.list-hide').focus({preventScroll:true});return}
   if(button.hasAttribute('data-list-close')){mobileListOpen=false;paintListState();q('.list-tab').focus({preventScroll:true});return}
+  if(button.hasAttribute('data-list-open')&&sheetMode()){
+   mobileListOpen=!mobileListOpen;
+   if(mobileListOpen&&selected){selected=null;onSelect?.(null)}
+   paint();
+   (mobileListOpen?q('.list-close'):q('.list-tab')).focus({preventScroll:true});
+   return;
+  }
   if(button.hasAttribute('data-list-open')){listCollapsed=false;mobileListOpen=compact();section.removeAttribute('data-list-panel-hidden');paintListState();const active=[...list.querySelectorAll('.row')].find(n=>n.dataset.select===selected);(active||q('.order')).focus({preventScroll:true});return}
   if(button.hasAttribute('data-state')){state=button.dataset.state;if(selected&&!selectorVisible(rows,state,block).some(r=>r.id===selected)){selected=null;onSelect?.(null)}paint();q('.chips').querySelector(`[data-state="${state}"]`)?.focus({preventScroll:true});return}
   if(button.hasAttribute('data-zone')){
@@ -664,7 +710,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   if(button.dataset.compareConsult){const row=byId.get(button.dataset.compareConsult);if(selectorCanConsult(row?.lot))onConsult?.(row.id);return}
   const action=button.dataset.action;if(!action)return;
   if(action==='close'){const id=selected;selected=null;onSelect?.(null);paint();focusListReturn(id);return}
-  if(action==='available'){state='disponible';block='';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;section.removeAttribute('data-list-panel-hidden');paint();(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});return}
+  if(action==='available'){if(sheetMode())phoneState='disponible';state='disponible';block='';selected=null;onSelect?.(null);if(compact())mobileListOpen=true;listCollapsed=false;section.removeAttribute('data-list-panel-hidden');paint();(list.querySelector('.row')||q('.order'))?.focus({preventScroll:true});return}
   if(!selected||!byId.has(selected))return;
   if(action==='consult'&&selectorCanConsult(byId.get(selected)?.lot))onConsult?.(selected);
   if(action==='brochure'){
@@ -772,14 +818,15 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
    const dx=points[0][0]-oneFingerStart.point[0],dy=points[0][1]-oneFingerStart.point[1];
    if(!oneFingerStart.axis){
     if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
-    oneFingerStart.axis=Math.abs(dx)>Math.abs(dy)?'horizontal':'vertical';
+    oneFingerStart.axis=map.hasAttribute('data-pan')?'both':Math.abs(dx)>Math.abs(dy)?'horizontal':'vertical';
     suppressClick=true;
     cancelAnimationFrame(frame);
    }
-   if(oneFingerStart.axis==='horizontal'&&event.cancelable){
+   if((oneFingerStart.axis==='horizontal'||oneFingerStart.axis==='both')&&event.cancelable){
     event.preventDefault();
     const initial=oneFingerStart.view;
-    view=[initial[0]-dx*initial[2]/map.getBoundingClientRect().width,...initial.slice(1)];
+    const rect=map.getBoundingClientRect();
+    view=[initial[0]-dx*initial[2]/rect.width,initial[1]-(oneFingerStart.axis==='both'?dy*initial[3]/rect.height:0),initial[2],initial[3]];
     setView();
    }
    return;
@@ -792,7 +839,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  map.addEventListener('touchend',finishTouch,{signal,passive:false});map.addEventListener('touchcancel',()=>{oneFingerStart=null;touchGesture=null;setTimeout(()=>suppressClick=false,0);},{signal,passive:true});
  function cancelSheet(){if(sheetGesture){sheetGesture.panel.style.removeProperty('transform');delete sheetGesture.panel.dataset.dragging;}sheetGesture=null;}
  for(const panel of [card,tray]){
-  panel.addEventListener('touchstart',event=>{if(!compact()||section.dataset.listOnly==='true'||event.touches.length!==1||event.target.closest('button,a,input,select')||!event.target.closest('.top,.compare-head'))return;const t=event.touches[0];sheetGesture={panel,x:t.clientX,y:t.clientY,dy:0};},{signal,passive:true});
+  panel.addEventListener('touchstart',event=>{if(!compact()||sheetMode()||section.dataset.listOnly==='true'||event.touches.length!==1||event.target.closest('button,a,input,select')||!event.target.closest('.top,.compare-head'))return;const t=event.touches[0];sheetGesture={panel,x:t.clientX,y:t.clientY,dy:0};},{signal,passive:true});
   panel.addEventListener('touchmove',event=>{if(!sheetGesture||sheetGesture.panel!==panel||event.touches.length!==1)return;const t=event.touches[0],dy=t.clientY-sheetGesture.y,dx=t.clientX-sheetGesture.x;if(dy<0||Math.abs(dx)>Math.abs(dy))return;if(event.cancelable!==false)event.preventDefault();sheetGesture.dy=dy;panel.dataset.dragging='true';panel.style.transform='translateY('+dy+'px)';},{signal,passive:false});
   panel.addEventListener('touchend',()=>{if(!sheetGesture||sheetGesture.panel!==panel)return;const close=sheetGesture.dy>60;cancelSheet();if(close){if(panel===tray)exitComparison();else{selected=null;onSelect?.(null);paint();}}},{signal,passive:true});
   panel.addEventListener('touchcancel',cancelSheet,{signal,passive:true});
@@ -804,7 +851,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
  // Si otra capa retoca la ficha después (importes, financiación), el alto necesario se vuelve a calcular.
  let panelSize='';const panelHead=q('.head'),panelCheck=()=>{const size=[card.offsetHeight,tray.offsetHeight,Math.round(panelHead.getBoundingClientRect().bottom-section.getBoundingClientRect().top)].join(':');if(disposed||size===panelSize)return;panelSize=size;if(compact())paintListState()},panelResize=new ResizeObserver(panelCheck);for(const target of [card,tray,panelHead,q('.side')])panelResize.observe(target);
  for(const type of ['transitionend','animationend'])section.addEventListener(type,panelCheck,{signal:lifecycle.signal});
- let lastSize='';const resize=new ResizeObserver(()=>{const rect=map.getBoundingClientRect(),size=[rect.width,rect.height].join(':');if(!rect.width||!rect.height||size===lastSize)return;lastSize=size;if(ready){startView();if(fullPhoto())return;if(block){view=constrain(fit(rows.filter(r=>!r.unavailable&&r.block===block)));setView()}const row=byId.get(selected||comparison[0]);if(row)focusSelection(row,false,true);}});resize.observe(map);
+ let lastSize='';const resize=new ResizeObserver(()=>{const rect=map.getBoundingClientRect(),size=[rect.width,rect.height].join(':');if(!rect.width||!rect.height||size===lastSize)return;lastSize=size;if(ready){if(sheetMode()!==section.hasAttribute('data-mobile-sheet'))viewportHeight();startView();if(fullPhoto())return;if(block){view=constrain(fit(rows.filter(r=>!r.unavailable&&r.block===block)));setView()}const row=byId.get(selected||comparison[0]);if(row)focusSelection(row,false,true);}});resize.observe(map);
  const panelObserver=new MutationObserver(()=>{viewportHeight();if(ready&&(!compact()||fullPhoto())){cancelAnimationFrame(frame);startView()}});
  panelObserver.observe(section,{attributes:true,attributeFilter:['data-list-panel-hidden']});
  signal.addEventListener('abort',()=>panelObserver.disconnect(),{once:true});
@@ -812,6 +859,7 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261116-plano-foto';
   const signature=zoneFingerprint(next),zoneChanged=signature!==zoneSignature;currentConfig=next;host.dataset.t=selectorTone(next);
   if(zoneChanged){zoneSignature=signature;rows=projectRows(next);byId=new Map(rows.filter(r=>!r.unavailable).map(r=>[r.id,r]));comparison=comparison.filter(id=>byId.has(id));if(selected&&!byId.has(selected)){selected=null;onSelect?.(null);}}
   const ruleBefore=section.dataset.estados;paintStateRule(next);const ruleChanged=ruleBefore!==section.dataset.estados;
+  viewportHeight();
   if((zoneChanged||ruleChanged)&&ready)buildMap();
   const id=comparison.length||selection==null?null:String(selection);
   if(id!==selected||zoneChanged||ruleChanged){selected=byId.has(id)?id:null;paint();if(ready&&mobileZonePlan()&&selected)focusSelection(byId.get(selected));}else{paintCard();paintTray();paintListState();}

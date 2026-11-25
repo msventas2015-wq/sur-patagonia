@@ -358,3 +358,94 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7}.map{w
 .sel[data-estados=regla] .lot-number[data-caption=metros]{font-weight:400;letter-spacing:0;opacity:.92}
 .plan-caption small{font-size:66.6667%;margin-left:1px}
 .sel[data-estados=regla] .lot-number[data-caption=vendido]{font-weight:600;opacity:.8;letter-spacing:.03em;text-transform:uppercase}
+
+/* El explorador comercial inmersivo conserva su vidrio. En teléfono los paneles
+   quedan en el flujo, bajo la foto, y comparten la misma superficie. */
+.phone-selection{display:none}
+@media(max-width:700px){
+ :host([data-mobile-sheet][data-compact=true]:not([data-list-only=true])){
+  height:auto!important;max-height:none!important;min-height:0!important
+ }
+ .selector-layout:has(>.sel[data-mobile-sheet]){display:block;height:auto}
+ .sel.photo-plan[data-mobile-sheet]:not([data-list-only=true]){
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  grid-template-areas:"map map" "legend legend" "zoom toggle" "panel panel";
+  grid-template-rows:auto auto auto auto;gap:0;height:auto;min-height:0;
+  isolation:isolate;border-radius:18px;border:1px solid rgba(255,255,255,.12);overflow:clip
+ }
+ .sel[data-mobile-sheet]>.list-backdrop{z-index:-1;display:block;position:absolute;inset:0;width:100%;height:100%}
+ .sel[data-mobile-sheet]>.list-backdrop::before{content:"";position:absolute;inset:0;background:var(--list-photo) center top/auto max(800px,100svh) repeat-y;opacity:1;filter:none}
+ .sel[data-mobile-sheet]>.list-backdrop::after{content:"";position:absolute;inset:0;background:rgba(14,19,17,.55);backdrop-filter:blur(26px) saturate(1.1);-webkit-backdrop-filter:blur(26px) saturate(1.1)}
+ .sel[data-mobile-sheet].photo-plan>.map{
+  grid-area:map;position:relative;inset:auto;min-height:0;height:auto;width:100%;aspect-ratio:3/2;touch-action:pan-y
+ }
+ .sel[data-mobile-sheet].photo-plan>.map[data-pan]{touch-action:none}
+ .sel[data-mobile-sheet] :is(.head,.zone-layer,.lot-number,.lot-hover){display:none!important}
+ .sel[data-mobile-sheet][data-estados=regla] .lot:not(.nov){
+  stroke:#fff;stroke-width:1;stroke-opacity:.85;stroke-dasharray:none;stroke-linejoin:round;
+  fill:var(--c);fill-opacity:.52;filter:none
+ }
+ .sel[data-mobile-sheet][data-estados=regla] .lot[data-state=disponible]:not(.nov){fill:var(--plan-disponible);fill-opacity:.52;stroke:#eaf7ef;stroke-width:1.15;stroke-opacity:1}
+ .sel[data-mobile-sheet][data-estados=regla] .lot[data-state=vendido]:not(.nov){fill:#101614;fill-opacity:.7;stroke:white;stroke-opacity:.85;stroke-width:1}
+ .sel[data-mobile-sheet][data-estados=regla] .lot.nov{stroke-width:.65px!important;stroke-opacity:.72!important}
+ .sel[data-mobile-sheet][data-estados=regla] .lot[data-state].on:not(.nov){stroke:#fff;stroke-width:2.5;stroke-opacity:1;filter:none}
+ .sel[data-mobile-sheet] .phone-selection{display:inline}
+ .phone-selection path{fill:#17241c;stroke:white;stroke-width:1.1}
+ .phone-selection text{fill:white;stroke:none;font:700 12px Inter,system-ui,sans-serif}
+ .sel[data-mobile-sheet] .state-legend{grid-area:legend;gap:6px 13px;background:transparent;padding:8px 4px;font-size:12px}
+ .sel[data-mobile-sheet] .state-legend span{gap:5px}
+ .sel[data-mobile-sheet] .state-legend i{width:13px;height:13px}
+ .sel[data-mobile-sheet] .state-legend i[data-state=vendido]{background:#eb9190;border-color:#eb9190}
+ .sel[data-mobile-sheet].photo-plan>.zoom,.sel[data-mobile-sheet].photo-plan>.list-tab{
+  position:static;inset:auto;translate:none;transform:none;align-self:center;width:auto;max-width:none;
+  min-height:44px;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;background:transparent
+ }
+ .sel[data-mobile-sheet].photo-plan>.zoom{grid-area:zoom;justify-self:start;display:flex;gap:0;padding:0;margin:3px 0 3px 4px;border:0}
+ .sel[data-mobile-sheet].photo-plan>.zoom button{width:44px;height:44px;border:0;background:transparent}
+ .sel[data-mobile-sheet].photo-plan>.list-tab{grid-area:toggle;margin:3px 8px 3px 0;padding:0 9px;border-radius:8px;white-space:nowrap;font-size:13px}
+ .sel.photo-plan[data-estados=regla][data-mobile-sheet]:not([data-list-only=true])>:is(.card.show,.side:not([hidden]),.tray.show){
+  grid-area:panel;position:relative;inset:auto;translate:none;transform:none;
+  display:block;width:100%;height:auto;min-height:0;max-height:none;margin:0;overflow:visible;
+  padding:5px 14px 14px;border:0;border-top:1px solid rgba(255,255,255,.14);border-radius:0;
+  background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;
+ }
+ .sel[data-mobile-sheet].mobile-list-open>.card,.sel[data-mobile-sheet]>[hidden]{display:none!important}
+ .sel[data-mobile-sheet] .card .top:before{display:none}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .top{display:grid;grid-template-columns:1fr auto;gap:0 8px;padding:0 0 10px;touch-action:pan-y}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .top .x,.sel[data-mobile-sheet] .side header .list-close{
+  display:inline-flex;align-items:center;justify-content:start;gap:4px;width:auto;height:44px;min-width:44px;padding:0;background:transparent;border:0
+ }
+ .sel[data-mobile-sheet] .card .top .x::after,.sel[data-mobile-sheet] .side header .list-close::after{font:500 13px/1.2 var(--body,Inter,system-ui)}
+ .sel[data-mobile-sheet] .card .top .x::after{content:"Cerrar ficha"}
+ .sel[data-mobile-sheet] .side header .list-close::after{content:"Cerrar lista"}
+ .sel[data-mobile-sheet] :is(.card .top .x,.side header .list-close)>svg{width:16px;height:16px}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .top .lot-name{grid-column:1;font-size:16px}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .top .lot-area{grid-column:2;font-size:14px}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .top .st{grid-column:2}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .top .st[data-available],
+ .sel[data-mobile-sheet][data-estados=regla] .card.show:has([data-action=available]) .top .st{font-size:13px}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .sale-metrics{margin:11px 0 4px}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .sale-price{font-size:26px;line-height:1.1}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .sale-unit,.sel[data-mobile-sheet][data-estados=regla] .card.show .card-finance{font-size:13px}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .card-finance{margin:5px 0 10px}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .acts{gap:6px}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show .acts .btn,.sel[data-mobile-sheet][data-estados=regla] .card.show .acts .btn.go{min-height:44px;height:44px;padding:0 8px;border-radius:8px;font-size:14px}
+ .sel[data-mobile-sheet][data-estados=regla] .card.show:has([data-action=available]) .acts{margin-top:10px;padding:0}
+ .sel[data-mobile-sheet][data-list-filters].photo-plan .side header{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 6px;padding:0 0 3px}
+ .sel[data-mobile-sheet] .side header .count{grid-column:1;font-size:15px}
+ .sel[data-mobile-sheet] .side header .list-close{grid-column:2;justify-self:end;white-space:nowrap}
+ .sel[data-mobile-sheet] .side header :is(.order,.f-zone){display:none}
+ .sel[data-mobile-sheet] .side header .f-state{grid-column:1/-1;width:100%;font-size:14px}
+ .sel[data-mobile-sheet] .side .list{max-height:min(29svh,220px);overflow-y:auto;padding:0;gap:0}
+ .sel[data-mobile-sheet][data-estados=regla] .list .row{min-height:44px;grid-template-columns:auto minmax(0,1fr) auto;padding:5px 2px;gap:7px;border-top:1px solid var(--line);border-radius:0}
+ .sel[data-mobile-sheet][data-estados=regla] .row .n{width:auto;min-width:35px;height:auto;padding:0 0 0 7px;border-radius:0;box-shadow:inset 3px 0 var(--c);background:transparent;font-size:15px}
+ .sel[data-mobile-sheet] .row[data-row-state=disponible] .n{--c:#24a860}
+ .sel[data-mobile-sheet] .row[data-row-state=vendido] :is(.n,[data-lot-status]){--c:#eb9190}
+ .sel[data-mobile-sheet] .row .t b,.sel[data-mobile-sheet] .row .p{font-size:13px}
+ .sel[data-mobile-sheet] .row .t span{font-size:12px}
+ .sel[data-mobile-sheet] .row .p span{display:none}
+ .selector-layout:is(:fullscreen,.tour-expanded):has(>.sel[data-mobile-sheet]){overflow:auto;background:var(--panel)}
+ .selector-layout:is(:fullscreen,.tour-expanded)>.sel[data-mobile-sheet]{border-radius:0}
+ .selector-layout:is(:fullscreen,.tour-expanded)>.sel[data-mobile-sheet]>.map{height:max(56dvh,240px);aspect-ratio:auto}
+}
+@media(max-height:700px) and (max-width:700px){.sel[data-mobile-sheet].photo-plan>.map{aspect-ratio:1.8}}
