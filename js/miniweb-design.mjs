@@ -191,9 +191,14 @@ export function applyBlockLayout(node,block){
  for(const [key,values]of Object.entries({ancho:['estilo','completo','contenido','dos-tercios','mitad'],formato:['natural','pantalla','16-9','4-3','1-1','9-16'],alineacion:['izquierda','centro','derecha'],ajuste:['cubrir','contener']}))node.dataset[key]=values.includes(o[key])?o[key]:values[0];
 }
 export function blockLayoutControls(block){
- if(['comercializacion','portada'].includes(block.tipo))return '';
+ if(block.tipo==='portada')return '';
  const o=block.opciones||{},control=(key,label,values)=>`<label>${label}<select aria-label="${label}" data-block-option="${key}">${values.map(([v,t])=>`<option value="${v}" ${o[key]===v?'selected':''}>${t}</option>`).join('')}</select></label>`;
- let html=control('ancho','Ancho',[['estilo','Propio del estilo'],['completo','A todo el ancho'],['contenido','Con márgenes'],['dos-tercios','Dos tercios'],['mitad','Media página']])+control('alineacion','Posición',[['izquierda','Izquierda'],['centro','Centro'],['derecha','Derecha']]);
+ let html=block.tipo==='comercializacion'
+   ? control('fondoLogos','Fondo de los logos',[['','Integrado'],['claro','Franja clara']])
+   : control('ancho','Ancho',[['estilo','Propio del estilo'],['completo','A todo el ancho'],['contenido','Con márgenes'],['dos-tercios','Dos tercios'],['mitad','Media página']])+control('alineacion','Posición',[['izquierda','Izquierda'],['centro','Centro'],['derecha','Derecha']]);
+ if(block.tipo==='explorador')html+=control('entradaPlano','Vista inicial del plano',[['','Vista habitual'],['amplia','Vista amplia']]);
+ if(block.tipo==='panoramica360' && block.variante==='recorrido')html+=control('mostrarDetallesRecorrido','Detalles del recorrido debajo de la foto',[['si','Mostrar'],['no','Ocultar']]);
+ if(['galeria','asi-se-vive'].includes(block.tipo) && block.variante==='album')html+=control('mostrarBotonAlbum','Botón para abrir el álbum',[['si','Mostrar'],['no','Ocultar']]);
  if(block.tipo==='ubicacion' && block.variante==='mapa')html+=control('formatoMapa','Formato del mapa',[['','Propio del estilo'],['apaisado','Apaisado'],['cuadrado','Cuadrado']]);
  if(block.tipo==='contacto')html+=control('formatoConsulta','Presentación de la consulta',[['','Propia del estilo'],['tarjeta','Tarjeta centrada']]);
  if(['imagen','video','foto-frase','panoramica360'].includes(block.tipo))html+=control('formato','Formato',[['natural','Proporción original'],['pantalla','Pantalla completa'],['16-9','Apaisado 16:9'],['4-3','Apaisado 4:3'],['1-1','Cuadrado'],['9-16','Vertical 9:16']]);

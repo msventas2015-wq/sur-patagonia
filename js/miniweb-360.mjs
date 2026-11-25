@@ -151,7 +151,7 @@ const activeTouchView=new WeakMap();
 
 // The parent owns these controls so they also work while the iframe is inert
 // and a swipe on the photo belongs to the surrounding page.
-function mountMobileTourInfo(stage, frame, signal) {
+function mountMobileTourInfo(stage, frame, signal, showDetails) {
  const page = stage.ownerDocument;
  const viewer = frame.contentDocument;
  const layer = page.createElement('div');
@@ -190,7 +190,7 @@ function mountMobileTourInfo(stage, frame, signal) {
  summary.textContent = 'Detalles del recorrido';
  const legend = page.createElement('div');
  details.append(summary, legend);
- stage.after(details);
+ if(showDetails)stage.after(details);
  let lastKey;
  const source = selector => viewer.querySelector('.rg-tour ' + selector);
  function text(element, value) {
@@ -248,14 +248,14 @@ function mountMobileTourInfo(stage, frame, signal) {
  };
 }
 
-function mountTouchExplorer(stage,frame,fullscreen,signal,tapTour=false,previewDevice=''){
+function mountTouchExplorer(stage,frame,fullscreen,signal,{tapTour=false,previewDevice='',showTourDetails=true}={}){
  const media=window.matchMedia('(pointer: coarse)');
  const doc=frame.contentDocument,bar=document.createElement('div'),button=document.createElement('button'),hint=document.createElement('span');
  bar.className='tour-touch-bar';button.type='button';bar.append(button,hint);stage.prepend(bar);
  const page=stage.ownerDocument,win=page.defaultView,scrollLock=page.createElement('style');
  const mobile=win.matchMedia('(max-width: 760px)');
  const usePhoto=()=>tapTour&&mobileTourViewport(win.innerWidth,media.matches,previewDevice);
- const mobileInfo=tapTour?mountMobileTourInfo(stage,frame,signal):null;
+ const mobileInfo=tapTour?mountMobileTourInfo(stage,frame,signal,showTourDetails):null;
  function syncStations(){
   mobileInfo?.sync(usePhoto()&&!fullscreen());
  }
@@ -400,7 +400,7 @@ function mountInlineTour(entry,mountTourFrame,onBrochure){
     const request=new CustomEvent('miniweb-consulta',{detail:{href:destination.href},bubbles:true,composed:true,cancelable:true});
     if(!stage.dispatchEvent(request))event.preventDefault();
    },{signal:frameSignal});
-   touchExplorer=mountTouchExplorer(stage,frame,fullscreen,frameSignal,entry.immediate&&entry.tapTour,entry.previewDevice);
+   touchExplorer=mountTouchExplorer(stage,frame,fullscreen,frameSignal,{tapTour:entry.immediate&&entry.tapTour,previewDevice:entry.previewDevice,showTourDetails:entry.showTourDetails});
    style.textContent+='html[data-touch-exploring][data-mw-inline-scroll=page] :is(canvas,.rg-stage,.rg-overlay){touch-action:none!important}';
    const sync=()=>{doc.documentElement.dataset.mwInlineScroll=fullscreen()?'full':'page';touchExplorer.sync();};sync();stage.addEventListener('fullscreenchange',sync,{signal:frameSignal});
    // In the embedded immersive tour only the modified wheel reaches the zoom bridge.

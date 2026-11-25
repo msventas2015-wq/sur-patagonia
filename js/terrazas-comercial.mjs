@@ -95,6 +95,25 @@ const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-phrase{font:500
       .miniweb.sale[data-propuesta] #lotes.selector-aprobado:has(>.approved-selector-host[data-mobile-sheet])>.interactive-section-heading{
         width:auto;margin:0 0 10px;padding:0 4px!important
       }
+      .miniweb.sale[data-palette][data-propuesta] #lotes.selector-aprobado:has(>.approved-selector-host[data-wide-entry]){
+        padding:0 0 clamp(40px,8vw,60px)!important
+      }
+      .miniweb.sale[data-palette][data-propuesta] #lotes.selector-aprobado:has(>.approved-selector-host[data-wide-entry])>.interactive-section-heading{
+        display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;
+        width:100%;margin:0;padding:46px clamp(18px,5vw,28px) 24px!important
+      }
+      .miniweb.sale[data-palette][data-propuesta] #lotes:has(>.approved-selector-host[data-wide-entry])>.interactive-section-heading h2{
+        font-size:clamp(32px,8vw,44px)!important;line-height:1.08!important;letter-spacing:-.035em
+      }
+      .miniweb.sale[data-propuesta] .selector-available-count{font:600 14px/1.3 var(--sans);white-space:nowrap;color:inherit}
+      .miniweb.sale[data-propuesta] #lotes:has(>.approved-selector-host[data-wide-entry])>.interactive-section-heading p{
+        order:2;flex-basis:100%;margin:0
+      }
+    }
+    @media(max-width:350px){
+      .miniweb.sale[data-palette][data-propuesta] #lotes.selector-aprobado:has(>.approved-selector-host[data-wide-entry])>.interactive-section-heading{
+        padding-block:34px 20px!important
+      }
     }`;
 
 const captions=[
@@ -224,7 +243,7 @@ export function configuracionTerrazas(original, project) {
   if(recorrido && !composicionAprobada)recorrido.contenido.texto ||= 'El loteo está cerca del Arroyo Negro y tiene vistas a la cordillera.';
   title('explorador-1','Elija su lote');
   const selector=block('explorador-1');
-  if(selector)selector.contenido.texto ||= 'Elija un lote en el plano o en la lista para ver su precio y superficie.';
+  if(selector&&!Object.hasOwn(selector.contenido,'texto'))selector.contenido.texto='Elija un lote en el plano o en la lista para ver su precio y superficie.';
   title('galeria-1','“El loteo”');
   const gallery=block('galeria-1');
   const photos=project.fotos || [];
