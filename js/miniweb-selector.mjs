@@ -209,7 +209,7 @@ export function mountSelector(host,{project,config,lots,shapeFor,mapUrl,safeUrl,
  .sel[data-map-pending]>.map-message{position:absolute;inset:0;margin:auto;display:grid;place-items:center;width:fit-content;height:fit-content;max-width:90%;font:500 16px/1.5 system-ui;color:#f5f4f1;background:#26322e;border-radius:6px;padding:10px 16px}
  .sel[data-list-only=true] .map,.sel[data-list-only=true] .zoom{display:none!important}
  `;root.append(critical)
-css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261124-selector-movil';root.append(css);
+css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261125-entrada-plano';root.append(css);
  const section=document.createElement('section');section.className='sel';section.setAttribute('aria-label','Selector de lotes');section.dataset.mapPending='';section.setAttribute('aria-busy','true');
  section.innerHTML=`<svg class="map" role="group" aria-label="Plano de lotes" tabindex="0"></svg><div class="shade"></div><p class="map-message" role="status">Cargando la imagen del plano…</p>
  <div class="head"><div class="chips glass" role="group" aria-label="Filtrar por disponibilidad"></div><label class="mz glass">Manzana<select aria-label="Manzana"><option value="">Todas</option></select></label><div class="zone-filters" hidden aria-label="Filtrar por zonas"></div></div>
@@ -316,6 +316,10 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261124-selector-mov
  const sheetMode=()=>window.innerWidth<=700 && photoPlan && section.dataset.listOnly!=='true' && commercialPresentation(currentConfig) && usesLotPlanKey(currentConfig);
  let phoneState=rows.some(row=>!row.unavailable&&row.lot.estado==='disponible')?'disponible':'';
  const listState=()=>sheetMode()?phoneState:state;
+ const wideEntry=()=>sheetMode()&&currentConfig.bloques?.find(block=>block.tipo==='explorador')?.opciones?.entradaPlano==='amplia';
+ const availableSummary=document.createElement('span');
+ availableSummary.className='selector-available-count';
+ signal.addEventListener('abort',()=>availableSummary.remove(),{once:true});
  const fullPhoto=()=>mapHasPhoto&&section.hasAttribute('data-list-panel-hidden');
  const fullscreen=()=>root.fullscreenElement===layout||!!layout.matches?.(':fullscreen')||layout.classList.contains('tour-expanded');
  let viewportInset=0;
@@ -325,6 +329,12 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261124-selector-mov
   const sheet=sheetMode(),modeChanged=sheet!==section.hasAttribute('data-mobile-sheet'),legend=layout.querySelector('.state-legend');
   host.toggleAttribute('data-mobile-sheet',sheet);
   section.toggleAttribute('data-mobile-sheet',sheet);
+  const wide=wideEntry();
+  for(const node of [host,section])node.toggleAttribute('data-wide-entry',wide);
+  if(wide){
+   const heading=host.parentElement?.querySelector(':scope > .interactive-section-heading');
+   if(heading&&availableSummary.parentElement!==heading)heading.append(availableSummary);
+  }else availableSummary.remove();
   if(legend && legend.parentElement!==(sheet?section:layout))(sheet?section:layout).append(legend);
   host.toggleAttribute('data-two-columns',desktopZonePlan());
   if(desktopZonePlan() && host.clientWidth>380){
@@ -384,6 +394,14 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261124-selector-mov
    (bounds.top+bounds.bottom)/2-height*(area.top+area.bottom)/(2*rect.height),width,height];
  }
  function resetTarget(){
+  if(wideEntry()){
+   const ratio=mapRatio(),bounds=rowBounds(rows,worldHeight);
+   if(bounds){
+    const padding=20,centerX=(bounds.left+bounds.right)/2,centerY=(bounds.top+bounds.bottom)/2;
+    const width=Math.max(bounds.right-bounds.left+padding,(bounds.bottom-bounds.top+padding)*ratio);
+    return constrain([centerX-width/2,centerY-width/ratio/2,width,width/ratio]);
+   }
+  }
   if(sheetMode())return selectorCoverView({worldHeight,ratio:mapRatio(),center:[.5,.5]});
   if(fullPhoto())return photoFrame();
   if(mobileZonePlan())return mobileFrame(selectorVisible(rows,state,block),0,true);
@@ -465,6 +483,10 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261124-selector-mov
   if(!selected||comparison.length||desktopZonePlan())listCollapsed=false;
   side.hidden=onlyList?false:small?!open:listCollapsed;side.inert=side.hidden;tab.hidden=onlyList||(!small&&!listCollapsed)||(open&&!sheetMode());
   const tabCount=sheetMode()?rows.filter(row=>!row.unavailable&&row.lot.estado==='disponible').length:selectorVisible(rows,state,block).length;
+  if(section.hasAttribute('data-wide-entry')){
+   const countText=tabCount+(tabCount===1?' disponible':' disponibles');
+   if(availableSummary.textContent!==countText)availableSummary.textContent=countText;
+  }
   tab.textContent=sheetMode()&&open?'Ocultar lista':(small?'Ver lista':'Lista')+' ('+tabCount+')';
   tab.setAttribute('aria-expanded',String(open||!side.hidden));q('.list-close').hidden=!open;
   section.classList.toggle('mobile-list-open',open);for(const panel of [card,tray]){panel.inert=open;if(open)panel.setAttribute('aria-hidden','true');else panel.removeAttribute('aria-hidden')}
@@ -851,7 +873,25 @@ css.rel='stylesheet';css.href='/css/miniweb-selector.css?v=20261124-selector-mov
  // Si otra capa retoca la ficha después (importes, financiación), el alto necesario se vuelve a calcular.
  let panelSize='';const panelHead=q('.head'),panelCheck=()=>{const size=[card.offsetHeight,tray.offsetHeight,Math.round(panelHead.getBoundingClientRect().bottom-section.getBoundingClientRect().top)].join(':');if(disposed||size===panelSize)return;panelSize=size;if(compact())paintListState()},panelResize=new ResizeObserver(panelCheck);for(const target of [card,tray,panelHead,q('.side')])panelResize.observe(target);
  for(const type of ['transitionend','animationend'])section.addEventListener(type,panelCheck,{signal:lifecycle.signal});
- let lastSize='';const resize=new ResizeObserver(()=>{const rect=map.getBoundingClientRect(),size=[rect.width,rect.height].join(':');if(!rect.width||!rect.height||size===lastSize)return;lastSize=size;if(ready){if(sheetMode()!==section.hasAttribute('data-mobile-sheet'))viewportHeight();startView();if(fullPhoto())return;if(block){view=constrain(fit(rows.filter(r=>!r.unavailable&&r.block===block)));setView()}const row=byId.get(selected||comparison[0]);if(row)focusSelection(row,false,true);}});resize.observe(map);
+ let lastSize='',lastPanel=null,lastMapWidth=0;
+ const resize=new ResizeObserver(()=>{
+  const rect=map.getBoundingClientRect(),size=[rect.width,rect.height].join(':');
+  if(!rect.width||!rect.height||size===lastSize)return;
+  const panel=wideEntry()&&(selected||mobileListOpen||comparison.length)?'detail':'map';
+  const panelResized=wideEntry()&&lastPanel!==null&&panel!==lastPanel&&rect.width===lastMapWidth;
+  lastSize=size;lastPanel=panel;lastMapWidth=rect.width;
+  if(!ready)return;
+  if(sheetMode()!==section.hasAttribute('data-mobile-sheet'))viewportHeight();
+  if(panelResized){
+   const [x,y,w,h]=view,home=resetTarget(),atHome=w>=initialWidth*.995;
+   initialWidth=home[2];const height=w/mapRatio();
+   view=atHome?home:[x,y+(h-height)/2,w,height];setView();
+  }else startView();
+  if(fullPhoto())return;
+  if(block){view=constrain(fit(rows.filter(r=>!r.unavailable&&r.block===block)));setView()}
+  const row=byId.get(selected||comparison[0]);if(row)focusSelection(row,false,true);
+ });
+ resize.observe(map);
  const panelObserver=new MutationObserver(()=>{viewportHeight();if(ready&&(!compact()||fullPhoto())){cancelAnimationFrame(frame);startView()}});
  panelObserver.observe(section,{attributes:true,attributeFilter:['data-list-panel-hidden']});
  signal.addEventListener('abort',()=>panelObserver.disconnect(),{once:true});
