@@ -321,6 +321,11 @@ body{position:fixed!important;top:${-origin.y}px!important;left:${-origin.x}px!i
  };
  doc.addEventListener('keydown',exitWithEscape,{signal});
  doc.addEventListener('recorrido-toque-fondo',()=>{if(exploring&&usePhoto())leave();},{signal});
+ // El pointerup del panorama puede cerrar la foto antes del touchend del mismo toque.
+ // Al consumir ese final en el iframe ya inactivo, Chrome no envía un clic a la página.
+ doc.addEventListener('touchend',event=>{
+  if(frame.inert&&usePhoto()&&event.cancelable)event.preventDefault();
+ },{signal,passive:false});
  // La ficha de un lote vendido pide ver los disponibles: se sale del panorama y se avisa al selector de la misma miniweb.
  doc.addEventListener('recorrido-ver-disponibles',()=>{if(exploring)leave();stage.dispatchEvent(new CustomEvent('mw-ver-disponibles',{bubbles:true,composed:true}));},{signal});
  stage.addEventListener('miniweb-tour-collapse',leave,{signal});
