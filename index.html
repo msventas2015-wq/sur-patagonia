@@ -693,6 +693,7 @@ document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','1796815921513415');
 fbq('track','PageView');
 </script>
+  <link rel="stylesheet" href="/css/proyectos-ficha.css">
 </head>
 <body>
 <div id="cursor"></div>
@@ -933,18 +934,18 @@ document.getElementById('iaQuery').addEventListener('keydown', e => { if (e.key 
 <section id="sec-proyectos-desarrollos">
   <div class="plano-deco plano-deco-left" id="decoPlanLeft"><picture><img src="assets/BUENA VISTA SUP.png" alt="Plano de loteo Buena Vista — Patagonia Argentina"></picture></div>
   <div class="plano-deco plano-deco-right" id="decoPlanRight"><picture><img src="assets/DISPONIBILIDAD ALMOS 2 JULIO.png" alt="Disponibilidad de lotes Álamos — Esquel, Chubut"></picture></div>
-  <div style="padding:0 5rem 4rem; position:relative; z-index:1;">
+  <div class="pf-heading">
     <div class="prop-section-head reveal">
       <div>
         <div class="eyebrow">Loteos &amp; proyectos</div>
-        <h2 class="section-title" style="font-size:clamp(2rem,3.8vw,3.2rem); font-weight:200; letter-spacing:-0.01em; color:rgba(240,237,232,0.85); margin-top:0.6rem;">Proyectos y <em style="font-weight:700; color:rgba(240,237,232,0.85); font-style:normal;">Desarrollos</em></h2>
+        <h2 class="section-title">Proyectos y <strong>Desarrollos</strong></h2>
       </div>
       <div class="prop-section-actions">
         <a href="proyectos.html" class="link-ver-todas">Ver todos <span>→</span></a>
       </div>
     </div>
   </div>
-  <div class="proy-stack" id="proyGrid" style="position:relative; z-index:1;">
+  <div class="proy-stack" id="proyGrid">
     <div class="proy-vacio">Cargando proyectos...</div>
   </div>
 </section>
@@ -2001,66 +2002,25 @@ async function cargarPropiedades() {
     gsap.to(el, { opacity:1, y:0, duration:0.8, ease:'power3.out', delay:i*.1, scrollTrigger:{ trigger:el, start:'top 90%', once:true } })
   })
 }
-// Etiquetas oficiales, copiadas de admin/nuevo-proyecto.html (fuente de verdad del catálogo).
-const PROY_CAT = { loteo:'Loteo residencial', loteo_rural:'Loteo residencial rural', loteo_turistico:'Loteo turístico', barrio_cerrado:'Barrio cerrado', chacras:'Chacras', desarrollo_mixto:'Desarrollo mixto' }
-// Lectura comercial por categoría. Editable en una línea si querés otro texto.
-const PROY_MODO = { loteo:'Para vivirla', loteo_rural:'Para vivirla', loteo_turistico:'Para vivirla', barrio_cerrado:'Para vivirla', chacras:'Para producir', desarrollo_mixto:'Para producir' }
-const PROY_SERV = { agua_corriente:'Agua corriente', luz_electrica:'Luz eléctrica', gas_natural:'Gas natural', cloaca:'Red cloacal', wifi:'Wi-Fi / fibra óptica', porteria:'Portería 24hs', sum:'Salón de usos múltiples', parrillas:'Parrillas comunitarias', senderos:'Senderos peatonales', muelle:'Muelle / acceso al agua', playa:'Playa privada', cancha:'Cancha deportiva', piscina:'Piscina', vigilancia:'Vigilancia privada', calles_ripio:'Calles internas ripio', calles_asfalto:'Calles internas asfalto' }
 const proyEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]))
-const proyNum = n => { const v = Number(n); return (n !== null && n !== '' && Number.isFinite(v)) ? v.toLocaleString('es-AR') : null }
-const proyTit = s => String(s || '').toLocaleLowerCase('es-AR').replace(/(^|[\s(/-])([a-záéíóúüñ])/g, (m, a, b) => a + b.toLocaleUpperCase('es-AR'))
 
 async function cargarProyectos() {
   const grid = document.getElementById('proyGrid')
-  if (!grid) return
-  const { data, error } = await supabase.from('proyectos_publicos_v1')
-    .select('nombre,slug,foto_portada,categoria,ciudad,provincia,tagline,descripcion,precio_desde,sup_min_m2,sup_max_m2,cantidad_lotes,distancia_km,servicios,monto_reserva')
-    .eq('estado','activo')
-    .order('destacado', { ascending:false, nullsFirst:false })
-    .order('created_at', { ascending:false })
-    .limit(3)
-  if (error) { grid.innerHTML = `<div class="proy-vacio">No pudimos cargar los proyectos en este momento.</div>`; return }
-  if (!data || !data.length) { grid.innerHTML = `<div class="proy-vacio">Los proyectos aparecerán aquí una vez que los cargues.</div>`; return }
-
-  grid.innerHTML = data.map(p => {
-    const img = p.foto_portada
-      ? `<img class="proy-via-img" src="${proyEsc(p.foto_portada)}" alt="${proyEsc(proyTit(p.nombre))}" loading="lazy" />`
-      : `<div class="proy-via-ph">🏔️</div>`
-    const modo  = PROY_MODO[p.categoria] || PROY_CAT[p.categoria] || 'Proyecto'
-    const lugar = [p.ciudad, p.provincia].filter(Boolean).map(proyTit).join(', ')
-    const pitch = String(p.tagline || (p.descripcion || '').split('\n')[0] || '').trim()
-
-    const datos = []
-    const precio = proyNum(p.precio_desde)
-    if (precio) datos.push(`<span><b>USD ${precio}</b> desde</span>`)
-    const smin = proyNum(p.sup_min_m2), smax = proyNum(p.sup_max_m2)
-    if (smin && smax) datos.push(`<span><b>${smin}–${smax}</b> m²</span>`)
-    else if (smin) datos.push(`<span>desde <b>${smin}</b> m²</span>`)
-    if (proyNum(p.cantidad_lotes)) datos.push(`<span><b>${proyNum(p.cantidad_lotes)}</b> lotes</span>`)
-    if (proyNum(p.distancia_km)) datos.push(`<span><b>${proyNum(p.distancia_km)} km</b> al centro</span>`)
-    const servs = Array.isArray(p.servicios) ? p.servicios.slice(0,4).map(s => PROY_SERV[s] || String(s).replace(/_/g,' ')) : []
-    if (servs.length) datos.push(`<span>${proyEsc(servs.join(' · '))}</span>`)
-
-    const reserva = proyNum(p.monto_reserva)
-    const cta = reserva ? `Reservá con USD ${reserva} →` : 'Ver desarrollo →'
-    const href = p.slug ? '/' + encodeURIComponent(p.slug) : 'proyectos.html'
-
-    return `<div class="proy-via" onclick="location.href='${href}'">
-      ${img}
-      <div class="proy-via-shade"></div>
-      <div class="plano-corner"></div>
-      <div class="plano-corner-br"></div>
-      <div class="proy-via-in">
-        <div class="proy-via-txt">
-          <div class="proy-via-modo">${proyEsc(modo)}${lugar ? ' · ' + proyEsc(lugar) : ''}</div>
-          <h3 class="proy-via-nombre">${proyEsc(proyTit(p.nombre))}</h3>
-          ${pitch ? `<p class="proy-via-pitch">${proyEsc(pitch)}</p>` : ''}
-          ${datos.length ? `<div class="proy-via-datos">${datos.join('')}</div>` : ''}
-        </div>
-        <span class="btn-primary">${proyEsc(cta)}</span>
-      </div>
-    </div>`
-  }).join('')
+  try {
+    const {cardInventory, projectCard} = await import('/js/proyectos-ficha.mjs')
+    const {data, error} = await supabase.from('proyectos_publicos_v1')
+      .select('id,nombre,slug,tema,mapa_imagen_url,foto_portada,categoria,ciudad,provincia,precio_desde,financiacion,sup_min_m2,sup_max_m2,cantidad_lotes,monto_reserva')
+      .eq('estado','activo')
+      .order('destacado', {ascending:false, nullsFirst:false})
+      .order('created_at', {ascending:false})
+      .limit(3)
+    if (error) throw error
+    const cards = await Promise.all(data.map(async p => projectCard(p, await cardInventory(supabase,p))))
+    grid.innerHTML = cards.join('') || '<div class="proy-vacio">Los proyectos aparecerán aquí una vez que los cargues.</div>'
+  } catch (error) {
+    console.warn('No se pudieron cargar los proyectos.', error)
+    grid.innerHTML = '<div class="proy-vacio">No pudimos cargar los proyectos en este momento.</div>'
+  }
 }
 </script>
 

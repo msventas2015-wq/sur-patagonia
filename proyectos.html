@@ -92,8 +92,9 @@
       position: absolute;
       inset: 0;
       background:
-        linear-gradient(to bottom, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0) 30%),
-        linear-gradient(to bottom, rgba(8,8,8,0) 50%, rgba(8,8,8,0.85) 80%, rgba(8,8,8,1) 100%);
+        linear-gradient(rgba(8,8,8,.46), rgba(8,8,8,.46)),
+        linear-gradient(to bottom, rgba(8,8,8,0.5) 0%, rgba(8,8,8,0) 30%),
+        linear-gradient(to bottom, rgba(8,8,8,0) 55%, rgba(8,8,8,0.88) 84%, rgba(8,8,8,1) 100%);
     }
     .hero-srv-content {
       position: relative;
@@ -122,14 +123,14 @@
     .hero-srv-eyebrow::before, .hero-srv-eyebrow::after { content: ''; display: block; width: 30px; height: 1px; background: var(--gold); }
     .hero-srv-title {
       font-family: 'Montserrat', sans-serif;
-      font-size: clamp(3rem, 6vw, 6rem);
-      font-weight: 200;
+      font-size: clamp(2.8rem, 6vw, 5.8rem);
+      font-weight: 300;
       line-height: 1;
       letter-spacing: -0.02em;
-      color: var(--text);
+      color: #fff;
       opacity: 0;
     }
-    .hero-srv-title em { font-style: normal; color: var(--gold); }
+    .hero-srv-title em { font-style: normal; color: inherit; font-weight: 600; }
     .hero-srv-arrow {
       font-size: 1.4rem;
       color: rgba(201,168,76,0.55);
@@ -362,6 +363,7 @@ document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','1796815921513415');
 fbq('track','PageView');
 </script>
+  <link rel="stylesheet" href="/css/proyectos-ficha.css">
 </head>
 <body>
 <div id="cursor"></div>
@@ -399,7 +401,7 @@ fbq('track','PageView');
     <div class="prop-section-head reveal">
       <div>
         <div class="eyebrow">Desarrollos en cartera</div>
-        <h2 class="section-title" style="font-size:clamp(2rem,3.8vw,3.2rem); font-weight:200; letter-spacing:-0.01em; color:rgba(240,237,232,0.85); margin-top:0.6rem;">Proyectos <em style="font-weight:700; color:rgba(240,237,232,0.85); font-style:normal;">inmobiliarios</em></h2>
+        <h2 class="section-title">Proyectos <strong>inmobiliarios</strong></h2>
       </div>
       <div class="prop-section-actions">
         <a href="#contacto" class="link-ver-todas">Consultar por un desarrollo <span>→</span></a>
@@ -543,6 +545,7 @@ fbq('track','PageView');
 
 <script type="module">
 import { supabase, enviarContactoSeguro, getSiteConfig } from './js/config.js'
+import { cardInventory, projectCard } from './js/proyectos-ficha.mjs'
 
 /* ── CONTACTO ── */
 document.getElementById('formContacto').addEventListener('submit', async function(e) {
@@ -591,7 +594,7 @@ document.getElementById('formContacto').addEventListener('submit', async functio
       const contenedor = document.getElementById('listaProyectos')
       const { data, error } = await supabase
         .from('proyectos_publicos_v1')
-        .select('id,nombre,slug,tagline,descripcion,categoria,ciudad,provincia,foto_portada,precio_desde,sup_min_m2,sup_max_m2,cantidad_lotes,distancia_km,hectareas_total,servicios,monto_reserva,video_url,masterplan_url,zonificacion,fecha_entrega')
+        .select('id,nombre,slug,tema,financiacion,mapa_imagen_url,categoria,ciudad,provincia,foto_portada,precio_desde,sup_min_m2,sup_max_m2,cantidad_lotes,distancia_km,hectareas_total,servicios,monto_reserva,video_url,masterplan_url,zonificacion,fecha_entrega')
         .eq('estado', 'activo')
         .order('destacado', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
@@ -605,66 +608,15 @@ document.getElementById('formContacto').addEventListener('submit', async functio
         return
       }
 
-      contenedor.innerHTML = data.map(p => {
-        const nombre = tit(p.nombre)
-        const img = p.foto_portada
-          ? `<img src="${esc(p.foto_portada)}" alt="${esc(nombre)}" loading="lazy" />`
-          : `<div class="ficha-proy-ph">🏔️</div>`
+      const inventories = await Promise.all(data.map(p => cardInventory(supabase,p)))
+      contenedor.innerHTML = data.map((p,i) =>
+        projectCard(p, inventories[i], {listing:true, serviceName:servLbl})
+      ).join('')
 
-        const catLbl = CAT[p.categoria] || 'Proyecto'
-        const lotes = num(p.cantidad_lotes)
-        const badge = lotes ? `${catLbl} · ${lotes} lotes` : catLbl
-        const modo = MODO[p.categoria] || catLbl
-        const lugar = lugarDe(p)
-        const km = num(p.distancia_km)
-        const loc = [modo, lugar, km ? `a ${km} km del centro` : null].filter(Boolean).join(' · ')
-        const pitch = String(p.tagline || '').trim()
-        const desc = String(p.descripcion || '').trim()
-
-        const datos = []
-        const precio = num(p.precio_desde)
-        if (precio) datos.push(`<div class="fd ancla"><span class="fd-k">Desde</span><span class="fd-v">USD ${precio}</span></div>`)
-        const sup = supDe(p)
-        if (sup) datos.push(`<div class="fd"><span class="fd-k">Superficie</span><span class="fd-v">${esc(sup)}</span></div>`)
-        if (lotes) datos.push(`<div class="fd"><span class="fd-k">Lotes</span><span class="fd-v">${lotes}</span></div>`)
-        const ha = num(p.hectareas_total)
-        if (ha) datos.push(`<div class="fd"><span class="fd-k">Predio</span><span class="fd-v">${ha} ha</span></div>`)
-
-        const chips = Array.isArray(p.servicios) ? p.servicios.map(s => `<span class="fchip">${esc(servLbl(s))}</span>`).join('') : ''
-        const reserva = num(p.monto_reserva)
-        const cta = reserva ? `Reservá con USD ${reserva}` : 'Ver desarrollo'
-
-        return `
-          <div class="ficha-proy" id="proyecto-${esc(p.id)}">
-            <div class="ficha-proy-foto">
-              <span class="ficha-proy-badge">${esc(badge)}</span>
-              ${img}
-              ${p.video_url ? `
-                <div class="play-btn" data-video="${esc(p.video_url)}">
-                  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                </div>` : ''}
-            </div>
-            <div class="ficha-proy-body">
-              <div>
-                ${loc ? `<div class="ficha-proy-loc">${esc(loc)}</div>` : ''}
-                <h3 class="ficha-proy-nombre">${esc(nombre)}</h3>
-                ${pitch ? `<p class="ficha-proy-tag">${esc(pitch)}</p>` : desc ? `<p class="ficha-proy-tag">${esc(desc.slice(0, 160))}${desc.length > 160 ? '…' : ''}</p>` : ''}
-              </div>
-              ${datos.length ? `<div class="ficha-proy-datos">${datos.join('')}</div>` : ''}
-              ${chips ? `<div class="ficha-proy-chips">${chips}</div>` : ''}
-              <div class="ficha-proy-cta">
-                <a href="${esc(hrefDe(p))}" class="btn-primary">${esc(cta)} →</a>
-                ${p.masterplan_url ? `<a href="${esc(p.masterplan_url)}" target="_blank" rel="noopener" class="link-ver-todas">Masterplan <span>→</span></a>` : ''}
-                <a href="#contacto" class="link-ver-todas">Consultar <span>→</span></a>
-              </div>
-            </div>
-          </div>`
-      }).join('')
-
-      renderComparador(data)
+      renderComparador(data.map((p,i) => ({...p, cantidad_lotes:inventories[i]?.total ?? p.cantidad_lotes})))
 
       // Play buttons
-      document.querySelectorAll('.play-btn[data-video]').forEach(btn => {
+      contenedor.querySelectorAll('button[data-video]').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation()
           abrirVideo(btn.dataset.video)
@@ -768,7 +720,9 @@ async function aplicarSiteConfig() {
   try {
     const cfg = await getSiteConfig()
     if (!cfg || !Object.keys(cfg).length) return
-    if (cfg.img_proyectos_header) document.getElementById('hero-srv-bg').style.backgroundImage = `url('${cfg.img_proyectos_header}')`
+    // La portada de pinos reemplaza la foto anterior. Se conservan las futuras elecciones de Apariencia.
+    if (cfg.img_proyectos_header && !cfg.img_proyectos_header.split('?')[0].endsWith('/1780439441042_DJI_0269.jpg'))
+      document.getElementById('hero-srv-bg').style.backgroundImage = `url('${cfg.img_proyectos_header}')`
     if (cfg.img_contacto_bg) {
       const el = document.getElementById('contacto')
       if (el) el.style.background = `linear-gradient(to bottom, rgba(8,8,8,0.88) 0%, rgba(8,8,8,0.92) 100%), url('${cfg.img_contacto_bg}') center/cover no-repeat scroll`
