@@ -89,6 +89,12 @@ const estilos = `.miniweb[data-propuesta] .hero .hero-copy .hero-phrase{font:500
         --selector-height:clamp(440px,145vw,580px)!important;
         height:max(var(--selector-height),var(--selector-needed,0px))!important;min-height:0!important
       }
+      .miniweb.sale[data-propuesta] #lotes.selector-aprobado>.approved-selector-host[data-mobile-sheet]:not([data-list-only=true]){
+        height:auto!important;min-height:0!important;max-height:none!important
+      }
+      .miniweb.sale[data-propuesta] #lotes.selector-aprobado:has(>.approved-selector-host[data-mobile-sheet])>.interactive-section-heading{
+        width:auto;margin:0 0 10px;padding:0 4px!important
+      }
     }`;
 
 const captions=[
