@@ -199,7 +199,10 @@ export function blockLayoutControls(block){
  if(block.tipo==='explorador')html+=control('entradaPlano','Vista inicial del plano',[['','Vista habitual'],['amplia','Vista amplia']]);
  if(block.tipo==='panoramica360' && block.variante==='recorrido')html+=control('mostrarDetallesRecorrido','Detalles del recorrido debajo de la foto',[['si','Mostrar'],['no','Ocultar']]);
  if(['galeria','asi-se-vive'].includes(block.tipo) && block.variante==='album')html+=control('mostrarBotonAlbum','Botón para abrir el álbum',[['si','Mostrar'],['no','Ocultar']]);
- if(block.tipo==='ubicacion' && block.variante==='mapa')html+=control('formatoMapa','Formato del mapa',[['','Propio del estilo'],['apaisado','Apaisado'],['cuadrado','Cuadrado']]);
+ if(block.tipo==='ubicacion' && block.variante==='mapa'){
+  html+=control('formatoMapa','Formato del mapa',[['','Propio del estilo'],['apaisado','Apaisado'],['cuadrado','Cuadrado']]);
+  html+=control('mapaBase','Cartografía',[['','Google Maps estándar'],['referencias-bolson','Referencias principales · El Bolsón']]);
+ }
  if(block.tipo==='contacto')html+=control('formatoConsulta','Presentación de la consulta',[['','Propia del estilo'],['tarjeta','Tarjeta centrada']]);
  if(['imagen','video','foto-frase','panoramica360'].includes(block.tipo))html+=control('formato','Formato',[['natural','Proporción original'],['pantalla','Pantalla completa'],['16-9','Apaisado 16:9'],['4-3','Apaisado 4:3'],['1-1','Cuadrado'],['9-16','Vertical 9:16']]);
  if(['imagen','foto-frase'].includes(block.tipo)||(block.tipo==='video'&&/\.(mp4|webm|mov)(?:[?#]|$)/i.test(block.contenido?.video||block.medio||'')))html+=control('ajuste','Encuadre',[['cubrir','Llenar el espacio'],['contener','Mostrar completo']]);
